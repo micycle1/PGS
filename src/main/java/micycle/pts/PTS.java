@@ -5,6 +5,7 @@ import java.util.Arrays;
 
 import org.geotools.geometry.jts.JTS;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LinearRing;
@@ -13,6 +14,10 @@ import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.linearref.LengthIndexedLine;
 import org.locationtech.jts.operation.distance.DistanceOp;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
+import org.locationtech.jts.triangulate.ConformingDelaunayTriangulator;
+import org.locationtech.jts.triangulate.DelaunayTriangulationBuilder;
+import org.locationtech.jts.triangulate.IncrementalDelaunayTriangulator;
+import org.locationtech.jts.triangulate.VoronoiDiagramBuilder;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
 import processing.core.PConstants;
@@ -22,13 +27,20 @@ import processing.core.PVector;
 /**
  * PTS | Processing Topology Suite
  * 
+ * http://thecloudlab.org/processing/library.html
+ * https://github.com/Rogach/jopenvoronoi https://github.com/IGNF/CartAGen
+ * https://ignf.github.io/CartAGen/docs/algorithms/others/spinalize.html
+ * https://github.com/twak/campskeleton
+ * https://discourse.processing.org/t/straight-skeleton-or-how-to-draw-a-center-line-in-a-polygon-or-shape/17208/9
+ * http://lastresortsoftware.blogspot.com/2010/12/smooth-as.html#note1
+ * 
  * @author MCarleton
  *
  */
 public class PTS implements PConstants {
 
 	/**
-	 * TODO GROUP, PRIMITIVE, PATH, or GEOMETRY
+	 * TODO GROUP, PRIMITIVE, PATH, or GEOMETRY TODO CACHE recent 5 calls?
 	 * 
 	 * @param shape
 	 * @return
@@ -191,6 +203,11 @@ public class PTS implements PConstants {
 		}
 	}
 
+	public static void triangulate(PShape shape) {
+//		fromPShape(shape).getExteriorRing().get
+//		org.locationtech.jts.triangulate.DelaunayTriangulationBuilder.
+	}
+
 	/**
 	 * 
 	 * @param shape
@@ -264,12 +281,83 @@ public class PTS implements PConstants {
 	}
 
 	/**
+	 * Calc from vertices of PShape
+	 * 
+	 * @param shape
+	 * @param tolerance
+	 * @return
+	 */
+	public static PShape delaunayTriangulation(PShape shape, float tolerance) {
+		Geometry g = fromPShape(shape);
+		DelaunayTriangulationBuilder d = new DelaunayTriangulationBuilder();
+		d.setTolerance(tolerance);
+		d.setSites(g);
+		Geometry out = d.getTriangles(geometryFactory);
+		return toPShape(out);
+	}
+
+	/**
+	 * 
+	 * @param points
+	 * @param tolerance default is 10, snaps pixels to the nearest N. higher values
+	 *                  result in more coarse triangulation
+	 * @return A PShape whose children are triangles making up the triangulation
+	 */
+	public static PShape delaunayTriangulation(ArrayList<PVector> points, float tolerance) {
+		ArrayList<Coordinate> coords = new ArrayList<>(points.size());
+		for (PVector p : points) {
+			coords.add(new Coordinate(p.x, p.y));
+		}
+		/**
+		 * Use ConformingDelau... for better result? (get constrained segments from edge
+		 * ring) Code example: https://github.com/locationtech/jts/issues/320
+		 */
+		DelaunayTriangulationBuilder d = new DelaunayTriangulationBuilder();
+		d.setTolerance(tolerance);
+		d.setSites(coords);
+		Geometry out = d.getTriangles(geometryFactory);
+		return toPShape(out);
+	}
+
+	/**
+	 * TODO set clip envelope?
+	 * 
+	 * @param shape
+	 * @param tolerance
+	 * @return
+	 */
+	public static PShape voronoiDiagram(PShape shape, float tolerance) {
+		Geometry g = fromPShape(shape);
+		VoronoiDiagramBuilder v = new VoronoiDiagramBuilder();
+		v.setTolerance(tolerance);
+		v.setSites(g);
+		Geometry out = v.getDiagram(geometryFactory);
+		return toPShape(out);
+	}
+
+	public static PShape voronoiDiagram(ArrayList<PVector> points, float tolerance) {
+		ArrayList<Coordinate> coords = new ArrayList<>(points.size());
+		for (PVector p : points) {
+			coords.add(new Coordinate(p.x, p.y));
+		}
+		VoronoiDiagramBuilder v = new VoronoiDiagramBuilder();
+		v.setTolerance(tolerance);
+//		v.setClipEnvelope(new Envelope(0, 0, 500, 500));
+		v.setSites(coords);
+		Geometry out = v.getDiagram(geometryFactory);
+		return toPShape(out);
+	}
+
+	/**
 	 * TODO: outline of exterior ring only
 	 * 
 	 * @param shape
 	 * @param points
-	 * @param offsetDistance
+	 * @param offsetDistance the distance the point is offset from the
+	 *                       segment(positive is to the left, negative is to the
+	 *                       right)
 	 * @return
+	 * @see #equidistantOutlineByDistance(PShape, float, float)
 	 */
 	public static PVector[] equidistantOutline(PShape shape, int points, float offsetDistance) {
 		Polygon p = fromPShape(shape);
@@ -291,6 +379,44 @@ public class PTS implements PConstants {
 		}
 
 		return outlinePoints;
+	}
+
+	/**
+	 * 
+	 * @param shape
+	 * @param interPointDistance Distance between each point on outline
+	 * @param offsetDistance
+	 * @return nearest distance such that every distance is equal (maybe be
+	 *         different due to rounding)
+	 */
+	public static PVector[] equidistantOutlineByDistance(PShape shape, float interPointDistance, float offsetDistance) {
+		Polygon p = fromPShape(shape);
+
+		LengthIndexedLine l = new LengthIndexedLine(p.getExteriorRing());
+		if (interPointDistance > l.getEndIndex()) {
+			System.err.println("Interpoint greater than shape length");
+			return null;
+		}
+		int points = (int) Math.round(l.getEndIndex() / interPointDistance);
+		ArrayList<PVector> outlinePoints = new ArrayList<>();
+		// exterior ring
+		for (int i = 0; i < points; i++) {
+			Coordinate q = l.extractPoint((i / (float) points) * l.getEndIndex(), offsetDistance);
+			outlinePoints.add(new PVector((float) q.x, (float) q.y));
+		}
+
+		for (int j = 0; j < p.getNumInteriorRing(); j++) {
+			l = new LengthIndexedLine(p.getInteriorRingN(j));
+			points = (int) Math.round(l.getEndIndex() / interPointDistance);
+			for (int i = 0; i < points; i++) {
+				Coordinate q = l.extractPoint((i / (float) points) * l.getEndIndex(), offsetDistance);
+				outlinePoints.add(new PVector((float) q.x, (float) q.y));
+			}
+		}
+
+		final PVector[] out = new PVector[outlinePoints.size()];
+		Arrays.setAll(out, outlinePoints::get);
+		return out;
 	}
 
 	/**
@@ -349,7 +475,7 @@ public class PTS implements PConstants {
 	public static float area(PShape shape) {
 		return (float) fromPShape(shape).getArea();
 	}
-	
+
 	public static PVector[] vertices(PShape shape) {
 		Coordinate[] coords = fromPShape(shape).getCoordinates();
 		PVector[] vertices = new PVector[coords.length];
@@ -358,6 +484,28 @@ public class PTS implements PConstants {
 			vertices[i] = new PVector((float) coord.x, (float) coord.y);
 		}
 		return vertices;
+	}
+
+	/**
+	 * aka envelope
+	 * 
+	 * @param shape
+	 * @return X,Y,W,H
+	 */
+	public static float[] bound(PShape shape) {
+		Envelope e = (Envelope) fromPShape(shape).getEnvelopeInternal();
+		return new float[] { (float) e.getMinX(), (float) e.getMinY(), (float) e.getWidth(), (float) e.getHeight() };
+	}
+
+	/**
+	 * aka envelope
+	 * 
+	 * @param shape
+	 * @return X1, Y1, X2, Y2
+	 */
+	public static float[] boundCoords(PShape shape) {
+		Envelope e = (Envelope) fromPShape(shape).getEnvelopeInternal();
+		return new float[] { (float) e.getMinX(), (float) e.getMinY(), (float) e.getMaxX(), (float) e.getMaxY() };
 	}
 
 	public static PShape createSquircle(float x, float y, float width, float height) {
@@ -369,6 +517,41 @@ public class PTS implements PConstants {
 		shapeFactory.setWidth(width);
 		shapeFactory.setHeight(height);
 		return toPShape(shapeFactory.createSquircle());
+	}
+
+	/**
+	 * https://stackoverflow.com/questions/64252638/how-to-split-a-jts-polygon Split
+	 * a polygon into 4 equal quadrants
+	 * 
+	 * @param p
+	 * @return
+	 */
+	public static ArrayList<PShape> split(PShape shape) {
+		Polygon p = fromPShape(shape);
+		ArrayList<PShape> ret = new ArrayList<>();
+
+		final Envelope envelope = p.getEnvelopeInternal();
+		double minX = envelope.getMinX();
+		double maxX = envelope.getMaxX();
+		double midX = minX + (maxX - minX) / 2.0;
+		double minY = envelope.getMinY();
+		double maxY = envelope.getMaxY();
+		double midY = minY + (maxY - minY) / 2.0;
+
+		Envelope llEnv = new Envelope(minX, midX, minY, midY);
+		Envelope lrEnv = new Envelope(midX, maxX, minY, midY);
+		Envelope ulEnv = new Envelope(minX, midX, midY, maxY);
+		Envelope urEnv = new Envelope(midX, maxX, midY, maxY);
+		Geometry ll = JTS.toGeometry(llEnv).intersection(p);
+		Geometry lr = JTS.toGeometry(lrEnv).intersection(p);
+		Geometry ul = JTS.toGeometry(ulEnv).intersection(p);
+		Geometry ur = JTS.toGeometry(urEnv).intersection(p);
+		ret.add(toPShape(ll));
+		ret.add(toPShape(lr));
+		ret.add(toPShape(ul));
+		ret.add(toPShape(ur));
+
+		return ret;
 	}
 
 	public static int[] getContourGroups(int[] vertexCodes) {
