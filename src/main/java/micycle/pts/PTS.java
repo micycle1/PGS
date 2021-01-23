@@ -2,8 +2,13 @@ package micycle.pts;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 
 import org.geotools.geometry.jts.JTS;
+import org.jgrapht.Graph;
+import org.jgrapht.alg.spanning.PrimMinimumSpanningTree;
+import org.jgrapht.graph.DefaultUndirectedGraph;
+import org.jgrapht.graph.builder.GraphBuilder;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
@@ -11,18 +16,34 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.util.AffineTransformation;
+import org.locationtech.jts.geomgraph.Edge;
+import org.locationtech.jts.geomgraph.GeometryGraph;
 import org.locationtech.jts.linearref.LengthIndexedLine;
+import org.locationtech.jts.operation.buffer.BufferOp;
 import org.locationtech.jts.operation.distance.DistanceOp;
+import org.locationtech.jts.shape.random.RandomPointsBuilder;
+import org.locationtech.jts.shape.random.RandomPointsInGridBuilder;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
-import org.locationtech.jts.triangulate.ConformingDelaunayTriangulator;
 import org.locationtech.jts.triangulate.DelaunayTriangulationBuilder;
-import org.locationtech.jts.triangulate.IncrementalDelaunayTriangulator;
 import org.locationtech.jts.triangulate.VoronoiDiagramBuilder;
+import org.locationtech.jts.triangulate.quadedge.Vertex;
 import org.locationtech.jts.util.GeometricShapeFactory;
+import org.twak.utils.triangulate.EarCutTriangulator;
 
+import fr.ign.cogit.geoxygene.api.spatial.geomprim.IRing;
+import fr.ign.cogit.geoxygene.spatial.JTSGeomFactory;
+import fr.ign.cogit.geoxygene.spatial.coordgeom.GM_Polygon;
+import fr.ign.cogit.geoxygene.util.conversion.AdapterFactory;
+import fr.ign.cogit.geoxygene.util.conversion.JtsGeOxygene;
+//import micycle.pts.concavehull.ConcaveHull;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
+import uk.osgb.algorithm.concavehull.TriCheckerAlpha;
+import uk.osgb.algorithm.concavehull.TriCheckerChi;
+import uk.osgb.algorithm.concavehull.TriCheckerPark;
+import uk.osgb.algorithm.minkowski_sum.Minkowski_Sum;
 
 /**
  * PTS | Processing Topology Suite
@@ -34,13 +55,17 @@ import processing.core.PVector;
  * https://discourse.processing.org/t/straight-skeleton-or-how-to-draw-a-center-line-in-a-polygon-or-shape/17208/9
  * http://lastresortsoftware.blogspot.com/2010/12/smooth-as.html#note1
  * 
+ * TODO https://ignf.github.io/CartAGen/docs/algorithms.html
+ * 
  * @author MCarleton
  *
  */
 public class PTS implements PConstants {
 
 	/**
-	 * TODO GROUP, PRIMITIVE, PATH, or GEOMETRY TODO CACHE recent 5 calls?
+	 * TODO GROUP, PRIMITIVE, PATH, or GEOMETRY TODO CACHE recent 5 calls? TODO
+	 * split into voronoi, delaunay, bool algebra classes Morph class: smooth
+	 * simplify. etc.
 	 * 
 	 * @param shape
 	 * @return
@@ -50,7 +75,7 @@ public class PTS implements PConstants {
 //		shape.getKind() // switch to get primitive, then == ELLIPSE
 		if (shape.getFamily() == PShape.PRIMITIVE) {
 			GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-			shapeFactory.setNumPoints(40);
+			shapeFactory.setNumPoints(40); // TODO magic constant
 			switch (shape.getKind()) {
 				case ELLIPSE:
 					shapeFactory.setCentre(new Coordinate(shape.getParam(0), shape.getParam(1)));
@@ -251,6 +276,8 @@ public class PTS implements PConstants {
 	}
 
 	public static PShape buffer(PShape shape, float buffer) {
+		// TODO read
+		// https://locationtech.github.io/jts/javadoc/org/locationtech/jts/operation/buffer/BufferOp.html
 		return toPShape(fromPShape(shape).buffer(buffer, 4));
 	}
 
@@ -277,7 +304,103 @@ public class PTS implements PConstants {
 	}
 
 	public static PShape convexHull(PShape shape) {
+		// TODO concave hull
 		return toPShape(fromPShape(shape).convexHull());
+	}
+
+	public static PShape concaveHull(ArrayList<PVector> points, float threshold) {
+		final Coordinate[] coords = new Coordinate[points.size() + 1];
+		points.add(points.get(0)); // close geometry
+
+		for (int i = 0; i < coords.length; i++) {
+			coords[i] = new Coordinate(points.get(i).x, points.get(i).y);
+		}
+
+		Geometry g = geometryFactory.createPolygon(coords);
+		micycle.pts.concavehull.ConcaveHull hull2 = new micycle.pts.concavehull.ConcaveHull(g, threshold);
+		return toPShape(hull2.getConcaveHull());
+	}
+
+	public static PShape concaveHull2(ArrayList<PVector> points, int k) {
+		// TODO: not as interesting
+//		Geometry g = fromPShape(shape);
+
+		final ArrayList<Coordinate> coords = new ArrayList<>();
+		points.add(points.get(0)); // close geometry
+
+		for (int i = 0; i < points.size(); i++) {
+			coords.add(new Coordinate(points.get(i).x, points.get(i).y));
+		}
+//		Geometry g = geometryFactory.createPolygon(coords);
+
+		ConcaveHull hull = new ConcaveHull();
+		ArrayList<Coordinate> coordsOut = hull.calculateConcaveHull(coords, k);
+		final Coordinate[] out = new Coordinate[coordsOut.size()];
+		Arrays.setAll(out, coordsOut::get);
+		// TODO coords-->PSHAPE directly
+
+//		micycle.pts.concavehull.ConcaveHull hull2 = new micycle.pts.concavehull.ConcaveHull(g, 0);
+//		return toPShape(hull2.getConcaveHull());
+
+		return toPShape(geometryFactory.createPolygon(out));
+	}
+
+	public static PShape concaveHull3(ArrayList<PVector> points, float threshold) {
+		// TODO seems broken
+		final Coordinate[] coords = new Coordinate[points.size() + 1];
+		points.add(points.get(0)); // close geometry
+
+		for (int i = 0; i < coords.length; i++) {
+			coords[i] = new Coordinate(points.get(i).x, points.get(i).y);
+		}
+
+		Geometry g = geometryFactory.createPolygon(coords);
+		uk.osgb.algorithm.concavehull.ConcaveHull hull = new uk.osgb.algorithm.concavehull.ConcaveHull(g);
+		return toPShape(hull.getConcaveHullBFS(new TriCheckerChi(threshold), false, false).get(0));
+	}
+
+	/**
+	 * 
+	 * @param points
+	 * @param threshold 0...1
+	 * @return
+	 */
+	public static PShape concaveHull4(ArrayList<PVector> points, float threshold) {
+		final Coordinate[] coords = new Coordinate[points.size() + 1];
+		points.add(points.get(0)); // close geometry
+
+		for (int i = 0; i < coords.length; i++) {
+			coords[i] = new Coordinate(points.get(i).x, points.get(i).y);
+		}
+
+		Geometry g = geometryFactory.createPolygon(coords);
+		org.geodelivery.jap.concavehull.ConcaveHull hull = new org.geodelivery.jap.concavehull.ConcaveHull(threshold);
+
+		return toPShape(hull.transform(g));
+	}
+
+	/**
+	 * Minkowski addition a.k.a dilation
+	 * 
+	 * @return
+	 */
+	public static PShape minkSum(PShape source, PShape addition) {
+//		Geometry sum = Minkowski_Sum.minkSum(fromPShape(source), fromPShape(addition));
+		Geometry sum = Minkowski_Sum.compMinkSum(fromPShape(source), fromPShape(addition), false, false);
+		return toPShape(sum);
+	}
+
+	/**
+	 * TODO check
+	 * 
+	 * @param source
+	 * @param addition
+	 * @return
+	 */
+	public static PShape minkDifference(PShape source, PShape addition) {
+//			Geometry sum = Minkowski_Sum.minkSum(fromPShape(source), fromPShape(addition));
+		Geometry sum = Minkowski_Sum.compMinkDiff(fromPShape(source), fromPShape(addition), false, false);
+		return toPShape(sum);
 	}
 
 	/**
@@ -288,6 +411,7 @@ public class PTS implements PConstants {
 	 * @return
 	 */
 	public static PShape delaunayTriangulation(PShape shape, float tolerance) {
+		// http://lin-ear-th-inking.blogspot.com/2011/04/polygon-triangulation-via-ear-clipping.html
 		Geometry g = fromPShape(shape);
 		DelaunayTriangulationBuilder d = new DelaunayTriangulationBuilder();
 		d.setTolerance(tolerance);
@@ -346,6 +470,28 @@ public class PTS implements PConstants {
 		v.setSites(coords);
 		Geometry out = v.getDiagram(geometryFactory);
 		return toPShape(out);
+	}
+
+	public static void prims(PShape shape) { // TODO
+//		PrimMinimumSpanningTree<Vertex, Edge> prims = new PrimMinimumSpanningTree<>(null);
+		GeometryGraph graph = new GeometryGraph(0, fromPShape(shape));
+		for (Iterator<Edge> iterator = graph.getEdgeIterator(); iterator.hasNext();) {
+			Edge type = iterator.next();
+//		 System.out.println(type.getCoordinate().getX());
+//		 fromPShape(shape).get
+		}
+//	Graph<Vertex, Edge> graph = new DefaultUndirectedGraph<Vertex, Edge>(Edge.class);
+//	graph.
+	}
+
+	public static void Spinalize(PShape shape) {
+		// also see
+		// https://github.com/IGNF/geoxygene/blob/master/geoxygene-spatial/src/main/java/fr/ign/cogit/geoxygene/util/algo/geometricAlgorithms/morphomaths/MorphologyTransform.java
+//		GM_Polygon p = new GM_Polygon(fromPShape(null));
+		AdapterFactory.toGM_Object((Geometry)fromPShape(shape));
+		JtsGeOxygene.makeGeOxygeneGeom((Geometry)fromPShape(shape));
+		JTSGeomFactory f = new JTSGeomFactory();
+		f.createIPolygon((IRing)fromPShape(shape).getExteriorRing());
 	}
 
 	/**
@@ -448,6 +594,55 @@ public class PTS implements PConstants {
 	}
 
 	/**
+	 * Get N random points contained within the PShape region. Points are
+	 * distributed randomly.
+	 * 
+	 * @param shape
+	 * @param points
+	 * @return
+	 */
+	public static ArrayList<PVector> generateRandomPoints(PShape shape, int points) {
+		// or g.getInteriorPoint()?
+		RandomPointsBuilder r = new RandomPointsBuilder();
+		r.setExtent(fromPShape(shape));
+		r.setNumPoints(points);
+
+		ArrayList<PVector> vertices = new ArrayList<>();
+
+		for (Coordinate coord : r.getGeometry().getCoordinates()) {
+			vertices.add(new PVector((float) coord.x, (float) coord.y));
+		}
+		return vertices;
+	}
+
+	/**
+	 * random points generated in a grid of cells (one point randomly located in
+	 * each cell) from the envelope of the shape
+	 * 
+	 * @param shape
+	 * @param points number of points, if this shape was its own envelope
+	 * @return
+	 */
+	public static ArrayList<PVector> generateRandomGridPoints(PShape shape, int maxPoints) {
+		Geometry g = fromPShape(shape);
+
+		RandomPointsInGridBuilder r = new RandomPointsInGridBuilder();
+		r.setConstrainedToCircle(true);
+		r.setExtent(g.getEnvelopeInternal());
+		r.setNumPoints(maxPoints);
+
+		ArrayList<PVector> vertices = new ArrayList<>();
+
+		for (Coordinate coord : r.getGeometry().getCoordinates()) {
+			// manually prune envelope
+			if (g.contains(geometryFactory.createPoint(coord))) {
+				vertices.add(new PVector((float) coord.x, (float) coord.y));
+			}
+		}
+		return vertices;
+	}
+
+	/**
 	 * TODO return list of points when shape is group
 	 * 
 	 * @param shape
@@ -476,6 +671,41 @@ public class PTS implements PConstants {
 		return (float) fromPShape(shape).getArea();
 	}
 
+	/**
+	 * Rotate a shape around a given point.
+	 * 
+	 * @param shape
+	 * @param angle
+	 * @param point
+	 * @return
+	 */
+	public static PShape rotate(PShape shape, float angle, PVector point) {
+		Geometry g = fromPShape(shape);
+		AffineTransformation t = AffineTransformation.rotationInstance(angle, point.x, point.y);
+		return toPShape(t.transform(g));
+	}
+
+	/**
+	 * Rotate a shape around its centroid.
+	 * 
+	 * @param shape
+	 * @param angle
+	 * @return
+	 */
+	public static PShape rotateAroundCenter(PShape shape, float angle) {
+		Geometry g = fromPShape(shape);
+		Point center = g.getCentroid();
+		AffineTransformation t = AffineTransformation.rotationInstance(angle, center.getX(), center.getY());
+		return toPShape(t.transform(g));
+	}
+
+	/**
+	 * Same as getVertices for geometry PShapes; different (subdivides) for circles
+	 * etc.
+	 * 
+	 * @param shape
+	 * @return
+	 */
 	public static PVector[] vertices(PShape shape) {
 		Coordinate[] coords = fromPShape(shape).getCoordinates();
 		PVector[] vertices = new PVector[coords.length];
@@ -647,7 +877,7 @@ public class PTS implements PConstants {
 		ArrayList<Coordinate> coords = new ArrayList<>();
 
 		for (int j = 0; j < resolution; j++) {
-			PVector bezierPoint = getQuadraticBezierCoordinate(start, controlPoint, end, j / 20f);
+			PVector bezierPoint = getQuadraticBezierCoordinate(start, controlPoint, end, j / (float) resolution);
 			coords.add(new Coordinate(bezierPoint.x, bezierPoint.y));
 		}
 		return coords;
@@ -673,7 +903,8 @@ public class PTS implements PConstants {
 		ArrayList<Coordinate> coords = new ArrayList<>();
 
 		for (int j = 0; j < resolution; j++) {
-			PVector bezierPoint = getCubicBezierCoordinate(start, controlPoint1, controlPoint2, end, j / 20f);
+			PVector bezierPoint = getCubicBezierCoordinate(start, controlPoint1, controlPoint2, end,
+					j / (float) resolution);
 			coords.add(new Coordinate(bezierPoint.x, bezierPoint.y));
 		}
 		return coords;

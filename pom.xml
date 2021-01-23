@@ -29,6 +29,10 @@
 			<name>mvnrepository</name>
 			<url>https://repo.osgeo.org/repository/release</url>
 		</repository>
+		<repository>
+			<id>jitpack.io</id>
+			<url>https://jitpack.io</url>
+		</repository>
 	</repositories>
 
 	<dependencies>
@@ -42,5 +46,19 @@
 			<artifactId>gt-geometry</artifactId>
 			<version>24.1</version>
 		</dependency>
+		<dependency>
+			<groupId>com.github.twak</groupId>
+			<artifactId>campskeleton</artifactId>
+			<version>master-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>org.jgrapht</groupId>
+			<artifactId>jgrapht-core</artifactId>
+			<version>1.4.0</version>
+		</dependency>
+		
+		<!-- <dependency> <groupId>com.github.IGNF</groupId> <artifactId>geoxygene</artifactId> 
+			<version>1.9</version> </dependency> -->
+
 	</dependencies>
 </project>
