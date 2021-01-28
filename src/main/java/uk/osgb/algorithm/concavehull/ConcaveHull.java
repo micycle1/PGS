@@ -2,7 +2,7 @@
  * 
  * Currently three criteria are provided:
  * 
- * Alpha shape in Edelsbrunner, Herbert; Kirkpatrick, David G.; Seidel, Raimund (1983), "On the shape of a set of points in the plane", IEEE Transactions on Information Theory, 29 (4): 551–559, doi:10.1109/TIT.1983.1056714 
+ * Alpha shape in Edelsbrunner, Herbert; Kirkpatrick, David G.; Seidel, Raimund (1983), "On the shape of a set of points in the plane", IEEE Transactions on Information Theory, 29 (4): 551ï¿½559, doi:10.1109/TIT.1983.1056714 
  * 
  * Chi criterion in Matt Duckham et al 2008 Efficient generation of simple polygons for characterizing the shape of a set of points in the plane
  * 
@@ -337,7 +337,7 @@ public class ConcaveHull {
 		} while (node != hullCL.getNode());
 	}
 
-	private void generateHullIndices(DLCirList<Coordinate> hullCL, TriangleMetric m,
+	private void generateHullIndices(DLCirList<Coordinate> hullCL, TriMetricLength m,
 			Map<Coordinate, DLNode<Coordinate>> coordNodeMap, Set<HullEdgeCir> edgeIdx,
 			Map<DLNode<Coordinate>, HullEdgeCir> nodeEdgeMap) {
 		DLNode<Coordinate> node = hullCL.getNode();
@@ -573,13 +573,13 @@ public class ConcaveHull {
 	 * order of boundary edge "digging"
 	 * 
 	 * @param triChecker
-	 * @param m               TriangleMetric for controlling the order of digging
+	 * @param m               TriMetricLength for controlling the order of digging
 	 *                        (default is the length of the boundary edge)
 	 * @param allowMultiParts
 	 * @param keepLineSeg
 	 * @return
 	 */
-	public Collection<Geometry> getConcaveHullMetric(TriangleChecker triChecker, TriangleMetric m,
+	public Collection<Geometry> getConcaveHullMetric(TriangleChecker triChecker, TriMetricLength m,
 			boolean allowMultiParts, boolean keepLineSeg) {
 		if (triChecker != null) {
 			LinkedList<DLCirList> hulls = new LinkedList<DLCirList>(); //
@@ -790,7 +790,7 @@ public class ConcaveHull {
 		}
 
 		//
-		public HullEdgeCir(DLNode<Coordinate> sn, TriangleMetric m) {
+		public HullEdgeCir(DLNode<Coordinate> sn, TriMetricLength m) {
 			this.sn = sn;
 			DLNode<Coordinate> en = sn.getNext();
 			Coordinate s = sn.getObj();

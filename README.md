@@ -4,6 +4,8 @@ A library for manipulating PShape geometry
 
 PTS wraps JTS, enabling its methods to be applied to Processing's `PShape` objects. Beyond that, PTS provides other geometry __ such as splines.
 
+[Contents from https://doc.cgal.org/latest/Manual/packages.html]
+
 ## Morphology
 
 ### PShapes
@@ -14,7 +16,7 @@ PTS wraps JTS, enabling its methods to be applied to Processing's `PShape` objec
 - Simplification
 - Area, centroid, etc.
 
-### Fields
+### Fields/ Point Sets
 
 - Voronoi
 - Poisson-Disc

@@ -28,13 +28,15 @@ import processing.core.PVector;
  */
 public final class PoissonDistribution {
 
+	// TODO Phyllotaxis distrib
+
 	private ArrayList<ArrayList<PVector>> grid;
 	private float cellSize;
 	private int gridWidth, gridHeight;
 	private float xmin, xmax, ymin, ymax;
 	private ArrayList<PVector> points;
 
-	PoissonDistribution() {
+	public PoissonDistribution() {
 		points = new ArrayList<PVector>();
 	}
 

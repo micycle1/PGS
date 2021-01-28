@@ -2,13 +2,15 @@ package micycle.pts;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 
+import org.apache.log4j.Level;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.geotools.geometry.jts.JTS;
-import org.jgrapht.Graph;
-import org.jgrapht.alg.spanning.PrimMinimumSpanningTree;
-import org.jgrapht.graph.DefaultUndirectedGraph;
-import org.jgrapht.graph.builder.GraphBuilder;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
@@ -20,26 +22,25 @@ import org.locationtech.jts.geom.util.AffineTransformation;
 import org.locationtech.jts.geomgraph.Edge;
 import org.locationtech.jts.geomgraph.GeometryGraph;
 import org.locationtech.jts.linearref.LengthIndexedLine;
-import org.locationtech.jts.operation.buffer.BufferOp;
 import org.locationtech.jts.operation.distance.DistanceOp;
 import org.locationtech.jts.shape.random.RandomPointsBuilder;
 import org.locationtech.jts.shape.random.RandomPointsInGridBuilder;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.triangulate.DelaunayTriangulationBuilder;
 import org.locationtech.jts.triangulate.VoronoiDiagramBuilder;
-import org.locationtech.jts.triangulate.quadedge.Vertex;
 import org.locationtech.jts.util.GeometricShapeFactory;
-import org.twak.utils.triangulate.EarCutTriangulator;
 
-import fr.ign.cogit.geoxygene.api.spatial.geomprim.IRing;
-import fr.ign.cogit.geoxygene.spatial.JTSGeomFactory;
+import fr.ign.cogit.geoxygene.api.spatial.coordgeom.ILineSegment;
+import fr.ign.cogit.geoxygene.api.spatial.coordgeom.ILineString;
+import fr.ign.cogit.geoxygene.api.spatial.coordgeom.IPolygon;
 import fr.ign.cogit.geoxygene.spatial.coordgeom.GM_Polygon;
 import fr.ign.cogit.geoxygene.util.conversion.AdapterFactory;
-import fr.ign.cogit.geoxygene.util.conversion.JtsGeOxygene;
+import micycle.pts.color.Blending;
 //import micycle.pts.concavehull.ConcaveHull;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
+import uk.osgb.algorithm.concavehull.ConcaveHull;
 import uk.osgb.algorithm.concavehull.TriCheckerAlpha;
 import uk.osgb.algorithm.concavehull.TriCheckerChi;
 import uk.osgb.algorithm.concavehull.TriCheckerPark;
@@ -55,12 +56,26 @@ import uk.osgb.algorithm.minkowski_sum.Minkowski_Sum;
  * https://discourse.processing.org/t/straight-skeleton-or-how-to-draw-a-center-line-in-a-polygon-or-shape/17208/9
  * http://lastresortsoftware.blogspot.com/2010/12/smooth-as.html#note1
  * 
- * TODO https://ignf.github.io/CartAGen/docs/algorithms.html
+ * TODO https://ignf.github.io/CartAGen/docs/algorithms.html TODO take into
+ * account strokweight (buffer by stroke amount?)
  * 
  * @author MCarleton
  *
  */
 public class PTS implements PConstants {
+
+	private static final int CURVE_SAMPLES = 20;
+
+	private static GeometryFactory geometryFactory = new GeometryFactory();
+
+	static {
+		// stop spina/skeleton console logging
+		List<Logger> loggers = Collections.<Logger>list(LogManager.getCurrentLoggers());
+		loggers.add(LogManager.getRootLogger());
+		for (Logger logger : loggers) {
+			logger.setLevel(Level.OFF);
+		}
+	}
 
 	/**
 	 * TODO GROUP, PRIMITIVE, PATH, or GEOMETRY TODO CACHE recent 5 calls? TODO
@@ -75,7 +90,7 @@ public class PTS implements PConstants {
 //		shape.getKind() // switch to get primitive, then == ELLIPSE
 		if (shape.getFamily() == PShape.PRIMITIVE) {
 			GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-			shapeFactory.setNumPoints(40); // TODO magic constant
+			shapeFactory.setNumPoints(CURVE_SAMPLES * 4); // TODO magic constant
 			switch (shape.getKind()) {
 				case ELLIPSE:
 					shapeFactory.setCentre(new Coordinate(shape.getParam(0), shape.getParam(1)));
@@ -126,13 +141,13 @@ public class PTS implements PConstants {
 
 				case QUADRATIC_VERTEX:
 					coords.get(lastGroup).addAll(getQuadraticBezierPoints(shape.getVertex(i - 1), shape.getVertex(i),
-							shape.getVertex(i + 1), 20));
+							shape.getVertex(i + 1), CURVE_SAMPLES));
 					i += 1;
 					continue;
 
 				case BEZIER_VERTEX: // aka cubic bezier, untested
 					coords.get(lastGroup).addAll(getCubicBezierPoints(shape.getVertex(i - 1), shape.getVertex(i),
-							shape.getVertex(i + 1), shape.getVertex(i + 2), 20));
+							shape.getVertex(i + 1), shape.getVertex(i + 2), CURVE_SAMPLES));
 					i += 2;
 					continue;
 
@@ -167,12 +182,121 @@ public class PTS implements PConstants {
 	}
 
 	/**
+	 * use other package version (for GeOxygene compatibility)
+	 * 
+	 * @param shape
+	 * @return
+	 */
+	public static com.vividsolutions.jts.geom.Polygon fromPShapeVivid(PShape shape) {
+
+//		shape.getKind() // switch to get primitive, then == ELLIPSE
+		if (shape.getFamily() == PShape.PRIMITIVE) {
+			com.vividsolutions.jts.util.GeometricShapeFactory shapeFactory = new com.vividsolutions.jts.util.GeometricShapeFactory();
+			shapeFactory.setNumPoints(40); // TODO magic constant
+			switch (shape.getKind()) {
+				case ELLIPSE:
+					shapeFactory.setCentre(
+							new com.vividsolutions.jts.geom.Coordinate(shape.getParam(0), shape.getParam(1)));
+					shapeFactory.setWidth(shape.getParam(2));
+					shapeFactory.setHeight(shape.getParam(3));
+					return shapeFactory.createEllipse();
+				case TRIANGLE:
+//					shapeFactor
+					// TODO
+					break;
+				case QUAD:
+					// TODO
+					break;
+				case RECT:
+					// TODO
+					break;
+//				      * @param a x-coordinate of the ellipse
+//				      * @param b y-coordinate of the ellipse
+//				      * @param c width of the ellipse by default
+//				      * @param d height of the ellipse by default
+//					break;
+
+				default:
+					System.err.print("Primitive Shape" + shape.getKind() + " not implmented");
+					return null;
+			}
+		}
+
+		// GEOMETRY PShape types:
+
+		final int[] contourGroups = getContourGroups(shape.getVertexCodes());
+		final int[] vertexCodes = getVertexTypes(shape);
+
+		final ArrayList<ArrayList<com.vividsolutions.jts.geom.Coordinate>> coords = new ArrayList<>(); // list of coords
+																										// representing
+																										// rings
+
+		int lastGroup = -1;
+
+		for (int i = 0; i < shape.getVertexCount(); i++) {
+			if (contourGroups[i] != lastGroup) {
+				lastGroup = contourGroups[i];
+				coords.add(new ArrayList<>());
+			}
+
+			/**
+			 * Sample bezier curves at intervals to produce smooth Geometry
+			 */
+			switch (vertexCodes[i]) {
+// TODO
+//				case QUADRATIC_VERTEX:
+//					coords.get(lastGroup).addAll(getQuadraticBezierPoints(shape.getVertex(i - 1), shape.getVertex(i),
+//							shape.getVertex(i + 1), 20));
+//					i += 1;
+//					continue;
+//
+//				case BEZIER_VERTEX: // aka cubic bezier, untested
+//					coords.get(lastGroup).addAll(getCubicBezierPoints(shape.getVertex(i - 1), shape.getVertex(i),
+//							shape.getVertex(i + 1), shape.getVertex(i + 2), 20));
+//					i += 2;
+//					continue;
+
+				default:
+					coords.get(lastGroup)
+							.add(new com.vividsolutions.jts.geom.Coordinate(shape.getVertexX(i), shape.getVertexY(i)));
+					break;
+			}
+		}
+
+		for (ArrayList<com.vividsolutions.jts.geom.Coordinate> contour : coords) {
+			contour.add(contour.get(0)); // Points of LinearRing must form a closed linestring
+		}
+
+		final com.vividsolutions.jts.geom.Coordinate[] outerCoords = new com.vividsolutions.jts.geom.Coordinate[coords
+				.get(0).size()];
+		Arrays.setAll(outerCoords, coords.get(0)::get);
+
+		com.vividsolutions.jts.geom.GeometryFactory geometryFactory = new com.vividsolutions.jts.geom.GeometryFactory();
+		com.vividsolutions.jts.geom.LinearRing outer = geometryFactory.createLinearRing(outerCoords);
+
+		/**
+		 * Create linear ring for each hole in the shape
+		 */
+		com.vividsolutions.jts.geom.LinearRing[] holes = new com.vividsolutions.jts.geom.LinearRing[coords.size() - 1];
+
+		for (int j = 1; j < coords.size(); j++) {
+			final com.vividsolutions.jts.geom.Coordinate[] innerCoords = new com.vividsolutions.jts.geom.Coordinate[coords
+					.get(j).size()];
+			Arrays.setAll(innerCoords, coords.get(j)::get);
+			holes[j - 1] = geometryFactory.createLinearRing(innerCoords);
+		}
+
+		return geometryFactory.createPolygon(outer, holes);
+	}
+
+	/**
 	 * broken for P2D (due to createshape)
 	 * 
 	 * @param polygon
 	 * @return
 	 */
 	public static PShape toPShape(Polygon polygon) {
+
 		PShape shape = new PShape();
 		shape.setFamily(PShape.GEOMETRY);
 		shape.setFill(true);
@@ -216,12 +340,44 @@ public class PTS implements PConstants {
 	 */
 	public static PShape toPShape(Geometry geometry) {
 		if (geometry.getNumGeometries() == 1) {
-			return toPShape((Polygon) geometry);
+			if (geometry.getNumPoints() == 1) { // single point
+				// TODO
+				PShape point = new PShape();
+				point.setFamily(PShape.GEOMETRY);
+				point.setStrokeCap(ROUND);
+				point.setStroke(true);
+				point.setStrokeWeight(5);
+				point.setStroke(-1232222);
+				point.beginShape(POINTS);
+				point.vertex((float) geometry.getCoordinate().x, (float) geometry.getCoordinate().y);
+				point.endShape();
+				return point;
+
+			} else {
+				if (geometry.getNumPoints() == 2) { // line
+					PShape line = new PShape();
+					line.setFamily(PShape.GEOMETRY);
+					line.setStrokeCap(ROUND);
+					line.setStroke(true);
+					line.setStrokeWeight(5);
+					line.setStroke(-1232222);
+					line.beginShape(LINES);
+					line.vertex((float) geometry.getCoordinates()[0].x, (float) geometry.getCoordinates()[0].y);
+					line.vertex((float) geometry.getCoordinates()[1].x, (float) geometry.getCoordinates()[1].y);
+					line.endShape();
+					return line;
+				} else {
+					return toPShape((Polygon) geometry);
+				}
+
+			}
 		} else {
 			PShape parent = new PShape(GROUP);
+			parent.setFill(-16711936); // TODO
 			for (int i = 0; i < geometry.getNumGeometries(); i++) {
 				PShape child = toPShape((Polygon) geometry.getGeometryN(i));
 				child.setFill(-16711936); // TODO
+//				child.disableStyle(); // Inherit parent style; causes crash?
 				parent.addChild(child);
 			}
 			return parent;
@@ -265,7 +421,20 @@ public class PTS implements PConstants {
 	 * @return A∩B
 	 */
 	public static PShape intersection(PShape a, PShape b) {
-		return toPShape(fromPShape(a).intersection(fromPShape(b)));
+		PShape out = toPShape(fromPShape(a).intersection(fromPShape(b)));
+//		a.draw(p.getGraphics());
+		out.setFill(Blending.screen(getPShapeFillColor(a), getPShapeFillColor(b)));
+		return out;
+	}
+
+	private static final int getPShapeFillColor(final PShape sh) {
+		try {
+			final java.lang.reflect.Field f = PShape.class.getDeclaredField("fillColor");
+			f.setAccessible(true);
+			return f.getInt(sh);
+		} catch (ReflectiveOperationException cause) {
+			throw new RuntimeException(cause);
+		}
 	}
 
 	/**
@@ -303,71 +472,50 @@ public class PTS implements PConstants {
 		return toPShape(smooth(fromPShape(shape), fit));
 	}
 
-	public static PShape convexHull(PShape shape) {
-		// TODO concave hull
-		return toPShape(fromPShape(shape).convexHull());
+	public static PShape convexHull(PShape... shapes) {
+		Geometry g = fromPShape(shapes[0]);
+		for (int i = 1; i < shapes.length; i++) {
+			g = g.union(fromPShape(shapes[i]));
+		}
+		return toPShape(g.convexHull());
 	}
 
 	public static PShape concaveHull(ArrayList<PVector> points, float threshold) {
-		final Coordinate[] coords = new Coordinate[points.size() + 1];
-		points.add(points.get(0)); // close geometry
+
+		final Coordinate[] coords;
+		if (!points.get(0).equals(points.get(points.size() - 1))) {
+			coords = new Coordinate[points.size() + 1];
+			points.add(points.get(0)); // close geometry
+		}
+		else { // already closed
+			coords = new Coordinate[points.size()];
+		}
 
 		for (int i = 0; i < coords.length; i++) {
 			coords[i] = new Coordinate(points.get(i).x, points.get(i).y);
 		}
 
 		Geometry g = geometryFactory.createPolygon(coords);
-		micycle.pts.concavehull.ConcaveHull hull2 = new micycle.pts.concavehull.ConcaveHull(g, threshold);
-		return toPShape(hull2.getConcaveHull());
-	}
-
-	public static PShape concaveHull2(ArrayList<PVector> points, int k) {
-		// TODO: not as interesting
-//		Geometry g = fromPShape(shape);
-
-		final ArrayList<Coordinate> coords = new ArrayList<>();
-		points.add(points.get(0)); // close geometry
-
-		for (int i = 0; i < points.size(); i++) {
-			coords.add(new Coordinate(points.get(i).x, points.get(i).y));
-		}
-//		Geometry g = geometryFactory.createPolygon(coords);
-
-		ConcaveHull hull = new ConcaveHull();
-		ArrayList<Coordinate> coordsOut = hull.calculateConcaveHull(coords, k);
-		final Coordinate[] out = new Coordinate[coordsOut.size()];
-		Arrays.setAll(out, coordsOut::get);
-		// TODO coords-->PSHAPE directly
-
-//		micycle.pts.concavehull.ConcaveHull hull2 = new micycle.pts.concavehull.ConcaveHull(g, 0);
-//		return toPShape(hull2.getConcaveHull());
-
-		return toPShape(geometryFactory.createPolygon(out));
-	}
-
-	public static PShape concaveHull3(ArrayList<PVector> points, float threshold) {
-		// TODO seems broken
-		final Coordinate[] coords = new Coordinate[points.size() + 1];
-		points.add(points.get(0)); // close geometry
-
-		for (int i = 0; i < coords.length; i++) {
-			coords[i] = new Coordinate(points.get(i).x, points.get(i).y);
-		}
-
-		Geometry g = geometryFactory.createPolygon(coords);
-		uk.osgb.algorithm.concavehull.ConcaveHull hull = new uk.osgb.algorithm.concavehull.ConcaveHull(g);
+		ConcaveHull hull = new ConcaveHull(g);
 		return toPShape(hull.getConcaveHullBFS(new TriCheckerChi(threshold), false, false).get(0));
 	}
 
 	/**
+	 * Has a more "organic" structure compared to other concave method.
 	 * 
 	 * @param points
 	 * @param threshold 0...1
 	 * @return
 	 */
-	public static PShape concaveHull4(ArrayList<PVector> points, float threshold) {
-		final Coordinate[] coords = new Coordinate[points.size() + 1];
-		points.add(points.get(0)); // close geometry
+	public static PShape concaveHull2(ArrayList<PVector> points, float threshold) {
+
+		final Coordinate[] coords;
+		if (!points.get(0).equals(points.get(points.size() - 1))) {
+			coords = new Coordinate[points.size() + 1];
+			points.add(points.get(0)); // close geometry
+		} else { // already closed
+			coords = new Coordinate[points.size()];
+		}
 
 		for (int i = 0; i < coords.length; i++) {
 			coords[i] = new Coordinate(points.get(i).x, points.get(i).y);
@@ -484,14 +632,86 @@ public class PTS implements PConstants {
 //	graph.
 	}
 
-	public static void Spinalize(PShape shape) {
+	/**
+	 * Not working: "Skeleton screw up"
+	 * 
+	 * @param shape
+	 * @return
+	 */
+	public static PShape spinalize(PShape shape) {
 		// also see
 		// https://github.com/IGNF/geoxygene/blob/master/geoxygene-spatial/src/main/java/fr/ign/cogit/geoxygene/util/algo/geometricAlgorithms/morphomaths/MorphologyTransform.java
 //		GM_Polygon p = new GM_Polygon(fromPShape(null));
-		AdapterFactory.toGM_Object((Geometry)fromPShape(shape));
-		JtsGeOxygene.makeGeOxygeneGeom((Geometry)fromPShape(shape));
-		JTSGeomFactory f = new JTSGeomFactory();
-		f.createIPolygon((IRing)fromPShape(shape).getExteriorRing());
+		try {
+			GM_Polygon polygon = (GM_Polygon) AdapterFactory.toGM_Object(fromPShapeVivid(shape));
+			System.out.println(polygon.coord().size());
+//			AdapterFactory.log
+			List<IPolygon> l = new ArrayList<>();
+			l.add(polygon);
+			List<ILineString> lines = Spinalize.spinalize(l, 5, 100, false);
+
+			PShape skeleton = new PShape();
+			skeleton.setFamily(PShape.GEOMETRY);
+			skeleton.setStroke(true);
+			skeleton.setStrokeWeight(3);
+//			skeleton.setstrok
+			skeleton.beginShape(PShape.LINES);
+//			for (ILineString segment : lines) {
+////				segment.get
+////				System.out.println(segment.getStartPoint().getX());
+//				skeleton.vertex((float) segment.getStartPoint().getX(), (float) segment.getStartPoint().getY());
+//				skeleton.vertex((float) segment.getEndPoint().getX(), (float) segment.getEndPoint().getY());
+//			}
+			skeleton.endShape();
+			return skeleton;
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+//			return new ArrayList<ILineString>();
+		}
+//		JtsGeOxygene.makeGeOxygeneGeom(fromPShapeVivid(shape));
+//		JTSGeomFactory f = new JTSGeomFactory();
+//		f.createIPolygon((IRing) fromPShape(shape).getExteriorRing());
+	}
+
+	/**
+	 * Works, but sloooow
+	 * 
+	 * @param shape
+	 * @return
+	 */
+	public static PShape skeletonize(PShape shape) {
+		try {
+			GM_Polygon polygon = (GM_Polygon) AdapterFactory.toGM_Object(fromPShapeVivid(shape));
+//			System.out.println(polygon.getExterior().length());
+//			AdapterFactory.log
+//			List<IPolygon> l = new ArrayList<>();
+//			l.add(polygon);
+			Set<ILineSegment> lines = Skeletonize.skeletonizeStraightSkeleton(polygon);
+//			System.out.println(lines.size());
+			PShape skeleton = new PShape();
+			skeleton.setFamily(PShape.GEOMETRY);
+			skeleton.setStroke(true);
+			skeleton.setStrokeWeight(3);
+//			skeleton.setstrok
+			skeleton.beginShape(PShape.LINES);
+			for (ILineSegment segment : lines) {
+//				System.out.println(segment.getStartPoint().getX());
+				skeleton.vertex((float) segment.getStartPoint().getX(), (float) segment.getStartPoint().getY());
+				skeleton.vertex((float) segment.getEndPoint().getX(), (float) segment.getEndPoint().getY());
+			}
+			skeleton.endShape();
+			return skeleton;
+//			
+//			for (ILineString line : lines) {
+//				System.out.println(line.startPoint().getX());
+//			}
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}
 	}
 
 	/**
@@ -784,6 +1004,40 @@ public class PTS implements PConstants {
 		return ret;
 	}
 
+	/**
+	 * Sets the color of the PShape and all of it's children recursively
+	 * 
+	 * @param shape
+	 */
+	public static void setAllFillColor(PShape shape, int color) {
+		ArrayList<PShape> all = new ArrayList<PShape>();
+		getChildren(shape, all);
+		all.forEach(child -> {
+			child.setFill(true);
+			child.setFill(color);
+		});
+	}
+
+	/**
+	 * Kinda recursive, caller must provide fresh arraylist
+	 * 
+	 * @param shape
+	 * @param visited
+	 * @return
+	 */
+	private static PShape getChildren(PShape shape, ArrayList<PShape> visited) {
+		visited.add(shape);
+
+		if (shape.getChildCount() == 0) {
+			return shape;
+		}
+
+		for (PShape child : shape.getChildren()) {
+			getChildren(child, visited);
+		}
+		return null;
+	}
+
 	public static int[] getContourGroups(int[] vertexCodes) {
 
 		int group = 0;
@@ -919,8 +1173,6 @@ public class PTS implements PConstants {
 				+ end.y * t * t * t;
 		return new PVector(x, y);
 	}
-
-	private static GeometryFactory geometryFactory = new GeometryFactory();
 
 	private static Point pointFromPVector(PVector p) {
 		return geometryFactory.createPoint(new Coordinate(p.x, p.y));
