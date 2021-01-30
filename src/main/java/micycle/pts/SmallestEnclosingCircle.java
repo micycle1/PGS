@@ -31,8 +31,8 @@ import java.util.Random;
 import processing.core.PVector;
 
 /**
- * Computes the smallest circle that encloses an arbitrary set of points.Runs in
- * linear time. Adapts Nayuki's original implementation for easy use with
+ * Computes the smallest circle that encloses an arbitrary set of points. Runs
+ * in linear time. Adapts Nayuki's original implementation for easy use with
  * Processing.
  * 
  * @author micycle1
@@ -59,6 +59,22 @@ public final class SmallestEnclosingCircle {
 				c = makeCircleOnePVector(shuffled.subList(0, i + 1), p);
 		}
 		return c;
+	}
+
+	public static Circle sec(float x1, float y1, float x2, float y2, float x3, float y3) {
+		List<PVector> points = new ArrayList<PVector>(3);
+		points.add(new PVector(x1, y1));
+		points.add(new PVector(x2, y2));
+		points.add(new PVector(x3, y3));
+		return smallestEnclosingCircle(points);
+	}
+
+	public static Circle sec(PVector a, PVector b, PVector c) {
+		List<PVector> points = new ArrayList<PVector>(3);
+		points.add(a);
+		points.add(b);
+		points.add(c);
+		return smallestEnclosingCircle(points);
 	}
 
 	public static Circle makeCircle(PVector... PVectors) {
@@ -142,8 +158,8 @@ public final class SmallestEnclosingCircle {
 		// Signed area / determinant thing
 		return a.x * b.y - a.y * b.x;
 	}
-	
-	static final class Circle {
+
+	public static final class Circle {
 
 		private static final float MULTIPLICATIVE_EPSILON = (float) (1 + 1e-14);
 

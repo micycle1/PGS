@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
@@ -14,8 +15,10 @@ import org.geotools.geometry.jts.JTS;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryCollection;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LinearRing;
+import org.locationtech.jts.geom.MultiPolygon;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.util.AffineTransformation;
@@ -26,24 +29,24 @@ import org.locationtech.jts.operation.distance.DistanceOp;
 import org.locationtech.jts.shape.random.RandomPointsBuilder;
 import org.locationtech.jts.shape.random.RandomPointsInGridBuilder;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
+import org.locationtech.jts.triangulate.ConformingDelaunayTriangulationBuilder;
 import org.locationtech.jts.triangulate.DelaunayTriangulationBuilder;
 import org.locationtech.jts.triangulate.VoronoiDiagramBuilder;
+import org.locationtech.jts.triangulate.quadedge.EdgeConnectedTriangleTraversal;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
 import fr.ign.cogit.geoxygene.api.spatial.coordgeom.ILineSegment;
 import fr.ign.cogit.geoxygene.api.spatial.coordgeom.ILineString;
 import fr.ign.cogit.geoxygene.api.spatial.coordgeom.IPolygon;
+import fr.ign.cogit.geoxygene.contrib.delaunay.TriangleDelaunay;
 import fr.ign.cogit.geoxygene.spatial.coordgeom.GM_Polygon;
 import fr.ign.cogit.geoxygene.util.conversion.AdapterFactory;
 import micycle.pts.color.Blending;
-//import micycle.pts.concavehull.ConcaveHull;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 import uk.osgb.algorithm.concavehull.ConcaveHull;
-import uk.osgb.algorithm.concavehull.TriCheckerAlpha;
 import uk.osgb.algorithm.concavehull.TriCheckerChi;
-import uk.osgb.algorithm.concavehull.TriCheckerPark;
 import uk.osgb.algorithm.minkowski_sum.Minkowski_Sum;
 
 /**
@@ -66,7 +69,7 @@ public class PTS implements PConstants {
 
 	private static final int CURVE_SAMPLES = 20;
 
-	private static GeometryFactory geometryFactory = new GeometryFactory();
+	protected static GeometryFactory geometryFactory = new GeometryFactory();
 
 	static {
 		// stop spina/skeleton console logging
@@ -86,6 +89,20 @@ public class PTS implements PConstants {
 	 * @return
 	 */
 	public static Polygon fromPShape(PShape shape) {
+
+		// TODO convert to switch statement
+
+		if (shape.getFamily() == PShape.GROUP) {
+			ArrayList<PShape> flatChildren = new ArrayList<PShape>();
+			getChildren(shape, flatChildren);
+			flatChildren.removeIf(s -> s.getFamily() == PShape.GROUP); // aka .remove(shape)
+//			flatChildren.remove(shape);
+			Polygon[] children = new Polygon[flatChildren.size()];
+			for (int i = 0; i < children.length; i++) {
+				children[i] = fromPShape(flatChildren.get(i));
+			}
+			return (Polygon) (geometryFactory.createMultiPolygon(children).union()); // TODO don't flatten?
+		}
 
 //		shape.getKind() // switch to get primitive, then == ELLIPSE
 		if (shape.getFamily() == PShape.PRIMITIVE) {
@@ -119,7 +136,7 @@ public class PTS implements PConstants {
 			}
 		}
 
-		// GEOMETRY PShape types:
+		/// GEOMETRY PShape types ///
 
 		final int[] contourGroups = getContourGroups(shape.getVertexCodes());
 		final int[] vertexCodes = getVertexTypes(shape);
@@ -158,6 +175,7 @@ public class PTS implements PConstants {
 		}
 
 		for (ArrayList<Coordinate> contour : coords) {
+			// TODO only add if first and last different
 			contour.add(contour.get(0)); // Points of LinearRing must form a closed linestring
 		}
 
@@ -182,7 +200,7 @@ public class PTS implements PConstants {
 	}
 
 	/**
-	 * use other package version (for GeOxygene compatibility)
+	 * Uses other package version (for GeOxygene compatibility)
 	 * 
 	 * @param shape
 	 * @return
@@ -375,18 +393,32 @@ public class PTS implements PConstants {
 			PShape parent = new PShape(GROUP);
 			parent.setFill(-16711936); // TODO
 			for (int i = 0; i < geometry.getNumGeometries(); i++) {
-				PShape child = toPShape((Polygon) geometry.getGeometryN(i));
-				child.setFill(-16711936); // TODO
-//				child.disableStyle(); // Inherit parent style; causes crash?
-				parent.addChild(child);
+
+				PShape child = null;
+				if (geometry.getGeometryN(i).getNumGeometries() > 1) { // geom collection
+					child = toPShape(geometry.getGeometryN(i));
+				} else {
+
+					if (geometry.getGeometryN(i).getCoordinates().length > 2) { // not Point or linestring
+						child = toPShape((Polygon) geometry.getGeometryN(i));
+						child.setFill(-16711936); // TODO
+						child.setStrokeCap(ROUND);
+						child.setStroke(true);
+						child.setStrokeWeight(2);
+//					child.disableStyle(); // Inherit parent style; causes crash?
+						parent.addChild(child);
+					}
+				}
 			}
 			return parent;
 		}
 	}
 
 	public static void triangulate(PShape shape) {
+		// TODO
 //		fromPShape(shape).getExteriorRing().get
 //		org.locationtech.jts.triangulate.DelaunayTriangulationBuilder.
+		// see delaunay method
 	}
 
 	/**
@@ -411,6 +443,8 @@ public class PTS implements PConstants {
 	}
 
 	/**
+	 * Compute the parts that the shapes do not have in common.
+	 * 
 	 * @return A∪B - A∩B
 	 */
 	public static PShape symDifference(PShape a, PShape b) {
@@ -472,6 +506,10 @@ public class PTS implements PConstants {
 		return toPShape(smooth(fromPShape(shape), fit));
 	}
 
+	public static PShape flatten(PShape shape) {
+		return toPShape(fromPShape(shape).getExteriorRing());
+	}
+
 	public static PShape convexHull(PShape... shapes) {
 		Geometry g = fromPShape(shapes[0]);
 		for (int i = 1; i < shapes.length; i++) {
@@ -486,8 +524,7 @@ public class PTS implements PConstants {
 		if (!points.get(0).equals(points.get(points.size() - 1))) {
 			coords = new Coordinate[points.size() + 1];
 			points.add(points.get(0)); // close geometry
-		}
-		else { // already closed
+		} else { // already closed
 			coords = new Coordinate[points.size()];
 		}
 
@@ -552,6 +589,40 @@ public class PTS implements PConstants {
 	}
 
 	/**
+	 * tolerance = 0
+	 * 
+	 * @param shape
+	 * @return
+	 */
+	public static PShape delaunayTriangulation(PShape shape) {
+		Geometry g = fromPShape(shape);
+		DelaunayTriangulationBuilder d = new DelaunayTriangulationBuilder();
+		d.setSites(g);
+		Geometry out = d.getTriangles(geometryFactory); // triangulates convex hull of points
+		out = out.intersection(g); // get concave hull
+		return toPShape(out);
+	}
+
+	private static Coordinate coordFromPoint(Point p) {
+		return new Coordinate(p.getX(), p.getY());
+	}
+
+	/**
+	 * cirumcircle center must lie inside triangle
+	 * 
+	 * @param a
+	 * @param b
+	 * @param c
+	 * @return
+	 */
+	public static double smallestSide(Coordinate a, Coordinate b, Coordinate c) {
+		double ab = Math.sqrt((b.y - a.y) * (b.y - a.y) + (b.x - a.x) * (b.x - a.x));
+		double bc = Math.sqrt((c.y - b.y) * (c.y - b.y) + (c.x - b.x) * (c.x - b.x));
+		double ca = Math.sqrt((a.y - c.y) * (a.y - c.y) + (a.x - c.x) * (a.x - c.x));
+		return Math.min(Math.min(ab, bc), ca);
+	}
+
+	/**
 	 * Calc from vertices of PShape
 	 * 
 	 * @param shape
@@ -559,12 +630,83 @@ public class PTS implements PConstants {
 	 * @return
 	 */
 	public static PShape delaunayTriangulation(PShape shape, float tolerance) {
+
+		/**
+		 * Assume each pair of points on exterior ring to be segments,
+		 */
 		// http://lin-ear-th-inking.blogspot.com/2011/04/polygon-triangulation-via-ear-clipping.html
 		Geometry g = fromPShape(shape);
 		DelaunayTriangulationBuilder d = new DelaunayTriangulationBuilder();
 		d.setTolerance(tolerance);
 		d.setSites(g);
-		Geometry out = d.getTriangles(geometryFactory);
+		Geometry out = d.getTriangles(geometryFactory); // triangulates concave hull of points
+
+//		Coordinate
+
+		ArrayList<Coordinate> coords = new ArrayList<>();
+		// add from g
+		for (int i = 0; i < g.getCoordinates().length; i++) {
+			coords.add(g.getCoordinates()[i]);
+		}
+
+		for (int refinement = 0; refinement < 1; refinement++) {
+			// refinement: add new points (centroids)
+			for (int i = 0; i < out.getNumGeometries(); i++) {
+				if (out.getGeometryN(i).getArea() > tolerance) {
+					coords.add(coordFromPoint(out.getGeometryN(i).getCentroid()));
+				}
+			}
+			d = new DelaunayTriangulationBuilder();
+			d.setSites(coords);
+			out = d.getTriangles(geometryFactory); // triangulates concave hull of points
+		}
+
+		// use d.getSubdivision() to get connected to a given segment to test
+		// encroachment
+
+		out = out.intersection(g); // get convex hull
+		return toPShape(out);
+
+//		ConformingDelaunayTriangulationBuilder b = new ConformingDelaunayTriangulationBuilder();
+//		b.setTolerance(tolerance);
+//		b.setSites(g);
+//		b.setConstraints(fromPShape(createSquircle(ThreadLocalRandom.current().nextInt(400, 450), 400, 200, 200)));
+
+//		d.getSubdivision().getVoronoiCellPolygons(geometryFactory)
+//		out = b.getTriangles(geometryFactory);
+	}
+
+	/**
+	 * Create a triangulation with that forces certain required segments into the
+	 * triangulation from a 'constrain' shape.
+	 * 
+	 * @param shape
+	 * @param tolerance
+	 * @return
+	 */
+	public static PShape constrainedDelaunayTriangulation(PShape shape, PShape constraints, float tolerance) {
+		ConformingDelaunayTriangulationBuilder b = new ConformingDelaunayTriangulationBuilder();
+		Geometry g = fromPShape(shape);
+		b.setSites(g);
+		b.setTolerance(tolerance);
+		b.setConstraints(fromPShape(constraints));
+		Geometry out = b.getTriangles(geometryFactory); // triangulates concave hull of points
+		out = out.intersection(g); // get convex hull
+		return toPShape(out);
+	}
+
+	public static PShape constrainedDelaunayTriangulation(ArrayList<PVector> points, PShape constraints,
+			float tolerance) {
+		ConformingDelaunayTriangulationBuilder b = new ConformingDelaunayTriangulationBuilder();
+		Coordinate[] coords = new Coordinate[points.size()];
+		for (int j = 0; j < points.size(); j++) {
+			coords[j] = new Coordinate(points.get(j).x, points.get(j).y);
+		}
+		b.setSites(geometryFactory.createPolygon(coords));
+		b.setTolerance(tolerance);
+//		b.setConstraints(fromPShape(constraints));
+		Geometry out = b.getTriangles(geometryFactory); // triangulates concave hull of points
+		out = out.intersection(fromPShape(constraints)); // get convex hull
 		return toPShape(out);
 	}
 
@@ -644,12 +786,12 @@ public class PTS implements PConstants {
 //		GM_Polygon p = new GM_Polygon(fromPShape(null));
 		try {
 			GM_Polygon polygon = (GM_Polygon) AdapterFactory.toGM_Object(fromPShapeVivid(shape));
-			System.out.println(polygon.coord().size());
+
 //			AdapterFactory.log
 			List<IPolygon> l = new ArrayList<>();
 			l.add(polygon);
 			List<ILineString> lines = Spinalize.spinalize(l, 5, 100, false);
-
+			System.out.println(lines.size());
 			PShape skeleton = new PShape();
 			skeleton.setFamily(PShape.GEOMETRY);
 			skeleton.setStroke(true);
@@ -684,10 +826,6 @@ public class PTS implements PConstants {
 	public static PShape skeletonize(PShape shape) {
 		try {
 			GM_Polygon polygon = (GM_Polygon) AdapterFactory.toGM_Object(fromPShapeVivid(shape));
-//			System.out.println(polygon.getExterior().length());
-//			AdapterFactory.log
-//			List<IPolygon> l = new ArrayList<>();
-//			l.add(polygon);
 			Set<ILineSegment> lines = Skeletonize.skeletonizeStraightSkeleton(polygon);
 //			System.out.println(lines.size());
 			PShape skeleton = new PShape();
@@ -887,36 +1025,12 @@ public class PTS implements PConstants {
 		return (float) fromPShape(a).distance(fromPShape(b));
 	}
 
+	public static Point getPoint(float x, float y) {
+		return geometryFactory.createPoint(new Coordinate(x, y));
+	}
+
 	public static float area(PShape shape) {
 		return (float) fromPShape(shape).getArea();
-	}
-
-	/**
-	 * Rotate a shape around a given point.
-	 * 
-	 * @param shape
-	 * @param angle
-	 * @param point
-	 * @return
-	 */
-	public static PShape rotate(PShape shape, float angle, PVector point) {
-		Geometry g = fromPShape(shape);
-		AffineTransformation t = AffineTransformation.rotationInstance(angle, point.x, point.y);
-		return toPShape(t.transform(g));
-	}
-
-	/**
-	 * Rotate a shape around its centroid.
-	 * 
-	 * @param shape
-	 * @param angle
-	 * @return
-	 */
-	public static PShape rotateAroundCenter(PShape shape, float angle) {
-		Geometry g = fromPShape(shape);
-		Point center = g.getCentroid();
-		AffineTransformation t = AffineTransformation.rotationInstance(angle, center.getX(), center.getY());
-		return toPShape(t.transform(g));
 	}
 
 	/**
@@ -958,6 +1072,14 @@ public class PTS implements PConstants {
 		return new float[] { (float) e.getMinX(), (float) e.getMinY(), (float) e.getMaxX(), (float) e.getMaxY() };
 	}
 
+	/**
+	 * 
+	 * @param x      centre X
+	 * @param y      center Y
+	 * @param width  ?total? width
+	 * @param height ?total? height
+	 * @return
+	 */
 	public static PShape createSquircle(float x, float y, float width, float height) {
 		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
 		shapeFactory.setNumPoints(40);
@@ -1019,7 +1141,9 @@ public class PTS implements PConstants {
 	}
 
 	/**
-	 * Kinda recursive, caller must provide fresh arraylist
+	 * Kinda recursive, caller must provide fresh arraylist. Output includes the
+	 * parent-most (input) shape. Output is flattened, does not respect a hierarchy
+	 * of parent-child PShapes.
 	 * 
 	 * @param shape
 	 * @param visited

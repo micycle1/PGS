@@ -53,6 +53,8 @@ import fr.ign.cogit.geoxygene.util.algo.geometricAlgorithms.LineDensification;
  */
 public class Spinalize {
 
+	// Triangulated irregular network
+
 	/**
 	 * Beastie method to skeletonize (only the spinal column) a list of polygons
 	 * using JTS. The method takes into account adjacent borders between polygons,
@@ -305,7 +307,7 @@ public class Spinalize {
 	 * Compute the Voronoi diagram of a polygon using JTS triangulation library
 	 * 
 	 * @param polygon
-	 * @param threshold (pas de suréchantillonnage)
+	 * @param threshold (pas de surï¿½chantillonnage)
 	 * @return
 	 */
 	private static IFeatureCollection<IFeature> computeVoronoiDiagram(IPolygon polygon, double overSample) {
