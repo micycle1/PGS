@@ -3,13 +3,9 @@ package org.geodelivery.jap.concavehull;
 import java.util.ArrayList;
 import java.util.Collections;
 
-//import org.geodelivery.jap.concavehull.
-//import org.geodelivery.jap.util.DelaunayGraph;
-
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
-//import org.locationtech.jts.operation.linemerge.LineMergeEdge;
 import org.locationtech.jts.planargraph.DirectedEdge;
 import org.locationtech.jts.planargraph.DirectedEdgeStar;
 import org.locationtech.jts.planargraph.Edge;
@@ -17,7 +13,7 @@ import org.locationtech.jts.planargraph.Node;
 import org.locationtech.jts.planargraph.PlanarGraph;
 
 /**
- * Concave hull algorithm by Pimin Konstantin Kefaloukos and Elias L�fgren.
+ * Concave hull algorithm by Pimin Konstantin Kefaloukos and Elias Lsfgren.
  * <p>
  * The algorithm works by extracting a point cloud from the input geometry, and
  * computing the Delaunay Triangulation of this point cloud. The triangulation
@@ -203,10 +199,15 @@ public class ConcaveHull {
 		return _alpha * avg / count;
 	}
 
+	/**
+	 * Faster threshold. Only considers edges on perimeter; Uses norm value of
+	 * perimeter edges.
+	 * 
+	 * @param successorEdge
+	 * @return
+	 */
 	private double getThresholdMed(DirectedEdge successorEdge) {
-		// Faster threshold.
-		// - Only considers edges on perimeter
-		// - Uses norm value of perimeter edges
+
 		Node start = successorEdge.getFromNode();
 		DirectedEdge dirEdge = successorEdge;
 		ArrayList<Double> edgeLengths = new ArrayList<Double>();
@@ -365,10 +366,18 @@ public class ConcaveHull {
 
 	public enum ThresholdHeuristic {
 		// MST,
-		AVG, MED
+
+		/**
+		 * Slower, but better
+		 */
+		AVG,
+		/**
+		 * Faster
+		 */
+		MED
 	}
 
-	class Perimeter {
+	private class Perimeter {
 		int _numExposed;
 		DirectedEdge _startEdge;
 

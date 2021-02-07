@@ -1,7 +1,7 @@
 package micycle.pts;
 
-import static micycle.pts.PTS.fromPShape;
-import static micycle.pts.PTS.toPShape;
+import static micycle.pts.Conversion.fromPShape;
+import static micycle.pts.Conversion.toPShape;
 
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
@@ -55,6 +55,12 @@ public class Transform {
 	public static PShape flipVertical(PShape shape, float x) {
 		AffineTransformation t = AffineTransformation.reflectionInstance(x, -1, x, 1);
 		return toPShape(t.transform(fromPShape(shape)));
+	}
+
+	public static PShape translate(PShape shape, float x, float y) {
+		Geometry g = fromPShape(shape);
+		AffineTransformation t = AffineTransformation.translationInstance(x, y);
+		return toPShape(t.transform(g));
 	}
 
 	/**
