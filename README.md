@@ -14,11 +14,29 @@ PTS wraps JTS, enabling its methods to be applied to Processing's `PShape` objec
 
 ### PShapes
 
-- Boolean operations: union, difference, intersection, etc.
+- Boolean operations: union, difference, intersection, etc. (/OVERLAY OPERATIONS)
 - Shape Boundaries
 - Smoothing
 - Simplification
 - Area, centroid, etc.
+
+### SPATIAL RELATIONSHIPS
+###  BUFFERS
+
+### POLYGONIZATION
+
+### Geometry methods
+- Spatial Predicates, relate()
+- Overlay ops, buffer(), convexHull()
+- Metrics
+
+### Geometry Processing
+- Line Merging
+- Noding & Polygonization
+- Simplification
+- Linear Referencing
+
+
 
 ### Fields/ Point Sets
 
