@@ -16,7 +16,7 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * PShape<-->JTS conversion
+ * PShape<-->JTS Geometry conversion
  * 
  * @author MCarleton
  *
@@ -33,7 +33,7 @@ public class Conversion implements PConstants {
 	 * @param shape
 	 * @return
 	 */
-	public static Polygon fromPShape(PShape shape) {
+	public static Geometry fromPShape(PShape shape) {
 
 		// TODO convert to switch statement
 
@@ -44,11 +44,11 @@ public class Conversion implements PConstants {
 //			flatChildren.remove(shape);
 			Polygon[] children = new Polygon[flatChildren.size()];
 			for (int i = 0; i < children.length; i++) {
-				children[i] = fromPShape(flatChildren.get(i));
+				children[i] = (Polygon) fromPShape(flatChildren.get(i));
 			}
 			// TODO return to multipoly instead to prevent some crashes
-			return (Polygon) (PTS.geometryFactory.createMultiPolygon(children).union().getGeometryN(0)); // TODO don't
-																										// flatten?
+			return (PTS.geometryFactory.createMultiPolygon(children).buffer(0)); // TODO don't flatten?
+
 		}
 
 //		shape.getKind() // switch to get primitive, then == ELLIPSE
@@ -57,6 +57,7 @@ public class Conversion implements PConstants {
 			shapeFactory.setNumPoints(PTS.CURVE_SAMPLES * 4); // TODO magic constant
 			switch (shape.getKind()) {
 				case ELLIPSE:
+					// TODO split into createCircleGeom method
 					shapeFactory.setCentre(new Coordinate(shape.getParam(0), shape.getParam(1)));
 					shapeFactory.setWidth(shape.getParam(2));
 					shapeFactory.setHeight(shape.getParam(3));
@@ -66,11 +67,13 @@ public class Conversion implements PConstants {
 					// TODO
 					break;
 				case QUAD:
-					// TODO
+					// TODO 4-sided polygon
 					break;
 				case RECT:
-					// TODO
-					break;
+					shapeFactory.setCentre(new Coordinate(shape.getParam(0), shape.getParam(1)));
+					shapeFactory.setWidth(shape.getParam(2));
+					shapeFactory.setHeight(shape.getParam(3));
+					return shapeFactory.createRectangle();
 //				      * @param a x-coordinate of the ellipse
 //				      * @param b y-coordinate of the ellipse
 //				      * @param c width of the ellipse by default
@@ -152,7 +155,7 @@ public class Conversion implements PConstants {
 	 * @param shape
 	 * @return
 	 */
-	public static com.vividsolutions.jts.geom.Polygon fromPShapeVivid(PShape shape) {
+	public static com.vividsolutions.jts.geom.Geometry fromPShapeVivid(PShape shape) {
 
 //		shape.getKind() // switch to get primitive, then == ELLIPSE
 		if (shape.getFamily() == PShape.PRIMITIVE) {

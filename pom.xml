@@ -27,6 +27,11 @@
 		<repository>
 			<id>mvnrepository</id>
 			<name>mvnrepository</name>
+			<url>http://www.mvnrepository.com</url>
+		</repository>
+		<repository>
+			<id>osgeo</id>
+			<name>osgeo</name>
 			<url>https://repo.osgeo.org/repository/release</url>
 		</repository>
 		<repository>
@@ -46,7 +51,12 @@
 			<artifactId>gt-geometry</artifactId>
 			<version>24.1</version>
 		</dependency>
-				<dependency>
+		<dependency>
+			<groupId>org.geotools</groupId>
+			<artifactId>gt-process-feature</artifactId>
+			<version>24.2</version>
+		</dependency>
+		<dependency>
 			<groupId>org.locationtech.jts</groupId>
 			<artifactId>jts-core</artifactId>
 			<version>1.18.0</version>
@@ -71,6 +81,21 @@
 			<artifactId>poly2tri-core</artifactId>
 			<version>0.1.2</version>
 		</dependency>
+		<dependency>
+			<groupId>com.github.earcut4j</groupId>
+			<artifactId>earcut4j</artifactId>
+			<version>a5b26b5</version>
+		</dependency>
+		<dependency>
+			<groupId>de.alsclo</groupId>
+			<artifactId>voronoi-java</artifactId>
+			<version>1.0</version>
+		</dependency>
+	<dependency>
+	    <groupId>com.github.micycle1</groupId>
+	    <artifactId>polysplit</artifactId>
+	    <version>5506b731ba</version>
+	</dependency>
 	</dependencies>
 
 </project>

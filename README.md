@@ -37,6 +37,11 @@ PTS wraps JTS, enabling its methods to be applied to Processing's `PShape` objec
 - Linear Referencing
 
 
+### Geometric Optimization
+- Bounding Volumes (enclosing circle)
+- Optimal Distances
+
+
 
 ### Fields/ Point Sets
 
