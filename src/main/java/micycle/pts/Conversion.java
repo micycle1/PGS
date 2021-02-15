@@ -47,7 +47,7 @@ public class Conversion implements PConstants {
 				children[i] = (Polygon) fromPShape(flatChildren.get(i));
 			}
 			// TODO return to multipoly instead to prevent some crashes
-			return (PTS.geometryFactory.createMultiPolygon(children).buffer(0)); // TODO don't flatten?
+			return (PTS.GEOM_FACTORY.createMultiPolygon(children).buffer(0)); // TODO don't flatten?
 
 		}
 

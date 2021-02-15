@@ -13,13 +13,11 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+
 import org.apache.log4j.Level;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.geodelivery.jap.concavehull.SnapHull;
-import org.geotools.coverage.CoverageFactoryFinder;
-import org.geotools.coverage.grid.GridCoverage2D;
-import org.geotools.coverage.grid.GridCoverageFactory;
 import org.geotools.data.DataUtilities;
 import org.geotools.data.collection.ListFeatureCollection;
 import org.geotools.data.simple.SimpleFeatureCollection;
@@ -27,7 +25,6 @@ import org.geotools.data.simple.SimpleFeatureIterator;
 import org.geotools.feature.SchemaException;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.geometry.jts.JTS;
-import org.geotools.geometry.jts.ReferencedEnvelope;
 import org.geotools.process.vector.ContourProcess;
 import org.locationtech.jts.algorithm.MinimumBoundingCircle;
 import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
@@ -38,6 +35,7 @@ import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
@@ -52,6 +50,7 @@ import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.shape.random.RandomPointsBuilder;
 import org.locationtech.jts.shape.random.RandomPointsInGridBuilder;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
+import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.triangulate.ConformingDelaunayTriangulationBuilder;
 import org.locationtech.jts.triangulate.DelaunayTriangulationBuilder;
 import org.locationtech.jts.triangulate.IncrementalDelaunayTriangulator;
@@ -66,7 +65,6 @@ import org.twak.camp.Skeleton;
 import org.twak.utils.collections.Loop;
 
 import de.alsclo.voronoi.Voronoi;
-import de.incentergy.geometry.impl.GreedyPolygonSplitter;
 import earcut4j.Earcut;
 import fr.ign.cogit.geoxygene.api.spatial.coordgeom.ILineSegment;
 import fr.ign.cogit.geoxygene.api.spatial.coordgeom.ILineString;
@@ -74,7 +72,6 @@ import fr.ign.cogit.geoxygene.api.spatial.coordgeom.IPolygon;
 import fr.ign.cogit.geoxygene.spatial.coordgeom.GM_Polygon;
 import fr.ign.cogit.geoxygene.util.algo.JtsUtil;
 import fr.ign.cogit.geoxygene.util.conversion.AdapterFactory;
-import fr.ign.cogit.geoxygene.util.conversion.JtsGeOxygene;
 import micycle.pts.color.Blending;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -113,7 +110,7 @@ public class PTS implements PConstants {
 
 	protected static final int CURVE_SAMPLES = 20;
 
-	protected static GeometryFactory geometryFactory = new GeometryFactory();
+	protected static GeometryFactory GEOM_FACTORY = new GeometryFactory();
 
 	static {
 		// stop spina/skeleton console logging
@@ -159,7 +156,7 @@ public class PTS implements PConstants {
 
 		// or .distance(point)
 
-		double radius = distance(geometryFactory.createPoint(center), p);
+		double radius = distance(GEOM_FACTORY.createPoint(center), p);
 		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
 		shapeFactory.setNumPoints(CURVE_SAMPLES * 4); // TODO magic constant
 		shapeFactory.setCentre(p.getCoordinate());
@@ -181,6 +178,11 @@ public class PTS implements PConstants {
 		shapeFactory.setHeight(mbc.getRadius() * 2); // r*2 for total width & height
 		return toPShape(shapeFactory.createEllipse());
 	}
+
+//	public static PShape smallestSurroundingRectangle(PShape shape) {
+//		return toPShape(
+//				SmallestSurroundingRectangleComputation.getSSRPreservedArea(geometryFactory.buildGeometry(null)));
+//	}
 
 	/**
 	 * 
@@ -266,6 +268,17 @@ public class PTS implements PConstants {
 	}
 
 	/**
+	 * Preserves topological structure (holes, etc.)
+	 * 
+	 * @param shape
+	 * @param distanceTolerance
+	 * @return
+	 */
+	public static PShape tpSimplify(PShape shape, float distanceTolerance) {
+		return toPShape(TopologyPreservingSimplifier.simplify(fromPShape(shape), distanceTolerance));
+	}
+
+	/**
 	 * Densifies a Geometry by inserting extra vertices along the line segments
 	 * contained in the geometry.
 	 */
@@ -317,7 +330,7 @@ public class PTS implements PConstants {
 			coords[i] = new Coordinate(points.get(i).x, points.get(i).y);
 		}
 
-		Geometry g = geometryFactory.createPolygon(coords);
+		Geometry g = GEOM_FACTORY.createPolygon(coords);
 		ConcaveHull hull = new ConcaveHull(g);
 		return toPShape(hull.getConcaveHullBFS(new TriCheckerChi(threshold), false, false).get(0));
 	}
@@ -343,7 +356,7 @@ public class PTS implements PConstants {
 			coords[i] = new Coordinate(points.get(i).x, points.get(i).y);
 		}
 
-		Geometry g = geometryFactory.createPolygon(coords);
+		Geometry g = GEOM_FACTORY.createPolygon(coords);
 
 		// TODO test AVG threshold heuristic
 		org.geodelivery.jap.concavehull.ConcaveHull hull = new org.geodelivery.jap.concavehull.ConcaveHull(threshold);
@@ -429,7 +442,7 @@ public class PTS implements PConstants {
 		Geometry g = fromPShape(shape);
 		DelaunayTriangulationBuilder d = new DelaunayTriangulationBuilder();
 		d.setSites(g);
-		Geometry out = d.getTriangles(geometryFactory); // triangulates convex hull of points
+		Geometry out = d.getTriangles(GEOM_FACTORY); // triangulates convex hull of points
 		out = out.intersection(g); // get concave hull
 		return toPShape(out);
 	}
@@ -459,7 +472,7 @@ public class PTS implements PConstants {
 		builder.setSites(g); // set vertex sites
 		builder.setTolerance(tolerance); // set tolerance for initial triangulation only
 
-		Geometry triangulation = builder.getTriangles(geometryFactory); // initial triangulation
+		Geometry triangulation = builder.getTriangles(GEOM_FACTORY); // initial triangulation
 
 		HashSet<Coordinate> sites = new HashSet<>();
 		for (int i = 0; i < triangulation.getCoordinates().length; i++) {
@@ -476,7 +489,7 @@ public class PTS implements PConstants {
 			}
 			builder = new DelaunayTriangulationBuilder();
 			builder.setSites(sites);
-			triangulation = builder.getTriangles(geometryFactory); // re-triangulate using new centroid sites
+			triangulation = builder.getTriangles(GEOM_FACTORY); // re-triangulate using new centroid sites
 		}
 
 		triangulation = triangulation.intersection(g); // restore concave hull and any holes
@@ -568,7 +581,7 @@ public class PTS implements PConstants {
 		b.setSites(g);
 		b.setTolerance(tolerance);
 		b.setConstraints(fromPShape(constraints));
-		Geometry out = b.getTriangles(geometryFactory); // triangulates concave hull of points
+		Geometry out = b.getTriangles(GEOM_FACTORY); // triangulates concave hull of points
 		out = out.intersection(g); // get convex hull
 		return toPShape(out);
 	}
@@ -580,10 +593,10 @@ public class PTS implements PConstants {
 		for (int j = 0; j < points.size(); j++) {
 			coords[j] = new Coordinate(points.get(j).x, points.get(j).y);
 		}
-		b.setSites(geometryFactory.createPolygon(coords));
+		b.setSites(GEOM_FACTORY.createPolygon(coords));
 		b.setTolerance(tolerance);
 //		b.setConstraints(fromPShape(constraints));
-		Geometry out = b.getTriangles(geometryFactory); // triangulates concave hull of points
+		Geometry out = b.getTriangles(GEOM_FACTORY); // triangulates concave hull of points
 		out = out.intersection(fromPShape(constraints)); // get convex hull
 		return toPShape(out);
 	}
@@ -607,7 +620,7 @@ public class PTS implements PConstants {
 		DelaunayTriangulationBuilder d = new DelaunayTriangulationBuilder();
 		d.setTolerance(tolerance);
 		d.setSites(coords);
-		Geometry out = d.getTriangles(geometryFactory);
+		Geometry out = d.getTriangles(GEOM_FACTORY);
 		return toPShape(out);
 	}
 
@@ -636,12 +649,12 @@ public class PTS implements PConstants {
 		 */
 		RandomPointsBuilder r = new RandomPointsBuilder();
 		r.setExtent(g);
-		r.setNumPoints(100);
+		r.setNumPoints(200);
 		Geometry points = r.getGeometry();
 		final Point shapeCentroid = g.getCentroid();
 
 		for (Coordinate coord : points.getCoordinates()) {
-			Point point = geometryFactory.createPoint(coord);
+			Point point = GEOM_FACTORY.createPoint(coord);
 			featureBuilder.add(point);
 			featureBuilder.add(String.valueOf(coord.hashCode()));
 			featureBuilder.add(point.distance(shapeCentroid));
@@ -651,14 +664,14 @@ public class PTS implements PConstants {
 
 		SimpleFeatureCollection collection = new ListFeatureCollection(TYPE, features);
 
-		SimpleFeatureCollection results = vcp.execute(collection, "number", new double[] { 0, 25, 50, 100, 250 }, 50d,
-				true, true, null);
+		SimpleFeatureCollection results = vcp.execute(collection, "number", new double[] { 0, 2, 4, 6, 10 }, null, true,
+				true, null);
 
 		PShape lines = new PShape();
 		lines.setFamily(PShape.GEOMETRY);
 		lines.setStrokeCap(ROUND);
 		lines.setStroke(true);
-		lines.setStrokeWeight(10);
+		lines.setStrokeWeight(6);
 		lines.setStroke(-1232222);
 		lines.beginShape(LINES);
 
@@ -688,7 +701,7 @@ public class PTS implements PConstants {
 		v.setSites(g);
 		v.setClipEnvelope(new Envelope(0, 1000, 0, 750)); // speeds up when lots of edges
 //		v.setSites(new ArrayList<Coordinate>(Arrays.asList(g.getCoordinates())));
-		Geometry out = v.getDiagram(geometryFactory);
+		Geometry out = v.getDiagram(GEOM_FACTORY);
 		return toPShape(out); // .intersection(g))
 	}
 
@@ -708,7 +721,7 @@ public class PTS implements PConstants {
 		v.setSites(g);
 //		v.setClipEnvelope(new Envelope(0, 1000, 0, 750)); // TODO
 
-		final Geometry out = v.getDiagram(geometryFactory);
+		final Geometry out = v.getDiagram(GEOM_FACTORY);
 
 		final LineDissolver ld = new LineDissolver();
 		ld.add(out);
@@ -745,7 +758,7 @@ public class PTS implements PConstants {
 		VoronoiDiagramBuilder v = new VoronoiDiagramBuilder();
 		v.setTolerance(tolerance);
 		v.setSites(coords);
-		Geometry out = v.getDiagram(geometryFactory);
+		Geometry out = v.getDiagram(GEOM_FACTORY);
 		return toPShape(out);
 	}
 
@@ -849,7 +862,7 @@ public class PTS implements PConstants {
 
 		VoronoiDiagramBuilder v = new VoronoiDiagramBuilder();
 		v.setSites(dense);
-		Geometry voronoi = v.getDiagram(geometryFactory);
+		Geometry voronoi = v.getDiagram(GEOM_FACTORY);
 
 		final Geometry small = dense.buffer(-minimumCloseness);
 
@@ -877,10 +890,10 @@ public class PTS implements PConstants {
 			for (int j = 0; j < cell.getCoordinates().length - 1; j++) {
 				Coordinate a = cell.getCoordinates()[j];
 //				CoordinateSequence seq = geometryFactory.getCoordinateSequenceFactory().create(new Coordinate[] { a });
-				if (cache.covers(geometryFactory.createPoint(a))) {
+				if (cache.covers(GEOM_FACTORY.createPoint(a))) {
 					Coordinate b = cell.getCoordinates()[j + 1];
 //					seq = geometryFactory.getCoordinateSequenceFactory().create(new Coordinate[] { b });
-					if (cache.covers(geometryFactory.createPoint(b))) {
+					if (cache.covers(GEOM_FACTORY.createPoint(b))) {
 						lines.vertex((float) a.x, (float) a.y);
 						lines.vertex((float) b.x, (float) b.y);
 //						lm.add(geometryFactory.createLineString(new Coordinate[] { a, b }));
@@ -917,8 +930,8 @@ public class PTS implements PConstants {
 //			AdapterFactory.log
 			List<IPolygon> l = new ArrayList<>();
 			l.add(polygon);
-			List<ILineString> lines = Spinalize.spinalize(l, 5, 100, false);
-			System.out.println(lines.size());
+//			List<ILineString> lines = Spinalize.spinalize(l, 5, 100, false);
+//			System.out.println(lines.size());
 			PShape skeleton = new PShape();
 			skeleton.setFamily(PShape.GEOMETRY);
 			skeleton.setStroke(true);
@@ -963,7 +976,7 @@ public class PTS implements PConstants {
 			coords[i] = new Coordinate(points.get(i).x, points.get(i).y);
 		}
 
-		Polygon p = geometryFactory.createPolygon(coords); // reverse
+		Polygon p = GEOM_FACTORY.createPolygon(coords); // reverse
 		points.clear();
 
 		for (Coordinate coordinate : p.getExteriorRing().getCoordinates()) {
@@ -1210,11 +1223,31 @@ public class PTS implements PConstants {
 
 		for (Coordinate coord : r.getGeometry().getCoordinates()) {
 			// manually prune envelope
-			if (g.contains(geometryFactory.createPoint(coord))) {
+			if (g.contains(GEOM_FACTORY.createPoint(coord))) {
 				vertices.add(new PVector((float) coord.x, (float) coord.y));
 			}
 		}
 		return vertices;
+	}
+
+	/**
+	 * Returns a copy of the shape with its small holes (i.e. inner rings with area
+	 * < given threshold) removed.
+	 * 
+	 * @param polygon
+	 * @return
+	 */
+	public static PShape removeSmallHoles(PShape shape, float area) {
+		Polygon polygon = (Polygon) fromPShape(shape);
+		Polygon noHolePol = GEOM_FACTORY.createPolygon(polygon.getExteriorRing());
+		for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
+			LinearRing hole = polygon.getInteriorRingN(i);
+			if (hole.getArea() < area)
+				continue;
+			noHolePol = (Polygon) noHolePol.difference(hole);
+
+		}
+		return toPShape(noHolePol);
 	}
 
 	/**
@@ -1276,7 +1309,7 @@ public class PTS implements PConstants {
 	}
 
 	public static Point getPoint(float x, float y) {
-		return geometryFactory.createPoint(new Coordinate(x, y));
+		return GEOM_FACTORY.createPoint(new Coordinate(x, y));
 	}
 
 	public static float area(PShape shape) {
@@ -1401,35 +1434,26 @@ public class PTS implements PConstants {
 	}
 
 	/**
-	 * Splits both convex and concave shapes into a number of parts with equal area,
-	 * as long as they don't have any intersecting edges and are defined by a single
-	 * exterior ring.
+	 * Bayazit convex decomposition algorithm for simple polygons.
 	 * 
 	 * @param shape
-	 * @param parts
-	 * @return
-	 * @deprecated not working!?
+	 * @return lsit of convex polygons comprising the original shape
 	 */
-	public static ArrayList<PShape> nSplit(PShape shape, int parts) {
+	public static ArrayList<PShape> decompose(PShape shape) {
+		// retry GreedyPolygonSplitter()?
+
 		Geometry g = fromPShape(shape);
-		Polygon p;
-		try {
-			p = (Polygon) g; // try cast to polygon
-		} catch (Exception e) {
-			try {
-				p = (Polygon) g.buffer(0); // try buffer and cast
-			} catch (Exception e2) {
-				return new ArrayList<>(); // geometry is not a single/mergeable polygon
-			}
-		}
-
-		System.out.println("l " + p.getCoordinates().length);
-
-		List<Polygon> splits = new GreedyPolygonSplitter().split(p, parts);
 
 		ArrayList<PShape> out = new ArrayList<>();
-		for (Polygon polygon : splits) {
-			out.add(toPShape(polygon));
+
+		for (int i = 0; i < g.getNumGeometries(); i++) {
+			Geometry child = g.getGeometryN(i);
+			if (child.getGeometryType() == Geometry.TYPENAME_POLYGON) { // skip any linestrings etc
+				List<Polygon> decomposed = PolygonDecomposition.decompose((Polygon) child);
+				for (Polygon polygon : decomposed) {
+					out.add(toPShape(polygon));
+				}
+			}
 		}
 
 		return out;
@@ -1497,12 +1521,11 @@ public class PTS implements PConstants {
 	}
 
 	private static Point pointFromPVector(PVector p) {
-		return geometryFactory.createPoint(new Coordinate(p.x, p.y));
+		return GEOM_FACTORY.createPoint(new Coordinate(p.x, p.y));
 	}
 
 	private static LineString lineFromPVectors(PVector a, PVector b) {
-		return geometryFactory
-				.createLineString(new Coordinate[] { new Coordinate(a.x, a.y), new Coordinate(b.x, b.y) });
+		return GEOM_FACTORY.createLineString(new Coordinate[] { new Coordinate(a.x, a.y), new Coordinate(b.x, b.y) });
 	}
 
 }
