@@ -1,7 +1,6 @@
 package micycle.pts;
 
 import static micycle.pts.Conversion.fromPShape;
-import static micycle.pts.Conversion.fromPShapeVivid;
 import static micycle.pts.Conversion.toPShape;
 import static micycle.pts.color.RGB.composeclr;
 
@@ -14,9 +13,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.log4j.Level;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
 import org.geodelivery.jap.concavehull.SnapHull;
 import org.geotools.data.DataUtilities;
 import org.geotools.data.collection.ListFeatureCollection;
@@ -59,20 +55,10 @@ import org.locationtech.jts.triangulate.quadedge.QuadEdgeSubdivision;
 import org.locationtech.jts.util.GeometricShapeFactory;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
-import org.twak.camp.Corner;
-import org.twak.camp.Machine;
-import org.twak.camp.Skeleton;
-import org.twak.utils.collections.Loop;
-
 import de.alsclo.voronoi.Voronoi;
 import earcut4j.Earcut;
-import fr.ign.cogit.geoxygene.api.spatial.coordgeom.ILineSegment;
-import fr.ign.cogit.geoxygene.api.spatial.coordgeom.ILineString;
-import fr.ign.cogit.geoxygene.api.spatial.coordgeom.IPolygon;
-import fr.ign.cogit.geoxygene.spatial.coordgeom.GM_Polygon;
-import fr.ign.cogit.geoxygene.util.algo.JtsUtil;
-import fr.ign.cogit.geoxygene.util.conversion.AdapterFactory;
 import micycle.pts.color.Blending;
+import processing.core.PApplet;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -111,15 +97,6 @@ public class PTS implements PConstants {
 	protected static final int CURVE_SAMPLES = 20;
 
 	protected static GeometryFactory GEOM_FACTORY = new GeometryFactory();
-
-	static {
-		// stop spina/skeleton console logging
-		List<Logger> loggers = Collections.<Logger>list(LogManager.getCurrentLoggers());
-		loggers.add(LogManager.getRootLogger());
-		for (Logger logger : loggers) {
-			logger.setLevel(Level.OFF);
-		}
-	}
 
 	/**
 	 * The Maximum Inscribed Circle is determined by a point in the interior of the
@@ -915,49 +892,6 @@ public class PTS implements PConstants {
 	}
 
 	/**
-	 * Not working: "Skeleton screw up"
-	 * 
-	 * @param shape
-	 * @return
-	 */
-	public static PShape spinalize(PShape shape) {
-		// also see
-		// https://github.com/IGNF/geoxygene/blob/master/geoxygene-spatial/src/main/java/fr/ign/cogit/geoxygene/util/algo/geometricAlgorithms/morphomaths/MorphologyTransform.java
-//		GM_Polygon p = new GM_Polygon(fromPShape(null));
-		try {
-			GM_Polygon polygon = (GM_Polygon) AdapterFactory.toGM_Object(fromPShapeVivid(shape));
-
-//			AdapterFactory.log
-			List<IPolygon> l = new ArrayList<>();
-			l.add(polygon);
-//			List<ILineString> lines = Spinalize.spinalize(l, 5, 100, false);
-//			System.out.println(lines.size());
-			PShape skeleton = new PShape();
-			skeleton.setFamily(PShape.GEOMETRY);
-			skeleton.setStroke(true);
-			skeleton.setStrokeWeight(3);
-//			skeleton.setstrok
-			skeleton.beginShape(PShape.LINES);
-//			for (ILineString segment : lines) {
-////				segment.get
-////				System.out.println(segment.getStartPoint().getX());
-//				skeleton.vertex((float) segment.getStartPoint().getX(), (float) segment.getStartPoint().getY());
-//				skeleton.vertex((float) segment.getEndPoint().getX(), (float) segment.getEndPoint().getY());
-//			}
-			skeleton.endShape();
-			return skeleton;
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return null;
-//			return new ArrayList<ILineString>();
-		}
-//		JtsGeOxygene.makeGeOxygeneGeom(fromPShapeVivid(shape));
-//		JTSGeomFactory f = new JTSGeomFactory();
-//		f.createIPolygon((IRing) fromPShape(shape).getExteriorRing());
-	}
-
-	/**
 	 * 
 	 * @param shape
 	 * @return
@@ -1010,73 +944,34 @@ public class PTS implements PConstants {
 		return skeleton;
 	}
 
-	/**
-	 * Skeleton structures of shapes are line structures that represent the shape in
-	 * some sense. Works, but sloooow
-	 * 
-	 * @param shape
-	 * @return
-	 */
-	public static PShape skeletonize(PShape shape) {
-
-		// use Angle.interiorAngle(null, null, ) for reflex vertices
-		try {
-			GM_Polygon polygon = (GM_Polygon) AdapterFactory.toGM_Object(fromPShapeVivid(shape));
-			Set<ILineSegment> lines = Skeletonize.skeletonizeStraightSkeleton(polygon);
-//			System.out.println(lines.size());
-			PShape skeleton = new PShape();
-			skeleton.setFamily(PShape.GEOMETRY);
-			skeleton.setStroke(true);
-			skeleton.setStrokeWeight(3);
-//			skeleton.setstrok
-			skeleton.beginShape(PShape.LINES);
-			for (ILineSegment segment : lines) {
-//				System.out.println(segment.getStartPoint().getX());
-				skeleton.vertex((float) segment.getStartPoint().getX(), (float) segment.getStartPoint().getY());
-				skeleton.vertex((float) segment.getEndPoint().getX(), (float) segment.getEndPoint().getY());
-			}
-			skeleton.endShape();
-			for (ILineString line : lines) {
-				System.out.println(line.startPoint().getX());
-			}
-			return skeleton;
-//			
-
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return null;
-		}
-	}
-
 	public static PShape straightSkeleton(PShape shape) {
 		Polygon p = (Polygon) fromPShape(shape);
 		LineString l = p.getExteriorRing().reverse(); // ? | also, remove last coord?
 //		l = (LineString) DouglasPeuckerSimplifier.simplify(l, 3);
 
-		final Machine speed = new Machine(1);
-
-		Loop<org.twak.camp.Edge> exteriorLoop = new Loop<>();
-//		LoopL<Corner> vertices = new LoopL<>();
-
-		Corner pCorner = new Corner(l.getCoordinateN(0).x, l.getCoordinateN(0).y);
-		for (int i = 1; i < l.getCoordinates().length; i++) {
-			Corner corner = new Corner(l.getCoordinateN(i).x, l.getCoordinateN(i).y);
-			org.twak.camp.Edge e = new org.twak.camp.Edge(pCorner, corner);
-			e.machine = speed;
-			exteriorLoop.append(e);
-			pCorner = corner;
-			System.out.println(i);
-		} // not closed loop
-		int end = l.getCoordinates().length - 1;
-		org.twak.camp.Edge e = new org.twak.camp.Edge(new Corner(l.getCoordinateN(end).x, l.getCoordinateN(end).y),
-				new Corner(l.getCoordinateN(0).x, l.getCoordinateN(0).y));
-		e.machine = speed;
-		exteriorLoop.append(e);
-
-		Skeleton skeleton = new Skeleton();
-		skeleton.setupForEdges(exteriorLoop.singleton());
-		skeleton.skeleton();
+//		final Machine speed = new Machine(1);
+//
+//		Loop<org.twak.camp.Edge> exteriorLoop = new Loop<>();
+////		LoopL<Corner> vertices = new LoopL<>();
+//
+//		Corner pCorner = new Corner(l.getCoordinateN(0).x, l.getCoordinateN(0).y);
+//		for (int i = 1; i < l.getCoordinates().length; i++) {
+//			Corner corner = new Corner(l.getCoordinateN(i).x, l.getCoordinateN(i).y);
+//			org.twak.camp.Edge e = new org.twak.camp.Edge(pCorner, corner);
+//			e.machine = speed;
+//			exteriorLoop.append(e);
+//			pCorner = corner;
+//			System.out.println(i);
+//		} // not closed loop
+//		int end = l.getCoordinates().length - 1;
+//		org.twak.camp.Edge e = new org.twak.camp.Edge(new Corner(l.getCoordinateN(end).x, l.getCoordinateN(end).y),
+//				new Corner(l.getCoordinateN(0).x, l.getCoordinateN(0).y));
+//		e.machine = speed;
+//		exteriorLoop.append(e);
+//
+//		Skeleton skeleton = new Skeleton();
+//		skeleton.setupForEdges(exteriorLoop.singleton());
+//		skeleton.skeleton();
 
 		return null;
 	}
@@ -1325,8 +1220,9 @@ public class PTS implements PConstants {
 	 * @return
 	 */
 	public static float getCircularity(PShape shape) {
-		// TODO test
-		return (float) JtsUtil.circularite((com.vividsolutions.jts.geom.Polygon) (fromPShapeVivid(shape)));
+		Polygon poly = (Polygon) fromPShape(shape);
+		return (float) (4 * PApplet.PI * poly.getArea()
+				/ (poly.getBoundary().getLength() * poly.getBoundary().getLength()));
 	}
 
 	/**

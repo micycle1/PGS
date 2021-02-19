@@ -3,8 +3,11 @@ package micycle.pts;
 import static micycle.pts.Conversion.fromPShape;
 import static micycle.pts.Conversion.toPShape;
 
+import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.util.AffineTransformation;
 
 import processing.core.PShape;
@@ -89,6 +92,38 @@ public class Transform {
 		Point center = g.getCentroid();
 		AffineTransformation t = AffineTransformation.rotationInstance(angle, center.getX(), center.getY());
 		return toPShape(t.transform(g));
+	}
+
+	/**
+	 * Calculate a Homothetic Transformation of the shape.
+	 * 
+	 * @param shape  shape input
+	 * @param x0     X position of the center of the operation
+	 * @param y0     Y position of the center of the operation
+	 * @param scaleX X scale factor
+	 * @param scaleY Y scale factor
+	 */
+	public static PShape homotheticTransformation(PShape shape, double x0, double y0, double scaleX, double scaleY) {
+		Polygon geom = (Polygon) fromPShape(shape);
+
+		// external contour
+		Coordinate[] coord = geom.getExteriorRing().getCoordinates();
+		Coordinate[] coord_ = new Coordinate[coord.length];
+		for (int i = 0; i < coord.length; i++)
+			coord_[i] = new Coordinate(x0 + scaleX * (coord[i].x - x0), y0 + scaleY * (coord[i].y - y0));
+		LinearRing lr = geom.getFactory().createLinearRing(coord_);
+
+		// the holes
+		LinearRing[] holes = new LinearRing[geom.getNumInteriorRing()];
+		for (int j = 0; j < geom.getNumInteriorRing(); j++) {
+			Coordinate[] hole_coord = geom.getInteriorRingN(j).getCoordinates();
+			Coordinate[] hole_coord_ = new Coordinate[hole_coord.length];
+			for (int i = 0; i < hole_coord.length; i++)
+				hole_coord_[i] = new Coordinate(x0 + scaleY * (hole_coord[i].x - x0),
+						y0 + scaleY * (hole_coord[i].y - y0));
+			holes[j] = geom.getFactory().createLinearRing(hole_coord_);
+		}
+		return toPShape(PTS.GEOM_FACTORY.createPolygon(lr, holes));
 	}
 
 }

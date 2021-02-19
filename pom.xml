@@ -17,23 +17,8 @@
 				<configuration>
 					<source>8</source>
 					<target>8</target>
+					<encoding>UTF-8</encoding>
 				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-shade-plugin</artifactId>
-				<version>3.2.4</version>
-				<executions>
-					<execution>
-						<phase>package</phase>
-						<goals>
-							<goal>shade</goal>
-						</goals>
-						<configuration>
-							<minimizeJar>true</minimizeJar>
-						</configuration>
-					</execution>
-				</executions>
 			</plugin>
 			<plugin>
 				<artifactId>maven-source-plugin</artifactId>
@@ -56,6 +41,25 @@
 						<goals>
 							<goal>jar</goal>
 						</goals>
+						<configuration>
+							<doclint>none</doclint> <!--Prevent Javadoc incomplete errors -->
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-shade-plugin</artifactId>
+				<version>3.2.4</version>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>shade</goal>
+						</goals>
+						<configuration>
+							<minimizeJar>true</minimizeJar>
+						</configuration>
 					</execution>
 				</executions>
 			</plugin>
@@ -81,9 +85,10 @@
 
 	<dependencies>
 		<dependency>
-			<groupId>com.github.micycle1</groupId>
-			<artifactId>processing-core-4</artifactId>
-			<version>4.0.3</version>
+			<groupId>org.processing</groupId>
+			<artifactId>core</artifactId>
+			<version>3.3.7</version>
+			<scope>provided</scope> <!-- don't package into fat jar -->
 		</dependency>
 		<dependency> <!-- for JTS.utils -->
 			<groupId>org.geotools</groupId>
@@ -109,16 +114,6 @@
 			<groupId>org.jgrapht</groupId>
 			<artifactId>jgrapht-core</artifactId>
 			<version>1.4.0</version>
-		</dependency>
-		<dependency>
-			<groupId>log4j</groupId>
-			<artifactId>log4j</artifactId>
-			<version>1.2.17</version>
-		</dependency>
-		<dependency>
-			<groupId>org.orbisgis</groupId>
-			<artifactId>poly2tri-core</artifactId>
-			<version>0.1.2</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.earcut4j</groupId>
