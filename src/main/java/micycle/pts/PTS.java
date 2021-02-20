@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import org.geodelivery.jap.concavehull.SnapHull;
 import org.geotools.data.DataUtilities;
@@ -20,6 +21,7 @@ import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.data.simple.SimpleFeatureIterator;
 import org.geotools.feature.SchemaException;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
+import org.geotools.geometry.jts.GeometryCollector;
 import org.geotools.geometry.jts.JTS;
 import org.geotools.process.vector.ContourProcess;
 import org.locationtech.jts.algorithm.MinimumBoundingCircle;
@@ -30,6 +32,7 @@ import org.locationtech.jts.dissolve.LineDissolver;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryCollectionIterator;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
@@ -42,8 +45,13 @@ import org.locationtech.jts.geomgraph.Edge;
 import org.locationtech.jts.geomgraph.GeometryGraph;
 import org.locationtech.jts.linearref.LengthIndexedLine;
 import org.locationtech.jts.operation.distance.DistanceOp;
+import org.locationtech.jts.operation.linemerge.LineMergeEdge;
+import org.locationtech.jts.operation.linemerge.LineMergeGraph;
+import org.locationtech.jts.operation.linemerge.LineMerger;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
+import org.locationtech.jts.planargraph.DirectedEdge;
+import org.locationtech.jts.planargraph.Node;
 import org.locationtech.jts.shape.random.RandomPointsBuilder;
 import org.locationtech.jts.shape.random.RandomPointsInGridBuilder;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
@@ -237,6 +245,12 @@ public class PTS implements PConstants {
 		return toPShape(UnaryUnionOp.union(geoms));
 	}
 
+	/**
+	 * 
+	 * @param shape
+	 * @param buffer extent/width of the buffer (may be positive or negative)
+	 * @return
+	 */
 	public static PShape buffer(PShape shape, float buffer) {
 		// TODO read
 		// https://locationtech.github.io/jts/javadoc/org/locationtech/jts/operation/buffer/BufferOp.html
@@ -249,6 +263,7 @@ public class PTS implements PConstants {
 	 * @param shape
 	 * @param distanceTolerance
 	 * @return
+	 * @see #topologySimplify(PShape, float)
 	 */
 	public static PShape simplify(PShape shape, float distanceTolerance) {
 		return toPShape(DouglasPeuckerSimplifier.simplify(fromPShape(shape), distanceTolerance));
@@ -260,8 +275,9 @@ public class PTS implements PConstants {
 	 * @param shape
 	 * @param distanceTolerance
 	 * @return
+	 * @see #simplify(PShape, float)
 	 */
-	public static PShape tpSimplify(PShape shape, float distanceTolerance) {
+	public static PShape topologySimplify(PShape shape, float distanceTolerance) {
 		return toPShape(TopologyPreservingSimplifier.simplify(fromPShape(shape), distanceTolerance));
 	}
 
@@ -301,6 +317,13 @@ public class PTS implements PConstants {
 		return toPShape(g.convexHull());
 	}
 
+	/**
+	 * Uses Chi heurstic
+	 * 
+	 * @param points
+	 * @param threshold euclidean distance threshold
+	 * @return
+	 */
 	public static PShape concaveHull(ArrayList<PVector> points, float threshold) {
 
 		// calls Ordnance Survey implementation
@@ -326,10 +349,31 @@ public class PTS implements PConstants {
 	 * Has a more "organic" structure compared to other concave method.
 	 * 
 	 * @param points
-	 * @param threshold 0...1
+	 * @param threshold 0...1 (Normalized length parameter). Setting λP = 1 means
+	 *                  that no edges will be removed from the Delaunay
+	 *                  triangulation, so the resulting polygon will be the convex
+	 *                  hull. Setting λP = 0 means that all edges that can be
+	 *                  removed subject to the regularity constraint will be removed
+	 *                  (however polygons that are eroded beyond the point where
+	 *                  they provide a desirable characterization of the shape).
+	 *                  Although the optimal parameter value varies for different
+	 *                  shapes and point distributions, values of between 0.05–0.2
+	 *                  typically produce optimal or near-optimal shape
+	 *                  characterization across a wide range of point distributions.
 	 * @return
 	 */
 	public static PShape concaveHull2(ArrayList<PVector> points, float threshold) {
+
+		/**
+		 * (from https://doi.org/10.1016/j.patcog.2008.03.023) It is more convenient to
+		 * normalize the threshold parameter with respect to a particular set of points
+		 * P by using the maximum and minimum edge lengths of the Delaunay triangulation
+		 * of P. Increasing l beyond the maximum edge length of the Delaunay
+		 * triangulation cannot reduce the number of edges that will be removed (which
+		 * will be zero anyway). Decreasing l beyond the minimum edge length of the
+		 * Delaunay triangulation cannot increase the number of edges that will be
+		 * removed.
+		 */
 
 		final Coordinate[] coords;
 		if (!points.get(0).equals(points.get(points.size() - 1))) {
@@ -826,256 +870,6 @@ public class PTS implements PConstants {
 		}
 //	Graph<Vertex, Edge> graph = new DefaultUndirectedGraph<Vertex, Edge>(Edge.class);
 //	graph.
-	}
-
-	/**
-	 * Set of points in space equidistant to 2 or more points on the surface. As
-	 * density of boundary points goes to infinity, a voronoi diagram converges to a
-	 * medial axis.
-	 * 
-	 * @param shape
-	 * @param density          distance tolerance for boundary densification
-	 *                         (smaller values more converge towards a more accurate
-	 *                         axis, but slower), 5-20 is appropriate
-	 * @param minimumCloseness the SQUARE of the
-	 * @return
-	 */
-	public static PShape medialAxis(PShape shape, float density, float minimumCloseness) {
-		final Geometry g = fromPShape(shape);
-		final Densifier d = new Densifier(fromPShape(shape));
-		d.setDistanceTolerance(density);
-		d.setValidate(false); // don't perform validation processing (a little faster)
-		final Geometry dense = d.getResultGeometry();
-
-		VoronoiDiagramBuilder v = new VoronoiDiagramBuilder();
-		v.setSites(dense);
-		Geometry voronoi = v.getDiagram(GEOM_FACTORY);
-
-		final Geometry small = dense.buffer(-minimumCloseness);
-
-		PreparedGeometry cache = PreparedGeometryFactory.prepare(small); // provides MUCH faster contains() check
-
-		// inline lines creation
-		PShape lines = new PShape();
-		lines.setFamily(PShape.GEOMETRY);
-		lines.setStrokeCap(ROUND);
-		lines.setStroke(true);
-		lines.setStrokeWeight(2);
-		lines.setStroke(-1232222);
-		lines.beginShape(LINES);
-
-//		LineMerger lm = new LineMerger();
-		// TODO g.difference small
-//		LineDissolver // TODO
-		// apply LineMergeGraph to voronoi too?
-
-		// TODO getCoordinates() call slow on cell too?
-
-		// TODO compare both points at once?
-		for (int i = 0; i < voronoi.getNumGeometries(); i++) {
-			Polygon cell = (Polygon) voronoi.getGeometryN(i); // TODO .get(0) prevent occasional crash
-			for (int j = 0; j < cell.getCoordinates().length - 1; j++) {
-				Coordinate a = cell.getCoordinates()[j];
-//				CoordinateSequence seq = geometryFactory.getCoordinateSequenceFactory().create(new Coordinate[] { a });
-				if (cache.covers(GEOM_FACTORY.createPoint(a))) {
-					Coordinate b = cell.getCoordinates()[j + 1];
-//					seq = geometryFactory.getCoordinateSequenceFactory().create(new Coordinate[] { b });
-					if (cache.covers(GEOM_FACTORY.createPoint(b))) {
-						lines.vertex((float) a.x, (float) a.y);
-						lines.vertex((float) b.x, (float) b.y);
-//						lm.add(geometryFactory.createLineString(new Coordinate[] { a, b }));
-					}
-				}
-			}
-		}
-
-//		for (LineString l : ((List<LineString>) lm.getMergedLineStrings())) {
-//			z++;
-//			lines.vertex((float) l.getStartPoint().getX(), (float) l.getStartPoint().getY());
-//			lines.vertex((float) l.getEndPoint().getX(), (float) l.getEndPoint().getY());
-//		}
-//		System.out.println(z);
-
-		lines.endShape();
-//		return toPShape());
-		return lines;
-	}
-
-	/**
-	 * 
-	 * @param shape
-	 * @return
-	 */
-	public static SolubSkeleton solubSkeleton(List<PVector> points) {
-
-		final Coordinate[] coords;
-		if (!points.get(0).equals(points.get(points.size() - 1))) {
-			coords = new Coordinate[points.size() + 1];
-			points.add(points.get(0)); // close geometry
-		} else { // already closed
-			coords = new Coordinate[points.size()];
-		}
-
-		for (int i = 0; i < coords.length; i++) {
-			coords[i] = new Coordinate(points.get(i).x, points.get(i).y);
-		}
-
-		Polygon p = GEOM_FACTORY.createPolygon(coords); // reverse
-		points.clear();
-
-		for (Coordinate coordinate : p.getExteriorRing().getCoordinates()) {
-			points.add(new PVector((float) coordinate.x, (float) coordinate.y));
-		}
-		points.remove(points.size() - 1); // remove closing point
-
-		SolubSkeleton skeleton = new SolubSkeleton(points, 20);
-		return skeleton;
-	}
-
-	/**
-	 * Straight skeleton. Not robust, but fast. Does not support holes
-	 * 
-	 * @param shape     a hull
-	 * @param tolerance minimum closeness that skeleton "bone" is to nearest vertex
-	 * @return SS object
-	 * @see #straightSkeleton(PShape)
-	 */
-	public static SolubSkeleton solubSkeleton(PShape shape, float tolerance) {
-
-		ArrayList<PVector> points = new ArrayList<>();
-
-		Polygon p = (Polygon) fromPShape(shape);
-
-		// exterior ring is clockwise, so reverse() to get anti-clockwise
-		for (Coordinate coordinate : p.getExteriorRing().reverse().getCoordinates()) {
-			points.add(new PVector((float) coordinate.x, (float) coordinate.y));
-		}
-		points.remove(0); // remove closing point
-		points.remove(0); // remove closing point
-
-		SolubSkeleton skeleton = new SolubSkeleton(points, tolerance);
-		return skeleton;
-	}
-
-	public static PShape straightSkeleton(PShape shape) {
-		// https://github.com/Agent14zbz/ZTools/blob/main/src/main/java/geometry/ZSkeleton.java
-
-		Machine speed = new Machine(1); // every edge same speed
-
-		Geometry g = fromPShape(shape);
-		Polygon polygon;
-		if (g.getGeometryType() == Geometry.TYPENAME_POLYGON) {
-			polygon = (Polygon) g;
-		} else {
-			System.out.println("MultiPolygon not supported yet.");
-			return new PShape();
-		}
-
-		HashSet<Double> edgeCoordsSet = new HashSet<>();
-
-		Skeleton skeleton;
-
-			LoopL<org.twak.camp.Edge> loopL = new LoopL<>(); // list of loops
-
-			ArrayList<Corner> corners = new ArrayList<>();
-			Loop<org.twak.camp.Edge> loop = new Loop<>();
-
-			LinearRing exterior = polygon.getExteriorRing();
-			if (polygon.getNumInteriorRing() > 0) {
-				exterior = exterior.reverse();
-			}
-//			System.out.println("exterior: " + Orientation.isCCW(exterior.getCoordinates()));
-			for (int j = 0; j < exterior.getCoordinates().length - 1; j++) {
-				double a = exterior.getCoordinates()[j].x;
-				double b = exterior.getCoordinates()[j].y;
-				corners.add(new Corner(a, b));
-				edgeCoordsSet.add(cantorPairing(a, b));
-			}
-			for (int j = 0; j < corners.size() - 1; j++) {
-				org.twak.camp.Edge edge = new org.twak.camp.Edge(corners.get(j),
-						corners.get((j + 1) % (corners.size() - 1)));
-				edge.machine = speed;
-				loop.append(edge);
-			}
-			loopL.add(loop);
-
-			for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
-				corners = new ArrayList<>();
-				// holes should be clockwise
-				LinearRing hole = polygon.getInteriorRingN(i).reverse();
-//				System.out.println("hole:" + Orientation.isCCW(hole.getCoordinates()));
-				for (int j = 0; j < hole.getNumPoints() - 1; j++) {
-					corners.add(new Corner(hole.getCoordinates()[j].x, hole.getCoordinates()[j].y));
-				}
-				loop = new Loop<>();
-				for (int j = 0; j < corners.size() - 1; j++) {
-					org.twak.camp.Edge edge = new org.twak.camp.Edge(corners.get(j),
-							corners.get((j + 1) % (corners.size() - 1)));
-					edge.machine = speed;
-					loop.append(edge);
-				}
-				loopL.add(loop);
-			}
-
-//		}
-
-		PShape lines = new PShape();
-		lines.setFamily(PShape.GEOMETRY);
-		lines.setStrokeCap(ROUND);
-		lines.setStroke(true);
-		lines.setStrokeWeight(3);
-		lines.setStroke(-1232222);
-		lines.beginShape(LINES);
-
-		try {
-			skeleton = new Skeleton(loopL, true);
-			skeleton.skeleton();
-			skeleton.output.edges.map.values().forEach(e -> {
-				boolean a = edgeCoordsSet.contains(cantorPairing(e.start.x, e.start.y));
-				boolean b = edgeCoordsSet.contains(cantorPairing(e.end.x, e.end.y));
-
-				if (a ^ b) { // branch
-					lines.vertex((float) e.start.x, (float) e.start.y);
-					lines.vertex((float) e.end.x, (float) e.end.y);
-				}
-				else {
-					if (a) { // edge
-					} else { // bone
-						lines.vertex((float) e.start.x, (float) e.start.y);
-						lines.vertex((float) e.end.x, (float) e.end.y);
-					}
-				}
-			});
-//			skeleton.output.faces.values().forEach(f -> {
-//				f.getLoopL().forEach(l -> {
-//					l.forEach(v -> {
-//						lines.vertex((float) v.x, (float) v.y);
-//					});
-//				});
-//				final org.twak.camp.Edge e = f.edge;
-//				lines.vertex((float) e.start.x, (float) e.start.y);
-//				lines.vertex((float) e.end.x, (float) e.end.y);
-//				f.topSE.forEach(e2 -> {
-//					lines.vertex((float) e2.start.x, (float) e2.start.y);
-//					lines.vertex((float) e2.end.x, (float) e2.end.y);
-//				});
-//			});
-		} catch (Exception ignore) {
-			// hide init or collision errors from console
-		}
-
-		lines.endShape();
-		return lines;
-	}
-
-	/**
-	 * assigns one natural number to each pair of natural numbers
-	 * 
-	 * @param a >= 0
-	 * @param b >= 0
-	 */
-	private static double cantorPairing(double a, double b) {
-		return (a + b) * (a + b + 1) / 2 + a;
 	}
 
 	/**
