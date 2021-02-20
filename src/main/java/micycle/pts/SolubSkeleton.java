@@ -26,6 +26,9 @@ import processing.core.PVector;
  * 6. Repeat from step 2 until there are only 2 rays left.<br>
  * 7. Connect the originating points of the last 2 rays to complete the
  * skeleton. *
+ * 
+ * @author Solub
+ * @author Java port by Michael Carleton
  */
 public class SolubSkeleton {
 

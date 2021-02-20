@@ -21,7 +21,6 @@ import java.util.Collection;
 import org.geotools.data.DataUtilities;
 import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.data.simple.SimpleFeatureIterator;
-import org.geotools.feature.FeatureCollection;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.feature.simple.SimpleFeatureTypeBuilder;
 import org.geotools.geometry.jts.JTS;
@@ -55,7 +54,7 @@ public class Contours {
 
 	private ProgressListener progressListener;
 
-	public SimpleFeatureCollection contour(FeatureCollection features, String elevation) {
+	public SimpleFeatureCollection contour(SimpleFeatureCollection features, String elevation) {
 		if (progressListener != null) {
 			progressListener.started();
 		}
@@ -90,7 +89,7 @@ public class Contours {
 		ftb.setName("contour");
 		ftb.add("the_geom", LineString.class);
 		ftb.add("elevation", Double.class);
-		ftb.setCRS(features.getBounds().getCoordinateReferenceSystem());
+//		ftb.setCRS(features.getBounds().getCoordinateReferenceSystem());
 		ftb.setDefaultGeometry("the_geom");
 		SimpleFeatureType type = ftb.buildFeatureType();
 		SimpleFeatureBuilder fBuilder = new SimpleFeatureBuilder(type);
@@ -149,7 +148,7 @@ public class Contours {
 	 * @param contourValue
 	 * @return
 	 */
-	public ArrayList<LineString> extractContour(Collection<QuadEdge> primaryEdges, double contourValue) {
+	private static ArrayList<LineString> extractContour(Collection<QuadEdge> primaryEdges, double contourValue) {
 		ArrayList<LineString> lines = new ArrayList<>();
 		for (QuadEdge edge : primaryEdges) {
 			Vertex[] v = new Vertex[3];

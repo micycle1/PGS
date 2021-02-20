@@ -23,6 +23,7 @@ import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.geometry.jts.JTS;
 import org.geotools.process.vector.ContourProcess;
 import org.locationtech.jts.algorithm.MinimumBoundingCircle;
+import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
 import org.locationtech.jts.densify.Densifier;
 import org.locationtech.jts.dissolve.LineDissolver;
@@ -55,6 +56,12 @@ import org.locationtech.jts.triangulate.quadedge.QuadEdgeSubdivision;
 import org.locationtech.jts.util.GeometricShapeFactory;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.feature.simple.SimpleFeatureType;
+import org.twak.camp.Corner;
+import org.twak.camp.Machine;
+import org.twak.camp.Skeleton;
+import org.twak.utils.collections.Loop;
+import org.twak.utils.collections.LoopL;
+
 import de.alsclo.voronoi.Voronoi;
 import earcut4j.Earcut;
 import micycle.pts.color.Blending;
@@ -68,7 +75,7 @@ import uk.osgb.algorithm.minkowski_sum.Minkowski_Sum;
 
 /**
  * PTS | Processing Topology Suite
- * 
+ * <p>
  * http://thecloudlab.org/processing/library.html
  * https://github.com/Rogach/jopenvoronoi https://github.com/IGNF/CartAGen
  * https://ignf.github.io/CartAGen/docs/algorithms/others/spinalize.html
@@ -94,6 +101,9 @@ public class PTS implements PConstants {
 	 * with zero distance
 	 */
 
+	/**
+	 * Defines number of vertex samples per bezier line (during PShape->JTS)
+	 */
 	protected static final int CURVE_SAMPLES = 20;
 
 	protected static GeometryFactory GEOM_FACTORY = new GeometryFactory();
@@ -604,15 +614,15 @@ public class PTS implements PConstants {
 	/**
 	 * Contour interval on shape
 	 */
-	public static PShape contour(PShape shape) {
+	public static PShape contour(PShape shape, PApplet p) {
 
 		Geometry g = fromPShape(shape);
 
-		ContourProcess vcp = new ContourProcess();
+		ContourProcess contourProcess = new ContourProcess();
 
 		SimpleFeatureType TYPE = null;
 		try {
-			TYPE = DataUtilities.createType("", "the_geom:Point," + "name:String," + "number:Double");
+			TYPE = DataUtilities.createType("", "the_geom:Point," + "number:Double");
 		} catch (SchemaException e) {
 			e.printStackTrace();
 		}
@@ -621,34 +631,34 @@ public class PTS implements PConstants {
 		final List<SimpleFeature> features = new ArrayList<>();
 
 		/**
-		 * Generate 100 random points within the geometry. Assign each point feature a
+		 * Generate N random points within the geometry. Assign each point feature a
 		 * number equal to the distance between geometry's centroid and the point.
 		 */
 		RandomPointsBuilder r = new RandomPointsBuilder();
 		r.setExtent(g);
-		r.setNumPoints(200);
+		r.setNumPoints(1000);
 		Geometry points = r.getGeometry();
 		final Point shapeCentroid = g.getCentroid();
 
 		for (Coordinate coord : points.getCoordinates()) {
 			Point point = GEOM_FACTORY.createPoint(coord);
 			featureBuilder.add(point);
-			featureBuilder.add(String.valueOf(coord.hashCode()));
 			featureBuilder.add(point.distance(shapeCentroid));
 			SimpleFeature feature = featureBuilder.buildFeature(null);
 			features.add(feature);
+			p.ellipse((float) point.getX(), (float) point.getY(), 5, 5);
 		}
 
 		SimpleFeatureCollection collection = new ListFeatureCollection(TYPE, features);
 
-		SimpleFeatureCollection results = vcp.execute(collection, "number", new double[] { 0, 2, 4, 6, 10 }, null, true,
-				true, null);
+		SimpleFeatureCollection results = contourProcess.execute(collection, "number", new double[] {}, 3d, false,
+				false, null);
 
 		PShape lines = new PShape();
 		lines.setFamily(PShape.GEOMETRY);
 		lines.setStrokeCap(ROUND);
 		lines.setStroke(true);
-		lines.setStrokeWeight(6);
+		lines.setStrokeWeight(2);
 		lines.setStroke(-1232222);
 		lines.beginShape(LINES);
 
@@ -923,10 +933,12 @@ public class PTS implements PConstants {
 	}
 
 	/**
+	 * Straight skeleton. Not robust, but fast. Does not support holes
 	 * 
 	 * @param shape     a hull
 	 * @param tolerance minimum closeness that skeleton "bone" is to nearest vertex
-	 * @return
+	 * @return SS object
+	 * @see #straightSkeleton(PShape)
 	 */
 	public static SolubSkeleton solubSkeleton(PShape shape, float tolerance) {
 
@@ -934,7 +946,8 @@ public class PTS implements PConstants {
 
 		Polygon p = (Polygon) fromPShape(shape);
 
-		for (Coordinate coordinate : p.getExteriorRing().reverse().getCoordinates()) { // reverse
+		// exterior ring is clockwise, so reverse() to get anti-clockwise
+		for (Coordinate coordinate : p.getExteriorRing().reverse().getCoordinates()) {
 			points.add(new PVector((float) coordinate.x, (float) coordinate.y));
 		}
 		points.remove(0); // remove closing point
@@ -945,35 +958,124 @@ public class PTS implements PConstants {
 	}
 
 	public static PShape straightSkeleton(PShape shape) {
-		Polygon p = (Polygon) fromPShape(shape);
-		LineString l = p.getExteriorRing().reverse(); // ? | also, remove last coord?
-//		l = (LineString) DouglasPeuckerSimplifier.simplify(l, 3);
+		// https://github.com/Agent14zbz/ZTools/blob/main/src/main/java/geometry/ZSkeleton.java
 
-//		final Machine speed = new Machine(1);
-//
-//		Loop<org.twak.camp.Edge> exteriorLoop = new Loop<>();
-////		LoopL<Corner> vertices = new LoopL<>();
-//
-//		Corner pCorner = new Corner(l.getCoordinateN(0).x, l.getCoordinateN(0).y);
-//		for (int i = 1; i < l.getCoordinates().length; i++) {
-//			Corner corner = new Corner(l.getCoordinateN(i).x, l.getCoordinateN(i).y);
-//			org.twak.camp.Edge e = new org.twak.camp.Edge(pCorner, corner);
-//			e.machine = speed;
-//			exteriorLoop.append(e);
-//			pCorner = corner;
-//			System.out.println(i);
-//		} // not closed loop
-//		int end = l.getCoordinates().length - 1;
-//		org.twak.camp.Edge e = new org.twak.camp.Edge(new Corner(l.getCoordinateN(end).x, l.getCoordinateN(end).y),
-//				new Corner(l.getCoordinateN(0).x, l.getCoordinateN(0).y));
-//		e.machine = speed;
-//		exteriorLoop.append(e);
-//
-//		Skeleton skeleton = new Skeleton();
-//		skeleton.setupForEdges(exteriorLoop.singleton());
-//		skeleton.skeleton();
+		Machine speed = new Machine(1); // every edge same speed
 
-		return null;
+		Geometry g = fromPShape(shape);
+		Polygon polygon;
+		if (g.getGeometryType() == Geometry.TYPENAME_POLYGON) {
+			polygon = (Polygon) g;
+		} else {
+			System.out.println("MultiPolygon not supported yet.");
+			return new PShape();
+		}
+
+		HashSet<Double> edgeCoordsSet = new HashSet<>();
+
+		Skeleton skeleton;
+
+			LoopL<org.twak.camp.Edge> loopL = new LoopL<>(); // list of loops
+
+			ArrayList<Corner> corners = new ArrayList<>();
+			Loop<org.twak.camp.Edge> loop = new Loop<>();
+
+			LinearRing exterior = polygon.getExteriorRing();
+			if (polygon.getNumInteriorRing() > 0) {
+				exterior = exterior.reverse();
+			}
+//			System.out.println("exterior: " + Orientation.isCCW(exterior.getCoordinates()));
+			for (int j = 0; j < exterior.getCoordinates().length - 1; j++) {
+				double a = exterior.getCoordinates()[j].x;
+				double b = exterior.getCoordinates()[j].y;
+				corners.add(new Corner(a, b));
+				edgeCoordsSet.add(cantorPairing(a, b));
+			}
+			for (int j = 0; j < corners.size() - 1; j++) {
+				org.twak.camp.Edge edge = new org.twak.camp.Edge(corners.get(j),
+						corners.get((j + 1) % (corners.size() - 1)));
+				edge.machine = speed;
+				loop.append(edge);
+			}
+			loopL.add(loop);
+
+			for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
+				corners = new ArrayList<>();
+				// holes should be clockwise
+				LinearRing hole = polygon.getInteriorRingN(i).reverse();
+//				System.out.println("hole:" + Orientation.isCCW(hole.getCoordinates()));
+				for (int j = 0; j < hole.getNumPoints() - 1; j++) {
+					corners.add(new Corner(hole.getCoordinates()[j].x, hole.getCoordinates()[j].y));
+				}
+				loop = new Loop<>();
+				for (int j = 0; j < corners.size() - 1; j++) {
+					org.twak.camp.Edge edge = new org.twak.camp.Edge(corners.get(j),
+							corners.get((j + 1) % (corners.size() - 1)));
+					edge.machine = speed;
+					loop.append(edge);
+				}
+				loopL.add(loop);
+			}
+
+//		}
+
+		PShape lines = new PShape();
+		lines.setFamily(PShape.GEOMETRY);
+		lines.setStrokeCap(ROUND);
+		lines.setStroke(true);
+		lines.setStrokeWeight(3);
+		lines.setStroke(-1232222);
+		lines.beginShape(LINES);
+
+		try {
+			skeleton = new Skeleton(loopL, true);
+			skeleton.skeleton();
+			skeleton.output.edges.map.values().forEach(e -> {
+				boolean a = edgeCoordsSet.contains(cantorPairing(e.start.x, e.start.y));
+				boolean b = edgeCoordsSet.contains(cantorPairing(e.end.x, e.end.y));
+
+				if (a ^ b) { // branch
+					lines.vertex((float) e.start.x, (float) e.start.y);
+					lines.vertex((float) e.end.x, (float) e.end.y);
+				}
+				else {
+					if (a) { // edge
+					} else { // bone
+						lines.vertex((float) e.start.x, (float) e.start.y);
+						lines.vertex((float) e.end.x, (float) e.end.y);
+					}
+				}
+			});
+//			skeleton.output.faces.values().forEach(f -> {
+//				f.getLoopL().forEach(l -> {
+//					l.forEach(v -> {
+//						lines.vertex((float) v.x, (float) v.y);
+//					});
+//				});
+//				final org.twak.camp.Edge e = f.edge;
+//				lines.vertex((float) e.start.x, (float) e.start.y);
+//				lines.vertex((float) e.end.x, (float) e.end.y);
+//				f.topSE.forEach(e2 -> {
+//					lines.vertex((float) e2.start.x, (float) e2.start.y);
+//					lines.vertex((float) e2.end.x, (float) e2.end.y);
+//				});
+//			});
+		} catch (Exception ignore) {
+			// hide init or collision errors from console
+		}
+
+		lines.endShape();
+		return lines;
+	}
+
+	/**
+	 * assigns one natural number to each pair of natural numbers
+	 * 
+	 * @param a >= 0
+	 * @param b >= 0
+	 */
+	private static double cantorPairing(double a, double b) {
+		return (a + b) * (a + b + 1) / 2 + a;
 	}
 
 	/**
