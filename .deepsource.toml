@@ -1,7 +1,5 @@
 version = 1
 
-exclude_patterns = [".github/workflows/**"]
-
 [[analyzers]]
 name = "java"
 enabled = true
