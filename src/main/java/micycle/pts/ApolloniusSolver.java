@@ -20,6 +20,8 @@ public class ApolloniusSolver {
 	 */
 	public static Circle solveApollonius(Circle c1, Circle c2, Circle c3, int s1, int s2, int s3) {
 
+		// https://github.com/DIKU-Steiner/ProGAL/blob/master/src/ProGAL/geom2d/ApolloniusSolver.java
+
 		double x1 = c1.center[0];
 		double y1 = c1.center[1];
 		double r1 = c1.radius;

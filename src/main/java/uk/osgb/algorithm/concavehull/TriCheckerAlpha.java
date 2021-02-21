@@ -1,6 +1,6 @@
 /** For concave hull construction based on Alpha shape criterion (but not exactly following the definition)
  * Original paper: Edelsbrunner, Herbert; Kirkpatrick, David G.; Seidel, Raimund (1983), "On the shape of a set of points in the plane", 
- * IEEE Transactions on Information Theory, 29 (4): 551–559, doi:10.1109/TIT.1983.1056714
+ * IEEE Transactions on Information Theory, 29 (4): 551 559, doi:10.1109/TIT.1983.1056714
  * 
  * Author: Sheng Zhou (Sheng.Zhou@os.uk)
  * 
