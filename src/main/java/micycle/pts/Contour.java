@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 
+import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.densify.Densifier;
 import org.locationtech.jts.dissolve.LineDissolver;
 import org.locationtech.jts.geom.Coordinate;
@@ -23,6 +24,9 @@ import org.locationtech.jts.operation.linemerge.LineMergeEdge;
 import org.locationtech.jts.operation.linemerge.LineMergeGraph;
 import org.locationtech.jts.planargraph.Node;
 import org.locationtech.jts.triangulate.VoronoiDiagramBuilder;
+import org.tinfour.common.Vertex;
+import org.tinfour.contour.ContourBuilderForTin;
+import org.tinfour.standard.IncrementalTin;
 import org.twak.camp.Corner;
 import org.twak.camp.Machine;
 import org.twak.camp.Skeleton;
@@ -30,11 +34,12 @@ import org.twak.utils.collections.Loop;
 import org.twak.utils.collections.LoopL;
 
 import processing.core.PApplet;
+import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Methods for contouring polygons.
+ * Houses a variety of methods for producing different kinds of shape contours.
  * 
  * <p>
  * A 2D contour is a closed sequence (a cycle) of 3 or more connected 2D
@@ -87,12 +92,6 @@ public class Contour {
 		lines.setStrokeWeight(2);
 		lines.setStroke(-1232222);
 		lines.beginShape(LINES);
-
-		LineMergeGraph lmg = new LineMergeGraph();
-
-//		for (int i = 0; i < dissolved.getNumGeometries(); i++) {
-//			lmg.addEdge((LineString) dissolved.getGeometryN(i));
-//		}
 
 		ArrayList<LineString> axis = new ArrayList<LineString>();
 
@@ -152,13 +151,13 @@ public class Contour {
 		Iterator<Node> ni = (Iterator<Node>) graph.nodeIterator();
 
 		((HashSet<LineMergeEdge>) graph.getEdges()).forEach(e -> {
-//			if ((e.getDirEdge(0).getFromNode().getDegree() > 1) && (e.getDirEdge(0).getToNode().getDegree() > 1)) 
-			final LineString l = e.getLine();
-			p.strokeWeight(3);
-			p.stroke((float) l.getStartPoint().getX() % 255, (float) l.getEndPoint().getY() % 255, 125);
-			p.line((float) l.getStartPoint().getX(), (float) l.getStartPoint().getY(), (float) l.getEndPoint().getX(),
-					(float) l.getEndPoint().getY());
-
+			if ((e.getDirEdge(0).getFromNode().getDegree() > 1) && (e.getDirEdge(0).getToNode().getDegree() > 1)) {
+				final LineString l = e.getLine();
+				p.strokeWeight(3);
+				p.stroke((float) l.getStartPoint().getX() % 255, (float) l.getEndPoint().getY() % 255, 125);
+				p.line((float) l.getStartPoint().getX(), (float) l.getStartPoint().getY(),
+						(float) l.getEndPoint().getX(), (float) l.getEndPoint().getY());
+			}
 		});
 
 		p.stroke(123, 76, 81);
@@ -276,10 +275,9 @@ public class Contour {
 		Loop<org.twak.camp.Edge> loop = new Loop<>();
 
 		LinearRing exterior = polygon.getExteriorRing();
-		if (polygon.getNumInteriorRing() > 0) {
+		if (!Orientation.isCCW(exterior.getCoordinates())) {
 			exterior = exterior.reverse();
 		}
-//			System.out.println("exterior: " + Orientation.isCCW(exterior.getCoordinates()));
 		for (int j = 0; j < exterior.getCoordinates().length - 1; j++) {
 			double a = exterior.getCoordinates()[j].x;
 			double b = exterior.getCoordinates()[j].y;
@@ -362,12 +360,133 @@ public class Contour {
 	}
 
 	/**
-	 * Uniquely encodes two numbers into a single natural number.
+	 * Generate a Topographic-like isoline contour map of the shape. The "elevation"
+	 * (or z values) of points is the euclidean distance between a point in the
+	 * shape and the input highPoint.
+	 * <p>
+	 * Assign each point feature a number equal to the distance between geometry's
+	 * centroid and the point.
+	 * 
+	 * @param shape
+	 * @param highPoint
+	 * @return
+	 */
+	public static PShape isolines(PShape shape, PVector highPoint, float intervalSpacing) {
+		Geometry g = fromPShape(shape);
+		int buffer = Math.max(10, Math.round(intervalSpacing) + 1);
+		PreparedGeometry cache = PreparedGeometryFactory.prepare(g.buffer(10));
+
+		List<Vertex> tinVertices = new ArrayList<Vertex>(200);
+		double maxDist = 0;
+
+		PoissonDistribution pd = new PoissonDistribution(0);
+		Coordinate[] e = g.getEnvelope().getCoordinates(); // envelope/bounding box of shape
+
+		/**
+		 * Poisson a little faster, but isolines are more rough
+		 */
+//		ArrayList<PVector> randomPoints = pd.generate(e[0].x - buffer, e[0].y - buffer, e[3].x + buffer,
+//				e[1].y + buffer, intervalSpacing, 6);
+		ArrayList<PVector> randomPoints = grid(e[0].x - buffer, e[0].y - buffer, e[3].x + buffer, e[1].y + buffer,
+				intervalSpacing, intervalSpacing);
+
+		for (PVector v : randomPoints) {
+			/**
+			 * Major bottleneck is isoline computation so reduce poisson points to only
+			 * those needed.
+			 */
+			if (cache.covers(PTS.pointFromPVector(v))) {
+				double d = highPoint.dist(v);
+				maxDist = Math.max(d, maxDist);
+				tinVertices.add(new Vertex(v.x, v.y, d, 0));
+			}
+//			if (g.isWithinDistance(PTS.pointFromPVector(v), 10)) {
+//				double d = highPoint.dist(v);
+//				maxDist = Math.max(d, maxDist);
+//				tinVertices.add(new Vertex(v.x, v.y, d, 0));
+//			}
+		}
+
+		final IncrementalTin tin = new IncrementalTin(intervalSpacing);
+		tin.add(tinVertices, null); // insert point set; points are triangulated upon insertion
+
+		double[] intervals = generateDoubleSequence(0, maxDist, intervalSpacing);
+
+		/**
+		 * A null valuator tells the builder to just use the z values from the vertices
+		 * rather than applying any adjustments to their values.
+		 */
+		final ContourBuilderForTin builder = new ContourBuilderForTin(tin, null, intervals, true);
+
+		List<org.tinfour.contour.Contour> contours = builder.getContours();
+
+		PShape parent = new PShape(PConstants.GROUP);
+		parent.setKind(PConstants.GROUP);
+
+		LineDissolver ld = new LineDissolver();
+		int q = 0;
+		for (org.tinfour.contour.Contour contour : contours) {
+			Coordinate[] coords = new Coordinate[contour.getCoordinates().length / 2];
+			for (int i = 0; i < contour.getCoordinates().length; i += 2) {
+				float vx = (float) contour.getCoordinates()[i];
+				float vy = (float) contour.getCoordinates()[i + 1];
+				coords[i / 2] = new Coordinate(vx, vy);
+			}
+			ld.add(GEOM_FACTORY.createLineString(coords));
+		}
+
+		return Conversion.toPShape(ld.getResult().intersection(g));
+	}
+
+	/**
+	 */
+	public static void contour(int points, int pointWeights, int interval, int... orIntervalCount) {
+
+		/**
+		 * See:
+		 * https://github.com/hageldave/JPlotter/blob/master/jplotter/src/main/java/hageldave/jplotter/misc/Contours.java
+		 * https://blog.bruce-hill.com/meandering-triangles
+		 * http://indiemaps.com/blog/2008/06/isolining-package-for-actionscript-3/
+		 */
+	}
+
+	/**
+	 * Uniquely encodes two numbers (order-dependent) into a single natural number.
 	 */
 	private static double cantorPairing(double a, double b) {
 		a = (a >= 0.0 ? 2.0 * a : (-2.0 * a) - 1.0); // enable negative input values
 		b = (b >= 0.0 ? 2.0 * b : (-2.0 * b) - 1.0); // enable negative input values
 		return (a + b) * (a + b + 1) / 2 + a;
+	}
+
+	/**
+	 * Start inclusive; end exclusive
+	 */
+	public static double[] generateDoubleSequence(double start, double end, double step) {
+		double[] sequence = new double[(int) Math.ceil((end - start) / step)];
+		for (int i = 0; i < sequence.length; i++) {
+			sequence[i] = start + i * step;
+		}
+		return sequence;
+	}
+
+	private static double dist(double x1, double y1, double x2, double y2) {
+		return Math.sqrt((y2 - y1) * (y2 - y1) + (x2 - x1) * (x2 - x1));
+	}
+
+	private static ArrayList<PVector> grid(double minX, double minY, double maxX, double maxY, double spacingX,
+			double spacingY) {
+		ArrayList<PVector> grid = new ArrayList<>();
+		double[] y = generateDoubleSequence(minY, maxY, spacingY);
+		double[] x = generateDoubleSequence(minX, maxX, spacingX);
+
+		for (int i = 0; i < x.length; i++) {
+			for (int j = 0; j < y.length; j++) {
+				grid.add(new PVector((float) x[i], (float) y[j]));
+			}
+		}
+		return grid;
+
 	}
 
 }

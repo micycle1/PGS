@@ -23,7 +23,7 @@ import org.geotools.feature.SchemaException;
 import org.geotools.feature.simple.SimpleFeatureBuilder;
 import org.geotools.geometry.jts.GeometryCollector;
 import org.geotools.geometry.jts.JTS;
-import org.geotools.process.vector.ContourProcess;
+import org.geotools.process.vector.GridProcess;
 import org.locationtech.jts.algorithm.MinimumBoundingCircle;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
@@ -48,6 +48,7 @@ import org.locationtech.jts.operation.distance.DistanceOp;
 import org.locationtech.jts.operation.linemerge.LineMergeEdge;
 import org.locationtech.jts.operation.linemerge.LineMergeGraph;
 import org.locationtech.jts.operation.linemerge.LineMerger;
+import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.planargraph.DirectedEdge;
@@ -118,7 +119,7 @@ public class PTS implements PConstants {
 
 	/**
 	 * The Maximum Inscribed Circle is determined by a point in the interior of the
-	 * area which has the farthest distance from the area boundary,along with a
+	 * area which has the farthest distance from the area boundary, along with a
 	 * boundary point at that distance.
 	 * 
 	 * @param shape
@@ -145,13 +146,10 @@ public class PTS implements PConstants {
 	 */
 	public static PShape maximumInscribedCircle(PShape shape, PVector centerPoint) {
 		Geometry g = fromPShape(shape);
-//		Polygon poly = (Polygon) g;
 		Point p = pointFromPVector(centerPoint);
-		Coordinate center = DistanceOp.nearestPoints(g, p)[0];
+		Coordinate closestEdgePoint = DistanceOp.nearestPoints(g.getBoundary(), p)[0];
 
-		// or .distance(point)
-
-		double radius = distance(GEOM_FACTORY.createPoint(center), p);
+		double radius = distance(GEOM_FACTORY.createPoint(closestEdgePoint), p);
 		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
 		shapeFactory.setNumPoints(CURVE_SAMPLES * 4); // TODO magic constant
 		shapeFactory.setCentre(p.getCoordinate());
@@ -189,7 +187,12 @@ public class PTS implements PConstants {
 		return (Polygon) JTS.smooth(shape, fit);
 	}
 
-	private static Geometry smooth(Geometry shape, float fit) {
+	/**
+	 * @param shape
+	 * @param fit   tightness of fit from 0 (loose) to 1 (tight)
+	 * @return
+	 */
+	protected static Geometry smooth(Geometry shape, float fit) {
 		return JTS.smooth(shape, fit);
 	}
 
@@ -234,6 +237,7 @@ public class PTS implements PConstants {
 	 * @see #union(PShape...)
 	 */
 	public static PShape union(PShape a, PShape b) {
+//		OverlayNG.overlay(null, null, CURVE_SAMPLES) // TODO investigate
 		return toPShape(fromPShape(a).union(fromPShape(b)));
 	}
 
@@ -626,7 +630,7 @@ public class PTS implements PConstants {
 		}
 		b.setSites(GEOM_FACTORY.createPolygon(coords));
 		b.setTolerance(tolerance);
-//		b.setConstraints(fromPShape(constraints));
+//		b.setConstraints(fromPShape(constraints)); // TODO?
 		Geometry out = b.getTriangles(GEOM_FACTORY); // triangulates concave hull of points
 		out = out.intersection(fromPShape(constraints)); // get convex hull
 		return toPShape(out);
@@ -653,69 +657,6 @@ public class PTS implements PConstants {
 		d.setSites(coords);
 		Geometry out = d.getTriangles(GEOM_FACTORY);
 		return toPShape(out);
-	}
-
-	/**
-	 * Contour interval on shape
-	 */
-	public static PShape contour(PShape shape, PApplet p) {
-
-		Geometry g = fromPShape(shape);
-
-		ContourProcess contourProcess = new ContourProcess();
-
-		SimpleFeatureType TYPE = null;
-		try {
-			TYPE = DataUtilities.createType("", "the_geom:Point," + "number:Double");
-		} catch (SchemaException e) {
-			e.printStackTrace();
-		}
-
-		final SimpleFeatureBuilder featureBuilder = new SimpleFeatureBuilder(TYPE);
-		final List<SimpleFeature> features = new ArrayList<>();
-
-		/**
-		 * Generate N random points within the geometry. Assign each point feature a
-		 * number equal to the distance between geometry's centroid and the point.
-		 */
-		RandomPointsBuilder r = new RandomPointsBuilder();
-		r.setExtent(g);
-		r.setNumPoints(1000);
-		Geometry points = r.getGeometry();
-		final Point shapeCentroid = g.getCentroid();
-
-		for (Coordinate coord : points.getCoordinates()) {
-			Point point = GEOM_FACTORY.createPoint(coord);
-			featureBuilder.add(point);
-			featureBuilder.add(point.distance(shapeCentroid));
-			SimpleFeature feature = featureBuilder.buildFeature(null);
-			features.add(feature);
-			p.ellipse((float) point.getX(), (float) point.getY(), 5, 5);
-		}
-
-		SimpleFeatureCollection collection = new ListFeatureCollection(TYPE, features);
-
-		SimpleFeatureCollection results = contourProcess.execute(collection, "number", new double[] {}, 3d, false,
-				false, null);
-
-		PShape lines = new PShape();
-		lines.setFamily(PShape.GEOMETRY);
-		lines.setStrokeCap(ROUND);
-		lines.setStroke(true);
-		lines.setStrokeWeight(2);
-		lines.setStroke(-1232222);
-		lines.beginShape(LINES);
-
-		SimpleFeatureIterator contourIterator = results.features();
-
-		while (contourIterator.hasNext()) {
-			LineString l = (LineString) contourIterator.next().getDefaultGeometry();
-			lines.vertex((float) l.getStartPoint().getX(), (float) l.getStartPoint().getY());
-			lines.vertex((float) l.getEndPoint().getX(), (float) l.getEndPoint().getY());
-		}
-
-		lines.endShape();
-		return lines;
 	}
 
 	/**
@@ -1312,7 +1253,7 @@ public class PTS implements PConstants {
 		JTS.removeCollinearVertices(g);
 	}
 
-	private static Point pointFromPVector(PVector p) {
+	protected static Point pointFromPVector(PVector p) {
 		return GEOM_FACTORY.createPoint(new Coordinate(p.x, p.y));
 	}
 

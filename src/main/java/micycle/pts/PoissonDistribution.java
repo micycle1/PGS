@@ -14,6 +14,7 @@ import java.util.LinkedList;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
+import processing.core.PApplet;
 import processing.core.PVector;
 
 /**
@@ -35,13 +36,24 @@ public final class PoissonDistribution {
 	private int gridWidth, gridHeight;
 	private float xmin, xmax, ymin, ymax;
 	private ArrayList<PVector> points;
+	private Random random;
 
 	public PoissonDistribution() {
+		this(System.currentTimeMillis());
+	}
+
+	public PoissonDistribution(long seed) {
+		random = new Random(seed);
 		points = new ArrayList<PVector>();
 	}
 
 	public ArrayList<PVector> getPoints() {
 		return points;
+	}
+
+	public ArrayList<PVector> generate(double xmin, double ymin, double xmax, double ymax, double minDist,
+			int rejectionLimit) {
+		return generate((float) xmin, (float) ymin, (float) xmax, (float) ymax, (float) minDist, rejectionLimit);
 	}
 
 	/**
@@ -64,7 +76,8 @@ public final class PoissonDistribution {
 		points.clear();
 		LinkedList<PVector> processList = new LinkedList<PVector>(); // active list
 
-		PVector p = new PVector(random(xmin, xmax), random(ymin, ymax)); // ADJACENT SQUARES NEED A COMMON VALUE
+		PVector p = new PVector(random(xmin, xmax), random(ymin, ymax)); // ADJACENT SQUARES NEED A
+																			// COMMON VALUE
 		processList.add(p);
 		points.add(p);
 		addToGrid(p);
@@ -99,7 +112,7 @@ public final class PoissonDistribution {
 	 * Create points randomly on a spherical annulus.
 	 **/
 	private PVector createRandomPointAround(PVector p, float minDist, float maxDist, int iteration) {
-		float a = random(0, 2 * Math.PI);
+		float a = random(0, (float) (2 * Math.PI));
 		float r = random(minDist, maxDist);
 		// float a = rand((long)(p.x*iteration),(long)(p.y*iteration))*2*PI;
 		// float r = minDist +
@@ -143,8 +156,18 @@ public final class PoissonDistribution {
 		return gy * gridWidth + gx;
 	}
 
-	private static float random(double min, double max) {
-		return (float) ThreadLocalRandom.current().nextDouble(min, max);
+//	private static float random(double min, double max) {
+//		return (float) ThreadLocalRandom.current().nextDouble(min, max);
+//	}
+
+	/**
+	 * @param min - The minimum.
+	 * @param max - The maximum.
+	 * @return A random double between these numbers (inclusive the minimum and
+	 *         maximum).
+	 */
+	private float random(double min, double max) {
+		return (float) (min + (max - min) * random.nextDouble());
 	}
 
 }

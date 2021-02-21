@@ -1,11 +1,13 @@
 package micycle.pts;
 
+import static micycle.pts.PTS.GEOM_FACTORY;
+import static processing.core.PConstants.ROUND;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Polygon;
@@ -47,7 +49,7 @@ public class Conversion implements PConstants {
 				children[i] = (Polygon) fromPShape(flatChildren.get(i));
 			}
 			// TODO return to multipoly instead to prevent some crashes
-			return (PTS.GEOM_FACTORY.createMultiPolygon(children).buffer(0)); // TODO don't flatten?
+			return (GEOM_FACTORY.createMultiPolygon(children).buffer(0)); // TODO don't flatten?
 
 		}
 
@@ -132,8 +134,13 @@ public class Conversion implements PConstants {
 		final Coordinate[] outerCoords = new Coordinate[coords.get(0).size()];
 		Arrays.setAll(outerCoords, coords.get(0)::get);
 
-		GeometryFactory geometryFactory = new GeometryFactory();
-		LinearRing outer = geometryFactory.createLinearRing(outerCoords);
+		LinearRing outer = null;
+		if (outerCoords.length >= 4 || outerCoords.length == 0) {
+			outer = GEOM_FACTORY.createLinearRing(outerCoords);
+		}
+		else {
+//			System.out.println("coords: " + outerCoords.length);
+		}
 
 		/**
 		 * Create linear ring for each hole in the shape
@@ -143,10 +150,10 @@ public class Conversion implements PConstants {
 		for (int j = 1; j < coords.size(); j++) {
 			final Coordinate[] innerCoords = new Coordinate[coords.get(j).size()];
 			Arrays.setAll(innerCoords, coords.get(j)::get);
-			holes[j - 1] = geometryFactory.createLinearRing(innerCoords);
+			holes[j - 1] = GEOM_FACTORY.createLinearRing(innerCoords);
 		}
 
-		return geometryFactory.createPolygon(outer, holes);
+		return GEOM_FACTORY.createPolygon(outer, holes);
 	}
 
 //	/**
@@ -338,20 +345,37 @@ public class Conversion implements PConstants {
 				}
 
 			}
-		} else {
+		} else { // not very primitive
 			PShape parent = new PShape(GROUP);
 			parent.setFill(-16711936); // TODO
 			for (int i = 0; i < geometry.getNumGeometries(); i++) {
 
 				PShape child = null;
-				if (geometry.getGeometryN(i).getNumGeometries() > 1) { // geom collection
+				if (geometry.getGeometryN(i).getNumGeometries() > 1) { // is geom collection
 					child = toPShape(geometry.getGeometryN(i));
 				} else {
 
-					// switch on geometry.getGeometryType()
+					// TODO switch case on: geometry.getGeometryType()
 
 					if (geometry.getGeometryN(i) instanceof LineString) {
-						System.out.println(geometry.getCoordinates().length);
+						LineString l = (LineString) geometry.getGeometryN(i);
+
+						// TODO remove if-else here?
+//						System.out.println("todo linestring: " + geometry.getCoordinates().length);
+						child = new PShape();
+						child.setFamily(PShape.GEOMETRY);
+//						child.setStrokeCap(ROUND);
+						child.setStroke(true);
+						child.setStrokeWeight(2);
+						child.setStroke(-1232222);
+						child.beginShape();
+						for (int j = 0; j < l.getCoordinates().length; j++) {
+							float vx = (float) l.getCoordinates()[j].x;
+							float vy = (float) l.getCoordinates()[j].y;
+							child.vertex(vx, vy);
+						}
+						child.endShape();
+						parent.addChild(child);
 					} else {
 
 						if (geometry.getGeometryN(i).getCoordinates().length > 2) { // not Point or linestring
