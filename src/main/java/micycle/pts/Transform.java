@@ -21,7 +21,25 @@ import processing.core.PVector;
  */
 public class Transform {
 
-	// TODO shear+scale
+	// TODO shear
+
+	/**
+	 * Scales the shape relative to its center
+	 * 
+	 * @param shape
+	 * @param scale
+	 * @return
+	 */
+	public static PShape scale(PShape shape, float scale) {
+		Coordinate c = fromPShape(shape).getCentroid().getCoordinate();
+		AffineTransformation t = AffineTransformation.scaleInstance(scale, scale, c.x, c.y);
+		return toPShape(t.transform(fromPShape(shape)));
+	}
+
+	public static PShape scale(PShape shape, float scaleX, float scaleY) {
+		AffineTransformation t = AffineTransformation.scaleInstance(scaleX, scaleY);
+		return toPShape(t.transform(fromPShape(shape)));
+	}
 
 	/**
 	 * Flip based on the centre point TODO move near rotate

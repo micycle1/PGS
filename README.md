@@ -4,7 +4,7 @@
 
 ---
 
-A library for manipulating PShape geometry
+A library for manipulating PShape geometry.
 
 PTS wraps JTS, enabling its methods to be applied to Processing's `PShape` objects. Beyond that, PTS provides other geometry __ such as splines.
 
@@ -21,6 +21,9 @@ PTS wraps JTS, enabling its methods to be applied to Processing's `PShape` objec
 - Area, centroid, etc.
 
 ### SPATIAL RELATIONSHIPS
+
+- Within
+- Contains
 ###  BUFFERS
 
 ### POLYGONIZATION
@@ -30,12 +33,17 @@ PTS wraps JTS, enabling its methods to be applied to Processing's `PShape` objec
 - Overlay ops, buffer(), convexHull()
 - Metrics
 
-### Geometry Processing
+## Geometry Processing
 - Line Merging
 - Noding & Polygonization
 - Simplification
 - Linear Referencing
 
+
+### Hulls
+- Concave
+- Convex
+- Snap
 
 ### Geometric Optimization
 - Bounding Volumes (enclosing circle)
@@ -47,6 +55,23 @@ PTS wraps JTS, enabling its methods to be applied to Processing's `PShape` objec
 
 - Voronoi
 - Poisson-Disc
+
+### Contours
+
+- Medial Axis
+
+- Dissolved Medial Axis
+  
+  A medial axis where small line segments are dissolved into larger ones. The result is often more akin to a straight skeleton.
+- Straight Skeleton
+  
+  Uniform straight skeleton
+
+- Isolines (topographic contour lines)
+
+- Mitered Offset Curves
+
+  Mitered offsets based on miter, bevel or round offset styles. 
 
 ## Libraries
 
