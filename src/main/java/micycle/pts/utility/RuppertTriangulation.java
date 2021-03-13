@@ -1,4 +1,4 @@
-package micycle.pts;
+package micycle.pts.utility;
 
 import static micycle.pts.Conversion.fromPShape;
 import static micycle.pts.Conversion.toPShape;
@@ -14,6 +14,7 @@ import org.locationtech.jts.triangulate.quadedge.QuadEdge;
 import org.locationtech.jts.triangulate.quadedge.QuadEdgeSubdivision;
 import org.locationtech.jts.triangulate.quadedge.Vertex;
 
+import micycle.pts.PTS;
 import processing.core.PShape;
 
 /**

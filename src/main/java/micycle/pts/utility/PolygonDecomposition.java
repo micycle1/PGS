@@ -22,7 +22,9 @@
  * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT 
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package micycle.pts;
+package micycle.pts.utility;
+
+import static micycle.pts.PTS.GEOM_FACTORY;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -51,8 +53,6 @@ import org.locationtech.jts.geom.Polygon;
  * @see <a href="http://mnbayazit.com/406/bayazit" target="_blank">Bayazit</a>
  */
 public class PolygonDecomposition {
-
-	private static GeometryFactory GEOM_FACTORY = new GeometryFactory();
 
 	public static List<Polygon> decompose(Polygon polygon) {
 		Vector2[] points = new Vector2[polygon.getCoordinates().length];

@@ -1,4 +1,4 @@
-package micycle.pts;
+package micycle.pts.utility;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,7 +12,7 @@ import processing.core.PVector;
 /**
  * Random Convex Polygons
  */
-class RandomPolygon {
+public class RandomPolygon {
 
 	private static final Random RAND = ThreadLocalRandom.current();
 

@@ -36,6 +36,8 @@ import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.simplify.VWSimplifier;
 import org.locationtech.jts.util.GeometricShapeFactory;
 import micycle.pts.color.Blending;
+import micycle.pts.utility.PolygonDecomposition;
+import micycle.pts.utility.RandomPolygon;
 import processing.core.PApplet;
 import processing.core.PConstants;
 import processing.core.PShape;

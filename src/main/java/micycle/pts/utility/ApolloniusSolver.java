@@ -1,4 +1,4 @@
-package micycle.pts;
+package micycle.pts.utility;
 
 public class ApolloniusSolver {
 

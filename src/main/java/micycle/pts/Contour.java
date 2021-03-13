@@ -43,6 +43,8 @@ import gishur.lang.SimpleListItem;
 import gishur.x.XPoint;
 import micycle.medialAxis.MedialAxis;
 import micycle.medialAxis.MedialAxis.Branch;
+import micycle.pts.utility.PoissonDistribution;
+import micycle.pts.utility.SolubSkeleton;
 import processing.core.PApplet;
 import processing.core.PConstants;
 import processing.core.PShape;
