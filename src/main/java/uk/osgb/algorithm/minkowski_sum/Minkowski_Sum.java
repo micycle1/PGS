@@ -49,22 +49,22 @@ import org.locationtech.jts.geom.util.AffineTransformation;
 /**
  * This is an experimental implementation of Minkowski sum and difference based
  * on JTS geometric functionality.
- * 
+ * <p>
  * Current implementation supports Minkowski sums between a "source" geometry
  * (polygon/linestring/multipolygon/multilinestring/GeometryCollection) and a
  * "reference" geometry (polygon/linestring), and Minkowski difference between a
  * "source" geometry (polygon/multipolygon/GeometryCollection) and a "reference"
  * geometry (polygon/linestring)
- * 
+ * <p>
  * Polygons may be concave. The "source" polygon may contain holes.
- * 
+ * <p>
  * Any holes in "reference" polygon are ignored (in most cases it doesn't make
  * practical sense anyway).
  *
  */
 public class Minkowski_Sum {
 
-	public static GeometryFactory gf = new GeometryFactory();
+	private static GeometryFactory gf = new GeometryFactory();
 
 	//
 	/*************************************************************

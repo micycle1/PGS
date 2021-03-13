@@ -19,7 +19,7 @@ import processing.core.PVector;
  * @author MCarleton
  *
  */
-public class Transform {
+public class PTSTransform {
 
 	// TODO shear
 

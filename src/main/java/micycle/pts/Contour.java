@@ -37,7 +37,12 @@ import org.twak.camp.Skeleton;
 import org.twak.utils.collections.Loop;
 import org.twak.utils.collections.LoopL;
 
+import gishur.lang.ListView;
+import gishur.lang.SimpleList;
+import gishur.lang.SimpleListItem;
+import gishur.x.XPoint;
 import micycle.medialAxis.MedialAxis;
+import micycle.medialAxis.MedialAxis.Branch;
 import processing.core.PApplet;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -76,6 +81,7 @@ public class Contour {
 	 */
 	@SuppressWarnings("unchecked")
 	public static PShape medialAxis(PShape shape, float density, float maximumCloseness, PApplet p) {
+		// TODO remove the duplicate Voronoi edges ?
 		final Geometry g = fromPShape(shape);
 		final Densifier d = new Densifier(fromPShape(shape));
 		d.setDistanceTolerance(density);
@@ -207,6 +213,37 @@ public class Contour {
 		return null;
 	}
 
+	public static void medialAxis4(PShape shape, PApplet p) {
+		Geometry g = fromPShape(shape);
+		MedialAxis m = new MedialAxis(g);
+//		m.getDissolvedGeometry();
+//		p.shape(toPShape(
+//				DouglasPeuckerSimplifier.simplify(m.getDissolvedGeometry(), p.map(p.mouseX, 0, p.width, 0, 100))));
+		PShape s = toPShape(m.getDissolvedGeometry());
+		s.setStrokeWeight(15);
+		for (int i = 0; i < s.getChildCount(); i++) {
+			s.getChild(i).setStrokeWeight(6);
+//			s.getChild(i).setStroke(
+//					p.color(255, 56, i * 163.3f % 255));
+		}
+//		p.shape(s);
+
+		p.beginShape(LINES);
+		m.getEdges().forEach(e -> {
+			p.line((float) e.head.position.x, (float) e.head.position.y, (float) e.tail.position.x,
+					(float) e.tail.position.y);
+//			p.vertex((float) e.head.position.x, (float) e.head.position.y);
+//			p.vertex((float) e.tail.position.x, (float) e.tail.position.y);
+		});
+		p.endShape(LINES);
+//		m.getLineMergeGraph()
+
+		p.stroke(14, 150, 14);
+//		m.getDisks().forEach(d -> {
+//			p.ellipse((float) d.position.x, (float) d.position.y, (float) d.radius * 2, (float) d.radius * 2);
+//		});
+	}
+
 	/**
 	 * TODO remove...temporary method to test MedialAxis lib.
 	 * 
@@ -216,8 +253,8 @@ public class Contour {
 	public static void medialAxis3(PShape shape, PApplet p) {
 		Geometry g = fromPShape(shape);
 		MedialAxis m = new MedialAxis(g);
-		m.drawVDM(p);
-//		m.drawVDMPrune(p, p.map(p.mouseX, 0, p.width, 0, 32690));
+//		m.drawVDM(p);
+//		m.drawVDMPrune(p, p.map(p.mouseX, 0, p.width, 0, 1));
 //		m.drawVDMPrune(p, 500);
 //		p.noFill();
 		p.noStroke();
@@ -226,9 +263,9 @@ public class Contour {
 			p.ellipse((float) l.position.x, (float) l.position.y, 5, 5);
 		});
 
-		m.getAncestors(m.getLeaves().get(0)).forEach(v -> {
-
-		});
+//		m.getAncestors(m.getLeaves().get(0)).forEach(v -> {
+//
+//		});
 //		List<micycle.medialAxis.MedialAxis.VD> ancestors = m
 //				.getAncestors(m.getLeaves().get((int) (p.frameCount * 0.1) % m.getLeaves().size()));
 //
@@ -358,16 +395,25 @@ public class Contour {
 //			q += 37;
 //		}
 
-		micycle.medialAxis.MedialAxis.VD d;
+		micycle.medialAxis.MedialAxis.MedialDisk d;
 		d = m.nearestDisk(p.mouseX, p.mouseY);
-		System.out.println(d.featureArea);
+//		System.err.println(d.featureArea);
 
 //		d = m.rootNode;
 		p.noFill();
 		p.stroke(50, 150, 250);
 		p.ellipse((float) d.position.x, (float) d.position.y, (float) d.radius * 2, (float) d.radius * 2);
 		p.point((float) d.position.x, (float) d.position.y);
+		p.fill(255);
 		p.text(d.depthBF, 10, 80);
+		p.textAlign(PConstants.LEFT);
+		p.text((float) d.featureArea, 0, 100); // feature area
+
+		d = m.rootNode;
+		p.noFill();
+		p.stroke(50, 150, 250);
+		p.ellipse((float) d.position.x, (float) d.position.y, (float) d.radius * 2, (float) d.radius * 2);
+		p.point((float) d.position.x, (float) d.position.y);
 
 		p.stroke(255, 0, 0);
 //		TriangulationPoint v = d.t.points[0];
@@ -378,7 +424,16 @@ public class Contour {
 //		p.point((float) v.getX(), (float) v.getY());
 //		p.point((float) d.position.x, (float) d.position.y);
 
-//		m.getSegments();
+		p.colorMode(PConstants.HSB,1,1,1,1);
+		float x = 0;
+		for (Branch s : m.getBranches()) {
+			p.stroke((x += 1.618034) % 1, 1, 1);
+			s.edges.forEach(e -> {
+				p.line((float) e.head.position.x, (float) e.head.position.y, (float) e.tail.position.x,
+						(float) e.tail.position.y);
+			});
+		}
+		p.colorMode(PConstants.RGB,255,255,255,255);
 
 //		for (micycle.pts.MedialAxis.VD vd : m.getBifurcations()) {
 //			p.noFill();
@@ -408,6 +463,45 @@ public class Contour {
 //
 //			}
 
+	}
+
+	public static PShape gishurMedialAxis(PShape shape) {
+		gishur.x.XPolygon poly = Conversion.toXPolygon(shape);
+		gishur.x.voronoi.Skeleton s = new gishur.x.voronoi.Skeleton(poly);
+		s.execute();
+//		s.checkEdges();
+		ListView<XPoint> points = s.getEdges();
+
+//		for (int i = 0; i < s.chainCount(); ++i) {
+//			SimpleList PL = s.getChain(i);
+//		}
+
+		SimpleList<XPoint> L = s.getPoints();
+		SimpleListItem i = (SimpleListItem) L.first();
+
+		PShape lines = new PShape();
+		lines.setFamily(PShape.GEOMETRY);
+		lines.setStrokeCap(ROUND);
+		lines.setStroke(true);
+		lines.setStrokeWeight(3);
+		lines.setStroke(-1232222);
+		lines.beginShape();
+
+		while (i.next() != null) {
+			XPoint x = (XPoint) i.value();
+			lines.vertex((float) x.x, (float) x.y);
+			i = (SimpleListItem) i.next();
+		}
+		lines.endShape();
+
+
+//		XPoint x = (XPoint) L.next(L.first()).value();
+//		x.x;
+//		L.get
+
+//		SimpleList l = s.getLines(true);
+//		l.nex
+		return lines;
 	}
 
 	/**
@@ -467,6 +561,14 @@ public class Contour {
 		return skeleton;
 	}
 
+	/**
+	 * Roughly, it is the geometric graph whose edges are the traces of vertices of
+	 * shrinking mitered offset curves of the polygon
+	 * 
+	 * @param shape
+	 * @param p
+	 * @return
+	 */
 	public static PShape straightSkeleton(PShape shape, PApplet p) {
 		// https://github.com/Agent14zbz/ZTools/blob/main/src/main/java/geometry/ZSkeleton.java
 
@@ -532,7 +634,7 @@ public class Contour {
 		lines.setFamily(PShape.GEOMETRY);
 		lines.setStrokeCap(ROUND);
 		lines.setStroke(true);
-		lines.setStrokeWeight(3);
+		lines.setStrokeWeight(4);
 		lines.setStroke(-1232222);
 		lines.beginShape(LINES);
 		try {
@@ -543,8 +645,8 @@ public class Contour {
 				boolean b = edgeCoordsSet.contains(cantorPairing(e.end.x, e.end.y));
 
 				if (a ^ b) { // branch
-//					lines.vertex((float) e.start.x, (float) e.start.y);
-//					lines.vertex((float) e.end.x, (float) e.end.y);
+					lines.vertex((float) e.start.x, (float) e.start.y);
+					lines.vertex((float) e.end.x, (float) e.end.y);
 				} else {
 					if (a) { // edge
 //						p.stroke(0, 50, 180);
@@ -553,9 +655,9 @@ public class Contour {
 					} else { // bone
 						lines.vertex((float) e.start.x, (float) e.start.y);
 						lines.vertex((float) e.end.x, (float) e.end.y);
-						p.stroke(0);
-						p.strokeWeight(5);
-						p.point((float) e.start.x, (float) e.start.y);
+//						p.stroke(0);
+//						p.strokeWeight(5);
+//						p.point((float) e.start.x, (float) e.start.y);
 					}
 				}
 			});
@@ -608,6 +710,9 @@ public class Contour {
 		Polygon polygon;
 		if (g.getGeometryType() == Geometry.TYPENAME_POLYGON) {
 			polygon = (Polygon) g;
+			if (polygon.getCoordinates().length > 1000) {
+				polygon = (Polygon) DouglasPeuckerSimplifier.simplify(g, 1);
+			}
 		} else {
 			System.out.println("MultiPolygon not supported yet.");
 			return new Skeleton();
@@ -628,9 +733,10 @@ public class Contour {
 		if (!Orientation.isCCW(exterior.getCoordinates())) {
 			exterior = exterior.reverse();
 		}
-		for (int j = 0; j < exterior.getCoordinates().length - 1; j++) {
-			double a = exterior.getCoordinates()[j].x;
-			double b = exterior.getCoordinates()[j].y;
+		Coordinate[] coords = exterior.getCoordinates();
+		for (int j = 0; j < coords.length - 1; j++) {
+			double a = coords[j].x;
+			double b = coords[j].y;
 			corners.add(new Corner(a, b));
 			edgeCoordsSet.add(cantorPairing(a, b));
 		}
@@ -669,7 +775,7 @@ public class Contour {
 	/**
 	 * Generate a Topographic-like isoline contour map of the shape. The "elevation"
 	 * (or z values) of points is the euclidean distance between a point in the
-	 * shape and the input highPoint.
+	 * shape and the given high point.
 	 * <p>
 	 * Assign each point feature a number equal to the distance between geometry's
 	 * centroid and the point.
@@ -688,6 +794,9 @@ public class Contour {
 		 */
 
 		Geometry g = fromPShape(shape);
+//		if (g.getCoordinates().length > 2000) {
+//			g = DouglasPeuckerSimplifier.simplify(g, 2);
+//		}
 		int buffer = Math.max(10, Math.round(intervalSpacing) + 1);
 		PreparedGeometry cache = PreparedGeometryFactory.prepare(g.buffer(10));
 
@@ -707,8 +816,8 @@ public class Contour {
 
 		for (PVector v : randomPoints) {
 			/**
-			 * Major bottleneck is isoline computation so reduce poisson points to only
-			 * those needed.
+			 * Major bottleneck is isoline computation so reduce points to only those
+			 * needed.
 			 */
 			if (cache.covers(PTS.pointFromPVector(v))) {
 				double d = highPoint.dist(v);
@@ -750,7 +859,7 @@ public class Contour {
 			ld.add(GEOM_FACTORY.createLineString(coords));
 		}
 
-		return toPShape(ld.getResult().intersection(g));
+		return toPShape(ld.getResult().intersection(g)); // contains check instead?
 	}
 
 	/**
@@ -781,7 +890,7 @@ public class Contour {
 		 * the basis for mitered offsets. To this end a stack is used to handle times
 		 * where the geometry breaks into multiple sub-geometries. The buffer is
 		 * effectively applied in a recursive manner until all geometries are empty (in
-		 * which case they are ignore for the next iteration).
+		 * which case they are ignored for the next iteration).
 		 */
 		final ArrayDeque<Geometry> geometries = new ArrayDeque<>();
 		geometries.push(g);
@@ -822,7 +931,12 @@ public class Contour {
 			}
 		}
 
-		return toPShape(g); // TODO output offsets as PShape
+		return toPShape(null); // TODO output offsets as PShape
+	}
+
+	// a mitered offset that emanates from the shape
+	private static void miteredOffsetOutwards(int offsetCurveN) {
+
 	}
 
 	/**

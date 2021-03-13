@@ -2,77 +2,39 @@ package micycle.pts;
 
 import static micycle.pts.Conversion.fromPShape;
 import static micycle.pts.Conversion.toPShape;
-import static micycle.pts.color.RGB.composeclr;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
-import java.util.function.Consumer;
-
 import org.geodelivery.jap.concavehull.SnapHull;
-import org.geotools.data.DataUtilities;
-import org.geotools.data.collection.ListFeatureCollection;
-import org.geotools.data.simple.SimpleFeatureCollection;
-import org.geotools.data.simple.SimpleFeatureIterator;
-import org.geotools.feature.SchemaException;
-import org.geotools.feature.simple.SimpleFeatureBuilder;
-import org.geotools.geometry.jts.GeometryCollector;
 import org.geotools.geometry.jts.JTS;
-import org.geotools.process.vector.GridProcess;
 import org.locationtech.jts.algorithm.MinimumBoundingCircle;
-import org.locationtech.jts.algorithm.Orientation;
+import org.locationtech.jts.algorithm.MinimumDiameter;
 import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
+import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
+import org.locationtech.jts.algorithm.match.HausdorffSimilarityMeasure;
 import org.locationtech.jts.densify.Densifier;
-import org.locationtech.jts.dissolve.LineDissolver;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.GeometryCollectionIterator;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
+import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
-import org.locationtech.jts.geom.prep.PreparedGeometry;
-import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
+import org.locationtech.jts.geom.PrecisionModel;
 import org.locationtech.jts.geom.util.LineStringExtracter;
-import org.locationtech.jts.geomgraph.Edge;
-import org.locationtech.jts.geomgraph.GeometryGraph;
 import org.locationtech.jts.linearref.LengthIndexedLine;
 import org.locationtech.jts.operation.distance.DistanceOp;
-import org.locationtech.jts.operation.linemerge.LineMergeEdge;
-import org.locationtech.jts.operation.linemerge.LineMergeGraph;
-import org.locationtech.jts.operation.linemerge.LineMerger;
-import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
-import org.locationtech.jts.planargraph.DirectedEdge;
-import org.locationtech.jts.planargraph.Node;
 import org.locationtech.jts.shape.random.RandomPointsBuilder;
 import org.locationtech.jts.shape.random.RandomPointsInGridBuilder;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
-import org.locationtech.jts.triangulate.ConformingDelaunayTriangulationBuilder;
-import org.locationtech.jts.triangulate.DelaunayTriangulationBuilder;
-import org.locationtech.jts.triangulate.IncrementalDelaunayTriangulator;
-import org.locationtech.jts.triangulate.VoronoiDiagramBuilder;
-import org.locationtech.jts.triangulate.quadedge.QuadEdgeSubdivision;
+import org.locationtech.jts.simplify.VWSimplifier;
 import org.locationtech.jts.util.GeometricShapeFactory;
-import org.opengis.feature.simple.SimpleFeature;
-import org.opengis.feature.simple.SimpleFeatureType;
-import org.twak.camp.Corner;
-import org.twak.camp.Machine;
-import org.twak.camp.Skeleton;
-import org.twak.utils.collections.Loop;
-import org.twak.utils.collections.LoopL;
-
-import de.alsclo.voronoi.Voronoi;
-import earcut4j.Earcut;
 import micycle.pts.color.Blending;
 import processing.core.PApplet;
 import processing.core.PConstants;
@@ -85,23 +47,25 @@ import uk.osgb.algorithm.minkowski_sum.Minkowski_Sum;
 /**
  * PTS | Processing Topology Suite
  * <p>
- * http://thecloudlab.org/processing/library.html
- * https://github.com/Rogach/jopenvoronoi https://github.com/IGNF/CartAGen
- * https://ignf.github.io/CartAGen/docs/algorithms/others/spinalize.html
- * https://github.com/twak/campskeleton
- * https://discourse.processing.org/t/straight-skeleton-or-how-to-draw-a-center-line-in-a-polygon-or-shape/17208/9
- * http://lastresortsoftware.blogspot.com/2010/12/smooth-as.html#note1
+ * <ul>
+ * <li>https://github.com/IGNF/CartAGen
+ * <li>https://ignf.github.io/CartAGen/docs/algorithms/others/spinalize.html
+ * <li>https://discourse.processing.org/t/straight-skeleton-or-how-to-draw-a-center-line-in-a-polygon-or-shape/17208/9
+ * </p>
+ * </ul>
  * 
  * TODO https://ignf.github.io/CartAGen/docs/algorithms.html TODO take into
  * account strokweight (buffer by stroke amount?) TODO maintain pshape fill, etc
  * on output
  * 
- * @author MCarleton
+ * @author Michael Carleton
  */
 public class PTS implements PConstants {
 
 	// TODO check for getCoordinates() in loops (and replace) (if lots of child
 	// geometries)
+
+	// TODO replace line() in for-each with beginshape(LINES)...vertex...endShape()
 
 	/**
 	 * Calling Polygon#union repeatedly is one way to union several Polygons
@@ -115,7 +79,12 @@ public class PTS implements PConstants {
 	 */
 	protected static final int CURVE_SAMPLES = 20;
 
-	protected static GeometryFactory GEOM_FACTORY = new GeometryFactory();
+	public static GeometryFactory GEOM_FACTORY = new GeometryFactory(
+			new PrecisionModel(PrecisionModel.FLOATING_SINGLE));
+
+	static {
+		Minkowski_Sum.setGeometryFactory(GEOM_FACTORY);
+	}
 
 	/**
 	 * The Maximum Inscribed Circle is determined by a point in the interior of the
@@ -123,6 +92,7 @@ public class PTS implements PConstants {
 	 * boundary point at that distance.
 	 * 
 	 * @param shape
+	 * @param tolerance the distance tolerance for computing the centre point
 	 */
 	public static PShape maximumInscribedCircle(PShape shape, float tolerance) {
 		MaximumInscribedCircle mic = new MaximumInscribedCircle(fromPShape(shape), tolerance);
@@ -141,7 +111,6 @@ public class PTS implements PConstants {
 	 * 
 	 * @param shape
 	 * @param centerPoint
-	 * @param tolerance
 	 * @return
 	 */
 	public static PShape maximumInscribedCircle(PShape shape, PVector centerPoint) {
@@ -159,8 +128,10 @@ public class PTS implements PConstants {
 	}
 
 	/**
-	 * The MBC is the smallest circle which completely covers the input shape (this
-	 * is also known as the Smallest Enclosing Circle).
+	 * Computes the Minimum Bounding Circle (MBC)for the points in a Geometry. The
+	 * MBC is the smallest circle which covers all the vertices of the input shape
+	 * (this is also known as the Smallest Enclosing Circle). This is equivalent to
+	 * computing the Maximum Diameter of the input vertex set.
 	 */
 	public static PShape minimumBoundingCircle(PShape shape) {
 		MinimumBoundingCircle mbc = new MinimumBoundingCircle(fromPShape(shape));
@@ -170,6 +141,34 @@ public class PTS implements PConstants {
 		shapeFactory.setWidth(mbc.getRadius() * 2); // r*2 for total width & height
 		shapeFactory.setHeight(mbc.getRadius() * 2); // r*2 for total width & height
 		return toPShape(shapeFactory.createEllipse());
+	}
+
+	/**
+	 * Gets the minimum rectangle enclosing a shape.
+	 * 
+	 * @param shape
+	 * @return
+	 */
+	public static PShape minimumBoundingRectangle(PShape shape) {
+		Polygon md = (Polygon) MinimumDiameter.getMinimumRectangle(fromPShape(shape));
+		return toPShape(md);
+	}
+
+	/**
+	 * 
+	 * 
+	 * Computes the minimum diameter of a shape. The minimum diameter is defined to
+	 * be the width of the smallest band that contains the shape, where a band is a
+	 * strip of the plane defined by two parallel lines. This can be thought of as
+	 * the smallest hole that the geometry can bemoved through, with a single
+	 * rotation.
+	 * 
+	 * @param shape
+	 * @return
+	 */
+	public static PShape minimumDiameter(PShape shape) {
+		LineString md = (LineString) MinimumDiameter.getMinimumDiameter(fromPShape(shape));
+		return toPShape(md);
 	}
 
 //	public static PShape smallestSurroundingRectangle(PShape shape) {
@@ -184,6 +183,7 @@ public class PTS implements PConstants {
 	 * @return
 	 */
 	private static Polygon smooth(Polygon shape, float fit) {
+		// http://lastresortsoftware.blogspot.com/2010/12/smooth-as.html
 		return (Polygon) JTS.smooth(shape, fit);
 	}
 
@@ -262,6 +262,18 @@ public class PTS implements PConstants {
 	}
 
 	/**
+	 * small edges are removed, while the general structure of the shape is
+	 * preserved. This process is known as "opening" in computer vision.
+	 * 
+	 * @param shape
+	 * @return
+	 */
+	public static PShape erosionDilation(PShape shape, float buffer) {
+		buffer = Math.abs(buffer);
+		return toPShape(fromPShape(shape).buffer(-buffer).buffer(buffer));
+	}
+
+	/**
 	 * Simplifies a PShape using the Douglas-Peucker algorithm.
 	 * 
 	 * @param shape
@@ -271,6 +283,19 @@ public class PTS implements PConstants {
 	 */
 	public static PShape simplify(PShape shape, float distanceTolerance) {
 		return toPShape(DouglasPeuckerSimplifier.simplify(fromPShape(shape), distanceTolerance));
+	}
+
+	/**
+	 * Simplifies a shape using the Visvalingam-Whyatt area-based algorithm.
+	 * 
+	 * @param shape
+	 * @param distanceTolerance The simplification tolerance is specified as a
+	 *                          distance.This is converted to an area tolerance by
+	 *                          squaring it.
+	 * @return
+	 */
+	public static PShape simplifyVW(PShape shape, float distanceTolerance) {
+		return toPShape(VWSimplifier.simplify(fromPShape(shape), distanceTolerance));
 	}
 
 	/**
@@ -287,7 +312,7 @@ public class PTS implements PConstants {
 
 	/**
 	 * Densifies a Geometry by inserting extra vertices along the line segments
-	 * contained in the geometry.
+	 * contained in the geometry. Specify maximum length of segments
 	 */
 	public static PShape densify(PShape shape, float distanceTolerance) {
 		Densifier d = new Densifier(fromPShape(shape));
@@ -300,7 +325,7 @@ public class PTS implements PConstants {
 	 * Smoothes a geometry
 	 * 
 	 * @param shape
-	 * @param buffer 0...1
+	 * @param fit   tightness of fit from 0 (loose) to 1 (tight)
 	 * @return
 	 */
 	public static PShape smooth(PShape shape, float fit) {
@@ -434,384 +459,9 @@ public class PTS implements PConstants {
 		return toPShape(sum);
 	}
 
-	public static PShape earCutTriangulation(ArrayList<PVector> points) {
-		double[] arrCoords = new double[points.size() * 2];
 
-		for (int i = 0; i < points.size(); i++) {
-			arrCoords[2 * i] = points.get(i).x;
-			arrCoords[2 * i + 1] = points.get(i).y;
-		}
-//		arrCoords = new double[] { 0, 0, 100, 0, 100, 100, 0, 100, 20, 20, 80, 20, 80, 80, 20, 80 };
 
-		List<Integer> triangles = Earcut.earcut(arrCoords, null, 2);
 
-		PShape triangulation = new PShape();
-		triangulation.setFamily(PShape.GEOMETRY);
-//		triangulation.setStrokeCap(ROUND);
-		triangulation.setStroke(true);
-		triangulation.setStrokeWeight(2);
-		triangulation.setStroke(-123222);
-		triangulation.setFill(true);
-		triangulation.setFill(micycle.pts.color.RGB.composeclr(0, 0, 0, 25));
-		triangulation.beginShape(TRIANGLES);
-		for (int i = 0; i < triangles.size(); i += 3) {
-			int v1 = triangles.get(i);
-			int v2 = triangles.get(i + 1);
-			int v3 = triangles.get(i + 2);
-//			triangulation.vertex((float) arrCoords[v1], (float) arrCoords[v1 + 1]);
-			triangulation.vertex((float) arrCoords[v1], (float) arrCoords[v1 + 1]);
-			triangulation.vertex((float) arrCoords[v2], (float) arrCoords[v2 + 1]);
-			triangulation.vertex((float) arrCoords[v3], (float) arrCoords[v3 + 1]);
-		}
-		triangulation.endShape();
-		return triangulation;
-	}
-
-	/**
-	 * tolerance = 0
-	 * 
-	 * @param shape
-	 * @return
-	 */
-	public static PShape delaunayTriangulation(PShape shape) {
-		Geometry g = fromPShape(shape);
-		DelaunayTriangulationBuilder d = new DelaunayTriangulationBuilder();
-		d.setSites(g);
-		Geometry out = d.getTriangles(GEOM_FACTORY); // triangulates convex hull of points
-		out = out.intersection(g); // get concave hull
-		return toPShape(out);
-	}
-
-	protected static Coordinate coordFromPoint(Point p) {
-		return new Coordinate(p.getX(), p.getY());
-	}
-
-	/**
-	 * cirumcircle center must lie inside triangle
-	 * 
-	 * @param a
-	 * @param b
-	 * @param c
-	 * @return
-	 */
-	private static double smallestSide(Coordinate a, Coordinate b, Coordinate c) {
-		double ab = Math.sqrt((b.y - a.y) * (b.y - a.y) + (b.x - a.x) * (b.x - a.x));
-		double bc = Math.sqrt((c.y - b.y) * (c.y - b.y) + (c.x - b.x) * (c.x - b.x));
-		double ca = Math.sqrt((a.y - c.y) * (a.y - c.y) + (a.x - c.x) * (a.x - c.x));
-		return Math.min(Math.min(ab, bc), ca);
-	}
-
-	static Geometry refinedTriangulation(Geometry g, int nRefinements, double tolerance) {
-
-		DelaunayTriangulationBuilder builder = new DelaunayTriangulationBuilder();
-		builder.setSites(g); // set vertex sites
-		builder.setTolerance(tolerance); // set tolerance for initial triangulation only
-
-		Geometry triangulation = builder.getTriangles(GEOM_FACTORY); // initial triangulation
-
-		HashSet<Coordinate> sites = new HashSet<>();
-		for (int i = 0; i < triangulation.getCoordinates().length; i++) {
-			sites.add(triangulation.getCoordinates()[i]);
-		}
-
-		for (int refinement = 0; refinement < nRefinements; refinement++) {
-			for (int i = 0; i < triangulation.getNumGeometries(); i++) {
-				Polygon triangle = (Polygon) triangulation.getGeometryN(i);
-
-				if (triangle.getArea() > 100) { // skip small triangles
-					sites.add(new Coordinate(triangle.getCentroid().getX(), triangle.getCentroid().getY()));
-				}
-			}
-			builder = new DelaunayTriangulationBuilder();
-			builder.setSites(sites);
-			triangulation = builder.getTriangles(GEOM_FACTORY); // re-triangulate using new centroid sites
-		}
-
-		triangulation = triangulation.intersection(g); // restore concave hull and any holes
-		return triangulation;
-	}
-
-	/**
-	 * Calc from vertices of PShape
-	 * 
-	 * @param shape
-	 * @param tolerance
-	 * @return
-	 */
-	public static PShape delaunayTriangulation(PShape shape, float tolerance) {
-
-		/**
-		 * Assume each pair of points on exterior ring to be segments,
-		 */
-		// http://lin-ear-th-inking.blogspot.com/2011/04/polygon-triangulation-via-ear-clipping.html
-//		Geometry g = fromPShape(shape);
-//		DelaunayTriangulationBuilder d = new DelaunayTriangulationBuilder();
-//		d.setTolerance(tolerance);
-//		d.setSites(g);
-//		Geometry out = d.getTriangles(geometryFactory); // triangulates concave hull of points
-//
-////		Coordinate
-//
-////		var x = d.getSubdivision();
-//		HashSet<Coordinate> coords = new HashSet<>();
-//
-//		// add from g
-//		for (int i = 0; i < out.getCoordinates().length; i++) {
-//			coords.add(out.getCoordinates()[i]);
-//		}
-//
-//		for (int refinement = 0; refinement < 3; refinement++) {
-//			// refinement: add new points (centroids)
-//			for (int i = 0; i < out.getNumGeometries(); i++) {
-//				Polygon triangle = (Polygon) out.getGeometryN(i);
-//
-//				if (triangle.getArea() > 50) { // skip small triangles
-//					coords.add(coordFromPoint(triangle.getCentroid()));
-//				}
-//			}
-//			d = new DelaunayTriangulationBuilder();
-//			d.setSites(coords);
-//			out = d.getTriangles(geometryFactory); // triangulates concave hull of points
-//		}
-//
-//		// use d.getSubdivision() to get connected to a given segment to test
-//		// encroachment
-//
-//		out = out.intersection(g); // get convex hull
-		return toPShape(refinedTriangulation(fromPShape(shape), 3, 10));
-
-//		ConformingDelaunayTriangulationBuilder b = new ConformingDelaunayTriangulationBuilder();
-//		b.setTolerance(tolerance);
-//		b.setSites(g);
-//		b.setConstraints(fromPShape(createSquircle(ThreadLocalRandom.current().nextInt(400, 450), 400, 200, 200)));
-
-//		d.getSubdivision().getVoronoiCellPolygons(geometryFactory)
-//		out = b.getTriangles(geometryFactory);
-	}
-
-	public static void incrementalDelaunay() {
-
-		// TODO
-		IncrementalDelaunayTriangulator i = new IncrementalDelaunayTriangulator(new QuadEdgeSubdivision(null, 5));
-		i.insertSite(null);
-	}
-
-	/**
-	 * Create a triangulation with that forces certain required segments into the
-	 * triangulation from a 'constrain' shape.
-	 * 
-	 * Steiner point is a point that is not part of the input to a geometric
-	 * optimization problem but is added during the solution of the problem
-	 * 
-	 * @param shape
-	 * @param constraints points from this shape are used as 'steiner points',
-	 *                    applied to the input
-	 * @param tolerance
-	 * @return
-	 */
-	public static PShape constrainedDelaunayTriangulation(PShape shape, PShape constraints, float tolerance) {
-		// TODO point-set array constraints
-		ConformingDelaunayTriangulationBuilder b = new ConformingDelaunayTriangulationBuilder();
-		Geometry g = fromPShape(shape);
-		b.setSites(g);
-		b.setTolerance(tolerance);
-		b.setConstraints(fromPShape(constraints));
-		Geometry out = b.getTriangles(GEOM_FACTORY); // triangulates concave hull of points
-		out = out.intersection(g); // get convex hull
-		return toPShape(out);
-	}
-
-	public static PShape constrainedDelaunayTriangulation(ArrayList<PVector> points, PShape constraints,
-			float tolerance) {
-		ConformingDelaunayTriangulationBuilder b = new ConformingDelaunayTriangulationBuilder();
-		Coordinate[] coords = new Coordinate[points.size()];
-		for (int j = 0; j < points.size(); j++) {
-			coords[j] = new Coordinate(points.get(j).x, points.get(j).y);
-		}
-		b.setSites(GEOM_FACTORY.createPolygon(coords));
-		b.setTolerance(tolerance);
-//		b.setConstraints(fromPShape(constraints)); // TODO?
-		Geometry out = b.getTriangles(GEOM_FACTORY); // triangulates concave hull of points
-		out = out.intersection(fromPShape(constraints)); // get convex hull
-		return toPShape(out);
-	}
-
-	/**
-	 * 
-	 * @param points
-	 * @param tolerance default is 10, snaps pixels to the nearest N. higher values
-	 *                  result in more coarse triangulation
-	 * @return A PShape whose children are triangles making up the triangulation
-	 */
-	public static PShape delaunayTriangulation(ArrayList<PVector> points, float tolerance) {
-		ArrayList<Coordinate> coords = new ArrayList<>(points.size());
-		for (PVector p : points) {
-			coords.add(new Coordinate(p.x, p.y));
-		}
-		/**
-		 * Use ConformingDelau... for better result? (get constrained segments from edge
-		 * ring) Code example: https://github.com/locationtech/jts/issues/320
-		 */
-		DelaunayTriangulationBuilder d = new DelaunayTriangulationBuilder();
-		d.setTolerance(tolerance);
-		d.setSites(coords);
-		Geometry out = d.getTriangles(GEOM_FACTORY);
-		return toPShape(out);
-	}
-
-	/**
-	 * TODO set clip envelope?
-	 * 
-	 * @param shape
-	 * @param tolerance snapping used in underlying triangulation algorithm
-	 * @return
-	 */
-	public static PShape voronoiDiagram(PShape shape, float tolerance) {
-		Geometry g = fromPShape(shape);
-		VoronoiDiagramBuilder v = new VoronoiDiagramBuilder();
-		v.setTolerance(tolerance);
-		v.setSites(g);
-		v.setClipEnvelope(new Envelope(0, 1000, 0, 750)); // speeds up when lots of edges
-//		v.setSites(new ArrayList<Coordinate>(Arrays.asList(g.getCoordinates())));
-		Geometry out = v.getDiagram(GEOM_FACTORY);
-		return toPShape(out); // .intersection(g))
-	}
-
-	/**
-	 * Voronoi diagram of circle sites (rather than point sites) approximation.
-	 * 
-	 * https://sci-hub.do/https://www.sciencedirect.com/science/article/abs/pii/S1049965283710394
-	 * 
-	 * @return
-	 */
-	public static PShape voronoiCirclesDiagram(PShape shape, float tolerance) {
-		final Geometry g = fromPShape(shape);
-		final PreparedGeometry cache = PreparedGeometryFactory.prepare(g);
-
-		VoronoiDiagramBuilder v = new VoronoiDiagramBuilder();
-		v.setTolerance(tolerance);
-		v.setSites(g);
-//		v.setClipEnvelope(new Envelope(0, 1000, 0, 750)); // TODO
-
-		final Geometry out = v.getDiagram(GEOM_FACTORY);
-
-		final LineDissolver ld = new LineDissolver();
-		ld.add(out);
-		final Geometry d = ld.getResult();
-
-		PShape lines = new PShape();
-		lines.setFamily(PShape.GEOMETRY);
-		lines.setStrokeCap(ROUND);
-		lines.setStroke(true);
-		lines.setStrokeWeight(2);
-		lines.setStroke(composeclr(100, 150, 200, 255));
-		lines.beginShape(LINES);
-
-		for (int i = 0; i < d.getNumGeometries(); i++) {
-			final LineString l = (LineString) d.getGeometryN(i);
-//			if (child.getGeometryType() == "LineString") {
-//				final LineString l = (LineString) child;
-			if (!cache.contains(l.getStartPoint()) && !cache.contains(l.getEndPoint())) {
-				lines.vertex((float) l.getStartPoint().getX(), (float) l.getStartPoint().getY());
-				lines.vertex((float) l.getEndPoint().getX(), (float) l.getEndPoint().getY());
-//				}
-			}
-		}
-
-		lines.endShape();
-		return lines;
-	}
-
-	public static PShape voronoiDiagram(ArrayList<PVector> points, float tolerance) {
-		ArrayList<Coordinate> coords = new ArrayList<>(points.size());
-		for (PVector p : points) {
-			coords.add(new Coordinate(p.x, p.y));
-		}
-		VoronoiDiagramBuilder v = new VoronoiDiagramBuilder();
-		v.setTolerance(tolerance);
-		v.setSites(coords);
-		Geometry out = v.getDiagram(GEOM_FACTORY);
-		return toPShape(out);
-	}
-
-	/**
-	 * Doesn't use JTS so that voronoi can be applied to (sub-divided) circles. Must
-	 * manually insert boundary
-	 */
-	public static PShape voronoiDiagram2(PShape shape) {
-		Geometry g = fromPShape(shape); // convert to geom to avoid "only works with PATH or GEOMETRY shapes"
-		ArrayList<de.alsclo.voronoi.graph.Point> graphIn = new ArrayList<>();
-		for (int i = 0; i < g.getCoordinates().length; i++) {
-			Coordinate point = g.getCoordinates()[i];
-			graphIn.add(new de.alsclo.voronoi.graph.Point(point.x, point.y));
-		}
-
-//		graphIn.add(new de.alsclo.voronoi.graph.Point(1000, 750));
-//		graphIn.add(new de.alsclo.voronoi.graph.Point(1000, 0));
-//		graphIn.add(new de.alsclo.voronoi.graph.Point(0, 0));
-//		graphIn.add(new de.alsclo.voronoi.graph.Point(0, 750));
-		// TODO ^
-
-		Voronoi voronoi = new Voronoi(graphIn);
-//		voronoi.applyBoundingBox(0, 0, 1000, 750);
-
-		PShape lines = new PShape();
-		lines.setFamily(PShape.GEOMETRY);
-		lines.setStrokeCap(ROUND);
-		lines.setStroke(true);
-		lines.setStrokeWeight(2);
-		lines.setStroke(-1232222);
-		lines.beginShape(LINES);
-		voronoi.getGraph().edgeStream().forEach(edge -> {
-			if (edge.getA() != null && edge.getB() != null) {
-				lines.vertex((float) edge.getA().getLocation().x, (float) edge.getA().getLocation().y);
-				lines.vertex((float) edge.getB().getLocation().x, (float) edge.getB().getLocation().y);
-			}
-			// TODO doesn't draw edges outside bounds :Z
-
-		});
-		lines.endShape();
-		return lines;
-	}
-
-	/**
-	 * Doesn't use JTS so that voronoi can be applied to (sub-divided) circles
-	 */
-	public static PShape voronoiDiagram2(ArrayList<PVector> points) {
-		ArrayList<de.alsclo.voronoi.graph.Point> graphIn = new ArrayList<>();
-		points.forEach(point -> graphIn.add(new de.alsclo.voronoi.graph.Point(point.x, point.y)));
-		Voronoi voronoi = new Voronoi(graphIn);
-
-		PShape lines = new PShape();
-		lines.setFamily(PShape.GEOMETRY);
-		lines.setStrokeCap(ROUND);
-		lines.setStroke(true);
-		lines.setStrokeWeight(2);
-		lines.setStroke(-1232222);
-		lines.beginShape(LINES);
-		voronoi.getGraph().edgeStream().forEach(edge -> {
-			if (edge.getA() != null && edge.getB() != null) {
-				lines.vertex((float) edge.getA().getLocation().x, (float) edge.getA().getLocation().y);
-				lines.vertex((float) edge.getB().getLocation().x, (float) edge.getB().getLocation().y);
-			}
-
-		});
-		lines.endShape();
-		return lines;
-
-	}
-
-	public static void prims(PShape shape) { // TODO
-//		PrimMinimumSpanningTree<Vertex, Edge> prims = new PrimMinimumSpanningTree<>(null);
-		GeometryGraph graph = new GeometryGraph(0, fromPShape(shape));
-		for (Iterator<Edge> iterator = graph.getEdgeIterator(); iterator.hasNext();) {
-			Edge type = iterator.next();
-//		 System.out.println(type.getCoordinate().getX());
-//		 fromPShape(shape).get
-		}
-//	Graph<Vertex, Edge> graph = new DefaultUndirectedGraph<Vertex, Edge>(Edge.class);
-//	graph.
-	}
 
 	/**
 	 * TODO: outline of exterior ring only
@@ -918,11 +568,10 @@ public class PTS implements PConstants {
 	 * distributed randomly.
 	 * 
 	 * @param shape
-	 * @param points
+	 * @param points number of points to generate
 	 * @return
 	 */
 	public static ArrayList<PVector> generateRandomPoints(PShape shape, int points) {
-		// or g.getInteriorPoint()?
 		RandomPointsBuilder r = new RandomPointsBuilder();
 		r.setExtent(fromPShape(shape));
 		r.setNumPoints(points);
@@ -936,26 +585,40 @@ public class PTS implements PConstants {
 	}
 
 	/**
-	 * random points generated in a grid of cells (one point randomly located in
+	 * Random points generated in a grid of cells (one point randomly located in
 	 * each cell) from the envelope of the shape
 	 * 
 	 * @param shape
-	 * @param points number of points, if this shape was its own envelope
+	 * @param maxPoints           number of points, if this shape was its own
+	 *                            envelope
+	 * @param constrainedToCircle
+	 * 
+	 *                            Sets whether generated points are constrained to
+	 *                            liewithin a circle contained within each grid
+	 *                            cell.This provides greater separation between
+	 *                            pointsin adjacent cells.
+	 * @param gutterFraction      Sets the fraction of the grid cell side which will
+	 *                            be treated asa gutter, in which no points will be
+	 *                            created.The provided value is clamped to the range
+	 *                            [0.0, 1.0].
+	 * 
 	 * @return
 	 */
-	public static ArrayList<PVector> generateRandomGridPoints(PShape shape, int maxPoints) {
+	public static ArrayList<PVector> generateRandomGridPoints(PShape shape, int maxPoints,
+			boolean constrainedToCircle, double gutterFraction) {
 		Geometry g = fromPShape(shape);
+		IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(g);
 
 		RandomPointsInGridBuilder r = new RandomPointsInGridBuilder();
-		r.setConstrainedToCircle(true);
+		r.setConstrainedToCircle(constrainedToCircle);
 		r.setExtent(g.getEnvelopeInternal());
 		r.setNumPoints(maxPoints);
+		r.setGutterFraction(gutterFraction);
 
 		ArrayList<PVector> vertices = new ArrayList<>();
 
 		for (Coordinate coord : r.getGeometry().getCoordinates()) {
-			// manually prune envelope
-			if (g.contains(GEOM_FACTORY.createPoint(coord))) {
+			if (pointLocator.locate(coord) != Location.EXTERIOR) {
 				vertices.add(new PVector((float) coord.x, (float) coord.y));
 			}
 		}
@@ -1028,6 +691,8 @@ public class PTS implements PConstants {
 		return new PVector((float) coord.x, (float) coord.y);
 	}
 
+	// TODO split these and similar methods into "Overlay" class?
+
 	public static boolean contains(PShape outer, PShape inner) {
 		return fromPShape(outer).contains(fromPShape(inner));
 	}
@@ -1038,10 +703,6 @@ public class PTS implements PConstants {
 
 	public static float distance(PShape a, PShape b) {
 		return (float) fromPShape(a).distance(fromPShape(b));
-	}
-
-	public static Point getPoint(float x, float y) {
-		return GEOM_FACTORY.createPoint(new Coordinate(x, y));
 	}
 
 	public static float area(PShape shape) {
@@ -1060,6 +721,22 @@ public class PTS implements PConstants {
 		Polygon poly = (Polygon) fromPShape(shape);
 		return (float) (4 * PApplet.PI * poly.getArea()
 				/ (poly.getBoundary().getLength() * poly.getBoundary().getLength()));
+	}
+
+	/**
+	 * 
+	 * 
+	 * Measures the degree of similarity between two Geometrysusing the Hausdorff
+	 * distance metric. The measure is normalized to lie in the range [0, 1]. Higher
+	 * measures indicate a great degree of similarity.
+	 * 
+	 * @param a first shape
+	 * @param b second shape
+	 * @return the value of the similarity measure, in [0.0, 1.0]
+	 */
+	public static float similarity(PShape a, PShape b) {
+		HausdorffSimilarityMeasure sm = new HausdorffSimilarityMeasure();
+		return (float) sm.measure(fromPShape(a), fromPShape(b));
 	}
 
 	/**
@@ -1083,7 +760,7 @@ public class PTS implements PConstants {
 	 * aka envelope
 	 * 
 	 * @param shape
-	 * @return X,Y,W,H
+	 * @return float[] of [X,Y,W,H]
 	 */
 	public static float[] bound(PShape shape) {
 		Envelope e = (Envelope) fromPShape(shape).getEnvelopeInternal();
@@ -1094,7 +771,7 @@ public class PTS implements PConstants {
 	 * aka envelope
 	 * 
 	 * @param shape
-	 * @return X1, Y1, X2, Y2
+	 * @return float[] of [X1, Y1, X2, Y2]
 	 */
 	public static float[] boundCoords(PShape shape) {
 		Envelope e = (Envelope) fromPShape(shape).getEnvelopeInternal();
@@ -1211,6 +888,7 @@ public class PTS implements PConstants {
 		ArrayList<Polygon> slices = new ArrayList<>();
 		for (int i = 0; i < polys.getNumGeometries(); i++) {
 			Polygon candpoly = (Polygon) polys.getGeometryN(i);
+			// TODO geometry cache for contains check?
 			if (poly.contains(candpoly.getInteriorPoint())) {
 				slices.add(candpoly);
 			}
@@ -1253,8 +931,31 @@ public class PTS implements PConstants {
 		JTS.removeCollinearVertices(g);
 	}
 
+	public static Point createPoint(float x, float y) {
+		return GEOM_FACTORY.createPoint(new Coordinate(x, y));
+	}
+
 	protected static Point pointFromPVector(PVector p) {
 		return GEOM_FACTORY.createPoint(new Coordinate(p.x, p.y));
+	}
+
+	protected static Coordinate coordFromPoint(Point p) {
+		return new Coordinate(p.getX(), p.getY());
+	}
+
+	/**
+	 * cirumcircle center must lie inside triangle
+	 * 
+	 * @param a
+	 * @param b
+	 * @param c
+	 * @return
+	 */
+	private static double smallestSide(Coordinate a, Coordinate b, Coordinate c) {
+		double ab = Math.sqrt((b.y - a.y) * (b.y - a.y) + (b.x - a.x) * (b.x - a.x));
+		double bc = Math.sqrt((c.y - b.y) * (c.y - b.y) + (c.x - b.x) * (c.x - b.x));
+		double ca = Math.sqrt((a.y - c.y) * (a.y - c.y) + (a.x - c.x) * (a.x - c.x));
+		return Math.min(Math.min(ab, bc), ca);
 	}
 
 	private static LineString lineFromPVectors(PVector a, PVector b) {

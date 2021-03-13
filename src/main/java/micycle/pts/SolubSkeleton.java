@@ -414,6 +414,7 @@ public class SolubSkeleton {
 		}
 	}
 
+	// TODO remove
 	private static final DVector[] verts = new DVector[] { new DVector(901.12, 300), new DVector(853.48, 279.76),
 			new DVector(768.04, 270.04), new DVector(701.56, 261.04), new DVector(684.4, 253.72),
 			new DVector(684.4, 250.48), new DVector(701.32, 234.76), new DVector(701.2, 231.28),

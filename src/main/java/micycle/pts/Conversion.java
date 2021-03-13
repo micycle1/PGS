@@ -13,6 +13,8 @@ import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
+import gishur.x.XPoint;
+import gishur.x.XPolygon;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -276,6 +278,10 @@ public class Conversion implements PConstants {
 		shape.setFill(true);
 		shape.setFill(255);
 
+		if (polygon == null) {
+			return shape;
+		}
+
 		shape.beginShape();
 
 		/**
@@ -395,6 +401,67 @@ public class Conversion implements PConstants {
 				}
 			}
 			return parent;
+		}
+	}
+
+	/**
+	 * Only supports GEOMETRY-type PShapes so far. Doesn't support holes.
+	 * 
+	 * @param shape
+	 * @return
+	 */
+	public static XPolygon toXPolygon(PShape shape) {
+
+		final int[] contourGroups = getContourGroups(shape.getVertexCodes());
+		final int[] vertexCodes = getVertexTypes(shape);
+
+		final ArrayList<ArrayList<XPoint>> coords = new ArrayList<>(); // list of coords representing rings
+
+		int lastGroup = -1;
+
+		for (int i = 0; i < shape.getVertexCount(); i++) {
+			if (contourGroups[i] != lastGroup) {
+				lastGroup = contourGroups[i];
+				coords.add(new ArrayList<>());
+			}
+
+			/**
+			 * Sample bezier curves at intervals to produce smooth Geometry
+			 */
+			switch (vertexCodes[i]) {
+
+//				case QUADRATIC_VERTEX:
+//					coords.get(lastGroup).addAll(getQuadraticBezierPoints(shape.getVertex(i - 1), shape.getVertex(i),
+//							shape.getVertex(i + 1), PTS.CURVE_SAMPLES));
+//					i += 1;
+//					continue;
+//
+//				case BEZIER_VERTEX: // aka cubic bezier, untested
+//					coords.get(lastGroup).addAll(getCubicBezierPoints(shape.getVertex(i - 1), shape.getVertex(i),
+//							shape.getVertex(i + 1), shape.getVertex(i + 2), PTS.CURVE_SAMPLES));
+//					i += 2;
+//					continue;
+
+				default:
+					coords.get(lastGroup).add(new XPoint(shape.getVertexX(i), shape.getVertexY(i)));
+//					System.out.println(new XPoint(shape.getVertexX(i), shape.getVertexY(i)).toString());
+			}
+		}
+
+		for (ArrayList<XPoint> contour : coords) {
+			// xpolys are not closed via vertices
+//			contour.add(contour.get(0)); // Points of LinearRing must form a closed linestring
+		}
+
+		coords.get(0).remove(coords.size() - 1); // pshape is closed, so remove last vertex
+		final XPoint[] outerCoords = new XPoint[coords.get(0).size()];
+		Arrays.setAll(outerCoords, coords.get(0)::get);
+
+		if (outerCoords.length >= 3 || outerCoords.length == 0) {
+			return new XPolygon(outerCoords);
+		} else {
+//			System.out.println("coords: " + outerCoords.length);
+			return new XPolygon();
 		}
 	}
 
