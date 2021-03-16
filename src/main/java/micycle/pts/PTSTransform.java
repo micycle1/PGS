@@ -14,9 +14,9 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Shape transformations
+ * Geometric transformations for PShapes
  * 
- * @author MCarleton
+ * @author Michael Carleton
  *
  */
 public class PTSTransform {
@@ -30,13 +30,13 @@ public class PTSTransform {
 	 * @param scale
 	 * @return
 	 */
-	public static PShape scale(PShape shape, float scale) {
+	public static PShape scale(PShape shape, double scale) {
 		Coordinate c = fromPShape(shape).getCentroid().getCoordinate();
 		AffineTransformation t = AffineTransformation.scaleInstance(scale, scale, c.x, c.y);
 		return toPShape(t.transform(fromPShape(shape)));
 	}
 
-	public static PShape scale(PShape shape, float scaleX, float scaleY) {
+	public static PShape scale(PShape shape, double scaleX, double scaleY) {
 		AffineTransformation t = AffineTransformation.scaleInstance(scaleX, scaleY);
 		return toPShape(t.transform(fromPShape(shape)));
 	}
@@ -61,7 +61,7 @@ public class PTSTransform {
 	 * @param y
 	 * @return
 	 */
-	public static PShape flipHorizontal(PShape shape, float y) {
+	public static PShape flipHorizontal(PShape shape, double y) {
 		AffineTransformation t = AffineTransformation.reflectionInstance(-1, y, 1, y);
 		return toPShape(t.transform(fromPShape(shape)));
 	}
@@ -73,12 +73,12 @@ public class PTSTransform {
 		return toPShape(t.transform(g));
 	}
 
-	public static PShape flipVertical(PShape shape, float x) {
+	public static PShape flipVertical(PShape shape, double x) {
 		AffineTransformation t = AffineTransformation.reflectionInstance(x, -1, x, 1);
 		return toPShape(t.transform(fromPShape(shape)));
 	}
 
-	public static PShape translate(PShape shape, float x, float y) {
+	public static PShape translate(PShape shape, double x, double y) {
 		Geometry g = fromPShape(shape);
 		AffineTransformation t = AffineTransformation.translationInstance(x, y);
 		return toPShape(t.transform(g));
@@ -92,7 +92,7 @@ public class PTSTransform {
 	 * @param angle
 	 * @return
 	 */
-	public static PShape rotate(PShape shape, PVector point, float angle) {
+	public static PShape rotate(PShape shape, PVector point, double angle) {
 		Geometry g = fromPShape(shape);
 		AffineTransformation t = AffineTransformation.rotationInstance(angle, point.x, point.y);
 		return toPShape(t.transform(g));
@@ -105,7 +105,7 @@ public class PTSTransform {
 	 * @param angle
 	 * @return
 	 */
-	public static PShape rotateAroundCenter(PShape shape, float angle) {
+	public static PShape rotateAroundCenter(PShape shape, double angle) {
 		Geometry g = fromPShape(shape);
 		Point center = g.getCentroid();
 		AffineTransformation t = AffineTransformation.rotationInstance(angle, center.getX(), center.getY());
@@ -131,7 +131,7 @@ public class PTSTransform {
 			coord_[i] = new Coordinate(x0 + scaleX * (coord[i].x - x0), y0 + scaleY * (coord[i].y - y0));
 		LinearRing lr = geom.getFactory().createLinearRing(coord_);
 
-		// the holes
+		// holes
 		LinearRing[] holes = new LinearRing[geom.getNumInteriorRing()];
 		for (int j = 0; j < geom.getNumInteriorRing(); j++) {
 			Coordinate[] hole_coord = geom.getInteriorRingN(j).getCoordinates();

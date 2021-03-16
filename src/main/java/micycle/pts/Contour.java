@@ -21,6 +21,7 @@ import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
+import org.locationtech.jts.linearref.LinearIterator;
 import org.locationtech.jts.operation.buffer.BufferOp;
 import org.locationtech.jts.operation.buffer.BufferParameters;
 import org.locationtech.jts.operation.linemerge.LineMergeEdge;
@@ -37,12 +38,10 @@ import org.twak.camp.Skeleton;
 import org.twak.utils.collections.Loop;
 import org.twak.utils.collections.LoopL;
 
-import gishur.lang.ListView;
-import gishur.lang.SimpleList;
-import gishur.lang.SimpleListItem;
-import gishur.x.XPoint;
 import micycle.medialAxis.MedialAxis;
 import micycle.medialAxis.MedialAxis.Branch;
+import micycle.pts.PTS.LinearRingIterator;
+import micycle.pts.color.RGB;
 import micycle.pts.utility.PoissonDistribution;
 import micycle.pts.utility.SolubSkeleton;
 import processing.core.PApplet;
@@ -59,7 +58,7 @@ import processing.core.PVector;
  * contour edges are called vertices. Each contour edge shares its endpoints
  * with at least two other contour edges.
  * 
- * @author MCarleton
+ * @author Michael Carleton
  *
  */
 public class Contour {
@@ -426,7 +425,7 @@ public class Contour {
 //		p.point((float) v.getX(), (float) v.getY());
 //		p.point((float) d.position.x, (float) d.position.y);
 
-		p.colorMode(PConstants.HSB,1,1,1,1);
+		p.colorMode(PConstants.HSB, 1, 1, 1, 1);
 		float x = 0;
 		for (Branch s : m.getBranches()) {
 			p.stroke((x += 1.618034) % 1, 1, 1);
@@ -435,7 +434,7 @@ public class Contour {
 						(float) e.tail.position.y);
 			});
 		}
-		p.colorMode(PConstants.RGB,255,255,255,255);
+		p.colorMode(PConstants.RGB, 255, 255, 255, 255);
 
 //		for (micycle.pts.MedialAxis.VD vd : m.getBifurcations()) {
 //			p.noFill();
@@ -467,44 +466,44 @@ public class Contour {
 
 	}
 
-	public static PShape gishurMedialAxis(PShape shape) {
-		gishur.x.XPolygon poly = Conversion.toXPolygon(shape);
-		gishur.x.voronoi.Skeleton s = new gishur.x.voronoi.Skeleton(poly);
-		s.execute();
-//		s.checkEdges();
-		ListView<XPoint> points = s.getEdges();
-
-//		for (int i = 0; i < s.chainCount(); ++i) {
-//			SimpleList PL = s.getChain(i);
+//	public static PShape gishurMedialAxis(PShape shape) {
+//		gishur.x.XPolygon poly = Conversion.toXPolygon(shape);
+//		gishur.x.voronoi.Skeleton s = new gishur.x.voronoi.Skeleton(poly);
+//		s.execute();
+////		s.checkEdges();
+//		ListView<XPoint> points = s.getEdges();
+//
+////		for (int i = 0; i < s.chainCount(); ++i) {
+////			SimpleList PL = s.getChain(i);
+////		}
+//
+//		SimpleList<XPoint> L = s.getPoints();
+//		SimpleListItem i = (SimpleListItem) L.first();
+//
+//		PShape lines = new PShape();
+//		lines.setFamily(PShape.GEOMETRY);
+//		lines.setStrokeCap(ROUND);
+//		lines.setStroke(true);
+//		lines.setStrokeWeight(3);
+//		lines.setStroke(-1232222);
+//		lines.beginShape();
+//
+//		while (i.next() != null) {
+//			XPoint x = (XPoint) i.value();
+//			lines.vertex((float) x.x, (float) x.y);
+//			i = (SimpleListItem) i.next();
 //		}
-
-		SimpleList<XPoint> L = s.getPoints();
-		SimpleListItem i = (SimpleListItem) L.first();
-
-		PShape lines = new PShape();
-		lines.setFamily(PShape.GEOMETRY);
-		lines.setStrokeCap(ROUND);
-		lines.setStroke(true);
-		lines.setStrokeWeight(3);
-		lines.setStroke(-1232222);
-		lines.beginShape();
-
-		while (i.next() != null) {
-			XPoint x = (XPoint) i.value();
-			lines.vertex((float) x.x, (float) x.y);
-			i = (SimpleListItem) i.next();
-		}
-		lines.endShape();
-
-
-//		XPoint x = (XPoint) L.next(L.first()).value();
-//		x.x;
-//		L.get
-
-//		SimpleList l = s.getLines(true);
-//		l.nex
-		return lines;
-	}
+//		lines.endShape();
+//
+//
+////		XPoint x = (XPoint) L.next(L.first()).value();
+////		x.x;
+////		L.get
+//
+////		SimpleList l = s.getLines(true);
+////		l.nex
+//		return lines;
+//	}
 
 	/**
 	 * 
@@ -779,11 +778,12 @@ public class Contour {
 	 * (or z values) of points is the euclidean distance between a point in the
 	 * shape and the given high point.
 	 * <p>
-	 * Assign each point feature a number equal to the distance between geometry's
+	 * Assigns each point feature a number equal to the distance between geometry's
 	 * centroid and the point.
 	 * 
 	 * @param shape
 	 * @param highPoint
+	 * @param intervalSpacing
 	 * @return
 	 */
 	public static PShape isolines(PShape shape, PVector highPoint, float intervalSpacing) {
@@ -866,12 +866,59 @@ public class Contour {
 
 	/**
 	 * 
+	 * @param points          List of PVectors: the z coordinate for each PVector
+	 *                        should define the contour height at that point
+	 * @param intervalSpacing contour height distance represented by successive
+	 *                        isolines
+	 * @param isolineMin      minimum value represented by isolines
+	 * @param isolineMax      maximum value represented by isolines
+	 * @return
+	 */
+	public static PShape isolines(List<PVector> points, float intervalSpacing, float isolineMin, float isolineMax) {
+		// lines = max-min/spacing
+		final IncrementalTin tin = new IncrementalTin(10);
+		points.forEach(point -> {
+			tin.add(new Vertex(point.x, point.y, point.z));
+		});
+
+		double[] intervals = generateDoubleSequence(isolineMin, isolineMax, intervalSpacing);
+		ContourBuilderForTin builder = null;
+		try {
+			// catch org.tinfour.contour.PerimeterLink.addContourTip error if any vertex has
+			// near-zero coordinate
+			builder = new ContourBuilderForTin(tin, null, intervals, true);
+		} catch (Exception e) {
+			return new PShape();
+		}
+
+		List<org.tinfour.contour.Contour> contours = builder.getContours();
+
+		PShape parent = new PShape(PConstants.GROUP);
+		parent.setKind(PConstants.GROUP);
+
+		LineDissolver ld = new LineDissolver();
+		for (org.tinfour.contour.Contour contour : contours) {
+			Coordinate[] coords = new Coordinate[contour.getCoordinates().length / 2];
+			for (int i = 0; i < contour.getCoordinates().length; i += 2) {
+				float vx = (float) contour.getCoordinates()[i];
+				float vy = (float) contour.getCoordinates()[i + 1];
+				coords[i / 2] = new Coordinate(vx, vy);
+			}
+			ld.add(GEOM_FACTORY.createLineString(coords));
+		}
+
+		return toPShape(ld.getResult()); // contains check instead?
+	}
+
+	/**
+	 * 
 	 * @param shape
 	 * @param spacing spacing between offsets. should be >=1
 	 * @param p
 	 * @return
+	 * @see #miteredOffset(PShape, double)
 	 */
-	public static PShape miteredOffset(PShape shape, double spacing, PApplet p) {
+	public static PShape miteredOffset(PShape shape, double spacing) {
 		Geometry g = fromPShape(shape);
 
 		if (g.getCoordinates().length > 2000) {
@@ -897,27 +944,27 @@ public class Contour {
 		final ArrayDeque<Geometry> geometries = new ArrayDeque<>();
 		geometries.push(g);
 
+		PShape parent = new PShape(PConstants.GROUP);
 		while (!geometries.isEmpty()) {
 			g = geometries.pop();
 			Coordinate[] coords = g.getCoordinates();
 			if (coords.length > 1) {
 				PShape lines = new PShape();
-				lines.setFamily(PShape.GEOMETRY);
+				lines.setFamily(PShape.PATH);
 				lines.setStroke(true);
-				lines.setStrokeWeight(1);
+				lines.setStrokeWeight(2);
 //				lines.setStroke(
 //						RGB.composeclr((int) PApplet.map((float) g.getCoordinates()[0].x, 0, p.width, 0, 254), n * 10 % 255,
 //								150,
 //								255));
 				lines.setStroke(-1232222);
-				lines.setFill(false);
 				lines.beginShape();
 				for (int i = 0; i < coords.length; i++) {
 					Coordinate coord = coords[i];
 					lines.vertex((float) coord.x, (float) coord.y);
 				}
 				lines.endShape();
-				p.shape(lines);
+				parent.addChild(lines);
 
 				BufferOp b = new BufferOp(g, bufParams);
 				g = b.getResultGeometry(spacing);
@@ -933,12 +980,76 @@ public class Contour {
 			}
 		}
 
-		return toPShape(null); // TODO output offsets as PShape
+		return parent;
 	}
 
-	// a mitered offset that emanates from the shape
-	private static void miteredOffsetOutwards(int offsetCurveN) {
+	/**
+	 * A mitered offset that emanates from the shape
+	 * 
+	 * @param shape
+	 * @param spacing
+	 * @param curves number of offset curves (including the original shape
+	 *                     outline)
+	 * @return A group PShape, where each child shape is a
+	 * @see #miteredOffset(PShape, double)
+	 */
+	public static PShape miteredOffsetOutwards(PShape shape, double spacing, final int curves) {
+		Geometry g = fromPShape(shape);
 
+		if (g.getCoordinates().length > 2000) {
+			g = DouglasPeuckerSimplifier.simplify(g, 0.2);
+		}
+
+		final int joinStyle = BufferParameters.JOIN_MITRE; // TODO as input argument
+
+		BufferParameters bufParams = new BufferParameters(4, BufferParameters.CAP_FLAT, joinStyle,
+				BufferParameters.DEFAULT_MITRE_LIMIT);
+
+//		bufParams.setSimplifyFactor(5); // can produce "poor" yet interesting results
+
+		spacing = Math.max(1, Math.abs(spacing)); // ensure positive and >=1
+
+		final ArrayDeque<Geometry> geometries = new ArrayDeque<>();
+		geometries.push(g);
+
+		PShape parent = new PShape(PConstants.GROUP);
+		int currentCurves = 0;
+		while (!geometries.isEmpty() && currentCurves < curves) {
+			g = geometries.poll();
+
+			// need to iterate over rings individually
+			for (LinearRing ring : new LinearRingIterator(g)) {
+				Coordinate[] coords = ring.getCoordinates();
+				if (coords.length > 1) {
+					PShape lines = new PShape(PShape.PATH);
+					lines.setStroke(true);
+					lines.setStrokeWeight(2);
+					lines.setStroke(-1232222);
+					lines.beginShape();
+
+					for (int i = 0; i < coords.length; i++) {
+						Coordinate coord = coords[i];
+						lines.vertex((float) coord.x, (float) coord.y);
+					}
+					lines.endShape();
+					parent.addChild(lines);
+				}
+			}
+			
+			BufferOp b = new BufferOp(g, bufParams);
+			g = b.getResultGeometry(spacing);
+			for (int i = 0; i < g.getNumGeometries(); i++) {
+				if (joinStyle == BufferParameters.JOIN_MITRE) {
+					geometries.add(g.getGeometryN(i));
+				} else {
+					// because rounded miters produce LOADS of dense vertices
+					geometries.add(DouglasPeuckerSimplifier.simplify(g.getGeometryN(i), 0.1));
+				}
+			}
+			currentCurves++;
+		}
+
+		return parent;
 	}
 
 	/**

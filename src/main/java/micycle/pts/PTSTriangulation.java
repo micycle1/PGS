@@ -21,6 +21,12 @@ import earcut4j.Earcut;
 import processing.core.PShape;
 import processing.core.PVector;
 
+/**
+ * Rename to Mesh?
+ * 
+ * @author Michael Carleton
+ *
+ */
 public class PTSTriangulation {
 
 	public static PShape earCutTriangulation(ArrayList<PVector> points) {

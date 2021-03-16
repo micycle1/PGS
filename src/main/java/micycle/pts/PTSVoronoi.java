@@ -22,6 +22,12 @@ import de.alsclo.voronoi.Voronoi;
 import processing.core.PShape;
 import processing.core.PVector;
 
+/**
+ * Rename to Mesh?
+ * 
+ * @author Michael Carleton
+ *
+ */
 public class PTSVoronoi {
 
 	/**

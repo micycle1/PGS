@@ -5,6 +5,7 @@ import static micycle.pts.Conversion.toPShape;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import org.geodelivery.jap.concavehull.SnapHull;
 import org.geotools.geometry.jts.JTS;
@@ -68,6 +69,8 @@ public class PTS implements PConstants {
 	// geometries)
 
 	// TODO replace line() in for-each with beginshape(LINES)...vertex...endShape()
+
+	// TODO use LinearRingIterator when possible (refactor)
 
 	/**
 	 * Calling Polygon#union repeatedly is one way to union several Polygons
@@ -461,10 +464,6 @@ public class PTS implements PConstants {
 		return toPShape(sum);
 	}
 
-
-
-
-
 	/**
 	 * TODO: outline of exterior ring only
 	 * 
@@ -606,8 +605,8 @@ public class PTS implements PConstants {
 	 * 
 	 * @return
 	 */
-	public static ArrayList<PVector> generateRandomGridPoints(PShape shape, int maxPoints,
-			boolean constrainedToCircle, double gutterFraction) {
+	public static ArrayList<PVector> generateRandomGridPoints(PShape shape, int maxPoints, boolean constrainedToCircle,
+			double gutterFraction) {
 		Geometry g = fromPShape(shape);
 		IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(g);
 
@@ -962,6 +961,54 @@ public class PTS implements PConstants {
 
 	private static LineString lineFromPVectors(PVector a, PVector b) {
 		return GEOM_FACTORY.createLineString(new Coordinate[] { new Coordinate(a.x, a.y), new Coordinate(b.x, b.y) });
+	}
+
+	/**
+	 * A more convenient way to iterate over both the exterior and linear rings (if
+	 * any) of a JTS geometry.
+	 * 
+	 * @author Michael Carleton
+	 *
+	 * @param <LinearRing>
+	 */
+	protected static class LinearRingIterator implements Iterable<LinearRing> {
+
+		private LinearRing[] array;
+		private int size;
+
+		public LinearRingIterator(Geometry g) {
+			Polygon poly = (Polygon) g;
+			this.size = 1 + poly.getNumInteriorRing();
+			this.array = new LinearRing[size];
+			array[0] = poly.getExteriorRing();
+			for (int i = 0; i < poly.getNumInteriorRing(); i++) {
+				array[i + 1] = poly.getInteriorRingN(i);
+			}
+		}
+
+		@Override
+		public Iterator<LinearRing> iterator() {
+			Iterator<LinearRing> it = new Iterator<LinearRing>() {
+
+				private int currentIndex = 0;
+
+				@Override
+				public boolean hasNext() {
+					return currentIndex < size;
+				}
+
+				@Override
+				public LinearRing next() {
+					return array[currentIndex++];
+				}
+
+				@Override
+				public void remove() {
+					throw new UnsupportedOperationException();
+				}
+			};
+			return it;
+		}
 	}
 
 }
