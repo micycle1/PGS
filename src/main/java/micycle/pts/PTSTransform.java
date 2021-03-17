@@ -41,6 +41,13 @@ public class PTSTransform {
 		return toPShape(t.transform(fromPShape(shape)));
 	}
 
+	public void scaleToFit(PShape shape, PShape fit) {
+		// TODO
+		// scale shape to fit other shape (fit mean overlap
+		// find minimum distance point; calc dist from centroid to point, then scale by
+		// factor
+	}
+
 	/**
 	 * Flip based on the centre point TODO move near rotate
 	 * 
@@ -81,6 +88,24 @@ public class PTSTransform {
 	public static PShape translate(PShape shape, double x, double y) {
 		Geometry g = fromPShape(shape);
 		AffineTransformation t = AffineTransformation.translationInstance(x, y);
+		return toPShape(t.transform(g));
+	}
+
+	/**
+	 * Translates the shape such that its centroid is equivalent to the given
+	 * coordinates.
+	 * 
+	 * @param shape
+	 * @param x     target centroid X
+	 * @param y     target centroid Y
+	 * @return translated shape
+	 */
+	public static PShape translateTo(PShape shape, double x, double y) {
+		Geometry g = fromPShape(shape);
+		Point c = g.getCentroid();
+		double translateX = x - c.getX();
+		double translateY = y - c.getY();
+		AffineTransformation t = AffineTransformation.translationInstance(translateX, translateY);
 		return toPShape(t.transform(g));
 	}
 

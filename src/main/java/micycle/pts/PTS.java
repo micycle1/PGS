@@ -2,16 +2,15 @@ package micycle.pts;
 
 import static micycle.pts.Conversion.fromPShape;
 import static micycle.pts.Conversion.toPShape;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+
 import org.geodelivery.jap.concavehull.SnapHull;
 import org.geotools.geometry.jts.JTS;
-import org.locationtech.jts.algorithm.MinimumBoundingCircle;
-import org.locationtech.jts.algorithm.MinimumDiameter;
-import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
 import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.algorithm.match.HausdorffSimilarityMeasure;
 import org.locationtech.jts.densify.Densifier;
@@ -27,7 +26,6 @@ import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.locationtech.jts.geom.util.LineStringExtracter;
 import org.locationtech.jts.linearref.LengthIndexedLine;
-import org.locationtech.jts.operation.distance.DistanceOp;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.shape.random.RandomPointsBuilder;
@@ -36,6 +34,7 @@ import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.simplify.VWSimplifier;
 import org.locationtech.jts.util.GeometricShapeFactory;
+
 import micycle.pts.color.Blending;
 import micycle.pts.utility.PolygonDecomposition;
 import micycle.pts.utility.RandomPolygon;
@@ -92,116 +91,6 @@ public class PTS implements PConstants {
 	}
 
 	/**
-	 * The Maximum Inscribed Circle is determined by a point in the interior of the
-	 * area which has the farthest distance from the area boundary, along with a
-	 * boundary point at that distance.
-	 * 
-	 * @param shape
-	 * @param tolerance the distance tolerance for computing the centre point
-	 */
-	public static PShape maximumInscribedCircle(PShape shape, float tolerance) {
-		MaximumInscribedCircle mic = new MaximumInscribedCircle(fromPShape(shape), tolerance);
-
-		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-		shapeFactory.setNumPoints(CURVE_SAMPLES * 4); // TODO magic constant
-		shapeFactory.setCentre(new Coordinate(mic.getCenter().getX(), mic.getCenter().getY()));
-		shapeFactory.setWidth(mic.getRadiusLine().getLength() * 2); // r*2 for total width & height
-		shapeFactory.setHeight(mic.getRadiusLine().getLength() * 2); // r*2 for total width & height
-		return toPShape(shapeFactory.createEllipse());
-
-	}
-
-	/**
-	 * Return the maximum circle (at a given centerpoint inside/outside the circle)
-	 * 
-	 * @param shape
-	 * @param centerPoint
-	 * @return
-	 */
-	public static PShape maximumInscribedCircle(PShape shape, PVector centerPoint) {
-		Geometry g = fromPShape(shape);
-		Point p = pointFromPVector(centerPoint);
-		Coordinate closestEdgePoint = DistanceOp.nearestPoints(g.getBoundary(), p)[0];
-
-		double radius = distance(GEOM_FACTORY.createPoint(closestEdgePoint), p);
-		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-		shapeFactory.setNumPoints(CURVE_SAMPLES * 4); // TODO magic constant
-		shapeFactory.setCentre(p.getCoordinate());
-		shapeFactory.setWidth(radius * 2); // r*2 for total width & height
-		shapeFactory.setHeight(radius * 2); // r*2 for total width & height
-		return toPShape(shapeFactory.createEllipse());
-	}
-
-	/**
-	 * Computes the Minimum Bounding Circle (MBC)for the points in a Geometry. The
-	 * MBC is the smallest circle which covers all the vertices of the input shape
-	 * (this is also known as the Smallest Enclosing Circle). This is equivalent to
-	 * computing the Maximum Diameter of the input vertex set.
-	 */
-	public static PShape minimumBoundingCircle(PShape shape) {
-		MinimumBoundingCircle mbc = new MinimumBoundingCircle(fromPShape(shape));
-		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-		shapeFactory.setNumPoints(CURVE_SAMPLES * 4); // TODO magic constant
-		shapeFactory.setCentre(new Coordinate(mbc.getCentre().getX(), mbc.getCentre().getY()));
-		shapeFactory.setWidth(mbc.getRadius() * 2); // r*2 for total width & height
-		shapeFactory.setHeight(mbc.getRadius() * 2); // r*2 for total width & height
-		return toPShape(shapeFactory.createEllipse());
-	}
-
-	/**
-	 * Gets the minimum rectangle enclosing a shape.
-	 * 
-	 * @param shape
-	 * @return
-	 */
-	public static PShape minimumBoundingRectangle(PShape shape) {
-		Polygon md = (Polygon) MinimumDiameter.getMinimumRectangle(fromPShape(shape));
-		return toPShape(md);
-	}
-
-	/**
-	 * 
-	 * 
-	 * Computes the minimum diameter of a shape. The minimum diameter is defined to
-	 * be the width of the smallest band that contains the shape, where a band is a
-	 * strip of the plane defined by two parallel lines. This can be thought of as
-	 * the smallest hole that the geometry can bemoved through, with a single
-	 * rotation.
-	 * 
-	 * @param shape
-	 * @return
-	 */
-	public static PShape minimumDiameter(PShape shape) {
-		LineString md = (LineString) MinimumDiameter.getMinimumDiameter(fromPShape(shape));
-		return toPShape(md);
-	}
-
-//	public static PShape smallestSurroundingRectangle(PShape shape) {
-//		return toPShape(
-//				SmallestSurroundingRectangleComputation.getSSRPreservedArea(geometryFactory.buildGeometry(null)));
-//	}
-
-	/**
-	 * 
-	 * @param shape
-	 * @param fit   0...1
-	 * @return
-	 */
-	private static Polygon smooth(Polygon shape, float fit) {
-		// http://lastresortsoftware.blogspot.com/2010/12/smooth-as.html
-		return (Polygon) JTS.smooth(shape, fit);
-	}
-
-	/**
-	 * @param shape
-	 * @param fit   tightness of fit from 0 (loose) to 1 (tight)
-	 * @return
-	 */
-	protected static Geometry smooth(Geometry shape, float fit) {
-		return JTS.smooth(shape, fit);
-	}
-
-	/**
 	 * @return shape A - shape B
 	 */
 	public static PShape difference(PShape a, PShape b) {
@@ -227,16 +116,6 @@ public class PTS implements PConstants {
 		return out;
 	}
 
-	private static final int getPShapeFillColor(final PShape sh) {
-		try {
-			final java.lang.reflect.Field f = PShape.class.getDeclaredField("fillColor");
-			f.setAccessible(true);
-			return f.getInt(sh);
-		} catch (ReflectiveOperationException cause) {
-			throw new RuntimeException(cause);
-		}
-	}
-
 	/**
 	 * @return A∪B
 	 * @see #union(PShape...)
@@ -247,6 +126,7 @@ public class PTS implements PConstants {
 	}
 
 	public static PShape union(PShape... shapes) {
+		// same as flatten?
 		ArrayList<Geometry> geoms = new ArrayList<>();
 		for (int i = 0; i < shapes.length; i++) {
 			geoms.add(fromPShape(shapes[i]));
@@ -327,14 +207,15 @@ public class PTS implements PConstants {
 	}
 
 	/**
-	 * Smoothes a geometry
+	 * Smoothes a geometry. The smoothing algorithm inserts new vertices which are
+	 * positioned using Bezier splines.
 	 * 
 	 * @param shape
 	 * @param fit   tightness of fit from 0 (loose) to 1 (tight)
 	 * @return
 	 */
 	public static PShape smooth(PShape shape, float fit) {
-		return toPShape(smooth(fromPShape(shape), fit));
+		return toPShape(JTS.smooth(fromPShape(shape), fit));
 	}
 
 	public static PShape flatten(PShape shape) {
@@ -343,6 +224,12 @@ public class PTS implements PConstants {
 		return toPShape(poly.getExteriorRing());
 	}
 
+	/**
+	 * Computes the convex hull of multiple PShapes
+	 * 
+	 * @param shapes
+	 * @return
+	 */
 	public static PShape convexHull(PShape... shapes) {
 		Geometry g = fromPShape(shapes[0]);
 		for (int i = 1; i < shapes.length; i++) {
@@ -357,6 +244,7 @@ public class PTS implements PConstants {
 	 * @param points
 	 * @param threshold euclidean distance threshold
 	 * @return
+	 * @see #concaveHull2(ArrayList, float)
 	 */
 	public static PShape concaveHull(ArrayList<PVector> points, float threshold) {
 
@@ -380,7 +268,8 @@ public class PTS implements PConstants {
 	}
 
 	/**
-	 * Has a more "organic" structure compared to other concave method.
+	 * Computes the concave hull of a shape using a different algorithm. Has a more
+	 * "organic" structure compared to other concave method.
 	 * 
 	 * @param points
 	 * @param threshold 0...1 (Normalized length parameter). Setting λP = 1 means
@@ -395,6 +284,7 @@ public class PTS implements PConstants {
 	 *                  typically produce optimal or near-optimal shape
 	 *                  characterization across a wide range of point distributions.
 	 * @return
+	 * @see #concaveHull(ArrayList, float)
 	 */
 	public static PShape concaveHull2(ArrayList<PVector> points, float threshold) {
 
@@ -536,22 +426,47 @@ public class PTS implements PConstants {
 	}
 
 	/**
+	 * Extracts a point from the perimeter of the given shape.
 	 * 
 	 * @param shape
-	 * @param distance 0...1 around shape perimeter; or -1...0 (other direction)
+	 * @param distance       0...1 around shape perimeter; or -1...0 (other
+	 *                       direction)
+	 * @param offsetDistance perpendicular offset distance, where 0 is exactly on
+	 *                       the shape perimeter. The computed point is offset to
+	 *                       the left of the line if the offset distance is
+	 *                       positive, and to the right if negative
 	 * @return
+	 * @see #pointsOnPerimeter(PShape, int, float)
 	 */
-	public static PVector pointOnOutline(PShape shape, float distance, float offsetDistance) {
+	public static PVector pointOnPerimeter(PShape shape, float distance, float offsetDistance) {
 		distance %= 1;
-		// TODO CHECK CAST (ITERATE OVER GROUP)
+		// TODO CHECK CAST (ITERATE OVER GROUP); apply to interior rings too?
 		LengthIndexedLine l = new LengthIndexedLine(((Polygon) fromPShape(shape)).getExteriorRing());
 		Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
 		return new PVector((float) coord.x, (float) coord.y);
 	}
 
-	public static PVector getCentroid(PShape shape) {
-		Point point = fromPShape(shape).getCentroid();
-		return new PVector((float) point.getX(), (float) point.getY());
+	/**
+	 * Extracts many points from the perimeter (faster than calling other method
+	 * lots)
+	 * 
+	 * @param shape
+	 * @param points
+	 * @param offsetDistance
+	 * @return
+	 * @see #pointOnPerimeter(PShape, float, float)
+	 */
+	public static List<PVector> pointsOnPerimeter(PShape shape, int points, float offsetDistance) {
+		// TODO another method that returns concave hull of returned points (when
+		// offset)
+		ArrayList<PVector> coords = new ArrayList<>(points);
+		LengthIndexedLine l = new LengthIndexedLine(((Polygon) fromPShape(shape)).getExteriorRing());
+		final double increment = 1d / points;
+		for (double distance = 0; distance < 1; distance += increment) {
+			Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
+			coords.add(new PVector((float) coord.x, (float) coord.y));
+		}
+		return coords;
 	}
 
 	/**
@@ -658,89 +573,6 @@ public class PTS implements PConstants {
 	}
 
 	/**
-	 * Simple polygon from coordinate list
-	 */
-	private static PShape pshapeFromPVector(List<PVector> coords) {
-		PShape shape = new PShape();
-		shape.setFamily(PShape.GEOMETRY);
-//		lines.setStrokeCap(ROUND);
-		shape.setStroke(true);
-		shape.setStrokeWeight(2);
-		shape.setStroke(0);
-		shape.setFill(-123712);
-		shape.setFill(true);
-		shape.beginShape();
-
-		for (PVector v : coords) {
-			shape.vertex(v.x, v.y);
-		}
-
-		shape.endShape(CLOSE);
-		return shape;
-	}
-
-	/**
-	 * TODO return list of points when shape is group
-	 * 
-	 * @param shape
-	 * @param point
-	 * @return
-	 */
-	public static PVector closestVertexToPoint(PShape shape, PVector point) {
-		Geometry g = fromPShape(shape);
-		Coordinate coord = DistanceOp.nearestPoints(g, pointFromPVector(point))[0];
-		return new PVector((float) coord.x, (float) coord.y);
-	}
-
-	// TODO split these and similar methods into "Overlay" class?
-
-	public static boolean contains(PShape outer, PShape inner) {
-		return fromPShape(outer).contains(fromPShape(inner));
-	}
-
-	public static boolean containsPoint(PShape shape, PVector point) {
-		return fromPShape(shape).contains(pointFromPVector(point));
-	}
-
-	public static float distance(PShape a, PShape b) {
-		return (float) fromPShape(a).distance(fromPShape(b));
-	}
-
-	public static float area(PShape shape) {
-		return (float) fromPShape(shape).getArea();
-	}
-
-	/**
-	 * * Calculates the Miller circularity index for a polygon. This index, between
-	 * 0 and 1, is equal to 1 if the polygon is perfectly circular and tends towards
-	 * 0 for a segment.
-	 * 
-	 * @param shape
-	 * @return
-	 */
-	public static float getCircularity(PShape shape) {
-		Polygon poly = (Polygon) fromPShape(shape);
-		return (float) (4 * PApplet.PI * poly.getArea()
-				/ (poly.getBoundary().getLength() * poly.getBoundary().getLength()));
-	}
-
-	/**
-	 * 
-	 * 
-	 * Measures the degree of similarity between two Geometrysusing the Hausdorff
-	 * distance metric. The measure is normalized to lie in the range [0, 1]. Higher
-	 * measures indicate a great degree of similarity.
-	 * 
-	 * @param a first shape
-	 * @param b second shape
-	 * @return the value of the similarity measure, in [0.0, 1.0]
-	 */
-	public static float similarity(PShape a, PShape b) {
-		HausdorffSimilarityMeasure sm = new HausdorffSimilarityMeasure();
-		return (float) sm.measure(fromPShape(a), fromPShape(b));
-	}
-
-	/**
 	 * Same as getVertices for geometry PShapes; different (subdivides) for circles
 	 * etc.
 	 * 
@@ -764,6 +596,7 @@ public class PTS implements PConstants {
 	 * @return float[] of [X,Y,W,H]
 	 */
 	public static float[] bound(PShape shape) {
+		// move to ShapeMetrics?
 		Envelope e = (Envelope) fromPShape(shape).getEnvelopeInternal();
 		return new float[] { (float) e.getMinX(), (float) e.getMinY(), (float) e.getWidth(), (float) e.getHeight() };
 	}
@@ -812,7 +645,7 @@ public class PTS implements PConstants {
 	/**
 	 * Splits a polygon into 4 equal quadrants
 	 * 
-	 * @param p
+	 * @param shape
 	 * @return
 	 */
 	public static ArrayList<PShape> split(PShape shape) {
@@ -845,12 +678,13 @@ public class PTS implements PConstants {
 	}
 
 	/**
-	 * Bayazit convex decomposition algorithm for simple polygons.
+	 * Decomposes the shape into simple polygons using Mark Bayazit's algorithm.
 	 * 
 	 * @param shape
-	 * @return lsit of convex polygons comprising the original shape
+	 * @return list of convex (simple) polygons comprising the original shape
 	 */
 	public static ArrayList<PShape> decompose(PShape shape) {
+		// https://mpen.ca/406/bayazit
 		// retry GreedyPolygonSplitter()?
 
 		Geometry g = fromPShape(shape);
@@ -876,7 +710,7 @@ public class PTS implements PConstants {
 	 * @param shape
 	 * @param p1    must be outside shape
 	 * @param p2    must be outside shape
-	 * @return
+	 * @return Two PShapes
 	 */
 	public static ArrayList<PShape> slice(PShape shape, PVector p1, PVector p2) {
 		// https://gis.stackexchange.com/questions/189976/
@@ -922,7 +756,7 @@ public class PTS implements PConstants {
 		return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 	}
 
-	private static double distance(Point a, Point b) {
+	protected static double distance(Point a, Point b) {
 		double deltaX = a.getY() - b.getY();
 		double deltaY = a.getX() - b.getX();
 		return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
@@ -961,6 +795,42 @@ public class PTS implements PConstants {
 
 	private static LineString lineFromPVectors(PVector a, PVector b) {
 		return GEOM_FACTORY.createLineString(new Coordinate[] { new Coordinate(a.x, a.y), new Coordinate(b.x, b.y) });
+	}
+
+	/**
+	 * Reflection-based workaround to get the fill color of a PShape (this field is
+	 * private).
+	 */
+	private static final int getPShapeFillColor(final PShape sh) {
+		try {
+			final java.lang.reflect.Field f = PShape.class.getDeclaredField("fillColor");
+			f.setAccessible(true);
+			return f.getInt(sh);
+		} catch (ReflectiveOperationException cause) {
+			throw new RuntimeException(cause);
+		}
+	}
+
+	/**
+	 * Generate a simple polygon from the given coordinate list. Used by
+	 * randomPolygon().
+	 */
+	private static PShape pshapeFromPVector(List<PVector> coords) {
+		PShape shape = new PShape();
+		shape.setFamily(PShape.GEOMETRY);
+		shape.setStroke(true);
+		shape.setStrokeWeight(2);
+		shape.setStroke(0);
+		shape.setFill(-123712);
+		shape.setFill(true);
+		shape.beginShape();
+	
+		for (PVector v : coords) {
+			shape.vertex(v.x, v.y);
+		}
+	
+		shape.endShape(CLOSE);
+		return shape;
 	}
 
 	/**

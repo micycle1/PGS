@@ -4,13 +4,56 @@
 
 ---
 
-A library for manipulating PShape geometry.
+A library for shapes in Processing:
+
+- Predicates
+- Metrics
+- Geometric Computation
 
 PTS wraps JTS, enabling its methods to be applied to Processing's `PShape` objects. Beyond that, PTS provides other geometry __ such as splines.
 
 [Contents from https://doc.cgal.org/latest/Manual/packages.html]
 
+The library is split into a handful of classes as detailed below.
+
+## Contour
+Methods to produce shape contour lines.
+### Medial Axis
+<img src="resources/contour/medialAxis.png" alt="" width="50%"/>
+
+### Dissolved Medial Axis
+A medial axis where small line segments are dissolved into larger, straighter ones.
+
+<img src="resources/contour/medialAxisDissolved.png" alt="" width="50%"/>
+
+### Straight Skeleton
+<img src="resources/contour/straightSkeleton.png" alt="" width="49%"/>
+<img src="resources/contour/solubSkeleton.png" alt="" width="49%"/>
+
+### Uniform straight skeleton
+...
+
+### Isolines (topographic contour lines)
+
+<p float="middle">
+  <img src="resources/contour/isolines.gif" alt="" width="50%"/>
+</p>
+
+### Mitered Offset Curves
+Inner and exterior mitered offset curves; based on *miter*, *bevel* or *round* offset styles. 
+
+<p float="middle">
+  <img src="resources/contour/miteredInterior.gif" alt="" width="49%"/>
+  <img src="resources/contour/miteredExterior.gif" alt="" width="49%"/>
+</p>
+
+
 ## Morphology
+Methods to morph shapes (topology)
+### Buffer
+<img src="resources/pts/buffer.gif" alt="" width="50%"/>
+
+### Mink sum + diff
 
 ### PShapes
 
@@ -34,7 +77,15 @@ PTS wraps JTS, enabling its methods to be applied to Processing's `PShape` objec
 - Metrics
 
 ## Geometry Processing
-- Line Merging
+
+### Point on Perimeter
+<img src="resources/pts/pointOnPerimeter.gif" alt="" width="50%"/>
+
+### Points on Perimeter
+<img src="resources/pts/pointsOnPerimeter.gif" alt="" width="50%"/>
+
+
+
 - Noding & Polygonization
 - Simplification
 - Linear Referencing
@@ -55,23 +106,6 @@ PTS wraps JTS, enabling its methods to be applied to Processing's `PShape` objec
 
 - Voronoi
 - Poisson-Disc
-
-### Contours
-
-- Medial Axis
-
-- Dissolved Medial Axis
-  
-  A medial axis where small line segments are dissolved into larger ones. The result is often more akin to a straight skeleton.
-- Straight Skeleton
-  
-  Uniform straight skeleton
-
-- Isolines (topographic contour lines)
-
-- Mitered Offset Curves
-
-  Mitered offsets based on miter, bevel or round offset styles. 
 
 ## Libraries
 

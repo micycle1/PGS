@@ -141,17 +141,24 @@
 			<version>1.7.1</version>
 		</dependency>
 		<dependency>
-    <groupId>org.orbisgis</groupId>
-    <artifactId>poly2tri</artifactId>
-    <version>0.1.2</version>
-    <type>pom</type>
-</dependency>
+			<groupId>org.orbisgis</groupId>
+			<artifactId>poly2tri</artifactId>
+			<version>0.1.2</version>
+			<type>pom</type>
+		</dependency>
 		<dependency>
-    <groupId>org.orbisgis</groupId>
-    <artifactId>poly2tri-core</artifactId>
-    <version>0.1.2</version>
-</dependency>
-		
+			<groupId>org.orbisgis</groupId>
+			<artifactId>poly2tri-core</artifactId>
+			<version>0.1.2</version>
+		</dependency>
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-api</artifactId>
+			<version>5.7.1</version>
+			<scope>test</scope>
+		</dependency>
+
+
 	</dependencies>
 
 </project>

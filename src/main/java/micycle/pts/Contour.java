@@ -28,6 +28,7 @@ import org.locationtech.jts.operation.linemerge.LineMergeEdge;
 import org.locationtech.jts.operation.linemerge.LineMergeGraph;
 import org.locationtech.jts.planargraph.Node;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
+import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.triangulate.VoronoiDiagramBuilder;
 import org.tinfour.common.Vertex;
 import org.tinfour.contour.ContourBuilderForTin;
@@ -221,18 +222,21 @@ public class Contour {
 //		p.shape(toPShape(
 //				DouglasPeuckerSimplifier.simplify(m.getDissolvedGeometry(), p.map(p.mouseX, 0, p.width, 0, 100))));
 		PShape s = toPShape(m.getDissolvedGeometry());
+
+		s = toPShape(DouglasPeuckerSimplifier.simplify(m.getDissolvedGeometry(), 15));
+
 		s.setStrokeWeight(15);
 		for (int i = 0; i < s.getChildCount(); i++) {
 			s.getChild(i).setStrokeWeight(6);
-//			s.getChild(i).setStroke(
-//					p.color(255, 56, i * 163.3f % 255));
+			s.getChild(i).setStrokeCap(ROUND);
+			s.getChild(i).setStroke(p.color((i * 23.3f) % 255, 255 - (i * 33.3f) % 255, (i * 16.3f) % 255));
 		}
-//		p.shape(s);
+		p.shape(s);
 
 		p.beginShape(LINES);
 		m.getEdges().forEach(e -> {
-			p.line((float) e.head.position.x, (float) e.head.position.y, (float) e.tail.position.x,
-					(float) e.tail.position.y);
+//			p.line((float) e.head.position.x, (float) e.head.position.y, (float) e.tail.position.x,
+//					(float) e.tail.position.y);
 //			p.vertex((float) e.head.position.x, (float) e.head.position.y);
 //			p.vertex((float) e.tail.position.x, (float) e.tail.position.y);
 		});
@@ -260,9 +264,9 @@ public class Contour {
 //		p.noFill();
 		p.noStroke();
 		p.fill(0);
-		m.getLeaves().forEach(l -> {
-			p.ellipse((float) l.position.x, (float) l.position.y, 5, 5);
-		});
+//		m.getLeaves().forEach(l -> {
+//			p.ellipse((float) l.position.x, (float) l.position.y, 5, 5);
+//		});
 
 //		m.getAncestors(m.getLeaves().get(0)).forEach(v -> {
 //
@@ -403,18 +407,18 @@ public class Contour {
 //		d = m.rootNode;
 		p.noFill();
 		p.stroke(50, 150, 250);
-		p.ellipse((float) d.position.x, (float) d.position.y, (float) d.radius * 2, (float) d.radius * 2);
-		p.point((float) d.position.x, (float) d.position.y);
+//		p.ellipse((float) d.position.x, (float) d.position.y, (float) d.radius * 2, (float) d.radius * 2);
+//		p.point((float) d.position.x, (float) d.position.y);
 		p.fill(255);
-		p.text(d.depthBF, 10, 80);
-		p.textAlign(PConstants.LEFT);
-		p.text((float) d.featureArea, 0, 100); // feature area
+//		p.text(d.depthBF, 10, 80);
+//		p.textAlign(PConstants.LEFT);
+//		p.text((float) d.featureArea, 0, 100); // feature area
 
 		d = m.rootNode;
 		p.noFill();
 		p.stroke(50, 150, 250);
-		p.ellipse((float) d.position.x, (float) d.position.y, (float) d.radius * 2, (float) d.radius * 2);
-		p.point((float) d.position.x, (float) d.position.y);
+//		p.ellipse((float) d.position.x, (float) d.position.y, (float) d.radius * 2, (float) d.radius * 2);
+//		p.point((float) d.position.x, (float) d.position.y);
 
 		p.stroke(255, 0, 0);
 //		TriangulationPoint v = d.t.points[0];
@@ -425,6 +429,7 @@ public class Contour {
 //		p.point((float) v.getX(), (float) v.getY());
 //		p.point((float) d.position.x, (float) d.position.y);
 
+		p.strokeWeight(4);
 		p.colorMode(PConstants.HSB, 1, 1, 1, 1);
 		float x = 0;
 		for (Branch s : m.getBranches()) {
@@ -579,6 +584,9 @@ public class Contour {
 		Polygon polygon;
 		if (g.getGeometryType() == Geometry.TYPENAME_POLYGON) {
 			polygon = (Polygon) g;
+			if (polygon.getCoordinates().length > 1000) {
+				polygon = (Polygon) DouglasPeuckerSimplifier.simplify(polygon, 1);
+			}
 		} else {
 			System.out.println("MultiPolygon not supported yet.");
 			return new PShape();
@@ -796,9 +804,9 @@ public class Contour {
 		 */
 
 		Geometry g = fromPShape(shape);
-//		if (g.getCoordinates().length > 2000) {
-//			g = DouglasPeuckerSimplifier.simplify(g, 2);
-//		}
+		if (g.getCoordinates().length > 2000) {
+			g = DouglasPeuckerSimplifier.simplify(g, 2);
+		}
 		int buffer = Math.max(10, Math.round(intervalSpacing) + 1);
 		PreparedGeometry cache = PreparedGeometryFactory.prepare(g.buffer(10));
 
@@ -861,35 +869,38 @@ public class Contour {
 			ld.add(GEOM_FACTORY.createLineString(coords));
 		}
 
-		return toPShape(ld.getResult().intersection(g)); // contains check instead?
+		return toPShape(DouglasPeuckerSimplifier.simplify(ld.getResult(), 2).intersection(g)); // contains check
+																								// instead?
 	}
 
 	/**
 	 * 
-	 * @param points          List of PVectors: the z coordinate for each PVector
-	 *                        should define the contour height at that point
-	 * @param intervalSpacing contour height distance represented by successive
-	 *                        isolines
-	 * @param isolineMin      minimum value represented by isolines
-	 * @param isolineMax      maximum value represented by isolines
+	 * @param points               List of PVectors: the z coordinate for each
+	 *                             PVector should define the contour height at that
+	 *                             point
+	 * @param intervalValueSpacing contour height distance represented by successive
+	 *                             isolines
+	 * @param isolineMin           minimum value represented by isolines
+	 * @param isolineMax           maximum value represented by isolines
 	 * @return
 	 */
-	public static PShape isolines(List<PVector> points, float intervalSpacing, float isolineMin, float isolineMax) {
+	public static PShape isolines(List<PVector> points, float intervalValueSpacing, float isolineMin,
+			float isolineMax) {
 		// lines = max-min/spacing
 		final IncrementalTin tin = new IncrementalTin(10);
 		points.forEach(point -> {
 			tin.add(new Vertex(point.x, point.y, point.z));
 		});
 
-		double[] intervals = generateDoubleSequence(isolineMin, isolineMax, intervalSpacing);
+		double[] intervals = generateDoubleSequence(isolineMin, isolineMax, intervalValueSpacing);
 		ContourBuilderForTin builder = null;
-		try {
-			// catch org.tinfour.contour.PerimeterLink.addContourTip error if any vertex has
-			// near-zero coordinate
-			builder = new ContourBuilderForTin(tin, null, intervals, true);
-		} catch (Exception e) {
-			return new PShape();
-		}
+//		try {
+		// catch org.tinfour.contour.PerimeterLink.addContourTip error if any vertex has
+		// near-zero coordinate
+		builder = new ContourBuilderForTin(tin, null, intervals, true);
+//		} catch (Exception e) {
+//			return new PShape();
+//		}
 
 		List<org.tinfour.contour.Contour> contours = builder.getContours();
 
@@ -988,8 +999,7 @@ public class Contour {
 	 * 
 	 * @param shape
 	 * @param spacing
-	 * @param curves number of offset curves (including the original shape
-	 *                     outline)
+	 * @param curves  number of offset curves (including the original shape outline)
 	 * @return A group PShape, where each child shape is a
 	 * @see #miteredOffset(PShape, double)
 	 */
@@ -997,7 +1007,7 @@ public class Contour {
 		Geometry g = fromPShape(shape);
 
 		if (g.getCoordinates().length > 2000) {
-			g = DouglasPeuckerSimplifier.simplify(g, 0.2);
+			g = DouglasPeuckerSimplifier.simplify(g, 0.5);
 		}
 
 		final int joinStyle = BufferParameters.JOIN_MITRE; // TODO as input argument
@@ -1035,7 +1045,7 @@ public class Contour {
 					parent.addChild(lines);
 				}
 			}
-			
+
 			BufferOp b = new BufferOp(g, bufParams);
 			g = b.getResultGeometry(spacing);
 			for (int i = 0; i < g.getNumGeometries(); i++) {
