@@ -121,9 +121,9 @@
 			<version>04f0f8d751</version>
 		</dependency>
 		<dependency>
-			<groupId>com.github.earcut4j</groupId>
+			<groupId>io.github.earcut4j</groupId>
 			<artifactId>earcut4j</artifactId>
-			<version>a5b26b5</version>
+			<version>2.2.2</version>
 		</dependency>
 		<dependency>
 			<groupId>de.alsclo</groupId>

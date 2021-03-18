@@ -44,9 +44,17 @@ public class PTSShapeMetrics {
 		return (float) fromPShape(shape).getArea();
 	}
 
+	/**
+	 * 
+	 * @param shape
+	 * @return null if point is empty (geometry empty)
+	 */
 	public static PVector centroid(PShape shape) {
 		Point point = fromPShape(shape).getCentroid();
-		return new PVector((float) point.getX(), (float) point.getY());
+		if (!point.isEmpty()) {
+			return new PVector((float) point.getX(), (float) point.getY());
+		}
+		return null;
 	}
 
 	/**

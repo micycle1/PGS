@@ -4,15 +4,12 @@ import static micycle.pts.Conversion.fromPShape;
 import static micycle.pts.Conversion.toPShape;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
-import org.geodelivery.jap.concavehull.SnapHull;
 import org.geotools.geometry.jts.JTS;
 import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
-import org.locationtech.jts.algorithm.match.HausdorffSimilarityMeasure;
 import org.locationtech.jts.densify.Densifier;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
@@ -30,21 +27,14 @@ import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.shape.random.RandomPointsBuilder;
 import org.locationtech.jts.shape.random.RandomPointsInGridBuilder;
-import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
-import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
-import org.locationtech.jts.simplify.VWSimplifier;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
 import micycle.pts.color.Blending;
 import micycle.pts.utility.PolygonDecomposition;
 import micycle.pts.utility.RandomPolygon;
-import processing.core.PApplet;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
-import uk.osgb.algorithm.concavehull.ConcaveHull;
-import uk.osgb.algorithm.concavehull.TriCheckerChi;
-import uk.osgb.algorithm.minkowski_sum.Minkowski_Sum;
 
 /**
  * PTS | Processing Topology Suite
@@ -62,7 +52,7 @@ import uk.osgb.algorithm.minkowski_sum.Minkowski_Sum;
  * 
  * @author Michael Carleton
  */
-public class PTS implements PConstants {
+public class PTS {
 
 	// TODO check for getCoordinates() in loops (and replace) (if lots of child
 	// geometries)
@@ -86,10 +76,6 @@ public class PTS implements PConstants {
 	public static GeometryFactory GEOM_FACTORY = new GeometryFactory(
 			new PrecisionModel(PrecisionModel.FLOATING_SINGLE));
 
-	static {
-		Minkowski_Sum.setGeometryFactory(GEOM_FACTORY);
-	}
-
 	/**
 	 * @return shape A - shape B
 	 */
@@ -112,7 +98,7 @@ public class PTS implements PConstants {
 	public static PShape intersection(PShape a, PShape b) {
 		PShape out = toPShape(fromPShape(a).intersection(fromPShape(b)));
 //		a.draw(p.getGraphics());
-		out.setFill(Blending.screen(getPShapeFillColor(a), getPShapeFillColor(b))); // TODO
+//		out.setFill(Blending.screen(getPShapeFillColor(a), getPShapeFillColor(b))); // TODO
 		return out;
 	}
 
@@ -132,67 +118,6 @@ public class PTS implements PConstants {
 			geoms.add(fromPShape(shapes[i]));
 		}
 		return toPShape(UnaryUnionOp.union(geoms));
-	}
-
-	/**
-	 * 
-	 * @param shape
-	 * @param buffer extent/width of the buffer (may be positive or negative)
-	 * @return
-	 */
-	public static PShape buffer(PShape shape, float buffer) {
-		// TODO read
-		// https://locationtech.github.io/jts/javadoc/org/locationtech/jts/operation/buffer/BufferOp.html
-		return toPShape(fromPShape(shape).buffer(buffer, 4));
-	}
-
-	/**
-	 * small edges are removed, while the general structure of the shape is
-	 * preserved. This process is known as "opening" in computer vision.
-	 * 
-	 * @param shape
-	 * @return
-	 */
-	public static PShape erosionDilation(PShape shape, float buffer) {
-		buffer = Math.abs(buffer);
-		return toPShape(fromPShape(shape).buffer(-buffer).buffer(buffer));
-	}
-
-	/**
-	 * Simplifies a PShape using the Douglas-Peucker algorithm.
-	 * 
-	 * @param shape
-	 * @param distanceTolerance
-	 * @return
-	 * @see #topologySimplify(PShape, float)
-	 */
-	public static PShape simplify(PShape shape, float distanceTolerance) {
-		return toPShape(DouglasPeuckerSimplifier.simplify(fromPShape(shape), distanceTolerance));
-	}
-
-	/**
-	 * Simplifies a shape using the Visvalingam-Whyatt area-based algorithm.
-	 * 
-	 * @param shape
-	 * @param distanceTolerance The simplification tolerance is specified as a
-	 *                          distance.This is converted to an area tolerance by
-	 *                          squaring it.
-	 * @return
-	 */
-	public static PShape simplifyVW(PShape shape, float distanceTolerance) {
-		return toPShape(VWSimplifier.simplify(fromPShape(shape), distanceTolerance));
-	}
-
-	/**
-	 * Preserves topological structure (holes, etc.)
-	 * 
-	 * @param shape
-	 * @param distanceTolerance
-	 * @return
-	 * @see #simplify(PShape, float)
-	 */
-	public static PShape topologySimplify(PShape shape, float distanceTolerance) {
-		return toPShape(TopologyPreservingSimplifier.simplify(fromPShape(shape), distanceTolerance));
 	}
 
 	/**
@@ -225,207 +150,6 @@ public class PTS implements PConstants {
 	}
 
 	/**
-	 * Computes the convex hull of multiple PShapes
-	 * 
-	 * @param shapes
-	 * @return
-	 */
-	public static PShape convexHull(PShape... shapes) {
-		Geometry g = fromPShape(shapes[0]);
-		for (int i = 1; i < shapes.length; i++) {
-			g = g.union(fromPShape(shapes[i]));
-		}
-		return toPShape(g.convexHull());
-	}
-
-	/**
-	 * Uses Chi heurstic
-	 * 
-	 * @param points
-	 * @param threshold euclidean distance threshold
-	 * @return
-	 * @see #concaveHull2(ArrayList, float)
-	 */
-	public static PShape concaveHull(ArrayList<PVector> points, float threshold) {
-
-		// calls Ordnance Survey implementation
-
-		final Coordinate[] coords;
-		if (!points.get(0).equals(points.get(points.size() - 1))) {
-			coords = new Coordinate[points.size() + 1];
-			points.add(points.get(0)); // close geometry
-		} else { // already closed
-			coords = new Coordinate[points.size()];
-		}
-
-		for (int i = 0; i < coords.length; i++) {
-			coords[i] = new Coordinate(points.get(i).x, points.get(i).y);
-		}
-
-		Geometry g = GEOM_FACTORY.createPolygon(coords);
-		ConcaveHull hull = new ConcaveHull(g);
-		return toPShape(hull.getConcaveHullBFS(new TriCheckerChi(threshold), false, false).get(0));
-	}
-
-	/**
-	 * Computes the concave hull of a shape using a different algorithm. Has a more
-	 * "organic" structure compared to other concave method.
-	 * 
-	 * @param points
-	 * @param threshold 0...1 (Normalized length parameter). Setting λP = 1 means
-	 *                  that no edges will be removed from the Delaunay
-	 *                  triangulation, so the resulting polygon will be the convex
-	 *                  hull. Setting λP = 0 means that all edges that can be
-	 *                  removed subject to the regularity constraint will be removed
-	 *                  (however polygons that are eroded beyond the point where
-	 *                  they provide a desirable characterization of the shape).
-	 *                  Although the optimal parameter value varies for different
-	 *                  shapes and point distributions, values of between 0.05–0.2
-	 *                  typically produce optimal or near-optimal shape
-	 *                  characterization across a wide range of point distributions.
-	 * @return
-	 * @see #concaveHull(ArrayList, float)
-	 */
-	public static PShape concaveHull2(ArrayList<PVector> points, float threshold) {
-
-		/**
-		 * (from https://doi.org/10.1016/j.patcog.2008.03.023) It is more convenient to
-		 * normalize the threshold parameter with respect to a particular set of points
-		 * P by using the maximum and minimum edge lengths of the Delaunay triangulation
-		 * of P. Increasing l beyond the maximum edge length of the Delaunay
-		 * triangulation cannot reduce the number of edges that will be removed (which
-		 * will be zero anyway). Decreasing l beyond the minimum edge length of the
-		 * Delaunay triangulation cannot increase the number of edges that will be
-		 * removed.
-		 */
-
-		final Coordinate[] coords;
-		if (!points.get(0).equals(points.get(points.size() - 1))) {
-			coords = new Coordinate[points.size() + 1];
-			points.add(points.get(0)); // close geometry
-		} else { // already closed
-			coords = new Coordinate[points.size()];
-		}
-
-		for (int i = 0; i < coords.length; i++) {
-			coords[i] = new Coordinate(points.get(i).x, points.get(i).y);
-		}
-
-		Geometry g = GEOM_FACTORY.createPolygon(coords);
-
-		// TODO test AVG threshold heuristic
-		org.geodelivery.jap.concavehull.ConcaveHull hull = new org.geodelivery.jap.concavehull.ConcaveHull(threshold);
-
-		return toPShape(hull.transform(g));
-	}
-
-	/**
-	 * Adjust segment factor to change between
-	 * 
-	 * @param shape
-	 * @param segmentFactor
-	 * @return
-	 */
-	public static PShape snapHull(PShape shape, float segmentFactor) {
-		return toPShape(SnapHull.snapHull(fromPShape(shape), segmentFactor));
-	}
-
-	/**
-	 * Minkowski addition a.k.a dilation
-	 * 
-	 * @return
-	 */
-	public static PShape minkSum(PShape source, PShape addition) {
-//		Geometry sum = Minkowski_Sum.minkSum(fromPShape(source), fromPShape(addition));
-		Geometry sum = Minkowski_Sum.compMinkSum(fromPShape(source), fromPShape(addition), false, false);
-		return toPShape(sum);
-	}
-
-	/**
-	 * TODO check, a.k.a erosion
-	 * 
-	 * @param source
-	 * @param addition
-	 * @return
-	 */
-	public static PShape minkDifference(PShape source, PShape addition) {
-//			Geometry sum = Minkowski_Sum.minkSum(fromPShape(source), fromPShape(addition));
-		Geometry sum = Minkowski_Sum.compMinkDiff(fromPShape(source), fromPShape(addition), false, false);
-		return toPShape(sum);
-	}
-
-	/**
-	 * TODO: outline of exterior ring only
-	 * 
-	 * @param shape
-	 * @param points
-	 * @param offsetDistance the distance the point is offset from the
-	 *                       segment(positive is to the left, negative is to the
-	 *                       right)
-	 * @return
-	 * @see #equidistantOutlineByDistance(PShape, float, float)
-	 */
-	public static PVector[] equidistantOutline(PShape shape, int points, float offsetDistance) {
-		Polygon p = (Polygon) fromPShape(shape); // TODO CHECK CAST (ITERATE OVER GROUP)
-
-		LengthIndexedLine l = new LengthIndexedLine(p.getExteriorRing());
-		PVector[] outlinePoints = new PVector[points * (p.getNumInteriorRing() + 1)];
-		// exterior ring
-		for (int i = 0; i < points; i++) {
-			Coordinate q = l.extractPoint((i / (float) points) * l.getEndIndex(), offsetDistance);
-			outlinePoints[i] = new PVector((float) q.x, (float) q.y);
-		}
-
-		for (int j = 0; j < p.getNumInteriorRing(); j++) {
-			l = new LengthIndexedLine(p.getInteriorRingN(j));
-			for (int i = 0; i < points; i++) {
-				Coordinate q = l.extractPoint((i / (float) points) * l.getEndIndex(), offsetDistance);
-				outlinePoints[(j + 1) * points + i] = new PVector((float) q.x, (float) q.y);
-			}
-		}
-
-		return outlinePoints;
-	}
-
-	/**
-	 * 
-	 * @param shape
-	 * @param interPointDistance Distance between each point on outline
-	 * @param offsetDistance
-	 * @return nearest distance such that every distance is equal (maybe be
-	 *         different due to rounding)
-	 */
-	public static PVector[] equidistantOutlineByDistance(PShape shape, float interPointDistance, float offsetDistance) {
-		Polygon p = (Polygon) fromPShape(shape); // TODO CHECK CAST (ITERATE OVER GROUP)
-
-		LengthIndexedLine l = new LengthIndexedLine(p.getExteriorRing());
-		if (interPointDistance > l.getEndIndex()) {
-			System.err.println("Interpoint greater than shape length");
-			return null;
-		}
-		int points = (int) Math.round(l.getEndIndex() / interPointDistance);
-		ArrayList<PVector> outlinePoints = new ArrayList<>();
-		// exterior ring
-		for (int i = 0; i < points; i++) {
-			Coordinate q = l.extractPoint((i / (float) points) * l.getEndIndex(), offsetDistance);
-			outlinePoints.add(new PVector((float) q.x, (float) q.y));
-		}
-
-		for (int j = 0; j < p.getNumInteriorRing(); j++) {
-			l = new LengthIndexedLine(p.getInteriorRingN(j));
-			points = (int) Math.round(l.getEndIndex() / interPointDistance);
-			for (int i = 0; i < points; i++) {
-				Coordinate q = l.extractPoint((i / (float) points) * l.getEndIndex(), offsetDistance);
-				outlinePoints.add(new PVector((float) q.x, (float) q.y));
-			}
-		}
-
-		final PVector[] out = new PVector[outlinePoints.size()];
-		Arrays.setAll(out, outlinePoints::get);
-		return out;
-	}
-
-	/**
 	 * Extracts a point from the perimeter of the given shape.
 	 * 
 	 * @param shape
@@ -451,16 +175,44 @@ public class PTS implements PConstants {
 	 * lots)
 	 * 
 	 * @param shape
-	 * @param points
-	 * @param offsetDistance
+	 * @param points         number of points to return; evenly distibuted around
+	 *                       the perimeter of the shape
+	 * @param offsetDistance offset distance along a line perpendicular to the
+	 *                       perimeter
 	 * @return
 	 * @see #pointOnPerimeter(PShape, float, float)
+	 * @see #pointsOnPerimeter(PShape, float, float)
 	 */
 	public static List<PVector> pointsOnPerimeter(PShape shape, int points, float offsetDistance) {
 		// TODO another method that returns concave hull of returned points (when
 		// offset)
 		ArrayList<PVector> coords = new ArrayList<>(points);
 		LengthIndexedLine l = new LengthIndexedLine(((Polygon) fromPShape(shape)).getExteriorRing());
+		final double increment = 1d / points;
+		for (double distance = 0; distance < 1; distance += increment) {
+			Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
+			coords.add(new PVector((float) coord.x, (float) coord.y));
+		}
+		return coords;
+	}
+
+	/**
+	 * 
+	 * @param shape
+	 * @param interPointDistance distance between each point on outline
+	 * @param offsetDistance
+	 * @return
+	 */
+	public static List<PVector> pointsOnPerimeter(PShape shape, float interPointDistance, float offsetDistance) {
+		LengthIndexedLine l = new LengthIndexedLine(((Polygon) fromPShape(shape)).getExteriorRing());
+		if (interPointDistance > l.getEndIndex()) {
+			System.err.println("Interpoint greater than shape length");
+			return null;
+		}
+		final int points = (int) Math.round(l.getEndIndex() / interPointDistance);
+
+		ArrayList<PVector> coords = new ArrayList<>(points);
+
 		final double increment = 1d / points;
 		for (double distance = 0; distance < 1; distance += increment) {
 			Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
@@ -829,8 +581,27 @@ public class PTS implements PConstants {
 			shape.vertex(v.x, v.y);
 		}
 	
-		shape.endShape(CLOSE);
+		shape.endShape(PConstants.CLOSE);
 		return shape;
+	}
+
+	/**
+	 * From com.badlogic.gdx
+	 */
+	private static boolean isClockwise(float[] polygon, int offset, int count) {
+		if (count <= 2) {
+			return false;
+		}
+		float area = 0;
+		int last = offset + count - 2;
+		float x1 = polygon[last], y1 = polygon[last + 1];
+		for (int i = offset; i <= last; i += 2) {
+			float x2 = polygon[i], y2 = polygon[i + 1];
+			area += x1 * y2 - x2 * y1;
+			x1 = x2;
+			y1 = y2;
+		}
+		return area < 0;
 	}
 
 	/**

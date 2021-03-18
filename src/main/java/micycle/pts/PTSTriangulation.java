@@ -36,7 +36,6 @@ public class PTSTriangulation {
 			arrCoords[2 * i] = points.get(i).x;
 			arrCoords[2 * i + 1] = points.get(i).y;
 		}
-//		arrCoords = new double[] { 0, 0, 100, 0, 100, 100, 0, 100, 20, 20, 80, 20, 80, 80, 20, 80 };
 
 		List<Integer> triangles = Earcut.earcut(arrCoords, null, 2);
 
@@ -47,13 +46,12 @@ public class PTSTriangulation {
 		triangulation.setStrokeWeight(2);
 		triangulation.setStroke(-123222);
 		triangulation.setFill(true);
-		triangulation.setFill(micycle.pts.color.RGB.composeclr(0, 0, 0, 25));
+		triangulation.setFill(micycle.pts.color.RGB.composeclr(255, 255, 255, 255));
 		triangulation.beginShape(TRIANGLES);
 		for (int i = 0; i < triangles.size(); i += 3) {
-			int v1 = triangles.get(i);
-			int v2 = triangles.get(i + 1);
-			int v3 = triangles.get(i + 2);
-//			triangulation.vertex((float) arrCoords[v1], (float) arrCoords[v1 + 1]);
+			final int v1 = 2 * triangles.get(i);
+			final int v2 = 2 * triangles.get(i + 1);
+			final int v3 = 2 * triangles.get(i + 2);
 			triangulation.vertex((float) arrCoords[v1], (float) arrCoords[v1 + 1]);
 			triangulation.vertex((float) arrCoords[v2], (float) arrCoords[v2 + 1]);
 			triangulation.vertex((float) arrCoords[v3], (float) arrCoords[v3 + 1]);
@@ -154,7 +152,7 @@ public class PTSTriangulation {
 //		// encroachment
 //
 //		out = out.intersection(g); // get convex hull
-		return toPShape(refinedTriangulation(fromPShape(shape), 3, 10));
+		return toPShape(refinedTriangulation(fromPShape(shape), 3, 0));
 
 //		ConformingDelaunayTriangulationBuilder b = new ConformingDelaunayTriangulationBuilder();
 //		b.setTolerance(tolerance);
@@ -187,13 +185,14 @@ public class PTSTriangulation {
 	 */
 	public static PShape constrainedDelaunayTriangulation(PShape shape, PShape constraints, float tolerance) {
 		// TODO point-set array constraints
+		// TODO AS list of triangles (Vertices?)
 		ConformingDelaunayTriangulationBuilder b = new ConformingDelaunayTriangulationBuilder();
 		Geometry g = fromPShape(shape);
 		b.setSites(g);
 		b.setTolerance(tolerance);
 		b.setConstraints(fromPShape(constraints));
 		Geometry out = b.getTriangles(GEOM_FACTORY); // triangulates concave hull of points
-		out = out.intersection(g); // get convex hull
+		out = out.intersection(g); // get convex hull TODO use other method SLOW
 		return toPShape(out);
 	}
 

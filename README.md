@@ -7,8 +7,11 @@
 A library for shapes in Processing:
 
 - Predicates
+  - >Does
 - Metrics
+  - >What is the area of this polygon?
 - Geometric Computation
+  - > The union of these two shapes
 
 PTS wraps JTS, enabling its methods to be applied to Processing's `PShape` objects. Beyond that, PTS provides other geometry __ such as splines.
 
@@ -17,7 +20,7 @@ PTS wraps JTS, enabling its methods to be applied to Processing's `PShape` objec
 The library is split into a handful of classes as detailed below.
 
 ## Contour
-Methods to produce shape contour lines.
+Methods to produce a variety of geometric contour lines within shapes.
 ### Medial Axis
 <img src="resources/contour/medialAxis.png" alt="" width="50%"/>
 
@@ -27,8 +30,10 @@ A medial axis where small line segments are dissolved into larger, straighter on
 <img src="resources/contour/medialAxisDissolved.png" alt="" width="50%"/>
 
 ### Straight Skeleton
-<img src="resources/contour/straightSkeleton.png" alt="" width="49%"/>
-<img src="resources/contour/solubSkeleton.png" alt="" width="49%"/>
+<p float="middle">
+  <img src="resources/contour/straightSkeleton.png" alt="" width="49%"/>
+  <img src="resources/contour/solubSkeleton.png" alt="" width="49%"/>
+</p>
 
 ### Uniform straight skeleton
 ...
@@ -47,15 +52,53 @@ Inner and exterior mitered offset curves; based on *miter*, *bevel* or *round* o
   <img src="resources/contour/miteredExterior.gif" alt="" width="49%"/>
 </p>
 
+### Voronoi Diagram
+<p float="middle">
+  <img src="resources/contour/voronoi1.png" alt="" width="49%"/>
+  <img src="resources/contour/voronoi2.png" alt="" width="49%"/>
+</p>
+
+### Delaunay Triangulation
+Triangulation of shapes or point sets; simple triangle refinement optional
+
+<p float="middle">
+  <img src="resources/contour/triangulation1.png" alt="" width="49%"/>
+  <img src="resources/contour/triangulation2.png" alt="" width="49%"/>
+</p>
+
+### Constrained Delaunay Triangulation
+Triangulate one shape with addition of constrained ("steiner points") from another shape
+
+## Earcut Triangulation
+<p float="middle">
+  <img src="resources/contour/earCut.png" alt="" width="49%"/>
+  <img src="resources/contour/earCut2.png" alt="" width="49%"/>
+</p>
 
 ## Morphology
 Methods to morph shapes (topology)
 ### Buffer
 <img src="resources/pts/buffer.gif" alt="" width="50%"/>
 
-### Mink sum + diff
+### Erosion-Dilation
+<img src="resources/pts/erosiondilation.gif" alt="" width="50%"/>
 
-### PShapes
+### Simplification
+<img src="resources/pts/simplifyVW.gif" alt="" width="50%"/>
+
+### Minkowski Addition
+
+### Concave Hull
+<p float="middle">
+  <img src="resources/pts/concaveHull.gif" alt="" width="49%"/>
+  <img src="resources/pts/concaveHull2.gif" alt="" width="49%"/>
+</p>
+
+### Convex Hull
+...
+### Snap Hull
+...
+## PShapes
 
 - Boolean operations: union, difference, intersection, etc. (/OVERLAY OPERATIONS)
 - Shape Boundaries
@@ -79,26 +122,42 @@ Methods to morph shapes (topology)
 ## Geometry Processing
 
 ### Point on Perimeter
+Find a point some fraction along the perimeter of a shape (with perpendicular offset)
+
 <img src="resources/pts/pointOnPerimeter.gif" alt="" width="50%"/>
 
 ### Points on Perimeter
-<img src="resources/pts/pointsOnPerimeter.gif" alt="" width="50%"/>
+Find N points (evenly distributed) along the perimeter of a shape (with perpendicular offset)
+
+<p float="middle">
+  <img src="resources/pts/pointsOnPerimeter.gif" alt="" width="49%"/>
+  <img src="resources/pts/pointsOnPerimeter2.gif" alt="" width="49%"/>
+</p>
+
+### Decomposition
+Decompose a shape into simple polygons
+
+<p float="middle">
+  <img src="resources/pts/decompose1.png" alt="" width="49%"/>
+  <img src="resources/pts/decompose2.png" alt="" width="49%"/>
+</p>
 
 
-
-- Noding & Polygonization
-- Simplification
-- Linear Referencing
-
-
-### Hulls
-- Concave
-- Convex
-- Snap
-
-### Geometric Optimization
+## Geometric Optimization
 - Bounding Volumes (enclosing circle)
 - Optimal Distances
+
+### Closest Vertex
+<img src="resources/pts/closestVertex.gif" alt="" width="50%"/>
+
+### Maximum Inscribed Circle
+<img src="resources/pts/inscribedCircle.gif" alt="" width="50%"/>
+
+### Minimum Bounding Circle
+<img src="resources/pts/minimumBoundingCircle.png" alt="" width="50%"/>
+
+### Minimum Bounding Rectangle
+<img src="resources/pts/minimumBoundingRectangle.png" alt="" width="50%"/>
 
 
 

@@ -42,7 +42,7 @@ public class PTSVoronoi {
 		VoronoiDiagramBuilder v = new VoronoiDiagramBuilder();
 		v.setTolerance(tolerance);
 		v.setSites(g);
-		v.setClipEnvelope(new Envelope(0, 1000, 0, 750)); // speeds up when lots of edges
+		v.setClipEnvelope(new Envelope(0, 1000, 0, 1000)); // speeds up when lots of edges
 //		v.setSites(new ArrayList<Coordinate>(Arrays.asList(g.getCoordinates())));
 		Geometry out = v.getDiagram(GEOM_FACTORY);
 		return toPShape(out); // .intersection(g))
