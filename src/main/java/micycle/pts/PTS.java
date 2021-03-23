@@ -430,12 +430,12 @@ public class PTS {
 	}
 
 	/**
-	 * Decomposes the shape into simple polygons using Mark Bayazit's algorithm.
+	 * Partitions a shape into simple polygons using Mark Bayazit's algorithm.
 	 * 
 	 * @param shape
 	 * @return list of convex (simple) polygons comprising the original shape
 	 */
-	public static ArrayList<PShape> decompose(PShape shape) {
+	public static ArrayList<PShape> partition(PShape shape) {
 		// https://mpen.ca/406/bayazit
 		// retry GreedyPolygonSplitter()?
 
@@ -502,7 +502,7 @@ public class PTS {
 		return geometry.getFactory().createGeometryCollection(polyArray);
 	}
 
-	private static double distance(Coordinate a, Coordinate b) {
+	protected static double distance(Coordinate a, Coordinate b) {
 		double deltaX = a.y - b.y;
 		double deltaY = a.x - b.x;
 		return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
@@ -567,7 +567,7 @@ public class PTS {
 	 * Generate a simple polygon from the given coordinate list. Used by
 	 * randomPolygon().
 	 */
-	private static PShape pshapeFromPVector(List<PVector> coords) {
+	public static PShape pshapeFromPVector(List<PVector> coords) {
 		PShape shape = new PShape();
 		shape.setFamily(PShape.GEOMETRY);
 		shape.setStroke(true);

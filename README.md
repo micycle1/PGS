@@ -3,6 +3,8 @@
 <h3 align="center"> 🚧 Under Construction 🚧 </h3>
 
 ---
+PTS is a library of static methods for geometric operations in Processing.
+Methods generally operate on PShapes.
 
 A library for shapes in Processing:
 
@@ -69,7 +71,7 @@ Triangulation of shapes or point sets; simple triangle refinement optional
 ### Constrained Delaunay Triangulation
 Triangulate one shape with addition of constrained ("steiner points") from another shape
 
-## Earcut Triangulation
+### Earcut Triangulation
 <p float="middle">
   <img src="resources/contour/earCut.png" alt="" width="49%"/>
   <img src="resources/contour/earCut2.png" alt="" width="49%"/>
@@ -81,7 +83,7 @@ Methods to morph shapes (topology)
 <img src="resources/pts/buffer.gif" alt="" width="50%"/>
 
 ### Erosion-Dilation
-<img src="resources/pts/erosiondilation.gif" alt="" width="50%"/>
+<img src="resources/pts/erosionDilation.gif" alt="" width="50%"/>
 
 ### Simplification
 <img src="resources/pts/simplifyVW.gif" alt="" width="50%"/>
@@ -95,9 +97,11 @@ Methods to morph shapes (topology)
 </p>
 
 ### Convex Hull
-...
+<img src="resources/pts/convexHull.png" alt="" width="50%"/>
+
 ### Snap Hull
-...
+<img src="resources/pts/snapHull.gif" alt="" width="50%"/>
+
 ## PShapes
 
 - Boolean operations: union, difference, intersection, etc. (/OVERLAY OPERATIONS)
@@ -127,15 +131,15 @@ Find a point some fraction along the perimeter of a shape (with perpendicular of
 <img src="resources/pts/pointOnPerimeter.gif" alt="" width="50%"/>
 
 ### Points on Perimeter
-Find N points (evenly distributed) along the perimeter of a shape (with perpendicular offset)
+Find N points (evenly distributed) along the perimeter of a shape (with optional perpendicular offset)
 
 <p float="middle">
   <img src="resources/pts/pointsOnPerimeter.gif" alt="" width="49%"/>
   <img src="resources/pts/pointsOnPerimeter2.gif" alt="" width="49%"/>
 </p>
 
-### Decomposition
-Decompose a shape into simple polygons
+### Partitioning
+Partition a shape into simple polygons
 
 <p float="middle">
   <img src="resources/pts/decompose1.png" alt="" width="49%"/>
@@ -159,6 +163,34 @@ Decompose a shape into simple polygons
 ### Minimum Bounding Rectangle
 <img src="resources/pts/minimumBoundingRectangle.png" alt="" width="50%"/>
 
+
+## Transformation
+PTS provides transformation methods much like Processing's. Notably these methods affect the vertex coordinates of PShapes, unlike Processing's equivalent methods that affect the affine matrix of shapes only (and thereby leave vertex coordinates in-tact).
+
+Methods beyond those offered in Processing are illustrated here:
+
+### Rotate Around
+Rotate a shape around its centroid, or some other point
+
+<p float="middle">
+  <img src="resources/transform/rotateCenter.gif" alt="" width="49%"/>
+  <img src="resources/transform/rotate.gif" alt="" width="49%"/>
+</p>
+
+### Translate To
+Translate a shape such that its centroid matches some position.
+
+<img src="resources/transform/translateTo.gif" alt="" width="50%"/>
+
+### Touch Scale
+Scale one shape such that it touches another
+
+<img src="resources/transform/touchScale.gif" alt="" width="50%"/>
+
+### Homothetic Transformation
+Projection-transform a shape with respect to a fixed point
+
+<img src="resources/transform/homothetic.gif" alt="" width="50%"/>
 
 
 ### Fields/ Point Sets

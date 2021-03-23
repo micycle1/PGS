@@ -3,12 +3,15 @@ package micycle.pts;
 import static micycle.pts.Conversion.fromPShape;
 import static micycle.pts.Conversion.toPShape;
 
+import org.locationtech.jts.algorithm.Distance;
+import org.locationtech.jts.algorithm.distance.DistanceToPoint;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.util.AffineTransformation;
+import org.locationtech.jts.operation.distance.DistanceOp;
 
 import processing.core.PShape;
 import processing.core.PVector;
@@ -20,8 +23,6 @@ import processing.core.PVector;
  *
  */
 public class PTSTransform {
-
-	// TODO shear
 
 	/**
 	 * Scales the shape relative to its center
@@ -41,11 +42,57 @@ public class PTSTransform {
 		return toPShape(t.transform(fromPShape(shape)));
 	}
 
-	public void scaleToFit(PShape shape, PShape fit) {
-		// TODO
-		// scale shape to fit other shape (fit mean overlap
-		// find minimum distance point; calc dist from centroid to point, then scale by
-		// factor
+	/**
+	 * Scales a shape (based on its centroid) so that it touches the boundary of
+	 * another shape. Shape centroid must be outside the container.
+	 * 
+	 * @param shape     its centroid should be outside container
+	 * @param container
+	 * @param tolerance >=0
+	 */
+	public static PShape touchScale(PShape shape, PShape container, double tolerance) {
+		tolerance = Math.max(tolerance, 1);
+		Geometry scaleShape = fromPShape(shape);
+
+		final Coordinate centroid = scaleShape.getCentroid().getCoordinate();
+
+		double dist = 999999;
+		final int maxIter = 75;
+		int iter = 0;
+		// NOTE uses DistanceOp.nearestPoints() which is n^2
+		while (dist > tolerance && iter < maxIter) {
+			Coordinate[] coords = DistanceOp.nearestPoints(scaleShape, fromPShape(container));
+			dist = PTS.distance(coords[0], coords[1]);
+
+			/**
+			 * If dist == 0, then shape is either fully contained within the container or
+			 * covers it. We attempt to first shrink the shape so that no longer covers the
+			 * container. If dist remains zero after repeated shrinking we conclude the
+			 * shape is inside the container.
+			 */
+			if (dist == 0) {
+				int z = 7;
+				while (z > 0) {
+					AffineTransformation t = AffineTransformation.scaleInstance(0.5, 0.5, centroid.x, centroid.y);
+					scaleShape = t.transform(scaleShape);
+					coords = DistanceOp.nearestPoints(scaleShape, fromPShape(container));
+					dist = PTS.distance(coords[0], coords[1]);
+					if (dist > 0) {
+						break;
+					}
+					z--;
+				}
+				if (dist == 0) { // still 0? probably contained inside, so just return shape
+					return shape;
+				}
+			}
+			double d1 = PTS.distance(centroid, coords[0]);
+			double d2 = PTS.distance(centroid, coords[1]);
+			AffineTransformation t = AffineTransformation.scaleInstance(d2 / d1, d2 / d1, centroid.x, centroid.y);
+			scaleShape = t.transform(scaleShape);
+			iter++;
+		}
+		return toPShape(scaleShape);
 	}
 
 	/**
@@ -83,6 +130,20 @@ public class PTSTransform {
 	public static PShape flipVertical(PShape shape, double x) {
 		AffineTransformation t = AffineTransformation.reflectionInstance(x, -1, x, 1);
 		return toPShape(t.transform(fromPShape(shape)));
+	}
+
+	/**
+	 * Objects are sheared around their relative position to the origin.
+	 * 
+	 * @param shape
+	 * @param angleX radians
+	 * @param angleY radians
+	 * @return
+	 */
+	public static PShape shear(PShape shape, double angleX, double angleY) {
+		Geometry g = fromPShape(shape);
+		AffineTransformation t = AffineTransformation.shearInstance(angleX, angleY);
+		return toPShape(t.transform(g));
 	}
 
 	public static PShape translate(PShape shape, double x, double y) {
@@ -127,7 +188,7 @@ public class PTSTransform {
 	 * Rotate a shape around its centroid.
 	 * 
 	 * @param shape
-	 * @param angle
+	 * @param angle the rotation angle, in radians
 	 * @return
 	 */
 	public static PShape rotateAroundCenter(PShape shape, double angle) {
@@ -146,14 +207,15 @@ public class PTSTransform {
 	 * @param scaleX X scale factor
 	 * @param scaleY Y scale factor
 	 */
-	public static PShape homotheticTransformation(PShape shape, double x0, double y0, double scaleX, double scaleY) {
+	public static PShape homotheticTransformation(PShape shape, PVector center, double scaleX, double scaleY) {
 		Polygon geom = (Polygon) fromPShape(shape);
 
 		// external contour
 		Coordinate[] coord = geom.getExteriorRing().getCoordinates();
 		Coordinate[] coord_ = new Coordinate[coord.length];
 		for (int i = 0; i < coord.length; i++)
-			coord_[i] = new Coordinate(x0 + scaleX * (coord[i].x - x0), y0 + scaleY * (coord[i].y - y0));
+			coord_[i] = new Coordinate(center.x + scaleX * (coord[i].x - center.x),
+					center.y + scaleY * (coord[i].y - center.y));
 		LinearRing lr = geom.getFactory().createLinearRing(coord_);
 
 		// holes
@@ -162,8 +224,8 @@ public class PTSTransform {
 			Coordinate[] hole_coord = geom.getInteriorRingN(j).getCoordinates();
 			Coordinate[] hole_coord_ = new Coordinate[hole_coord.length];
 			for (int i = 0; i < hole_coord.length; i++)
-				hole_coord_[i] = new Coordinate(x0 + scaleY * (hole_coord[i].x - x0),
-						y0 + scaleY * (hole_coord[i].y - y0));
+				hole_coord_[i] = new Coordinate(center.x + scaleY * (hole_coord[i].x - center.x),
+						center.y + scaleY * (hole_coord[i].y - center.y));
 			holes[j] = geom.getFactory().createLinearRing(hole_coord_);
 		}
 		return toPShape(PTS.GEOM_FACTORY.createPolygon(lr, holes));

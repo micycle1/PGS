@@ -118,7 +118,7 @@
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>Tinfour</artifactId>
-			<version>04f0f8d751</version>
+			<version>d4cc58edef</version>
 		</dependency>
 		<dependency>
 			<groupId>io.github.earcut4j</groupId>
