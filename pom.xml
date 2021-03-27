@@ -8,6 +8,12 @@
 	<name>Processing Topology Suite</name>
 	<description>Topology &amp; geometry tools for Processing</description>
 
+	<properties>
+		<sonar.projectKey>micycle1_PTS</sonar.projectKey>
+		<sonar.organization>micycle</sonar.organization>
+		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
+	</properties>
+
 	<build>
 		<plugins>
 			<plugin>
@@ -103,7 +109,7 @@
 		<dependency>
 			<groupId>org.locationtech.jts</groupId>
 			<artifactId>jts-core</artifactId>
-			<version>1.18.0</version>
+			<version>1.18.1</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.twak</groupId>
@@ -124,6 +130,11 @@
 			<groupId>io.github.earcut4j</groupId>
 			<artifactId>earcut4j</artifactId>
 			<version>2.2.2</version>
+		</dependency>
+		<dependency>
+			<groupId>com.github.micycle1</groupId>
+			<artifactId>JMedialAxis</artifactId>
+			<version>-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>de.alsclo</groupId>
@@ -156,6 +167,11 @@
 			<artifactId>junit-jupiter-api</artifactId>
 			<version>5.7.1</version>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.github.hageldave.jplotter</groupId>
+			<artifactId>jplotter</artifactId>
+			<version>0.5.0</version>
 		</dependency>
 
 

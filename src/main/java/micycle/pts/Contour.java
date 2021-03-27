@@ -26,10 +26,12 @@ import org.locationtech.jts.operation.buffer.BufferOp;
 import org.locationtech.jts.operation.buffer.BufferParameters;
 import org.locationtech.jts.operation.linemerge.LineMergeEdge;
 import org.locationtech.jts.operation.linemerge.LineMergeGraph;
+import org.locationtech.jts.operation.linemerge.LineMerger;
 import org.locationtech.jts.planargraph.Node;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.triangulate.VoronoiDiagramBuilder;
+import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
 import org.tinfour.contour.ContourBuilderForTin;
 import org.tinfour.standard.IncrementalTin;
@@ -39,6 +41,8 @@ import org.twak.camp.Skeleton;
 import org.twak.utils.collections.Loop;
 import org.twak.utils.collections.LoopL;
 
+import hageldave.jplotter.misc.Contours;
+import hageldave.jplotter.renderables.Lines.SegmentDetails;
 import micycle.medialAxis.MedialAxis;
 import micycle.medialAxis.MedialAxis.Branch;
 import micycle.pts.PTS.LinearRingIterator;
@@ -291,40 +295,49 @@ public class Contour {
 //			p.point((float) pa.getX(), (float) pa.getY());
 //		});
 
-//		m.getDisks().forEach(d -> {
-//			final SimpleTriangle t = d.t;
-////			double r 
-//			if (d.radius > 0) {
+		p.beginShape(PConstants.TRIANGLES);
+		p.noStroke();
+		m.getDisks().forEach(d -> {
+			final SimpleTriangle t = d.t;
+//			double r 
+			if (d.radius > 0) {
 //				p.beginShape();
-//				p.noFill();
+				p.noFill();
+				if (d.distance < p.map(p.mouseX, 0, p.width, 0, (float) m.furthestNode.distance)) {
+					p.fill(255, 0, 0);
+				} else {
+					p.fill(0, 255, 0);
+				}
+//				p.fill(150, p.map((float) d.distance, 0, (float) m.furthestNode.distance, 0, 255), 200);
 //				p.strokeWeight(2);
 //				p.stroke(255, 0, 0);
-//				Vertex v = t.getVertexA();
-////				p.noStroke();
-//				p.vertex((float) v.getX(), (float) v.getY());
-////				p.point((float) v.getX(), (float) v.getY());
-//				v = t.getVertexB();
-//				p.vertex((float) v.getX(), (float) v.getY());
-////				p.point((float) v.getX(), (float) v.getY());
-//				v = t.getVertexC();
-//				p.vertex((float) v.getX(), (float) v.getY());
-////				p.point((float) v.getX(), (float) v.getY());
+				Vertex v = t.getVertexA();
+//				p.noStroke();
+				p.vertex((float) v.getX(), (float) v.getY());
+//				p.point((float) v.getX(), (float) v.getY());
+				v = t.getVertexB();
+				p.vertex((float) v.getX(), (float) v.getY());
+//				p.point((float) v.getX(), (float) v.getY());
+				v = t.getVertexC();
+				p.vertex((float) v.getX(), (float) v.getY());
+//				p.point((float) v.getX(), (float) v.getY());
 //				p.endShape(p.CLOSE);
-//
+
 //				p.strokeWeight(2);
 //				p.stroke(0, 150, 0);
-////				System.out.println(t.area());
-//				p.point((float) d.position.x, (float) d.position.y);
+//				System.out.println(t.area());
+				p.point((float) d.position.x, (float) d.position.y);
 //				p.ellipse((float) d.position.x, (float) d.position.y, (float) d.radius * 2, (float) d.radius * 2);
-//				p.strokeWeight(7);
-////				TriangulationPoint va = t.points[0];
-////				p.point((float) va.getX(), (float) va.getY());
-////				va = t.points[1];
-////				p.point((float) va.getX(), (float) va.getY());
-////				va = t.points[2];
-////				p.point((float) va.getX(), (float) va.getY());
-//			}
-//		});
+				p.strokeWeight(7);
+//				TriangulationPoint va = t.points[0];
+//				p.point((float) va.getX(), (float) va.getY());
+//				va = t.points[1];
+//				p.point((float) va.getX(), (float) va.getY());
+//				va = t.points[2];
+//				p.point((float) va.getX(), (float) va.getY());
+			}
+		});
+		p.endShape();
 
 //		m.validTris.forEach(t -> {
 //
@@ -404,10 +417,12 @@ public class Contour {
 		d = m.nearestDisk(p.mouseX, p.mouseY);
 //		System.err.println(d.featureArea);
 
-//		d = m.rootNode;
+		d = m.rootNode;
 		p.noFill();
 		p.stroke(50, 150, 250);
-//		p.ellipse((float) d.position.x, (float) d.position.y, (float) d.radius * 2, (float) d.radius * 2);
+		float dist = p.map(p.mouseX, 0, p.width, 0, (float) m.furthestNode.distance) * 2;
+//		dist = (float) d.radius * 2;
+		p.ellipse((float) d.position.x, (float) d.position.y, dist, dist);
 //		p.point((float) d.position.x, (float) d.position.y);
 		p.fill(255);
 //		p.text(d.depthBF, 10, 80);
@@ -803,6 +818,8 @@ public class Contour {
 		 * http://indiemaps.com/blog/2008/06/isolining-package-for-actionscript-3/
 		 */
 
+		// https://github.com/hageldave/JPlotter/blob/master/jplotter/src/main/java/hageldave/jplotter/misc/Contours.java
+
 		Geometry g = fromPShape(shape);
 		if (g.getCoordinates().length > 2000) {
 			g = DouglasPeuckerSimplifier.simplify(g, 2);
@@ -919,6 +936,28 @@ public class Contour {
 		}
 
 		return toPShape(ld.getResult()); // contains check instead?
+	}
+
+	public static PShape isolinesJP(double[][] values, double isoValue) {
+		PShape lines = new PShape(PShape.GEOMETRY);
+		lines.setStroke(true);
+		lines.setStrokeWeight(4);
+		lines.setStroke(-1232222);
+		lines.beginShape(LINES);
+//		Contours.
+		LineMerger m = new LineMerger();
+
+		List<SegmentDetails> segments = Contours.computeContourLines(values, isoValue, RGB.composeclr(0, 255, 0, 255));
+		segments.forEach(s -> {
+			lines.vertex((float) s.p0.getX() * 2, (float) s.p0.getY() * 2);
+			lines.vertex((float) s.p1.getX() * 2, (float) s.p1.getY() * 2);
+//			m.add(GEOM_FACTORY.createLineString(new Coordinate[] { new Coordinate(s.p0.getX(), s.p0.getY()),
+//					new Coordinate(s.p1.getX(), s.p1.getY()) }));
+		});
+//		m.getMergedLineStrings();
+//		System.out.println(segments.size());
+		lines.endShape();
+		return lines;
 	}
 
 	/**

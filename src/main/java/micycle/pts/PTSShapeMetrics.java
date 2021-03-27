@@ -2,8 +2,14 @@ package micycle.pts;
 
 import static micycle.pts.Conversion.fromPShape;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.algorithm.match.HausdorffSimilarityMeasure;
+import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 
@@ -21,12 +27,61 @@ public class PTSShapeMetrics {
 
 	// https://doc.cgal.org/latest/Polygon/index.html#Chapter_2D_Polygons
 
+	/**
+	 * A shape does not contain itself.
+	 * 
+	 * @param outer
+	 * @param inner
+	 * @return
+	 */
 	public static boolean contains(PShape outer, PShape inner) {
 		return fromPShape(outer).contains(fromPShape(inner));
 	}
 
 	public static boolean containsPoint(PShape shape, PVector point) {
 		return fromPShape(shape).contains(PTS.pointFromPVector(point));
+	}
+
+	/**
+	 * Faster than calling {@link #containsPoint(PShape, PVector)} repeatedly.
+	 * Points that lie on the boundary of the shape considered to be contained.
+	 * 
+	 * @param shape
+	 * @param points list of PVectors to check
+	 * @return true if every point is contained within the shape
+	 */
+	public static boolean containsAllPoints(PShape shape, List<PVector> points) {
+		final IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(fromPShape(shape));
+		for (PVector p : points) {
+			if (pointLocator.locate(new Coordinate(p.x, p.y)) == Location.EXTERIOR) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * This method checks every point individually, returning a boolean for each
+	 * point. Faster than calling {@link #containsPoint(PShape, PVector)}
+	 * repeatedly. Points that lie on the boundary of the shape considered to be
+	 * contained.
+	 * 
+	 * @param shape
+	 * @param points list of PVectors to check
+	 * @return a list of booleans corresponding to whether the shape contains the
+	 *         point at same index
+	 */
+	public static List<Boolean> containsPoints(PShape shape, List<PVector> points) {
+		final IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(fromPShape(shape));
+		ArrayList<Boolean> bools = new ArrayList<>(points.size());
+		for (PVector p : points) {
+			if (pointLocator.locate(new Coordinate(p.x, p.y)) == Location.EXTERIOR) {
+				bools.add(false);
+			} else {
+				bools.add(true);
+			}
+		}
+		return bools;
 	}
 
 	/**
