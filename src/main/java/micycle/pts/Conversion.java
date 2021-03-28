@@ -539,7 +539,8 @@ public class Conversion implements PConstants {
 	}
 
 	/**
-	 * Sets the color of the PShape and all of it's children recursively
+	 * Sets the color of the PShape and all of it's children recursively (and
+	 * disable stroke).
 	 * 
 	 * @param shape
 	 */
@@ -547,6 +548,7 @@ public class Conversion implements PConstants {
 		ArrayList<PShape> all = new ArrayList<PShape>();
 		getChildren(shape, all);
 		all.forEach(child -> {
+			child.setStroke(false);
 			child.setFill(true);
 			child.setFill(color);
 		});

@@ -114,9 +114,9 @@ public class PTSMorphology {
 	 * @see #concaveHull2(ArrayList, float)
 	 */
 	public static PShape concaveHull(ArrayList<PVector> points, float threshold) {
-	
+
 		// calls Ordnance Survey implementation
-	
+
 		final Coordinate[] coords;
 		if (!points.get(0).equals(points.get(points.size() - 1))) {
 			coords = new Coordinate[points.size() + 1];
@@ -124,11 +124,11 @@ public class PTSMorphology {
 		} else { // already closed
 			coords = new Coordinate[points.size()];
 		}
-	
+
 		for (int i = 0; i < coords.length; i++) {
 			coords[i] = new Coordinate(points.get(i).x, points.get(i).y);
 		}
-	
+
 		Geometry g = PTS.GEOM_FACTORY.createPolygon(coords);
 		ConcaveHull hull = new ConcaveHull(g);
 		return toPShape(hull.getConcaveHullBFS(new TriCheckerChi(threshold), false, false).get(0));
@@ -154,7 +154,7 @@ public class PTSMorphology {
 	 * @see #concaveHull(ArrayList, float)
 	 */
 	public static PShape concaveHull2(ArrayList<PVector> points, float threshold) {
-	
+
 		/**
 		 * (from https://doi.org/10.1016/j.patcog.2008.03.023) It is more convenient to
 		 * normalize the threshold parameter with respect to a particular set of points
@@ -165,7 +165,7 @@ public class PTSMorphology {
 		 * Delaunay triangulation cannot increase the number of edges that will be
 		 * removed.
 		 */
-	
+
 		final Coordinate[] coords;
 		if (!points.get(0).equals(points.get(points.size() - 1))) {
 			coords = new Coordinate[points.size() + 1];
@@ -173,16 +173,16 @@ public class PTSMorphology {
 		} else { // already closed
 			coords = new Coordinate[points.size()];
 		}
-	
+
 		for (int i = 0; i < coords.length; i++) {
 			coords[i] = new Coordinate(points.get(i).x, points.get(i).y);
 		}
-	
+
 		Geometry g = PTS.GEOM_FACTORY.createPolygon(coords);
-	
+
 		// TODO test AVG threshold heuristic
 		org.geodelivery.jap.concavehull.ConcaveHull hull = new org.geodelivery.jap.concavehull.ConcaveHull(threshold);
-	
+
 		return toPShape(hull.transform(g));
 	}
 
@@ -198,27 +198,27 @@ public class PTSMorphology {
 	}
 
 	/**
-		 * Minkowski addition a.k.a dilation
-		 * 
-		 * @return
-		 */
-		public static PShape minkSum(PShape source, PShape addition) {
-	//		Geometry sum = Minkowski_Sum.minkSum(fromPShape(source), fromPShape(addition));
-			Geometry sum = Minkowski_Sum.compMinkSum(fromPShape(source), fromPShape(addition), false, false);
-			return toPShape(sum);
-		}
+	 * Minkowski addition a.k.a dilation
+	 * 
+	 * @return
+	 */
+	public static PShape minkSum(PShape source, PShape addition) {
+		// produces handled errors with geometries that have straight lines (like a
+		// square)
+		Geometry sum = Minkowski_Sum.compMinkSum(fromPShape(source), fromPShape(addition), true, true);
+		return toPShape(sum);
+	}
 
 	/**
-		 * TODO check, a.k.a erosion
-		 * 
-		 * @param source
-		 * @param addition
-		 * @return
-		 */
-		public static PShape minkDifference(PShape source, PShape addition) {
-	//			Geometry sum = Minkowski_Sum.minkSum(fromPShape(source), fromPShape(addition));
-			Geometry sum = Minkowski_Sum.compMinkDiff(fromPShape(source), fromPShape(addition), false, false);
-			return toPShape(sum);
-		}
+	 * Minkowski difference a.k.a erosion
+	 * 
+	 * @param source
+	 * @param addition
+	 * @return
+	 */
+	public static PShape minkDifference(PShape source, PShape addition) {
+		Geometry sum = Minkowski_Sum.compMinkDiff(fromPShape(source), fromPShape(addition), true, true);
+		return toPShape(sum);
+	}
 
 }

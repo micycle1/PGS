@@ -1,12 +1,15 @@
-[![](https://jitpack.io/v/micycle1/PTS.svg)](https://jitpack.io/#micycle1/PTS)
+[![](https://jitpack.io/v/micycle1/PTS.svg)](https://jitpack.io/#micycle1/PTS) [![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=micycle1_PTS&metric=ncloc)](https://sonarcloud.io/dashboard?id=micycle1_PTS)
 
 # Processing Topology Suite
 
 <h3 align="center"> 🚧 Under Construction 🚧 </h3>
 
 ---
-PTS is a library of static methods for geometric operations in Processing.
-Methods generally operate on PShapes.
+PTS is a library for geometric operations in Processing.
+
+Most methods operate on PShapes, and return PShapes (where applicable).
+
+The library is stateless: methods are static.
 
 A library for shapes in Processing:
 
@@ -21,10 +24,31 @@ PTS wraps JTS, enabling its methods to be applied to Processing's `PShape` objec
 
 [Contents from https://doc.cgal.org/latest/Manual/packages.html]
 
+## PShapes
+
+- Boolean operations: union, difference, intersection, etc. (/OVERLAY OPERATIONS)
+- Shape Boundaries
+- Smoothing
+- Simplification
+- Area, centroid, etc.
+
+### SPATIAL RELATIONSHIPS
+
+- Within
+- Contains
+###  BUFFERS
+
+### POLYGONIZATION
+
+### Geometry methods
+- Spatial Predicates, relate()
+- Overlay ops, buffer(), convexHull()
+- Metrics
+
 The library is split into a handful of classes as detailed below.
 
-## Contour
-Methods to produce a variety of geometric contour lines within shapes.
+## **Contour**
+*Methods to produce a variety of geometric contour lines within shapes.*
 ### Medial Axis
 <img src="resources/contour/medialAxis.png" alt="" width="50%"/>
 
@@ -63,15 +87,12 @@ Inner and exterior mitered offset curves; based on *miter*, *bevel* or *round* o
 </p>
 
 ### Delaunay Triangulation
-Triangulation of shapes or point sets; simple triangle refinement optional
+Constrained & refined *Delaunay triangulation* of shapes and point sets.
 
 <p float="middle">
   <img src="resources/contour/triangulation1.png" alt="" width="49%"/>
   <img src="resources/contour/triangulation2.png" alt="" width="49%"/>
 </p>
-
-### Constrained Delaunay Triangulation
-Triangulate one shape with addition of constrained ("steiner points") from another shape
 
 ### Earcut Triangulation
 <p float="middle">
@@ -79,18 +100,27 @@ Triangulate one shape with addition of constrained ("steiner points") from anoth
   <img src="resources/contour/earCut2.png" alt="" width="49%"/>
 </p>
 
-## Morphology
-Methods to morph shapes (topology)
+## **Morphology**
+*Methods to morph shapes (topology)*
 ### Buffer
 <img src="resources/pts/buffer.gif" alt="" width="50%"/>
 
 ### Erosion-Dilation
+A negative followed by a positive buffer (in one operation).
 <img src="resources/pts/erosionDilation.gif" alt="" width="50%"/>
+
+### Minkowski Addition
+Minkowski sum and difference (a.k.a buffer one shape using another shape; pictured: buffering using a rotating & growing triangle).
+<p float="middle">
+  <img src="resources/morphology/minkSum.gif" alt="" width="49%"/>
+  <img src="resources/morphology/minkDiff.gif" alt="" width="49%"/>
+</p>
 
 ### Simplification
 <img src="resources/pts/simplifyVW.gif" alt="" width="50%"/>
 
-### Minkowski Addition
+### Smoothing
+<img src="resources/morphology/smooth.gif" alt="" width="50%"/>
 
 ### Concave Hull
 <p float="middle">
@@ -104,36 +134,15 @@ Methods to morph shapes (topology)
 ### Snap Hull
 <img src="resources/pts/snapHull.gif" alt="" width="50%"/>
 
-## PShapes
-
-- Boolean operations: union, difference, intersection, etc. (/OVERLAY OPERATIONS)
-- Shape Boundaries
-- Smoothing
-- Simplification
-- Area, centroid, etc.
-
-### SPATIAL RELATIONSHIPS
-
-- Within
-- Contains
-###  BUFFERS
-
-### POLYGONIZATION
-
-### Geometry methods
-- Spatial Predicates, relate()
-- Overlay ops, buffer(), convexHull()
-- Metrics
-
-## Geometry Processing
+## **Geometry Processing**
 
 ### Point on Perimeter
-Find a point some fraction along the perimeter of a shape (with perpendicular offset)
+Find a point some fraction along the perimeter of a shape (with perpendicular offset).
 
 <img src="resources/pts/pointOnPerimeter.gif" alt="" width="50%"/>
 
 ### Points on Perimeter
-Find N points (evenly distributed) along the perimeter of a shape (with optional perpendicular offset)
+Find *N* points (evenly distributed) along the perimeter of a shape, or points every *D* distance (with optional perpendicular offset).
 
 <p float="middle">
   <img src="resources/pts/pointsOnPerimeter.gif" alt="" width="49%"/>
@@ -141,7 +150,7 @@ Find N points (evenly distributed) along the perimeter of a shape (with optional
 </p>
 
 ### Partitioning
-Partition a shape into simple polygons
+Partition a shape into simple (convex) polygons.
 
 <p float="middle">
   <img src="resources/pts/decompose1.png" alt="" width="49%"/>
@@ -149,11 +158,9 @@ Partition a shape into simple polygons
 </p>
 
 
-## Geometric Optimization
-- Bounding Volumes (enclosing circle)
-- Optimal Distances
+## **Geometric Optimization**
 
-### Closest Vertex
+### Closest Point
 <img src="resources/pts/closestVertex.gif" alt="" width="50%"/>
 
 ### Maximum Inscribed Circle
@@ -166,13 +173,13 @@ Partition a shape into simple polygons
 <img src="resources/pts/minimumBoundingRectangle.png" alt="" width="50%"/>
 
 
-## Transformation
+## **Transformation**
 PTS provides transformation methods much like Processing's. Notably these methods affect the vertex coordinates of PShapes, unlike Processing's equivalent methods that affect the affine matrix of shapes only (and thereby leave vertex coordinates in-tact).
 
 Methods beyond those offered in Processing are illustrated here:
 
 ### Rotate Around
-Rotate a shape around its centroid, or some other point
+Rotate a shape around its centroid, or some other point.
 
 <p float="middle">
   <img src="resources/transform/rotateCenter.gif" alt="" width="49%"/>
@@ -185,32 +192,35 @@ Translate a shape such that its centroid matches some position.
 <img src="resources/transform/translateTo.gif" alt="" width="50%"/>
 
 ### Touch Scale
-Scale one shape such that it touches another
+Scale one shape such that it touches another.
 
 <img src="resources/transform/touchScale.gif" alt="" width="50%"/>
 
 ### Homothetic Transformation
-Projection-transform a shape with respect to a fixed point
+Projection-transform a shape with respect to a fixed point.
 
 <img src="resources/transform/homothetic.gif" alt="" width="50%"/>
 
+## **Geometric Predicates**
 
-### Fields/ Point Sets
+### Intersects
+Do shapes intersect with each other?
 
-- Voronoi
-- Poisson-Disc
+<img src="resources/predicate/intersect.gif" alt="" width="50%"/>
 
-## Libraries
+### Contains Shape
+Does one shape fully contain another?
 
-- [OS_Minkowski_Sum_Diff
-](https://github.com/OrdnanceSurvey/OS_Minkowski_Sum_Diff)
-- [JTS](https://github.com/locationtech/jts)
+<img src="resources/predicate/contains.gif" alt="" width="50%"/>
 
-Shortcomings with JTS native triangulation (`DelaunayTriangulationBuilder`):
+### Contains Point
+For individual points and point sets.
+<p float="middle">
+  <img src="resources/predicate/containsPoint.gif" alt="" width="50%"/>
+</p>
 
-- Doesn't respect concave shapes/holes (which arises from computing triangulation of the vertices only, not edges) (effectively triangulates the convex hull)
-- No refinement: comparison [here](http://www.cs.cmu.edu/~quake/triangle.quality.html)
-  - Long, thin triangles (bad angles)
-  - Large difference (non-uniform) in triangle areas
-  - No way to sub-divide without 
-  - Many triangles may share one boundary vertex
+### Covers
+Less strict that contains
+
+
+### Predicates

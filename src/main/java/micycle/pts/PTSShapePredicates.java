@@ -23,23 +23,23 @@ import processing.core.PVector;
  * @author Michael Carleton
  *
  */
-public class PTSShapeMetrics {
+public class PTSShapePredicates {
 
 	// https://doc.cgal.org/latest/Polygon/index.html#Chapter_2D_Polygons
 
 	/**
-	 * A shape does not contain itself.
+	 * A shape does contain itself.
 	 * 
 	 * @param outer
 	 * @param inner
 	 * @return
 	 */
 	public static boolean contains(PShape outer, PShape inner) {
-		return fromPShape(outer).contains(fromPShape(inner));
+		return fromPShape(outer).covers(fromPShape(inner));
 	}
 
 	public static boolean containsPoint(PShape shape, PVector point) {
-		return fromPShape(shape).contains(PTS.pointFromPVector(point));
+		return fromPShape(shape).covers(PTS.pointFromPVector(point));
 	}
 
 	/**
@@ -82,6 +82,29 @@ public class PTSShapeMetrics {
 			}
 		}
 		return bools;
+	}
+
+	/**
+	 * intersect/overlap: at least one point in common
+	 * 
+	 * @param a
+	 * @param b
+	 * @return
+	 */
+	public static boolean intersect(PShape a, PShape b) {
+		return fromPShape(a).intersects(fromPShape(b));
+	}
+
+	/**
+	 * Checks whether the have at least one point in common, but their interiors do
+	 * not intersect.
+	 * 
+	 * @param a
+	 * @param b
+	 * @return
+	 */
+	public static boolean touch(PShape a, PShape b) {
+		return fromPShape(a).touches(fromPShape(b));
 	}
 
 	/**

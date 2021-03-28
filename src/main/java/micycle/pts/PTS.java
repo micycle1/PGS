@@ -143,6 +143,12 @@ public class PTS {
 		return toPShape(JTS.smooth(fromPShape(shape), fit));
 	}
 
+	/**
+	 * Flatten, or merge/union, a shape's children
+	 * 
+	 * @param shape
+	 * @return
+	 */
 	public static PShape flatten(PShape shape) {
 		// TODO iterate over geometries shapes, then create group PShape
 		Polygon poly = (Polygon) fromPShape(shape).union().getGeometryN(0);
@@ -206,8 +212,8 @@ public class PTS {
 	public static List<PVector> pointsOnPerimeter(PShape shape, float interPointDistance, float offsetDistance) {
 		LengthIndexedLine l = new LengthIndexedLine(((Polygon) fromPShape(shape)).getExteriorRing());
 		if (interPointDistance > l.getEndIndex()) {
-			System.err.println("Interpoint greater than shape length");
-			return null;
+			System.err.println("Interpoint length greater than shape length");
+			return new ArrayList<PVector>();
 		}
 		final int points = (int) Math.round(l.getEndIndex() / interPointDistance);
 
@@ -347,8 +353,8 @@ public class PTS {
 	 * @param shape
 	 * @return float[] of [X,Y,W,H]
 	 */
-	public static float[] bound(PShape shape) {
-		// move to ShapeMetrics?
+	public static float[] bounds(PShape shape) {
+		// TODO move to ShapeMetrics?
 		Envelope e = (Envelope) fromPShape(shape).getEnvelopeInternal();
 		return new float[] { (float) e.getMinX(), (float) e.getMinY(), (float) e.getWidth(), (float) e.getHeight() };
 	}
@@ -489,6 +495,14 @@ public class PTS {
 		return output;
 	}
 
+	public static List<PVector> toPVectorList(PShape shape) {
+		final ArrayList<PVector> vertices = new ArrayList<>();
+		for (int i = 0; i < shape.getVertexCount(); i++) {
+			vertices.add(shape.getVertex(i));
+		}
+		return vertices;
+	}
+
 	/**
 	 * Used by slice()
 	 */
@@ -502,12 +516,18 @@ public class PTS {
 		return geometry.getFactory().createGeometryCollection(polyArray);
 	}
 
+	/**
+	 * Euclidean distance between two coordinates
+	 */
 	protected static double distance(Coordinate a, Coordinate b) {
 		double deltaX = a.y - b.y;
 		double deltaY = a.x - b.x;
 		return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 	}
 
+	/**
+	 * Euclidean distance between two points
+	 */
 	protected static double distance(Point a, Point b) {
 		double deltaX = a.getY() - b.getY();
 		double deltaY = a.getX() - b.getX();
@@ -528,6 +548,10 @@ public class PTS {
 
 	protected static Coordinate coordFromPoint(Point p) {
 		return new Coordinate(p.getX(), p.getY());
+	}
+
+	protected static Coordinate coordFromPVector(PVector p) {
+		return new Coordinate(p.x, p.y);
 	}
 
 	/**
@@ -551,7 +575,7 @@ public class PTS {
 
 	/**
 	 * Reflection-based workaround to get the fill color of a PShape (this field is
-	 * private).
+	 * usually private).
 	 */
 	private static final int getPShapeFillColor(final PShape sh) {
 		try {
@@ -576,11 +600,11 @@ public class PTS {
 		shape.setFill(-123712);
 		shape.setFill(true);
 		shape.beginShape();
-	
+
 		for (PVector v : coords) {
 			shape.vertex(v.x, v.y);
 		}
-	
+
 		shape.endShape(PConstants.CLOSE);
 		return shape;
 	}
@@ -602,6 +626,33 @@ public class PTS {
 			y1 = y2;
 		}
 		return area < 0;
+	}
+
+	/**
+	 * Requires a closed hole
+	 * 
+	 * @param points
+	 * @return
+	 */
+	public static boolean isClockwise(List<PVector> points) {
+		boolean closed = true;
+		if (points.get(0).equals(points.get(points.size() - 1))) {
+			closed = false;
+			points.add(points.get(0)); // mutate list
+		}
+		double area = 0;
+
+		for (int i = 0; i < (points.size()); i++) {
+			int j = (i + 1) % points.size();
+			area += points.get(i).x * points.get(j).y;
+			area -= points.get(j).x * points.get(i).y;
+		}
+
+		if (!closed) {
+			points.remove(points.size() - 1); // undo mutation
+		}
+
+		return (area < 0);
 	}
 
 	/**
