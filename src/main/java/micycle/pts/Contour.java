@@ -8,6 +8,7 @@ import static processing.core.PConstants.ROUND;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -593,36 +594,36 @@ public class Contour {
 	public static PShape straightSkeleton(PShape shape, PApplet p) {
 		// https://github.com/Agent14zbz/ZTools/blob/main/src/main/java/geometry/ZSkeleton.java
 
-		Machine speed = new Machine(1); // every edge same speed
+		final Machine speed = new Machine(1); // every edge same speed
 
 		Geometry g = fromPShape(shape);
 		Polygon polygon;
-		if (g.getGeometryType() == Geometry.TYPENAME_POLYGON) {
+		if (g.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
 			polygon = (Polygon) g;
 			if (polygon.getCoordinates().length > 1000) {
 				polygon = (Polygon) DouglasPeuckerSimplifier.simplify(polygon, 1);
 			}
 		} else {
-			System.out.println("MultiPolygon not supported yet.");
+			System.err.println("MultiPolygon not supported yet.");
 			return new PShape();
 		}
 
 		HashSet<Double> edgeCoordsSet = new HashSet<>();
 
 		Skeleton skeleton;
-
 		LoopL<org.twak.camp.Edge> loopL = new LoopL<>(); // list of loops
-
 		ArrayList<Corner> corners = new ArrayList<>();
 		Loop<org.twak.camp.Edge> loop = new Loop<>();
 
 		LinearRing exterior = polygon.getExteriorRing();
 		if (!Orientation.isCCW(exterior.getCoordinates())) {
-			exterior = exterior.reverse();
+			exterior = exterior.reverse(); // exterior should be CCW
 		}
-		for (int j = 0; j < exterior.getCoordinates().length - 1; j++) {
-			double a = exterior.getCoordinates()[j].x;
-			double b = exterior.getCoordinates()[j].y;
+
+		Coordinate[] coords = exterior.getCoordinates();
+		for (int j = 0; j < coords.length - 1; j++) {
+			double a = coords[j].x;
+			double b = coords[j].y;
 			corners.add(new Corner(a, b));
 			edgeCoordsSet.add(cantorPairing(a, b));
 		}
@@ -636,9 +637,10 @@ public class Contour {
 
 		for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
 			corners = new ArrayList<>();
-			// holes should be clockwise
-			LinearRing hole = polygon.getInteriorRingN(i).reverse();
-//				System.out.println("hole:" + Orientation.isCCW(hole.getCoordinates()));
+			LinearRing hole = polygon.getInteriorRingN(i);
+			if (Orientation.isCCW(hole.getCoordinates())) {
+				hole = hole.reverse(); // holes should be clockwise
+			}
 			for (int j = 0; j < hole.getNumPoints() - 1; j++) {
 				corners.add(new Corner(hole.getCoordinates()[j].x, hole.getCoordinates()[j].y));
 			}
@@ -652,13 +654,11 @@ public class Contour {
 			loopL.add(loop);
 		}
 
-//		}
-
 		PShape lines = new PShape();
 		lines.setFamily(PShape.GEOMETRY);
 		lines.setStrokeCap(ROUND);
 		lines.setStroke(true);
-		lines.setStrokeWeight(4);
+		lines.setStrokeWeight(2);
 		lines.setStroke(-1232222);
 		lines.beginShape(LINES);
 		try {
@@ -732,7 +732,7 @@ public class Contour {
 	private Skeleton skeletonise(Geometry g) {
 
 		Polygon polygon;
-		if (g.getGeometryType() == Geometry.TYPENAME_POLYGON) {
+		if (g.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
 			polygon = (Polygon) g;
 			if (polygon.getCoordinates().length > 1000) {
 				polygon = (Polygon) DouglasPeuckerSimplifier.simplify(g, 1);

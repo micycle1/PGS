@@ -14,6 +14,7 @@ import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 
 import processing.core.PApplet;
+import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -153,7 +154,7 @@ public class PTSShapePredicates {
 	 */
 	public static float circularity(PShape shape) {
 		Polygon poly = (Polygon) fromPShape(shape);
-		return (float) (4 * PApplet.PI * poly.getArea()
+		return (float) (4 * PConstants.PI * poly.getArea()
 				/ (poly.getBoundary().getLength() * poly.getBoundary().getLength()));
 	}
 

@@ -451,7 +451,7 @@ public class PTS {
 
 		for (int i = 0; i < g.getNumGeometries(); i++) {
 			Geometry child = g.getGeometryN(i);
-			if (child.getGeometryType() == Geometry.TYPENAME_POLYGON) { // skip any linestrings etc
+			if (child.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) { // skip any linestrings etc
 				List<Polygon> decomposed = PolygonDecomposition.decompose((Polygon) child);
 				for (Polygon polygon : decomposed) {
 					out.add(toPShape(polygon));

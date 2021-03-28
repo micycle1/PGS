@@ -135,8 +135,8 @@ public class PTSTriangulation {
 	}
 
 	/**
-	 * Creates a triangulation with steiner points within the shape populated by
-	 * poisson sampling.
+	 * Creates a Delaunay triangulation with steiner points within the shape
+	 * populated by poisson sampling.
 	 * 
 	 * @param shape
 	 * @param spacing (Minimum) spacing between poisson points
@@ -149,8 +149,7 @@ public class PTSTriangulation {
 
 		PoissonDistribution pd = new PoissonDistribution(0);
 		List<PVector> poissonPoints = pd.generate(e.getMinX(), e.getMinY(), e.getMinX() + e.getWidth(),
-				e.getMinY() + e.getHeight(),
-				spacing, 10);
+				e.getMinY() + e.getHeight(), spacing, 10);
 //		final IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(g);
 //		List<PVector> pp = poissonPoints.parallelStream()
 //				.filter(p -> pointLocator.locate(PTS.coordFromPVector(p)) != Location.EXTERIOR)

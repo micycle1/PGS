@@ -150,7 +150,7 @@ public class ConcaveHull {
 				boolean rule2 = !triangleNode.isMarked();
 				boolean rule3 = length >= threshold;
 
-				if (rule1 && rule2 & rule3) {
+				if (rule1 && rule2 && rule3) {
 					// delete edge and replace with two triangle edges
 					from.setData(triangleEdge1);
 					triangleNode.setData(triangleEdge2);

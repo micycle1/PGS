@@ -34,6 +34,7 @@ public class PTSGeometricOptimisation {
 	 * 
 	 * @param shape
 	 * @param tolerance the distance tolerance for computing the centre point
+	 *                  (around 1)
 	 */
 	public static PShape maximumInscribedCircle(PShape shape, float tolerance) {
 		MaximumInscribedCircle mic = new MaximumInscribedCircle(fromPShape(shape), tolerance);
@@ -119,7 +120,7 @@ public class PTSGeometricOptimisation {
 	 * @param point
 	 * @return
 	 */
-	public static PVector closestVertexToPoint(PShape shape, PVector point) {
+	public static PVector closestPoint(PShape shape, PVector point) {
 		Geometry g = fromPShape(shape);
 		Coordinate coord = DistanceOp.nearestPoints(g, PTS.pointFromPVector(point))[0];
 		return new PVector((float) coord.x, (float) coord.y);

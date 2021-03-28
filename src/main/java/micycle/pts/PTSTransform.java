@@ -3,8 +3,6 @@ package micycle.pts;
 import static micycle.pts.Conversion.fromPShape;
 import static micycle.pts.Conversion.toPShape;
 
-import org.locationtech.jts.algorithm.Distance;
-import org.locationtech.jts.algorithm.distance.DistanceToPoint;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LinearRing;
@@ -194,6 +192,7 @@ public class PTSTransform {
 	public static PShape rotateAroundCenter(PShape shape, double angle) {
 		Geometry g = fromPShape(shape);
 		Point center = g.getCentroid();
+		angle %= (Math.PI * 2);
 		AffineTransformation t = AffineTransformation.rotationInstance(angle, center.getX(), center.getY());
 		return toPShape(t.transform(g));
 	}

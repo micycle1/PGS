@@ -343,7 +343,7 @@ public class Conversion implements PConstants {
 					line.endShape();
 					return line;
 				} else {
-					if (geometry.getGeometryType() == Geometry.TYPENAME_LINESTRING) { // long linestring
+					if (geometry.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) { // long linestring
 						PShape line = new PShape();
 						line.setFamily(PShape.PATH); // TODO check?
 						line.setStroke(true);
