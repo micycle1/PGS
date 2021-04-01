@@ -133,9 +133,9 @@
 			<version>1.4.0</version>
 		</dependency>
 		<dependency>
-			<groupId>com.github.micycle1</groupId>
+			<groupId>com.github.gwlucastrig</groupId>
 			<artifactId>Tinfour</artifactId>
-			<version>d4cc58edef</version>
+			<version>0aa0843cb6</version>
 		</dependency>
 		<dependency>
 			<groupId>io.github.earcut4j</groupId>
@@ -161,17 +161,6 @@
 			<groupId>org.tinspin</groupId>
 			<artifactId>tinspin-indexes</artifactId>
 			<version>1.7.1</version>
-		</dependency>
-		<dependency>
-			<groupId>org.orbisgis</groupId>
-			<artifactId>poly2tri</artifactId>
-			<version>0.1.2</version>
-			<type>pom</type>
-		</dependency>
-		<dependency>
-			<groupId>org.orbisgis</groupId>
-			<artifactId>poly2tri-core</artifactId>
-			<version>0.1.2</version>
 		</dependency>
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>

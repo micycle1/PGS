@@ -8,7 +8,6 @@ import static processing.core.PConstants.ROUND;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -22,7 +21,6 @@ import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
-import org.locationtech.jts.linearref.LinearIterator;
 import org.locationtech.jts.operation.buffer.BufferOp;
 import org.locationtech.jts.operation.buffer.BufferParameters;
 import org.locationtech.jts.operation.linemerge.LineMergeEdge;
@@ -30,7 +28,6 @@ import org.locationtech.jts.operation.linemerge.LineMergeGraph;
 import org.locationtech.jts.operation.linemerge.LineMerger;
 import org.locationtech.jts.planargraph.Node;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
-import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.triangulate.VoronoiDiagramBuilder;
 import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
@@ -527,6 +524,154 @@ public class Contour {
 //	}
 
 	/**
+		 * Roughly, it is the geometric graph whose edges are the traces of vertices of
+		 * shrinking mitered offset curves of the polygon
+		 * 
+		 * @param shape
+		 * @param p
+		 * @return
+		 */
+		public static PShape straightSkeleton(PShape shape, PApplet p) {
+			// https://github.com/Agent14zbz/ZTools/blob/main/src/main/java/geometry/ZSkeleton.java
+	
+			final Machine speed = new Machine(1); // every edge same speed
+	
+			Geometry g = fromPShape(shape);
+			Polygon polygon;
+			if (g.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
+				polygon = (Polygon) g;
+				if (polygon.getCoordinates().length > 1000) {
+					polygon = (Polygon) DouglasPeuckerSimplifier.simplify(polygon, 1);
+				}
+			} else {
+				System.err.println("MultiPolygon not supported yet.");
+				return new PShape();
+			}
+	
+			HashSet<Double> edgeCoordsSet = new HashSet<>();
+	
+			Skeleton skeleton;
+			LoopL<org.twak.camp.Edge> loopL = new LoopL<>(); // list of loops
+			ArrayList<Corner> corners = new ArrayList<>();
+			Loop<org.twak.camp.Edge> loop = new Loop<>();
+
+	
+			LinearRing exterior = polygon.getExteriorRing();
+			Coordinate[] coords = exterior.getCoordinates();
+			if (!Orientation.isCCW(coords)) {
+				reverse(coords); // exterior should be CCW
+			}
+	
+			for (int j = 0; j < coords.length - 1; j++) {
+				double a = coords[j].x;
+				double b = coords[j].y;
+				corners.add(new Corner(a, b));
+				edgeCoordsSet.add(cantorPairing(a, b));
+			}
+			corners.add(new Corner(coords[0].x, coords[0].y)); // close loop
+			edgeCoordsSet.add(cantorPairing(coords[0].x, coords[0].y)); // close loop
+	
+			for (int j = 0; j < corners.size() - 1; j++) {
+				org.twak.camp.Edge edge = new org.twak.camp.Edge(corners.get(j),
+						corners.get((j + 1) % (corners.size() - 1)));
+				edge.machine = speed;
+				loop.append(edge);
+			}
+			loopL.add(loop);
+	
+			for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
+				corners = new ArrayList<>();
+				LinearRing hole = polygon.getInteriorRingN(i);
+				coords = hole.getCoordinates();
+				if (Orientation.isCCW(coords)) {
+					reverse(coords);
+				}
+	
+				for (int j = 0; j < coords.length - 1; j++) {
+					double a = coords[j].x;
+					double b = coords[j].y;
+					corners.add(new Corner(a, b));
+					edgeCoordsSet.add(cantorPairing(a, b));
+				}
+				corners.add(new Corner(coords[0].x, coords[0].y)); // close loop
+				edgeCoordsSet.add(cantorPairing(coords[0].x, coords[0].y)); // close loop
+	
+				loop = new Loop<>();
+				for (int j = 0; j < corners.size() - 1; j++) {
+					org.twak.camp.Edge edge = new org.twak.camp.Edge(corners.get(j),
+							corners.get((j + 1) % (corners.size() - 1)));
+					edge.machine = speed;
+					loop.append(edge);
+				}
+				loopL.add(loop);
+			}
+	
+			PShape lines = new PShape();
+			lines.setFamily(PShape.GEOMETRY);
+			lines.setStrokeCap(ROUND);
+			lines.setStroke(true);
+			lines.setStrokeWeight(2);
+			lines.setStroke(-1232222);
+			lines.beginShape(LINES);
+			try {
+				skeleton = new Skeleton(loopL, true);
+				skeleton.skeleton();
+				
+				skeleton.output.edges.map.values().forEach(e -> {
+
+					if (e.left == null || e.right == null) { // edge
+						p.stroke(80, 50, 180);
+						p.line((float) e.start.x, (float) e.start.y, (float) e.end.x, (float) e.end.y);
+					}
+
+					boolean a = edgeCoordsSet.contains(cantorPairing(e.start.x, e.start.y));
+					boolean b = edgeCoordsSet.contains(cantorPairing(e.end.x, e.end.y));
+
+					if (a ^ b) { // branch
+						lines.vertex((float) e.start.x, (float) e.start.y);
+						lines.vertex((float) e.end.x, (float) e.end.y);
+					} else {
+						if (a) { // edge
+//							p.stroke(80, 50, 180);
+//							p.line((float) e.start.x, (float) e.start.y, (float) e.end.x, (float) e.end.y);
+
+						} else { // bone
+							p.stroke(0);
+							p.line((float) e.start.x, (float) e.start.y, (float) e.end.x, (float) e.end.y);
+						}
+					}
+				});
+
+//				System.out.println(skeleton.output.faces.values().size());
+//				skeleton.output.faces.values().forEach(face -> {
+//					int c = 0;
+//					face.edges.forEach(edge -> {
+//						int n = 0;
+//						for (SharedEdge e : edge) {
+////							
+////							if(e.)
+//							
+////							p.stroke(12, c * 10, 0);
+//							if (n == 0) { // edge.count() - 2last edge belongs to the shape exterior
+////								p.stroke(120, 156, 100);
+//							}
+//							p.line((float) e.start.x, (float) e.start.y, (float) e.end.x, (float) e.end.y);
+//							n++;
+//
+//						}
+//
+//					});
+//					c++;
+//				});
+//				skeleton.output.edges.map.values().forEach(e -> e.);
+			} catch (Exception ignore) {
+				// hide init or collision errors from console
+			}
+			lines.endShape();
+			return lines;
+		}
+
+	/**
 	 * 
 	 * @param shape
 	 * @return
@@ -581,145 +726,6 @@ public class Contour {
 
 		SolubSkeleton skeleton = new SolubSkeleton(points, tolerance);
 		return skeleton;
-	}
-
-	/**
-	 * Roughly, it is the geometric graph whose edges are the traces of vertices of
-	 * shrinking mitered offset curves of the polygon
-	 * 
-	 * @param shape
-	 * @param p
-	 * @return
-	 */
-	public static PShape straightSkeleton(PShape shape, PApplet p) {
-		// https://github.com/Agent14zbz/ZTools/blob/main/src/main/java/geometry/ZSkeleton.java
-
-		final Machine speed = new Machine(1); // every edge same speed
-
-		Geometry g = fromPShape(shape);
-		Polygon polygon;
-		if (g.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
-			polygon = (Polygon) g;
-			if (polygon.getCoordinates().length > 1000) {
-				polygon = (Polygon) DouglasPeuckerSimplifier.simplify(polygon, 1);
-			}
-		} else {
-			System.err.println("MultiPolygon not supported yet.");
-			return new PShape();
-		}
-
-		HashSet<Double> edgeCoordsSet = new HashSet<>();
-
-		Skeleton skeleton;
-		LoopL<org.twak.camp.Edge> loopL = new LoopL<>(); // list of loops
-		ArrayList<Corner> corners = new ArrayList<>();
-		Loop<org.twak.camp.Edge> loop = new Loop<>();
-
-		LinearRing exterior = polygon.getExteriorRing();
-		if (!Orientation.isCCW(exterior.getCoordinates())) {
-			exterior = exterior.reverse(); // exterior should be CCW
-		}
-
-		Coordinate[] coords = exterior.getCoordinates();
-		for (int j = 0; j < coords.length - 1; j++) {
-			double a = coords[j].x;
-			double b = coords[j].y;
-			corners.add(new Corner(a, b));
-			edgeCoordsSet.add(cantorPairing(a, b));
-		}
-		for (int j = 0; j < corners.size() - 1; j++) {
-			org.twak.camp.Edge edge = new org.twak.camp.Edge(corners.get(j),
-					corners.get((j + 1) % (corners.size() - 1)));
-			edge.machine = speed;
-			loop.append(edge);
-		}
-		loopL.add(loop);
-
-		for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
-			corners = new ArrayList<>();
-			LinearRing hole = polygon.getInteriorRingN(i);
-			if (Orientation.isCCW(hole.getCoordinates())) {
-				hole = hole.reverse(); // holes should be clockwise
-			}
-			for (int j = 0; j < hole.getNumPoints() - 1; j++) {
-				corners.add(new Corner(hole.getCoordinates()[j].x, hole.getCoordinates()[j].y));
-			}
-			loop = new Loop<>();
-			for (int j = 0; j < corners.size() - 1; j++) {
-				org.twak.camp.Edge edge = new org.twak.camp.Edge(corners.get(j),
-						corners.get((j + 1) % (corners.size() - 1)));
-				edge.machine = speed;
-				loop.append(edge);
-			}
-			loopL.add(loop);
-		}
-
-		PShape lines = new PShape();
-		lines.setFamily(PShape.GEOMETRY);
-		lines.setStrokeCap(ROUND);
-		lines.setStroke(true);
-		lines.setStrokeWeight(2);
-		lines.setStroke(-1232222);
-		lines.beginShape(LINES);
-		try {
-			skeleton = new Skeleton(loopL, true);
-			skeleton.skeleton();
-			skeleton.output.edges.map.values().forEach(e -> {
-				boolean a = edgeCoordsSet.contains(cantorPairing(e.start.x, e.start.y));
-				boolean b = edgeCoordsSet.contains(cantorPairing(e.end.x, e.end.y));
-
-				if (a ^ b) { // branch
-					lines.vertex((float) e.start.x, (float) e.start.y);
-					lines.vertex((float) e.end.x, (float) e.end.y);
-				} else {
-					if (a) { // edge
-//						p.stroke(0, 50, 180);
-//						p.line((float) e.start.x, (float) e.start.y, (float) e.end.x, (float) e.end.y);
-
-					} else { // bone
-						lines.vertex((float) e.start.x, (float) e.start.y);
-						lines.vertex((float) e.end.x, (float) e.end.y);
-//						p.stroke(0);
-//						p.strokeWeight(5);
-//						p.point((float) e.start.x, (float) e.start.y);
-					}
-				}
-			});
-
-//			skeleton.output.faces.values().forEach(face -> {
-//				face.edges.forEach(edge -> {
-//					int n = 0;
-//					for (SharedEdge l : edge) {
-//						p.stroke(12, 56, 200);
-//						if (n == edge.count() - 2) { // last edge belongs to the shape exterior
-//							p.stroke(120, 156, 100);
-//						}
-//						p.line((float) l.start.x, (float) l.start.y, (float) l.end.x, (float) l.end.y);
-//						n++;
-//					}
-//				});
-//			});
-
-//			skeleton.output.faces.values().forEach(f -> {
-//				f.getLoopL().forEach(l -> {
-//					l.forEach(v -> {
-//						lines.vertex((float) v.x, (float) v.y);
-//					});
-//				});
-//				final org.twak.camp.Edge e = f.edge;
-//				lines.vertex((float) e.start.x, (float) e.start.y);
-//				lines.vertex((float) e.end.x, (float) e.end.y);
-//				f.topSE.forEach(e2 -> {
-//					lines.vertex((float) e2.start.x, (float) e2.start.y);
-//					lines.vertex((float) e2.end.x, (float) e2.end.y);
-//				});
-//			});
-		} catch (Exception ignore) {
-			// hide init or collision errors from console
-		}
-
-		lines.endShape();
-		return lines;
 	}
 
 	/**
@@ -938,6 +944,13 @@ public class Contour {
 		return toPShape(ld.getResult()); // contains check instead?
 	}
 
+	/**
+	 * Generates isolines from grid of values.
+	 * 
+	 * @param values
+	 * @param isoValue
+	 * @return
+	 */
 	public static PShape isolinesJP(double[][] values, double isoValue) {
 		PShape lines = new PShape(PShape.GEOMETRY);
 		lines.setStroke(true);
@@ -1144,7 +1157,15 @@ public class Contour {
 			}
 		}
 		return grid;
+	}
 
+	private static <T> void reverse(T[] a) {
+		int l = a.length;
+		for (int j = 0; j < l / 2; j++) {
+			T temp = a[j];
+			a[j] = a[l - j - 1];
+			a[l - j - 1] = temp;
+		}
 	}
 
 }

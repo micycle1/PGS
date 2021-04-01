@@ -126,7 +126,9 @@ public class Conversion implements PConstants {
 
 		for (ArrayList<Coordinate> contour : coords) {
 			// TODO only add if first and last different
-			contour.add(contour.get(0)); // Points of LinearRing must form a closed linestring
+			if (!contour.get(0).equals2D(contour.get(contour.size() - 1))) {
+				contour.add(contour.get(0)); // Points of LinearRing must form a closed linestring
+			}
 		}
 
 		final Coordinate[] outerCoords = new Coordinate[coords.get(0).size()];

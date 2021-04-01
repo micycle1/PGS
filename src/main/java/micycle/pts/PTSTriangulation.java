@@ -39,14 +39,15 @@ public class PTSTriangulation {
 	 * @param shape
 	 * @param steinerPoints can be null
 	 * @param constrain     Constrain the triangulation output using the shape
-	 *                      boundary (from point set)
+	 *                      boundary (from point set). With shapes, you'll probably
+	 *                      want to this to be true.
 	 * @param refinements   number of triangulation refinements to perform. 0 or
 	 *                      greater
-	 * @param pretty        false = enforce delaunay triangulation during
-	 *                      constraining and don't check circumcircle during
-	 *                      refinement. when true output triangles may be slightly
-	 *                      more regular in shape/size. small performance overhead
-	 *                      -- becomes more considerable at higher refinement levels
+	 * @param pretty        false = enforce Delaunay nature during constraining and
+	 *                      don't check circumcircle during refinement. when true
+	 *                      output triangles may be slightly more regular in
+	 *                      shape/size. small performance overhead -- becomes more
+	 *                      considerable at higher refinement levels
 	 * @return array of coordinates, each triplet of coordinates are the vertices of
 	 *         one triangle
 	 */
@@ -75,6 +76,17 @@ public class PTSTriangulation {
 		return triangles;
 	}
 
+	/**
+	 * Outputs the raw Tinfour triangulated network object
+	 * 
+	 * @param shape
+	 * @param steinerPoints
+	 * @param constrain
+	 * @param refinements
+	 * @param pretty
+	 * @return
+	 * @see #delaunayTriangulation(PShape, List, boolean, int, boolean)
+	 */
 	public static IncrementalTin delaunayTriangulationTin(PShape shape, List<PVector> steinerPoints, boolean constrain,
 			int refinements, boolean pretty) {
 		final Geometry g = fromPShape(shape);

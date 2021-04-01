@@ -13,7 +13,6 @@ import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 
-import processing.core.PApplet;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -170,6 +169,15 @@ public class PTSShapePredicates {
 	public static float similarity(PShape a, PShape b) {
 		HausdorffSimilarityMeasure sm = new HausdorffSimilarityMeasure();
 		return (float) sm.measure(fromPShape(a), fromPShape(b));
+	}
+
+	/**
+	 * Compute the number of holes a shape has.
+	 * 
+	 * @return
+	 */
+	public static int holes(PShape shape) {
+		return ((Polygon) fromPShape(shape)).getNumInteriorRing(); // NOTE assume a single polygon
 	}
 
 	/**
