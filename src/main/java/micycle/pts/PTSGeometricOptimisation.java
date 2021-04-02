@@ -5,6 +5,9 @@ import static micycle.pts.Conversion.toPShape;
 import static micycle.pts.PTS.CURVE_SAMPLES;
 import static micycle.pts.PTS.GEOM_FACTORY;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.locationtech.jts.algorithm.MinimumBoundingCircle;
 import org.locationtech.jts.algorithm.MinimumDiameter;
 import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
@@ -114,16 +117,37 @@ public class PTSGeometricOptimisation {
 	}
 
 	/**
-	 * TODO return list of points when shape is group
+	 * Returns the nearest point of the shape to the given point. If the shape is
+	 * has multiple children/geometries, the single closest point is returned.
 	 * 
 	 * @param shape
 	 * @param point
 	 * @return
+	 * @see #closestPoints(PShape, PVector)
 	 */
 	public static PVector closestPoint(PShape shape, PVector point) {
 		Geometry g = fromPShape(shape);
 		Coordinate coord = DistanceOp.nearestPoints(g, PTS.pointFromPVector(point))[0];
 		return new PVector((float) coord.x, (float) coord.y);
+	}
+
+	/**
+	 * Returns the nearest point for each "island" in the input shape.
+	 * 
+	 * @param shape
+	 * @param point
+	 * @return list of closest points for each child shape. Output is identical to
+	 *         {@link #closestPoint(PShape, PVector)} if the input shape
+	 * @see #closestPoint(PShape, PVector)
+	 */
+	public static List<PVector> closestPoints(PShape shape, PVector point) {
+		Geometry g = fromPShape(shape);
+		ArrayList<PVector> points = new ArrayList<>();
+		for (int i = 0; i < g.getNumGeometries(); i++) {
+			Coordinate coord = DistanceOp.nearestPoints(g.getGeometryN(i), PTS.pointFromPVector(point))[0];
+			points.add(new PVector((float) coord.x, (float) coord.y));
+		}
+		return points;
 	}
 
 }

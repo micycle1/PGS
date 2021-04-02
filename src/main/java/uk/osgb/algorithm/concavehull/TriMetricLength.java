@@ -30,7 +30,6 @@ import org.locationtech.jts.geom.Coordinate;
 class TriMetricLength {
 
 	public double compMetric(Coordinate coordS, Coordinate coordE, Coordinate coordO) {
-		// TODO Auto-generated method stub
 		return coordS.distance(coordE);
 	}
 

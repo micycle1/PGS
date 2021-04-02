@@ -211,7 +211,7 @@ public class Contour {
 	 * 
 	 * @return
 	 */
-	public static PShape dissolvedMedialAxis() {
+	private static PShape dissolvedMedialAxis() {
 		// use JTS GeometryGraph?
 		// TODO break out dissolver+linemergegraph into here
 		return null;
@@ -722,83 +722,9 @@ public class Contour {
 			points.add(new PVector((float) coordinate.x, (float) coordinate.y));
 		}
 		points.remove(0); // remove closing point
-		points.remove(0); // remove closing point
+//		points.remove(0); // remove closing point
 
 		SolubSkeleton skeleton = new SolubSkeleton(points, tolerance);
-		return skeleton;
-	}
-
-	/**
-	 * TODO replace contained in straight skeleton within straightSkeleton(PShape,
-	 * PApplet)
-	 * 
-	 * @param g
-	 * @return
-	 */
-	private Skeleton skeletonise(Geometry g) {
-
-		Polygon polygon;
-		if (g.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
-			polygon = (Polygon) g;
-			if (polygon.getCoordinates().length > 1000) {
-				polygon = (Polygon) DouglasPeuckerSimplifier.simplify(g, 1);
-			}
-		} else {
-			System.out.println("MultiPolygon not supported yet.");
-			return new Skeleton();
-		}
-
-		Machine speed = new Machine(1); // every edge same speed
-
-		HashSet<Double> edgeCoordsSet = new HashSet<>();
-
-		Skeleton skeleton;
-
-		LoopL<org.twak.camp.Edge> loopL = new LoopL<>(); // list of loops
-
-		ArrayList<Corner> corners = new ArrayList<>();
-		Loop<org.twak.camp.Edge> loop = new Loop<>();
-
-		LinearRing exterior = polygon.getExteriorRing();
-		if (!Orientation.isCCW(exterior.getCoordinates())) {
-			exterior = exterior.reverse();
-		}
-		Coordinate[] coords = exterior.getCoordinates();
-		for (int j = 0; j < coords.length - 1; j++) {
-			double a = coords[j].x;
-			double b = coords[j].y;
-			corners.add(new Corner(a, b));
-			edgeCoordsSet.add(cantorPairing(a, b));
-		}
-		for (int j = 0; j < corners.size() - 1; j++) {
-			org.twak.camp.Edge edge = new org.twak.camp.Edge(corners.get(j),
-					corners.get((j + 1) % (corners.size() - 1)));
-			edge.machine = speed;
-			loop.append(edge);
-		}
-		loopL.add(loop);
-
-		for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
-			corners = new ArrayList<>();
-			// holes should be clockwise
-			LinearRing hole = polygon.getInteriorRingN(i).reverse();
-//				System.out.println("hole:" + Orientation.isCCW(hole.getCoordinates()));
-			for (int j = 0; j < hole.getNumPoints() - 1; j++) {
-				corners.add(new Corner(hole.getCoordinates()[j].x, hole.getCoordinates()[j].y));
-			}
-			loop = new Loop<>();
-			for (int j = 0; j < corners.size() - 1; j++) {
-				org.twak.camp.Edge edge = new org.twak.camp.Edge(corners.get(j),
-						corners.get((j + 1) % (corners.size() - 1)));
-				edge.machine = speed;
-				loop.append(edge);
-			}
-			loopL.add(loop);
-		}
-
-		skeleton = new Skeleton(loopL, true);
-		skeleton.skeleton();
-
 		return skeleton;
 	}
 

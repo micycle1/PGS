@@ -39,7 +39,6 @@ public class TriCheckerPark implements TriangleChecker {
 	}
 
 	public boolean removeable(Coordinate coordS, Coordinate coordE, Coordinate coordO) {
-		// TODO Auto-generated method stub
 		double bl = coordS.distance(coordE);
 		double ds = coordS.distance(coordO);
 		double de = coordE.distance(coordO);

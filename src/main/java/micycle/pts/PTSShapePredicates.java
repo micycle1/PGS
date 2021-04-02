@@ -28,7 +28,7 @@ public class PTSShapePredicates {
 	// https://doc.cgal.org/latest/Polygon/index.html#Chapter_2D_Polygons
 
 	/**
-	 * A shape does contain itself.
+	 * Does the outer shape contain the inner shape? A shape contains itself.
 	 * 
 	 * @param outer
 	 * @param inner
@@ -38,6 +38,15 @@ public class PTSShapePredicates {
 		return fromPShape(outer).covers(fromPShape(inner));
 	}
 
+	/**
+	 * Points that lie on the boundary of the shape considered to be contained.
+	 * 
+	 * @param shape
+	 * @param point
+	 * @return
+	 * @see #containsAllPoints(PShape, List)
+	 * @see #containsPoints(PShape, List)
+	 */
 	public static boolean containsPoint(PShape shape, PVector point) {
 		return fromPShape(shape).covers(PTS.pointFromPVector(point));
 	}
@@ -123,6 +132,7 @@ public class PTSShapePredicates {
 	}
 
 	/**
+	 * Computes the centroid of a shape.
 	 * 
 	 * @param shape
 	 * @return null if point is empty (geometry empty)
@@ -144,9 +154,9 @@ public class PTSShapePredicates {
 	}
 
 	/**
-	 * * Calculates the Miller circularity index for a polygon. This index, between
-	 * 0 and 1, is equal to 1 if the polygon is perfectly circular and tends towards
-	 * 0 for a segment.
+	 * Calculates the Miller circularity index for a shape. This index, between 0
+	 * and 1, is equal to 1 if the polygon is perfectly circular and tends towards 0
+	 * for a segment.
 	 * 
 	 * @param shape
 	 * @return
@@ -158,7 +168,7 @@ public class PTSShapePredicates {
 	}
 
 	/**
-	 * Measures the degree of similarity between two Geometrysusing the Hausdorff
+	 * Measures the degree of similarity between two Geometry susing the Hausdorff
 	 * distance metric. The measure is normalized to lie in the range [0, 1]. Higher
 	 * measures indicate a great degree of similarity.
 	 * 

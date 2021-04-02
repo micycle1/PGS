@@ -27,7 +27,9 @@
 				</configuration>
 			</plugin>
 			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
+				<version>3.2.0</version>
 				<executions>
 					<execution>
 						<id>attach-sources</id>
@@ -39,7 +41,9 @@
 				</executions>
 			</plugin>
 			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-javadoc-plugin</artifactId>
+				<version>3.2.0</version>
 				<executions>
 					<execution>
 						<id>attach-javadocs</id>
@@ -59,13 +63,24 @@
 
 	<profiles>
 		<profile>
-			<id>fat-jar</id>
+			<id>uber-jar</id>
 			<build>
 				<plugins>
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-shade-plugin</artifactId>
 						<version>3.2.4</version>
+						<configuration>
+							<createDependencyReducedPom>false</createDependencyReducedPom>
+							<filters>
+								<filter>
+									<artifact>*:*</artifact>
+									<excludes>
+										<exclude>META-INF/**</exclude>
+									</excludes>
+								</filter>
+							</filters>
+						</configuration>
 						<executions>
 							<execution>
 								<phase>package</phase>

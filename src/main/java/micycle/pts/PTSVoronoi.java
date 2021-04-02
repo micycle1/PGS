@@ -23,12 +23,15 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Rename to Mesh?
+ * 
+ * Voronoi Diagrams
  * 
  * @author Michael Carleton
  *
  */
 public class PTSVoronoi {
+
+	// Rename to Mesh?
 
 	/**
 	 * TODO set clip envelope?

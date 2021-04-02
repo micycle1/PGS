@@ -46,9 +46,6 @@ import processing.core.PVector;
  * </p>
  * </ul>
  * 
- * TODO https://ignf.github.io/CartAGen/docs/algorithms.html TODO take into
- * account strokweight (buffer by stroke amount?) TODO maintain pshape fill, etc
- * on output
  * 
  * @author Michael Carleton
  */
@@ -56,10 +53,11 @@ public class PTS {
 
 	// TODO check for getCoordinates() in loops (and replace) (if lots of child
 	// geometries)
-
 	// TODO replace line() in for-each with beginshape(LINES)...vertex...endShape()
-
 	// TODO use LinearRingIterator when possible (refactor)
+	// TODO https://ignf.github.io/CartAGen/docs/algorithms.html
+	// TODO take into account strokweight (buffer by stroke amount?)
+	// TODO maintain pshape fill, etc on output
 
 	/**
 	 * Calling Polygon#union repeatedly is one way to union several Polygons
@@ -378,35 +376,45 @@ public class PTS {
 	 * @param height ?total? height
 	 * @return
 	 */
-	public static PShape createSquircle(float x, float y, float width, float height) {
+	public static PShape createSquircle(double x, double y, double width, double height) {
 		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-		shapeFactory.setNumPoints(40);
+		shapeFactory.setNumPoints(CURVE_SAMPLES * 2);
 		shapeFactory.setCentre(new Coordinate(x, y));
 //		shapeFactory.setBase(new Coordinate(x, y));
-//		shapeFactory.setRotation(1);
 		shapeFactory.setWidth(width);
 		shapeFactory.setHeight(height);
 		return toPShape(shapeFactory.createSquircle());
 	}
 
-	public static PShape createArcPolygon(float x, float y, float width, float height) {
+	/**
+	 * Creates an elliptical arc polygon. The polygon is formed from the specified
+	 * arc of an ellipse and the two radii connecting the endpoints to the centre of
+	 * the ellipse.
+	 * 
+	 * @param x
+	 * @param y
+	 * @param width
+	 * @param height
+	 * @param angle  size of angle in radians
+	 * @return
+	 */
+	public static PShape createArcPolygon(double x, double y, double width, double height, double angle) {
 		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-		shapeFactory.setNumPoints(40);
+		shapeFactory.setNumPoints(CURVE_SAMPLES * 2);
 		shapeFactory.setCentre(new Coordinate(x, y));
 //		shapeFactory.setBase(new Coordinate(x, y));
-//		shapeFactory.setRotation(1);
 		shapeFactory.setWidth(width);
 		shapeFactory.setHeight(height);
-		return toPShape(shapeFactory.createArcPolygon(1, 2));
+		return toPShape(shapeFactory.createArcPolygon(0, angle));
 	}
 
 	/**
 	 * Splits a polygon into 4 equal quadrants
 	 * 
 	 * @param shape
-	 * @return
+	 * @return list containing the 4 split quadrants
 	 */
-	public static ArrayList<PShape> split(PShape shape) {
+	public static List<PShape> split(PShape shape) {
 		// https://stackoverflow.com/questions/64252638/how-to-split-a-jts-polygon
 		Geometry p = fromPShape(shape);
 		ArrayList<PShape> ret = new ArrayList<>();
@@ -588,7 +596,7 @@ public class PTS {
 	}
 
 	/**
-	 * Generate a simple polygon from the given coordinate list. Used by
+	 * Generate a simple polygon (no holes) from the given coordinate list. Used by
 	 * randomPolygon().
 	 */
 	public static PShape pshapeFromPVector(List<PVector> coords) {
@@ -656,18 +664,23 @@ public class PTS {
 	}
 
 	/**
-	 * A more convenient way to iterate over both the exterior and linear rings (if
-	 * any) of a JTS geometry.
+	 * Provides convenient iteration of exterior and linear rings (if any) of a JTS
+	 * geometry.
 	 * 
 	 * @author Michael Carleton
-	 *
-	 * @param <LinearRing>
 	 */
 	protected static class LinearRingIterator implements Iterable<LinearRing> {
 
 		private LinearRing[] array;
 		private int size;
 
+		/**
+		 * Constructs the iterator for the given geometry. The first ring returned by
+		 * the iterator is the exterior ring; all other rings (if any) are interior
+		 * rings.
+		 * 
+		 * @param g input geometry
+		 */
 		public LinearRingIterator(Geometry g) {
 			Polygon poly = (Polygon) g;
 			this.size = 1 + poly.getNumInteriorRing();
