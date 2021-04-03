@@ -33,7 +33,7 @@ import processing.core.PVector;
 public class SolubSkeleton {
 
 	/**
-	 * https://discourse.processing.org/t/straight-skeleton-or-how-to-draw-a-center-line-in-a-polygon-or-shape/17208/7
+	 * https://discourse.processing.org/t/17208/7
 	 */
 
 	private final float tol;

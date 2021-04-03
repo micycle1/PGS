@@ -15,7 +15,7 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Geometric transformations for PShapes
+ * Geometric transformations for PShapes. Topology remains intact.
  * 
  * @author Michael Carleton
  *

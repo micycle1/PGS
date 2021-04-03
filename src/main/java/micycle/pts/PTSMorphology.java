@@ -6,6 +6,7 @@ import static micycle.pts.Conversion.toPShape;
 import java.util.ArrayList;
 
 import org.geodelivery.jap.concavehull.SnapHull;
+import org.geotools.geometry.jts.JTS;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
@@ -37,8 +38,6 @@ public class PTSMorphology {
 	 * @return
 	 */
 	public static PShape buffer(PShape shape, float buffer) {
-		// TODO read
-		// https://locationtech.github.io/jts/javadoc/org/locationtech/jts/operation/buffer/BufferOp.html
 		return toPShape(fromPShape(shape).buffer(buffer, 4));
 	}
 
@@ -219,6 +218,18 @@ public class PTSMorphology {
 	public static PShape minkDifference(PShape source, PShape addition) {
 		Geometry sum = Minkowski_Sum.compMinkDiff(fromPShape(source), fromPShape(addition), true, true);
 		return toPShape(sum);
+	}
+
+	/**
+	 * Smoothes a geometry. The smoothing algorithm inserts new vertices which are
+	 * positioned using Bezier splines.
+	 * 
+	 * @param shape
+	 * @param fit   tightness of fit from 0 (loose) to 1 (tight)
+	 * @return
+	 */
+	public static PShape smooth(PShape shape, float fit) {
+		return toPShape(JTS.smooth(fromPShape(shape), fit));
 	}
 
 }

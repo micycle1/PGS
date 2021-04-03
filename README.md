@@ -47,6 +47,16 @@ PTS wraps JTS, enabling its methods to be applied to Processing's `PShape` objec
 
 The library is split into a handful of classes as detailed below.
 
+## **2D Boolean Operations**
+*Boolean set-operations on shapes.*
+
+### Intersection
+### Union
+### Subtract
+### Symmetric Difference
+### Complement
+<img src="resources/boolean/complement.png" alt="" width="50%"/>
+
 ## **Contour**
 *Methods to produce a variety of geometric contour lines within shapes.*
 ### Medial Axis
@@ -70,8 +80,8 @@ Isolines from intra-shape euclidean distance or point sets.
 </p>
 
 
-### Mitered Offset Curves
-Inner and exterior mitered offset curves; based on *miter*, *bevel* or *round* offset styles. 
+### Offset Curves
+Inner and exterior offset curves; based on *miter*, *bevel* or *round* offset styles. 
 
 <p float="middle">
   <img src="resources/contour/miteredInterior.gif" alt="" width="49%"/>
@@ -223,9 +233,6 @@ For individual points and point sets.
 <p float="middle">
   <img src="resources/predicate/containsPoint.gif" alt="" width="50%"/>
 </p>
-
-### Covers
-Less strict that contains
 
 
 ### Predicates

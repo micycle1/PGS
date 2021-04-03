@@ -26,7 +26,6 @@ import org.locationtech.jts.geom.PrecisionModel;
 import org.locationtech.jts.geom.util.LineStringExtracter;
 import org.locationtech.jts.linearref.LengthIndexedLine;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
-import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.shape.random.RandomPointsBuilder;
 import org.locationtech.jts.shape.random.RandomPointsInGridBuilder;
 import org.locationtech.jts.util.GeometricShapeFactory;
@@ -40,14 +39,6 @@ import processing.core.PVector;
 
 /**
  * PTS | Processing Topology Suite
- * <p>
- * <ul>
- * <li>https://github.com/IGNF/CartAGen
- * <li>https://ignf.github.io/CartAGen/docs/algorithms/others/spinalize.html
- * <li>https://discourse.processing.org/t/straight-skeleton-or-how-to-draw-a-center-line-in-a-polygon-or-shape/17208/9
- * </p>
- * </ul>
- * 
  * 
  * @author Michael Carleton
  */
@@ -60,6 +51,8 @@ public class PTS {
 	// TODO https://ignf.github.io/CartAGen/docs/algorithms.html
 	// TODO take into account strokweight (buffer by stroke amount?)
 	// TODO maintain pshape fill, etc on output
+	// see https://github.com/IGNF/CartAGen
+	// see https://ignf.github.io/CartAGen/docs/algorithms/others/spinalize.html
 
 	/**
 	 * Calling Polygon#union repeatedly is one way to union several Polygons
@@ -76,48 +69,8 @@ public class PTS {
 	public static GeometryFactory GEOM_FACTORY = new GeometryFactory(
 			new PrecisionModel(PrecisionModel.FLOATING_SINGLE));
 
-	/**
-	 * @return shape A - shape B
-	 */
-	public static PShape difference(PShape a, PShape b) {
-		return toPShape(fromPShape(a).difference(fromPShape(b)));
-	}
+	private PTS() {
 
-	/**
-	 * Compute the parts that the shapes do not have in common.
-	 * 
-	 * @return A∪B - A∩B
-	 */
-	public static PShape symDifference(PShape a, PShape b) {
-		return toPShape(fromPShape(a).symDifference(fromPShape(b)));
-	}
-
-	/**
-	 * @return A∩B
-	 */
-	public static PShape intersection(PShape a, PShape b) {
-		PShape out = toPShape(fromPShape(a).intersection(fromPShape(b)));
-//		a.draw(p.getGraphics());
-//		out.setFill(Blending.screen(getPShapeFillColor(a), getPShapeFillColor(b))); // TODO
-		return out;
-	}
-
-	/**
-	 * @return A∪B
-	 * @see #union(PShape...)
-	 */
-	public static PShape union(PShape a, PShape b) {
-//		OverlayNG.overlay(null, null, CURVE_SAMPLES) // TODO investigate
-		return toPShape(fromPShape(a).union(fromPShape(b)));
-	}
-
-	public static PShape union(PShape... shapes) {
-		// same as flatten?
-		ArrayList<Geometry> geoms = new ArrayList<>();
-		for (int i = 0; i < shapes.length; i++) {
-			geoms.add(fromPShape(shapes[i]));
-		}
-		return toPShape(UnaryUnionOp.union(geoms));
 	}
 
 	/**
@@ -129,18 +82,6 @@ public class PTS {
 		d.setDistanceTolerance(distanceTolerance);
 		d.setValidate(false);
 		return toPShape(d.getResultGeometry());
-	}
-
-	/**
-	 * Smoothes a geometry. The smoothing algorithm inserts new vertices which are
-	 * positioned using Bezier splines.
-	 * 
-	 * @param shape
-	 * @param fit   tightness of fit from 0 (loose) to 1 (tight)
-	 * @return
-	 */
-	public static PShape smooth(PShape shape, float fit) {
-		return toPShape(JTS.smooth(fromPShape(shape), fit));
 	}
 
 	/**
@@ -393,21 +334,22 @@ public class PTS {
 	 * arc of an ellipse and the two radii connecting the endpoints to the centre of
 	 * the ellipse.
 	 * 
-	 * @param x
-	 * @param y
+	 * @param x           centre point X
+	 * @param y           centre point Y
 	 * @param width
 	 * @param height
-	 * @param angle  size of angle in radians
+	 * @param orientation start angle/orientation in radians (where 0 is 12 o'clock)
+	 * @param angle       size of the arc angle in radians
 	 * @return
 	 */
-	public static PShape createArcPolygon(double x, double y, double width, double height, double angle) {
+	public static PShape createArcPolygon(double x, double y, double width, double height, double orientation,
+			double angle) {
 		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
 		shapeFactory.setNumPoints(CURVE_SAMPLES * 2);
 		shapeFactory.setCentre(new Coordinate(x, y));
-//		shapeFactory.setBase(new Coordinate(x, y));
 		shapeFactory.setWidth(width);
 		shapeFactory.setHeight(height);
-		return toPShape(shapeFactory.createArcPolygon(0, angle));
+		return toPShape(shapeFactory.createArcPolygon(-Math.PI / 2 + orientation, angle));
 	}
 
 	/**
@@ -615,7 +557,7 @@ public class PTS {
 	 * Reflection-based workaround to get the fill color of a PShape (this field is
 	 * usually private).
 	 */
-	private static final int getPShapeFillColor(final PShape sh) {
+	protected static final int getPShapeFillColor(final PShape sh) {
 		try {
 			final java.lang.reflect.Field f = PShape.class.getDeclaredField("fillColor");
 			f.setAccessible(true);

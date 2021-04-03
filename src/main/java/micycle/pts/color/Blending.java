@@ -1,31 +1,75 @@
 package micycle.pts.color;
 
 /**
+ * Color blending for Processing colors (32bit ARGB integers).
+ * <p>
  * Blend modes take two multicomponent colors, namely a source color and a
- * destination color, and blend them to create a new color. The same blend mode,
- * or different blend modes, can be applied to each component of a given color.
- * In the idioms below, src is one component of the source color, dst is the
- * same component of the destination color (for example, src and dst can both be
- * two RGB colors' red components), and both components are assumed to be 0 or
- * greater and 1 or less. The following are examples of blend modes.
+ * destination color, and blend them to create a new color.
  * 
- * @author MCarleton
+ * <p>
+ * Methods operate component-wise in the RGB color space.
+ * 
+ * @author Michael Carleton
  *
  */
 public class Blending {
 
-	private static final float INV_255 = 1f / 255f; // used to normalise RGB values
+	private static final float INV_255 = 1f / 255f; // used to normalise RGB values to 0...1
 
-//	Normal: src.
-//	Lighten: max(src, dst).
-//	Darken: min(src, dst).
-//	Add: min(1.0, src + dst).
-//	Subtract: max(0.0, src - dst).
-//	Multiply: (src * dst).
-//	Screen: 1 - (1 - dst) * (1 - src).
-//	Average: src + (dst - src) * 0.5.
-//	Difference: abs(src - dst).
-//	Exclusion: src - 2 * src * dst + dst.
+	// Normal: src.
+	// Lighten: max(src, dst).
+	// Darken: min(src, dst).
+
+	// Add: min(1.0, src + dst).
+	// Subtract: max(0.0, src - dst).
+	// Multiply: (src * dst).
+	// Screen: 1 - (1 - dst) * (1 - src).
+	// Average: src + (dst - src) * 0.5.
+	// Difference: abs(src - dst).
+	// Exclusion: src - 2 * src * dst + dst.
+
+	public static int subtract(int colorA, int colorB) {
+		float[] decomposedA = decomposeclr(colorA);
+		float[] decomposedB = decomposeclr(colorB);
+		return composeclr(subtract(decomposedA, decomposedB));
+	}
+
+	private static float[] subtract(float[] src, float[] dst) {
+		return new float[] { Math.max(0, src[0] - dst[0]), Math.max(0, src[1] - dst[1]), Math.max(0, src[2] - dst[2]),
+				Math.max(0, src[3] - dst[3]) };
+	}
+
+	public static int add(int colorA, int colorB) {
+		float[] decomposedA = decomposeclr(colorA);
+		float[] decomposedB = decomposeclr(colorB);
+		return composeclr(add(decomposedA, decomposedB));
+	}
+
+	private static float[] add(float[] src, float[] dst) {
+		return new float[] { Math.min(1, src[0] + dst[0]), Math.min(1, src[1] + dst[1]), Math.min(1, src[2] + dst[2]),
+				Math.min(1, src[3] + dst[3]) };
+	}
+
+	public static int difference(int colorA, int colorB) {
+		float[] decomposedA = decomposeclr(colorA);
+		float[] decomposedB = decomposeclr(colorB);
+		return composeclr(difference(decomposedA, decomposedB));
+	}
+
+	private static float[] difference(float[] src, float[] dst) {
+		return new float[] { Math.abs(src[0] - dst[0]), Math.abs(src[1] - dst[1]), Math.abs(src[2] - dst[2]),
+				Math.abs(src[3] - dst[3]) };
+	}
+
+	public static int multiply(int colorA, int colorB) {
+		float[] decomposedA = decomposeclr(colorA);
+		float[] decomposedB = decomposeclr(colorB);
+		return composeclr(multiply(decomposedA, decomposedB));
+	}
+
+	private static float[] multiply(float[] src, float[] dst) {
+		return new float[] { src[0] * dst[0], src[1] * dst[1], src[2] * dst[2], src[3] * dst[3] };
+	}
 
 	public static int screen(int colorA, int colorB) {
 		float[] decomposedA = decomposeclr(colorA);

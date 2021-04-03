@@ -1,4 +1,4 @@
 /**
- * All non-core non-geometry classes
+ * All non-core PTS classes
  */
 package micycle.pts.utility;

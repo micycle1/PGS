@@ -121,6 +121,7 @@
 			<artifactId>core</artifactId>
 			<version>3.3.7</version>
 			<scope>provided</scope> <!-- don't package into fat jar -->
+			<optional>true</optional>
 		</dependency>
 		<dependency> <!-- for JTS.utils -->
 			<groupId>org.geotools</groupId>

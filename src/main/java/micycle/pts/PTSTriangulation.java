@@ -58,22 +58,15 @@ public class PTSTriangulation {
 		IncrementalTin tin = delaunayTriangulationTin(shape, steinerPoints, constrain, refinements, pretty);
 
 		ArrayList<PVector> triangles = new ArrayList<>();
+		Consumer<Vertex[]> triangleVertexConsumer = t -> {
+			triangles.add(pVectorFromVertex(t[0]));
+			triangles.add(pVectorFromVertex(t[1]));
+			triangles.add(pVectorFromVertex(t[2]));
+		};
 		if (constrain) {
-			TriangleCollector.visitTrianglesConstrained(tin, new Consumer<Vertex[]>() {
-				public void accept(Vertex[] t) {
-					triangles.add(pVectorFromVertex(t[0]));
-					triangles.add(pVectorFromVertex(t[1]));
-					triangles.add(pVectorFromVertex(t[2]));
-				}
-			});
+			TriangleCollector.visitTrianglesConstrained(tin, triangleVertexConsumer);
 		} else {
-			TriangleCollector.visitTriangles(tin, new Consumer<Vertex[]>() {
-				public void accept(Vertex[] t) {
-					triangles.add(pVectorFromVertex(t[0]));
-					triangles.add(pVectorFromVertex(t[1]));
-					triangles.add(pVectorFromVertex(t[2]));
-				}
-			});
+			TriangleCollector.visitTriangles(tin, triangleVertexConsumer);
 		}
 		return triangles;
 	}
@@ -104,26 +97,30 @@ public class PTSTriangulation {
 		if (steinerPoints != null) {
 			steinerPoints.forEach(v -> tin.add(new Vertex(v.x, v.y, 0))); // add steiner points
 		}
-		/**
-		 * Possible optimisation is to recursely split within each triangle upto the
-		 * refinement depth (in one pass), so perform many less location checks. Another
-		 * is to rasterise the PShape and check pixel[] array.
-		 */
-		for (int i = 0; i < refinements; i++) {
-			IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(g);
-			ArrayList<Vertex> refinementVertices = new ArrayList<>();
-			TriangleCollector.visitSimpleTriangles(tin, new Consumer<SimpleTriangle>() {
-				public void accept(SimpleTriangle t) {
-					if (t.getArea() > 85) { // don't refine small triangles
-						// use centroid rather than circumcircle center
-						final Coordinate center = centroid(t);
-						if (pretty || pointLocator.locate(center) != Location.EXTERIOR) {
-							refinementVertices.add(new Vertex(center.x, center.y, 0));
-						}
+
+		if (refinements > 0) {
+
+			final IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(g);
+			final ArrayList<Vertex> refinementVertices = new ArrayList<>();
+			final Consumer<SimpleTriangle> triangleConsumer = t -> {
+				if (t.getArea() > 85) { // don't refine small triangles
+					final Coordinate center = centroid(t); // use centroid rather than circumcircle center
+					if (pretty || pointLocator.locate(center) != Location.EXTERIOR) {
+						refinementVertices.add(new Vertex(center.x, center.y, 0));
 					}
 				}
-			});
-			tin.add(refinementVertices, null); // add refinement (steiner) points
+			};
+
+			/**
+			 * Possible optimisation is to recursely split within each triangle upto the
+			 * refinement depth (in one pass), so perform many less location checks. Another
+			 * is to rasterise the PShape and check pixel[] array.
+			 */
+			for (int i = 0; i < refinements; i++) {
+				refinementVertices.clear();
+				TriangleCollector.visitSimpleTriangles(tin, triangleConsumer);
+				tin.add(refinementVertices, null); // add refinement (steiner) points
+			}
 		}
 
 		if (constrain) {
@@ -172,13 +169,12 @@ public class PTSTriangulation {
 		IncrementalTin tin = delaunayTriangulationTin(shape, poissonPoints, true, 0, true);
 
 		ArrayList<PVector> triangles = new ArrayList<>();
-		TriangleCollector.visitTrianglesConstrained(tin, new Consumer<Vertex[]>() {
-			public void accept(Vertex[] t) {
-				triangles.add(pVectorFromVertex(t[0]));
-				triangles.add(pVectorFromVertex(t[1]));
-				triangles.add(pVectorFromVertex(t[2]));
-			}
-		});
+		Consumer<Vertex[]> triangleVertexConsumer = t -> {
+			triangles.add(pVectorFromVertex(t[0]));
+			triangles.add(pVectorFromVertex(t[1]));
+			triangles.add(pVectorFromVertex(t[2]));
+		};
+		TriangleCollector.visitTrianglesConstrained(tin, triangleVertexConsumer);
 		return triangles;
 	}
 
