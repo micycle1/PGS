@@ -37,12 +37,14 @@ public class PTSTriangulation {
 	 * Constrained + refined Delaunay Triangulation of a shape.
 	 * 
 	 * @param shape
-	 * @param steinerPoints can be null
+	 * @param steinerPoints A list of additional points to triangulate in addition
+	 *                      to the input shape. Can be null.
 	 * @param constrain     Constrain the triangulation output using the shape
 	 *                      boundary (from point set). With shapes, you'll probably
 	 *                      want to this to be true.
 	 * @param refinements   number of triangulation refinements to perform. 0 or
-	 *                      greater
+	 *                      greater. Refinements insert triangle centroids into the
+	 *                      triangulation.
 	 * @param pretty        false = enforce Delaunay nature during constraining and
 	 *                      don't check circumcircle during refinement. when true
 	 *                      output triangles may be slightly more regular in
@@ -197,7 +199,7 @@ public class PTSTriangulation {
 		triangulation.setStrokeWeight(2);
 		triangulation.setStroke(-123222);
 		triangulation.setFill(true);
-		triangulation.setFill(micycle.pts.color.RGB.composeclr(255, 255, 255, 255));
+		triangulation.setFill(micycle.pts.color.RGB.composeColor(255, 255, 255, 255));
 		triangulation.beginShape(TRIANGLES);
 		for (int i = 0; i < triangles.size(); i += 3) {
 			final int v1 = 2 * triangles.get(i);

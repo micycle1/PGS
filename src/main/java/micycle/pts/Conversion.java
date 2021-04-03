@@ -1,6 +1,8 @@
 package micycle.pts;
 
 import static micycle.pts.PTS.GEOM_FACTORY;
+import static micycle.pts.PTS.prepareLinesPShape;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -225,13 +227,7 @@ public class Conversion implements PConstants {
 
 			} else {
 				if (geometry.getNumPoints() == 2) { // line
-					PShape line = new PShape();
-					line.setFamily(PShape.GEOMETRY); // TODO change to path?
-					line.setStrokeCap(ROUND);
-					line.setStroke(true);
-					line.setStrokeWeight(4);
-					line.setStroke(-1232222);
-					line.beginShape(LINES);
+					PShape line = prepareLinesPShape(null, null, 4);
 					line.vertex((float) geometry.getCoordinates()[0].x, (float) geometry.getCoordinates()[0].y);
 					line.vertex((float) geometry.getCoordinates()[1].x, (float) geometry.getCoordinates()[1].y);
 					line.endShape();

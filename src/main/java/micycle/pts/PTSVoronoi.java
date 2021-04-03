@@ -2,8 +2,9 @@ package micycle.pts;
 
 import static micycle.pts.Conversion.fromPShape;
 import static micycle.pts.Conversion.toPShape;
-import static micycle.pts.color.RGB.composeclr;
+import static micycle.pts.color.RGB.composeColor;
 import static micycle.pts.PTS.GEOM_FACTORY;
+import static micycle.pts.PTS.prepareLinesPShape;
 import static processing.core.PConstants.LINES;
 import static processing.core.PConstants.ROUND;
 
@@ -82,13 +83,7 @@ public class PTSVoronoi {
 		final Geometry d = ld.getResult();
 //		System.out.println("diss " + d.getNumGeometries());
 
-		PShape lines = new PShape();
-		lines.setFamily(PShape.GEOMETRY);
-		lines.setStrokeCap(ROUND);
-		lines.setStroke(true);
-		lines.setStrokeWeight(2);
-		lines.setStroke(composeclr(100, 150, 200, 255));
-		lines.beginShape(LINES);
+		PShape lines = prepareLinesPShape(composeColor(100, 150, 200), null, null);
 
 		for (int i = 0; i < d.getNumGeometries(); i++) {
 			final LineString l = (LineString) d.getGeometryN(i);
@@ -145,13 +140,7 @@ public class PTSVoronoi {
 		Voronoi voronoi = new Voronoi(graphIn);
 //		voronoi.applyBoundingBox(0, 0, 1000, 750);
 
-		PShape lines = new PShape();
-		lines.setFamily(PShape.GEOMETRY);
-		lines.setStrokeCap(ROUND);
-		lines.setStroke(true);
-		lines.setStrokeWeight(2);
-		lines.setStroke(-1232222);
-		lines.beginShape(LINES);
+		PShape lines = prepareLinesPShape(null, null, null);
 		voronoi.getGraph().edgeStream().forEach(edge -> {
 			if (edge.getA() != null && edge.getB() != null) {
 				lines.vertex((float) edge.getA().getLocation().x, (float) edge.getA().getLocation().y);
@@ -172,13 +161,7 @@ public class PTSVoronoi {
 		points.forEach(point -> graphIn.add(new de.alsclo.voronoi.graph.Point(point.x, point.y)));
 		Voronoi voronoi = new Voronoi(graphIn);
 
-		PShape lines = new PShape();
-		lines.setFamily(PShape.GEOMETRY);
-		lines.setStrokeCap(ROUND);
-		lines.setStroke(true);
-		lines.setStrokeWeight(2);
-		lines.setStroke(-1232222);
-		lines.beginShape(LINES);
+		PShape lines = prepareLinesPShape(null, null, null);
 		voronoi.getGraph().edgeStream().forEach(edge -> {
 			if (edge.getA() != null && edge.getB() != null) {
 				lines.vertex((float) edge.getA().getLocation().x, (float) edge.getA().getLocation().y);

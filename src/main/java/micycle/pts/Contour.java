@@ -2,6 +2,7 @@ package micycle.pts;
 
 import static micycle.pts.Conversion.fromPShape;
 import static micycle.pts.Conversion.toPShape;
+import static micycle.pts.PTS.prepareLinesPShape;
 import static micycle.pts.PTS.GEOM_FACTORY;
 import static processing.core.PConstants.LINES;
 import static processing.core.PConstants.ROUND;
@@ -100,13 +101,7 @@ public class Contour {
 		PreparedGeometry cache = PreparedGeometryFactory.prepare(small); // provides MUCH faster contains() check
 
 		// inline lines creation
-		PShape lines = new PShape();
-		lines.setFamily(PShape.GEOMETRY);
-		lines.setStrokeCap(ROUND);
-		lines.setStroke(true);
-		lines.setStrokeWeight(2);
-		lines.setStroke(-1232222);
-		lines.beginShape(LINES);
+		PShape lines = prepareLinesPShape(null, null, null);
 
 		ArrayList<LineString> axis = new ArrayList<LineString>();
 
@@ -484,84 +479,71 @@ public class Contour {
 
 	}
 
-//	public static PShape gishurMedialAxis(PShape shape) {
-//		gishur.x.XPolygon poly = Conversion.toXPolygon(shape);
-//		gishur.x.voronoi.Skeleton s = new gishur.x.voronoi.Skeleton(poly);
-//		s.execute();
-////		s.checkEdges();
-//		ListView<XPoint> points = s.getEdges();
-//
-////		for (int i = 0; i < s.chainCount(); ++i) {
-////			SimpleList PL = s.getChain(i);
-////		}
-//
-//		SimpleList<XPoint> L = s.getPoints();
-//		SimpleListItem i = (SimpleListItem) L.first();
-//
-//		PShape lines = new PShape();
-//		lines.setFamily(PShape.GEOMETRY);
-//		lines.setStrokeCap(ROUND);
-//		lines.setStroke(true);
-//		lines.setStrokeWeight(3);
-//		lines.setStroke(-1232222);
-//		lines.beginShape();
-//
-//		while (i.next() != null) {
-//			XPoint x = (XPoint) i.value();
-//			lines.vertex((float) x.x, (float) x.y);
-//			i = (SimpleListItem) i.next();
-//		}
-//		lines.endShape();
-//
-//
-////		XPoint x = (XPoint) L.next(L.first()).value();
-////		x.x;
-////		L.get
-//
-////		SimpleList l = s.getLines(true);
-////		l.nex
-//		return lines;
-//	}
-
 	/**
-		 * Roughly, it is the geometric graph whose edges are the traces of vertices of
-		 * shrinking mitered offset curves of the polygon
-		 * 
-		 * @param shape
-		 * @param p
-		 * @return
-		 */
-		public static PShape straightSkeleton(PShape shape, PApplet p) {
-			// https://github.com/Agent14zbz/ZTools/blob/main/src/main/java/geometry/ZSkeleton.java
-	
-			final Machine speed = new Machine(1); // every edge same speed
-	
-			Geometry g = fromPShape(shape);
-			Polygon polygon;
-			if (g.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
-				polygon = (Polygon) g;
-				if (polygon.getCoordinates().length > 1000) {
-					polygon = (Polygon) DouglasPeuckerSimplifier.simplify(polygon, 1);
-				}
-			} else {
-				System.err.println("MultiPolygon not supported yet.");
-				return new PShape();
-			}
-	
-			HashSet<Double> edgeCoordsSet = new HashSet<>();
-	
-			Skeleton skeleton;
-			LoopL<org.twak.camp.Edge> loopL = new LoopL<>(); // list of loops
-			ArrayList<Corner> corners = new ArrayList<>();
-			Loop<org.twak.camp.Edge> loop = new Loop<>();
+	 * Roughly, it is the geometric graph whose edges are the traces of vertices of
+	 * shrinking mitered offset curves of the polygon
+	 * 
+	 * @param shape
+	 * @param p
+	 * @return shape with two children: one child contains bones; one contains
+	 *         branches
+	 * @see #straightSkeletonSolub(List)
+	 */
+	public static PShape straightSkeleton(PShape shape) {
+		// https://github.com/Agent14zbz/ZTools/blob/main/src/main/java/geometry/ZSkeleton.java
 
-	
-			LinearRing exterior = polygon.getExteriorRing();
-			Coordinate[] coords = exterior.getCoordinates();
-			if (!Orientation.isCCW(coords)) {
-				reverse(coords); // exterior should be CCW
+		final Machine speed = new Machine(1); // every edge same speed
+
+		Geometry g = fromPShape(shape);
+		Polygon polygon;
+		if (g.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
+			polygon = (Polygon) g;
+			if (polygon.getCoordinates().length > 1000) {
+				polygon = (Polygon) DouglasPeuckerSimplifier.simplify(polygon, 1);
 			}
-	
+		} else {
+			System.err.println("MultiPolygon not supported yet.");
+			return new PShape();
+		}
+
+		HashSet<Double> edgeCoordsSet = new HashSet<>();
+
+		Skeleton skeleton;
+		LoopL<org.twak.camp.Edge> loopL = new LoopL<>(); // list of loops
+		ArrayList<Corner> corners = new ArrayList<>();
+		Loop<org.twak.camp.Edge> loop = new Loop<>();
+
+		LinearRing exterior = polygon.getExteriorRing();
+		Coordinate[] coords = exterior.getCoordinates();
+		if (!Orientation.isCCW(coords)) {
+			reverse(coords); // exterior should be CCW
+		}
+
+		for (int j = 0; j < coords.length - 1; j++) {
+			double a = coords[j].x;
+			double b = coords[j].y;
+			corners.add(new Corner(a, b));
+			edgeCoordsSet.add(cantorPairing(a, b));
+		}
+		corners.add(new Corner(coords[0].x, coords[0].y)); // close loop
+		edgeCoordsSet.add(cantorPairing(coords[0].x, coords[0].y)); // close loop
+
+		for (int j = 0; j < corners.size() - 1; j++) {
+			org.twak.camp.Edge edge = new org.twak.camp.Edge(corners.get(j),
+					corners.get((j + 1) % (corners.size() - 1)));
+			edge.machine = speed;
+			loop.append(edge);
+		}
+		loopL.add(loop);
+
+		for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
+			corners = new ArrayList<>();
+			LinearRing hole = polygon.getInteriorRingN(i);
+			coords = hole.getCoordinates();
+			if (Orientation.isCCW(coords)) {
+				reverse(coords);
+			}
+
 			for (int j = 0; j < coords.length - 1; j++) {
 				double a = coords[j].x;
 				double b = coords[j].y;
@@ -570,7 +552,8 @@ public class Contour {
 			}
 			corners.add(new Corner(coords[0].x, coords[0].y)); // close loop
 			edgeCoordsSet.add(cantorPairing(coords[0].x, coords[0].y)); // close loop
-	
+
+			loop = new Loop<>();
 			for (int j = 0; j < corners.size() - 1; j++) {
 				org.twak.camp.Edge edge = new org.twak.camp.Edge(corners.get(j),
 						corners.get((j + 1) % (corners.size() - 1)));
@@ -578,154 +561,85 @@ public class Contour {
 				loop.append(edge);
 			}
 			loopL.add(loop);
-	
-			for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
-				corners = new ArrayList<>();
-				LinearRing hole = polygon.getInteriorRingN(i);
-				coords = hole.getCoordinates();
-				if (Orientation.isCCW(coords)) {
-					reverse(coords);
-				}
-	
-				for (int j = 0; j < coords.length - 1; j++) {
-					double a = coords[j].x;
-					double b = coords[j].y;
-					corners.add(new Corner(a, b));
-					edgeCoordsSet.add(cantorPairing(a, b));
-				}
-				corners.add(new Corner(coords[0].x, coords[0].y)); // close loop
-				edgeCoordsSet.add(cantorPairing(coords[0].x, coords[0].y)); // close loop
-	
-				loop = new Loop<>();
-				for (int j = 0; j < corners.size() - 1; j++) {
-					org.twak.camp.Edge edge = new org.twak.camp.Edge(corners.get(j),
-							corners.get((j + 1) % (corners.size() - 1)));
-					edge.machine = speed;
-					loop.append(edge);
-				}
-				loopL.add(loop);
-			}
-	
-			PShape lines = new PShape();
-			lines.setFamily(PShape.GEOMETRY);
-			lines.setStrokeCap(ROUND);
-			lines.setStroke(true);
-			lines.setStrokeWeight(2);
-			lines.setStroke(-1232222);
-			lines.beginShape(LINES);
-			try {
-				skeleton = new Skeleton(loopL, true);
-				skeleton.skeleton();
-				
-				skeleton.output.edges.map.values().forEach(e -> {
+		}
 
-					if (e.left == null || e.right == null) { // edge
-						p.stroke(80, 50, 180);
-						p.line((float) e.start.x, (float) e.start.y, (float) e.end.x, (float) e.end.y);
+		PShape lines = new PShape();
+		lines.setFamily(PShape.GROUP);
+		PShape bones = prepareLinesPShape(null, null, 4);
+		PShape branches = prepareLinesPShape(RGB.composeColor(40, 235, 180, 128), null, null);
+		try {
+			skeleton = new Skeleton(loopL, true);
+			skeleton.skeleton();
+
+			skeleton.output.edges.map.values().forEach(e -> {
+				boolean a = edgeCoordsSet.contains(cantorPairing(e.start.x, e.start.y));
+				boolean b = edgeCoordsSet.contains(cantorPairing(e.end.x, e.end.y));
+				if (a ^ b) { // branch (xor)
+					branches.vertex((float) e.start.x, (float) e.start.y);
+					branches.vertex((float) e.end.x, (float) e.end.y);
+				} else {
+					if (!a) { // bone
+						bones.vertex((float) e.start.x, (float) e.start.y);
+						bones.vertex((float) e.end.x, (float) e.end.y);
 					}
-
-					boolean a = edgeCoordsSet.contains(cantorPairing(e.start.x, e.start.y));
-					boolean b = edgeCoordsSet.contains(cantorPairing(e.end.x, e.end.y));
-
-					if (a ^ b) { // branch
-						lines.vertex((float) e.start.x, (float) e.start.y);
-						lines.vertex((float) e.end.x, (float) e.end.y);
-					} else {
-						if (a) { // edge
-//							p.stroke(80, 50, 180);
-//							p.line((float) e.start.x, (float) e.start.y, (float) e.end.x, (float) e.end.y);
-
-						} else { // bone
-							p.stroke(0);
-							p.line((float) e.start.x, (float) e.start.y, (float) e.end.x, (float) e.end.y);
-						}
-					}
-				});
-
-//				System.out.println(skeleton.output.faces.values().size());
-//				skeleton.output.faces.values().forEach(face -> {
-//					int c = 0;
-//					face.edges.forEach(edge -> {
-//						int n = 0;
-//						for (SharedEdge e : edge) {
-////							
-////							if(e.)
-//							
-////							p.stroke(12, c * 10, 0);
-//							if (n == 0) { // edge.count() - 2last edge belongs to the shape exterior
-////								p.stroke(120, 156, 100);
-//							}
-//							p.line((float) e.start.x, (float) e.start.y, (float) e.end.x, (float) e.end.y);
-//							n++;
-//
-//						}
-//
-//					});
-//					c++;
-//				});
-//				skeleton.output.edges.map.values().forEach(e -> e.);
-			} catch (Exception ignore) {
-				// hide init or collision errors from console
-			}
-			lines.endShape();
-			return lines;
+				}
+			});
+		} catch (Exception ignore) {
+			// hide init or collision errors from console
 		}
 
-	/**
-	 * 
-	 * @param shape
-	 * @return
-	 */
-	public static SolubSkeleton solubSkeleton(List<PVector> points) {
-
-		final Coordinate[] coords;
-		if (!points.get(0).equals(points.get(points.size() - 1))) {
-			coords = new Coordinate[points.size() + 1];
-			points.add(points.get(0)); // close geometry
-		} else { // already closed
-			coords = new Coordinate[points.size()];
-		}
-
-		for (int i = 0; i < coords.length; i++) {
-			coords[i] = new Coordinate(points.get(i).x, points.get(i).y);
-		}
-
-		Polygon p = GEOM_FACTORY.createPolygon(coords); // reverse
-		points.clear();
-
-		for (Coordinate coordinate : p.getExteriorRing().getCoordinates()) {
-			points.add(new PVector((float) coordinate.x, (float) coordinate.y));
-		}
-		points.remove(points.size() - 1); // remove closing point
-
-		SolubSkeleton skeleton = new SolubSkeleton(points, 20);
-		return skeleton;
+		bones.endShape();
+		branches.endShape();
+		lines.addChild(branches);
+		lines.addChild(bones);
+		return lines;
 	}
 
 	/**
-	 * Straight skeleton. Not robust, but fast. Does not support holes
+	 * An alternative straight skeleton implementation. Not robust, but fast. Does
+	 * not support holes.
 	 * 
-	 * @param shape     a hull
-	 * @param tolerance minimum closeness that skeleton "bone" is to nearest vertex
-	 * @return SS object
+	 * @param shape a hull
+	 * @return shape with two children: one child contains bones; one contains
+	 *         branches
 	 * @see #straightSkeleton(PShape) straightSkeleton(PShape). Fully robust, but
 	 *      slower.
 	 */
-	public static SolubSkeleton solubSkeleton(PShape shape, float tolerance) {
-
+	public static PShape straightSkeletonSolub(PShape shape) {
 		ArrayList<PVector> points = new ArrayList<>();
+		Polygon polygon = (Polygon) fromPShape(shape);
 
-		Polygon p = (Polygon) fromPShape(shape);
-
-		// exterior ring is clockwise, so reverse() to get anti-clockwise
-		for (Coordinate coordinate : p.getExteriorRing().reverse().getCoordinates()) {
+		Coordinate[] coords = polygon.getExteriorRing().getCoordinates();
+		if (Orientation.isCCW(coords)) {
+			reverse(coords); // exterior should be CW
+		}
+		for (Coordinate coordinate : coords) {
 			points.add(new PVector((float) coordinate.x, (float) coordinate.y));
 		}
 		points.remove(0); // remove closing point
-//		points.remove(0); // remove closing point
 
-		SolubSkeleton skeleton = new SolubSkeleton(points, tolerance);
-		return skeleton;
+		SolubSkeleton skeleton = new SolubSkeleton(points, 0);
+		skeleton.run();
+
+		PShape lines = new PShape();
+		lines.setFamily(PShape.GROUP);
+		PShape branches = prepareLinesPShape(RGB.composeColor(40, 235, 180, 128), null, null);
+		PShape bones = prepareLinesPShape(null, null, 4);
+
+		skeleton.branches.forEach(branch -> {
+			branches.vertex(branch.sp1.x, branch.sp1.y);
+			branches.vertex(branch.sp2.x, branch.sp2.y);
+		});
+		skeleton.bones.forEach(bone -> {
+			bones.vertex(bone.sp1.x, bone.sp1.y);
+			bones.vertex(bone.sp2.x, bone.sp2.y);
+		});
+
+		bones.endShape();
+		branches.endShape();
+		lines.addChild(branches);
+		lines.addChild(bones);
+		return lines;
 	}
 
 	/**
@@ -878,15 +792,11 @@ public class Contour {
 	 * @return
 	 */
 	public static PShape isolinesJP(double[][] values, double isoValue) {
-		PShape lines = new PShape(PShape.GEOMETRY);
-		lines.setStroke(true);
-		lines.setStrokeWeight(4);
-		lines.setStroke(-1232222);
-		lines.beginShape(LINES);
-//		Contours.
+		PShape lines = prepareLinesPShape(null, null, null);
 		LineMerger m = new LineMerger();
 
-		List<SegmentDetails> segments = Contours.computeContourLines(values, isoValue, RGB.composeclr(0, 255, 0, 255));
+		List<SegmentDetails> segments = Contours.computeContourLines(values, isoValue,
+				RGB.composeColor(0, 255, 0, 255));
 		segments.forEach(s -> {
 			lines.vertex((float) s.p0.getX() * 2, (float) s.p0.getY() * 2);
 			lines.vertex((float) s.p1.getX() * 2, (float) s.p1.getY() * 2);
@@ -946,10 +856,10 @@ public class Contour {
 //						RGB.composeclr((int) PApplet.map((float) g.getCoordinates()[0].x, 0, p.width, 0, 254), n * 10 % 255,
 //								150,
 //								255));
-				lines.setStroke(-1232222);
+				lines.setStroke(RGB.PINK);
 				lines.beginShape();
 				for (int i = 0; i < coords.length; i++) {
-					Coordinate coord = coords[i];
+					final Coordinate coord = coords[i];
 					lines.vertex((float) coord.x, (float) coord.y);
 				}
 				lines.endShape();
@@ -1012,7 +922,7 @@ public class Contour {
 					PShape lines = new PShape(PShape.PATH);
 					lines.setStroke(true);
 					lines.setStrokeWeight(2);
-					lines.setStroke(-1232222);
+					lines.setStroke(RGB.PINK);
 					lines.beginShape();
 
 					for (int i = 0; i < coords.length; i++) {
@@ -1052,7 +962,7 @@ public class Contour {
 	/**
 	 * Start inclusive; end exclusive
 	 */
-	public static double[] generateDoubleSequence(double start, double end, double step) {
+	private static double[] generateDoubleSequence(double start, double end, double step) {
 		double[] sequence = new double[(int) Math.ceil((end - start) / step)];
 		for (int i = 0; i < sequence.length; i++) {
 			sequence[i] = start + i * step;

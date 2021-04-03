@@ -59,15 +59,11 @@ A medial axis where small line segments are dissolved into larger, straighter on
 
 ### Straight Skeleton
 <p float="middle">
-  <img src="resources/contour/straightSkeleton.png" alt="" width="49%"/>
-  <img src="resources/contour/solubSkeleton.png" alt="" width="49%"/>
+  <img src="resources/contour/straightSkeleton.png" alt="" width="50%"/>
 </p>
 
-### Uniform straight skeleton
-...
-
 ### Isolines (topographic contour lines)
-Isolines from point sets.
+Isolines from intra-shape euclidean distance or point sets.
 <p float="middle">
   <img src="resources/contour/isolines.gif" alt="" width="49%"/>
   <img src="resources/contour/isolines2.gif" alt="" width="49%"/>

@@ -28,7 +28,7 @@ import processing.core.PVector;
  * skeleton. *
  * 
  * @author Solub
- * @author Java port by Michael Carleton
+ * @author Java port from Python by Michael Carleton
  */
 public class SolubSkeleton {
 
@@ -36,7 +36,7 @@ public class SolubSkeleton {
 	 * https://discourse.processing.org/t/straight-skeleton-or-how-to-draw-a-center-line-in-a-polygon-or-shape/17208/7
 	 */
 
-	final float tol;
+	private final float tol;
 
 	public ArrayList<PVector> vertices;
 	public ArrayList<Ray> rays;
@@ -53,7 +53,7 @@ public class SolubSkeleton {
 
 	/**
 	 * 
-	 * @param vertices list of vertices going anti-clockwise
+	 * @param vertices unclosed list of vertices going clockwise
 	 * @param tol
 	 */
 	public SolubSkeleton(List<PVector> vertices, float tol) {
@@ -260,7 +260,8 @@ public class SolubSkeleton {
 	}
 
 	/**
-	 * Computes the bisector of a corner between edge p1-p2 and edge p3-p4.
+	 * Computes the bisector of a corner between edge p1-p2 and edge p3-p4. p2 & p3
+	 * are usually the same.
 	 */
 	private static PVector bisector(PVector p1, PVector p2, PVector p3, PVector p4) {
 
@@ -280,7 +281,7 @@ public class SolubSkeleton {
 	 * Checks if 2 lines are intersecting. Optional: returns location of
 	 * intersection point.
 	 */
-	public static PVector intersect(PVector s1, PVector e1, PVector s2, PVector e2) {
+	private static PVector intersect(PVector s1, PVector e1, PVector s2, PVector e2) {
 
 		float uA = ((e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x))
 				/ ((e2.y - s2.y) * (e1.x - s1.x) - (e2.x - s2.x) * (e1.y - s1.y));
@@ -354,10 +355,21 @@ public class SolubSkeleton {
 		}
 	}
 
+	public class Bone {
+	
+		public PVector sp1; // startPoint of ray 1
+		public PVector sp2; // startPoint of ray 2
+	
+		public Bone(PVector sp1, PVector sp2) {
+			this.sp1 = sp1;
+			this.sp2 = sp2;
+		}
+	}
+
 	/**
 	 * Simple container
 	 */
-	class Intersection {
+	private class Intersection {
 
 		float minD;
 		PVector intersectionPoint;
@@ -378,7 +390,7 @@ public class SolubSkeleton {
 	/**
 	 * Simple container
 	 */
-	class Candidate implements Comparable<Candidate> {
+	private class Candidate implements Comparable<Candidate> {
 
 		int id;
 		PVector intersectionPoint;
@@ -400,54 +412,6 @@ public class SolubSkeleton {
 			}
 			return 0; // equal
 		}
-
 	}
 
-	public class Bone {
-
-		public PVector sp1; // startPoint of ray 1
-		public PVector sp2; // startPoint of ray 2
-
-		public Bone(PVector sp1, PVector sp2) {
-			this.sp1 = sp1;
-			this.sp2 = sp2;
-		}
-	}
-
-	// TODO remove
-	private static final DVector[] verts = new DVector[] { new DVector(901.12, 300), new DVector(853.48, 279.76),
-			new DVector(768.04, 270.04), new DVector(701.56, 261.04), new DVector(684.4, 253.72),
-			new DVector(684.4, 250.48), new DVector(701.32, 234.76), new DVector(701.2, 231.28),
-			new DVector(685.84, 223.48), new DVector(631.12, 220.6), new DVector(570.52, 218.32),
-			new DVector(534.88, 200.68), new DVector(434.2, 50.56), new DVector(362.68, 50.56),
-			new DVector(320.32, 218.44), new DVector(306.16, 213.52), new DVector(258.28, 140.68),
-			new DVector(191.44, 140.68), new DVector(164.8, 253.12), new DVector(233.68, 262.96),
-			new DVector(245.92, 265.12), new DVector(252.64, 268.72), new DVector(278.2, 268.12),
-			new DVector(265.0, 276.04), new DVector(244.24, 284.68), new DVector(244.24, 315.32),
-			new DVector(265.0, 323.96), new DVector(278.2, 331.88), new DVector(252.64, 331.28),
-			new DVector(245.92, 334.88), new DVector(233.68, 337.04), new DVector(164.8, 346.88),
-			new DVector(191.44, 459.32), new DVector(258.28, 459.32), new DVector(306.16, 386.47998),
-			new DVector(320.32, 381.56), new DVector(362.68, 549.44), new DVector(434.2, 549.44),
-			new DVector(534.88, 399.32), new DVector(570.52, 381.68), new DVector(631.12, 379.4),
-			new DVector(685.84, 376.52002), new DVector(701.2, 368.72), new DVector(701.32, 365.24),
-			new DVector(684.4, 349.52002), new DVector(684.4, 346.28), new DVector(701.56, 338.96),
-			new DVector(768.04, 329.96), new DVector(853.48, 320.24) };
-
-	public static final ArrayList<PVector> vertz;
-
-	static {
-		vertz = new ArrayList<PVector>();
-
-		for (DVector d : verts) {
-			vertz.add(new PVector(d.x, d.y));
-		}
-	}
-
-	public static class DVector extends PVector {
-
-		DVector(double a, double b) {
-			super((float) a, (float) b);
-		}
-
-	}
 }

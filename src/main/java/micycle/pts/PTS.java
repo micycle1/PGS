@@ -2,6 +2,8 @@ package micycle.pts;
 
 import static micycle.pts.Conversion.fromPShape;
 import static micycle.pts.Conversion.toPShape;
+import static processing.core.PConstants.LINES;
+import static processing.core.PConstants.ROUND;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -29,7 +31,7 @@ import org.locationtech.jts.shape.random.RandomPointsBuilder;
 import org.locationtech.jts.shape.random.RandomPointsInGridBuilder;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
-import micycle.pts.color.Blending;
+import micycle.pts.color.RGB;
 import micycle.pts.utility.PolygonDecomposition;
 import micycle.pts.utility.RandomPolygon;
 import processing.core.PConstants;
@@ -512,6 +514,34 @@ public class PTS {
 	}
 
 	/**
+	 * Create a LINES PShape, ready for vertices.
+	 * 
+	 * @param strokeColor  nullable
+	 * @param strokeCap    nullable default = ROUND
+	 * @param strokeWeight nullable. default = 2
+	 * @return
+	 */
+	static PShape prepareLinesPShape(Integer strokeColor, Integer strokeCap, Integer strokeWeight) {
+		if (strokeColor == null) {
+			strokeColor = RGB.PINK;
+		}
+		if (strokeCap == null) {
+			strokeCap = ROUND;
+		}
+		if (strokeWeight == null) {
+			strokeWeight = 2;
+		}
+		PShape lines = new PShape();
+		lines.setFamily(PShape.GEOMETRY);
+		lines.setStrokeCap(strokeCap);
+		lines.setStroke(true);
+		lines.setStrokeWeight(strokeWeight);
+		lines.setStroke(strokeColor);
+		lines.beginShape(LINES);
+		return lines;
+	}
+
+	/**
 	 * Used by slice()
 	 */
 	@SuppressWarnings("unchecked")
@@ -546,7 +576,7 @@ public class PTS {
 		JTS.removeCollinearVertices(g);
 	}
 
-	public static Point createPoint(float x, float y) {
+	static Point createPoint(float x, float y) {
 		return GEOM_FACTORY.createPoint(new Coordinate(x, y));
 	}
 
@@ -642,7 +672,7 @@ public class PTS {
 	 * @param points
 	 * @return
 	 */
-	public static boolean isClockwise(List<PVector> points) {
+	static boolean isClockwise(List<PVector> points) {
 		boolean closed = true;
 		if (points.get(0).equals(points.get(points.size() - 1))) {
 			closed = false;
