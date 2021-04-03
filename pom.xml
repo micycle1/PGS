@@ -130,7 +130,7 @@
 		<dependency>
 			<groupId>org.geotools</groupId>
 			<artifactId>gt-process-feature</artifactId>
-			<version>24.2</version>
+			<version>25.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.locationtech.jts</groupId>
