@@ -181,9 +181,10 @@ public class Conversion implements PConstants {
 		 * -1 to skip the point that closes the JTS shape (same as the first point).
 		 * However calling buffer() produces broken results for some shapes.
 		 */
-		for (int i = 0; i < polygon.getExteriorRing().getCoordinates().length; i++) {
-			// -1: ignore last coord (a copy of the first)
-			Coordinate coord = polygon.getExteriorRing().getCoordinates()[i];
+		Coordinate[] coords = polygon.getExteriorRing().getCoordinates();
+		for (int i = 0; i < coords.length; i++) {
+			// -1: ignore last coord (a copy of the first) (TODO check)
+			Coordinate coord = coords[i];
 			shape.vertex((float) coord.x, (float) coord.y);
 		}
 
@@ -199,7 +200,7 @@ public class Conversion implements PConstants {
 			}
 			shape.endContour();
 		}
-		shape.endShape(CLOSE);
+		shape.endShape(); // NOTE don't close (since points should be closed)
 
 		return shape;
 	}
@@ -211,6 +212,11 @@ public class Conversion implements PConstants {
 	 * @return
 	 */
 	public static PShape toPShape(Geometry geometry) {
+		
+		if (geometry == null) {
+			return new PShape(GROUP);
+		}
+		
 		if (geometry.getNumGeometries() == 1) {
 			if (geometry.getNumPoints() == 1) { // single point
 				// TODO
@@ -418,7 +424,7 @@ public class Conversion implements PConstants {
 	public static PShape getChildren(PShape shape, ArrayList<PShape> visited) {
 		visited.add(shape);
 
-		if (shape.getChildCount() == 0 && shape.getKind() != GROUP) {
+		if (shape.getChildCount() == 0 || shape.getKind() != GROUP) {
 			return shape;
 		}
 
@@ -430,7 +436,7 @@ public class Conversion implements PConstants {
 
 	/**
 	 * Sets the color of the PShape and all of it's children recursively (and
-	 * disable stroke).
+	 * disables stroke).
 	 * 
 	 * @param shape
 	 */
@@ -441,6 +447,16 @@ public class Conversion implements PConstants {
 			child.setStroke(false);
 			child.setFill(true);
 			child.setFill(color);
+		});
+	}
+
+	public static void setAllStrokeColor(PShape shape, int color, int strokeWeight) {
+		ArrayList<PShape> all = new ArrayList<PShape>();
+		getChildren(shape, all);
+		all.forEach(child -> {
+			child.setStroke(true);
+			child.setStroke(color);
+			child.setStrokeWeight(strokeWeight);
 		});
 	}
 

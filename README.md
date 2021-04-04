@@ -24,38 +24,77 @@ PTS wraps JTS, enabling its methods to be applied to Processing's `PShape` objec
 
 [Contents from https://doc.cgal.org/latest/Manual/packages.html]
 
-## PShapes
-
-- Boolean operations: union, difference, intersection, etc. (/OVERLAY OPERATIONS)
-- Shape Boundaries
-- Smoothing
-- Simplification
-- Area, centroid, etc.
-
-### SPATIAL RELATIONSHIPS
-
-- Within
-- Contains
-###  BUFFERS
-
-### POLYGONIZATION
-
-### Geometry methods
-- Spatial Predicates, relate()
-- Overlay ops, buffer(), convexHull()
-- Metrics
-
+Much of, but by no means all, of the functionality is exemplified below.
 The library is split into a handful of classes as detailed below.
 
 ## **2D Boolean Operations**
 *Boolean set-operations on shapes.*
 
-### Intersection
 ### Union
-### Subtract
+
+<img src="resources/boolean/union.gif" alt="" width="50%"/>
+
+### Intersection
+<img src="resources/boolean/intersect.gif" alt="" width="50%"/>
+
+### Subtraction
+<img src="resources/boolean/subtract.gif" alt="" width="50%"/>
+
 ### Symmetric Difference
+<img src="resources/boolean/symDifference.gif" alt="" width="50%"/>
+
 ### Complement
 <img src="resources/boolean/complement.png" alt="" width="50%"/>
+
+## **Transformation**
+*These methods affect the vertex coordinates of PShapes, unlike Processing's transform methods that affect the affine matrix of shapes only (and thereby leave vertex coordinates in-tact).*
+
+*Methods beyond those offered in Processing are illustrated here:*
+
+### Rotate Around
+Rotate a shape around its centroid, or some other point.
+
+<p float="middle">
+  <img src="resources/transform/rotateCenter.gif" alt="" width="49%"/>
+  <img src="resources/transform/rotate.gif" alt="" width="49%"/>
+</p>
+
+### Translate To
+Translate a shape such that its centroid matches some position.
+
+<img src="resources/transform/translateTo.gif" alt="" width="50%"/>
+
+### Touch Scale
+Scale one shape such that it touches another.
+
+<img src="resources/transform/touchScale.gif" alt="" width="50%"/>
+
+### Homothetic Transformation
+Projection-transform a shape with respect to a fixed point.
+
+<img src="resources/transform/homothetic.gif" alt="" width="50%"/>
+
+## **Geometric Predicates**
+
+### Intersects
+Do shapes intersect with each other?
+
+<img src="resources/predicate/intersect.gif" alt="" width="50%"/>
+
+### Contains Shape
+Does one shape fully contain another?
+
+<img src="resources/predicate/contains.gif" alt="" width="50%"/>
+
+### Contains Point
+For individual points and point sets.
+<p float="middle">
+  <img src="resources/predicate/containsPoint.gif" alt="" width="50%"/>
+</p>
+
+
+### Predicates
+...
 
 ## **Contour**
 *Methods to produce a variety of geometric contour lines within shapes.*
@@ -73,7 +112,7 @@ A medial axis where small line segments are dissolved into larger, straighter on
 </p>
 
 ### Isolines (topographic contour lines)
-Isolines from intra-shape euclidean distance or point sets.
+Isolines from intra-shape euclidean distance, or point sets.
 <p float="middle">
   <img src="resources/contour/isolines.gif" alt="" width="49%"/>
   <img src="resources/contour/isolines2.gif" alt="" width="49%"/>
@@ -172,6 +211,15 @@ Partition a shape into simple (convex) polygons.
   <img src="resources/pts/decompose2.png" alt="" width="49%"/>
 </p>
 
+### Splitting
+Subdivide (recursively) a shape into quadrants
+
+<img src="resources/morphology/split.gif" alt="" width="50%"/>
+
+### Slicing
+Slice a shape in two along a given line
+
+<img src="resources/morphology/slice.gif" alt="" width="50%"/>
 
 ## **Geometric Optimization**
 
@@ -187,52 +235,6 @@ Partition a shape into simple (convex) polygons.
 ### Minimum Bounding Rectangle
 <img src="resources/pts/minimumBoundingRectangle.png" alt="" width="50%"/>
 
+## Assorted
 
-## **Transformation**
-PTS provides transformation methods much like Processing's. Notably these methods affect the vertex coordinates of PShapes, unlike Processing's equivalent methods that affect the affine matrix of shapes only (and thereby leave vertex coordinates in-tact).
-
-Methods beyond those offered in Processing are illustrated here:
-
-### Rotate Around
-Rotate a shape around its centroid, or some other point.
-
-<p float="middle">
-  <img src="resources/transform/rotateCenter.gif" alt="" width="49%"/>
-  <img src="resources/transform/rotate.gif" alt="" width="49%"/>
-</p>
-
-### Translate To
-Translate a shape such that its centroid matches some position.
-
-<img src="resources/transform/translateTo.gif" alt="" width="50%"/>
-
-### Touch Scale
-Scale one shape such that it touches another.
-
-<img src="resources/transform/touchScale.gif" alt="" width="50%"/>
-
-### Homothetic Transformation
-Projection-transform a shape with respect to a fixed point.
-
-<img src="resources/transform/homothetic.gif" alt="" width="50%"/>
-
-## **Geometric Predicates**
-
-### Intersects
-Do shapes intersect with each other?
-
-<img src="resources/predicate/intersect.gif" alt="" width="50%"/>
-
-### Contains Shape
-Does one shape fully contain another?
-
-<img src="resources/predicate/contains.gif" alt="" width="50%"/>
-
-### Contains Point
-For individual points and point sets.
-<p float="middle">
-  <img src="resources/predicate/containsPoint.gif" alt="" width="50%"/>
-</p>
-
-
-### Predicates
+### Squircle

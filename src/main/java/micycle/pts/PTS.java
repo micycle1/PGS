@@ -31,7 +31,6 @@ import org.locationtech.jts.shape.random.RandomPointsInGridBuilder;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
 import micycle.pts.color.RGB;
-import micycle.pts.utility.PolygonDecomposition;
 import micycle.pts.utility.RandomPolygon;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -321,12 +320,30 @@ public class PTS {
 	 */
 	public static PShape createSquircle(double x, double y, double width, double height) {
 		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-		shapeFactory.setNumPoints(CURVE_SAMPLES * 2);
+		shapeFactory.setNumPoints(CURVE_SAMPLES * 4);
 		shapeFactory.setCentre(new Coordinate(x, y));
-//		shapeFactory.setBase(new Coordinate(x, y));
 		shapeFactory.setWidth(width);
 		shapeFactory.setHeight(height);
 		return toPShape(shapeFactory.createSquircle());
+	}
+
+	/**
+	 * 
+	 * @param x
+	 * @param y
+	 * @param width
+	 * @param height
+	 * @param power  circularity of super circle. Values less than 1 create
+	 *               star-like shapes; power=1 is a square;
+	 * @return
+	 */
+	public static PShape createSupercircle(double x, double y, double width, double height, double power) {
+		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
+		shapeFactory.setNumPoints(CURVE_SAMPLES * 4);
+		shapeFactory.setCentre(new Coordinate(x, y));
+		shapeFactory.setWidth(width);
+		shapeFactory.setHeight(height);
+		return toPShape(shapeFactory.createSupercircle(power));
 	}
 
 	/**
@@ -350,101 +367,6 @@ public class PTS {
 		shapeFactory.setWidth(width);
 		shapeFactory.setHeight(height);
 		return toPShape(shapeFactory.createArcPolygon(-Math.PI / 2 + orientation, angle));
-	}
-
-	/**
-	 * Splits a polygon into 4 equal quadrants
-	 * 
-	 * @param shape
-	 * @return list containing the 4 split quadrants
-	 */
-	public static List<PShape> split(PShape shape) {
-		// https://stackoverflow.com/questions/64252638/how-to-split-a-jts-polygon
-		Geometry p = fromPShape(shape);
-		ArrayList<PShape> ret = new ArrayList<>();
-
-		final Envelope envelope = p.getEnvelopeInternal();
-		double minX = envelope.getMinX();
-		double maxX = envelope.getMaxX();
-		double midX = minX + (maxX - minX) / 2.0;
-		double minY = envelope.getMinY();
-		double maxY = envelope.getMaxY();
-		double midY = minY + (maxY - minY) / 2.0;
-
-		Envelope llEnv = new Envelope(minX, midX, minY, midY);
-		Envelope lrEnv = new Envelope(midX, maxX, minY, midY);
-		Envelope ulEnv = new Envelope(minX, midX, midY, maxY);
-		Envelope urEnv = new Envelope(midX, maxX, midY, maxY);
-		Geometry ll = JTS.toGeometry(llEnv).intersection(p);
-		Geometry lr = JTS.toGeometry(lrEnv).intersection(p);
-		Geometry ul = JTS.toGeometry(ulEnv).intersection(p);
-		Geometry ur = JTS.toGeometry(urEnv).intersection(p);
-		ret.add(toPShape(ll));
-		ret.add(toPShape(lr));
-		ret.add(toPShape(ul));
-		ret.add(toPShape(ur));
-
-		return ret;
-	}
-
-	/**
-	 * Partitions a shape into simple polygons using Mark Bayazit's algorithm.
-	 * 
-	 * @param shape
-	 * @return list of convex (simple) polygons comprising the original shape
-	 */
-	public static ArrayList<PShape> partition(PShape shape) {
-		// https://mpen.ca/406/bayazit
-		// retry GreedyPolygonSplitter()?
-
-		Geometry g = fromPShape(shape);
-
-		ArrayList<PShape> out = new ArrayList<>();
-
-		for (int i = 0; i < g.getNumGeometries(); i++) {
-			Geometry child = g.getGeometryN(i);
-			if (child.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) { // skip any linestrings etc
-				List<Polygon> decomposed = PolygonDecomposition.decompose((Polygon) child);
-				for (Polygon polygon : decomposed) {
-					out.add(toPShape(polygon));
-				}
-			}
-		}
-
-		return out;
-	}
-
-	/**
-	 * Slice a shape using a line given by its start and endpoints
-	 * 
-	 * @param shape
-	 * @param p1    must be outside shape
-	 * @param p2    must be outside shape
-	 * @return Two PShapes
-	 */
-	public static ArrayList<PShape> slice(PShape shape, PVector p1, PVector p2) {
-		// https://gis.stackexchange.com/questions/189976/
-		Geometry poly = fromPShape(shape);
-		LineString line = lineFromPVectors(p1, p2);
-		Geometry nodedLinework = poly.getBoundary().union(line);
-		Geometry polys = polygonize(nodedLinework);
-
-		// Only keep polygons which are inside the input
-		ArrayList<Polygon> slices = new ArrayList<>();
-		for (int i = 0; i < polys.getNumGeometries(); i++) {
-			Polygon candpoly = (Polygon) polys.getGeometryN(i);
-			// TODO geometry cache for contains check?
-			if (poly.contains(candpoly.getInteriorPoint())) {
-				slices.add(candpoly);
-			}
-		}
-
-		ArrayList<PShape> output = new ArrayList<>();
-
-		for (Polygon polygon : slices) {
-			output.add(toPShape(polygon));
-		}
-		return output;
 	}
 
 	public static List<PVector> toPVectorList(PShape shape) {
@@ -481,19 +403,6 @@ public class PTS {
 		lines.setStroke(strokeColor);
 		lines.beginShape(LINES);
 		return lines;
-	}
-
-	/**
-	 * Used by slice()
-	 */
-	@SuppressWarnings("unchecked")
-	private static Geometry polygonize(Geometry geometry) {
-		List<LineString> lines = LineStringExtracter.getLines(geometry);
-		Polygonizer polygonizer = new Polygonizer();
-		polygonizer.add(lines);
-		Collection<Polygon> polys = polygonizer.getPolygons();
-		Polygon[] polyArray = GeometryFactory.toPolygonArray(polys);
-		return geometry.getFactory().createGeometryCollection(polyArray);
 	}
 
 	/**
@@ -547,10 +456,6 @@ public class PTS {
 		double bc = Math.sqrt((c.y - b.y) * (c.y - b.y) + (c.x - b.x) * (c.x - b.x));
 		double ca = Math.sqrt((a.y - c.y) * (a.y - c.y) + (a.x - c.x) * (a.x - c.x));
 		return Math.min(Math.min(ab, bc), ca);
-	}
-
-	private static LineString lineFromPVectors(PVector a, PVector b) {
-		return GEOM_FACTORY.createLineString(new Coordinate[] { new Coordinate(a.x, a.y), new Coordinate(b.x, b.y) });
 	}
 
 	/**

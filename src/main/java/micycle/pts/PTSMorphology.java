@@ -3,16 +3,34 @@ package micycle.pts;
 import static micycle.pts.Conversion.fromPShape;
 import static micycle.pts.Conversion.toPShape;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
 import org.geodelivery.jap.concavehull.SnapHull;
 import org.geotools.geometry.jts.JTS;
+import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.LineSegment;
+import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.prep.PreparedGeometry;
+import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
+import org.locationtech.jts.geom.util.LineStringExtracter;
+import org.locationtech.jts.operation.polygonize.Polygonizer;
+import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.simplify.VWSimplifier;
 
+import micycle.pts.utility.PolygonDecomposition;
+import processing.core.PApplet;
+import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 import uk.osgb.algorithm.concavehull.ConcaveHull;
@@ -230,6 +248,166 @@ public class PTSMorphology {
 	 */
 	public static PShape smooth(PShape shape, float fit) {
 		return toPShape(JTS.smooth(fromPShape(shape), fit));
+	}
+
+	/**
+	 * Splits a shape into 4 equal quadrants
+	 * 
+	 * @param shape
+	 * @return list containing the 4 split quadrants
+	 */
+	public static List<PShape> split(PShape shape) {
+		// https://stackoverflow.com/questions/64252638/how-to-split-a-jts-polygon
+		Geometry p = fromPShape(shape);
+		ArrayList<PShape> ret = new ArrayList<>();
+
+		final Envelope envelope = p.getEnvelopeInternal();
+		double minX = envelope.getMinX();
+		double maxX = envelope.getMaxX();
+		double midX = minX + (maxX - minX) / 2.0;
+		double minY = envelope.getMinY();
+		double maxY = envelope.getMaxY();
+		double midY = minY + (maxY - minY) / 2.0;
+
+		Envelope llEnv = new Envelope(minX, midX, minY, midY);
+		Envelope lrEnv = new Envelope(midX, maxX, minY, midY);
+		Envelope ulEnv = new Envelope(minX, midX, midY, maxY);
+		Envelope urEnv = new Envelope(midX, maxX, midY, maxY);
+		Geometry UL = JTS.toGeometry(llEnv).intersection(p);
+		Geometry UR = JTS.toGeometry(lrEnv).intersection(p);
+		Geometry LL = JTS.toGeometry(ulEnv).intersection(p);
+		Geometry LR = JTS.toGeometry(urEnv).intersection(p);
+		ret.add(toPShape(UL));
+		ret.add(toPShape(UR));
+		ret.add(toPShape(LL));
+		ret.add(toPShape(LR));
+
+		return ret;
+	}
+
+	/**
+	 * Splits a shape into 4^(1+recursions) rectangular partitions
+	 * 
+	 * @param shape
+	 * @param splitDepth
+	 */
+	public static List<PShape> split(final PShape shape, int splitDepth) {
+		splitDepth = Math.max(0, splitDepth);
+		ArrayDeque<Geometry> stack = new ArrayDeque<>();
+		stack.add(fromPShape(shape));
+
+		ArrayList<PShape> ret = new ArrayList<>(); // add to when recursion depth reached
+		ArrayList<Geometry> next = new ArrayList<>(); // add to when recursion depth reached
+
+		int depth = 0;
+		while (depth < splitDepth) {
+			while (!stack.isEmpty()) {
+				final Geometry slice = stack.pop();
+				final Envelope envelope = slice.getEnvelopeInternal();
+				final double minX = envelope.getMinX();
+				final double maxX = envelope.getMaxX();
+				final double midX = minX + (maxX - minX) / 2.0;
+				final double minY = envelope.getMinY();
+				final double maxY = envelope.getMaxY();
+				final double midY = minY + (maxY - minY) / 2.0;
+
+				Envelope llEnv = new Envelope(minX, midX, minY, midY);
+				Envelope lrEnv = new Envelope(midX, maxX, minY, midY);
+				Envelope ulEnv = new Envelope(minX, midX, midY, maxY);
+				Envelope urEnv = new Envelope(midX, maxX, midY, maxY);
+				Geometry UL = JTS.toGeometry(llEnv).intersection(slice);
+				Geometry UR = JTS.toGeometry(lrEnv).intersection(slice);
+				Geometry LL = JTS.toGeometry(ulEnv).intersection(slice);
+				Geometry LR = JTS.toGeometry(urEnv).intersection(slice);
+				next.add(UL);
+				next.add(UR);
+				next.add(LL);
+				next.add(LR);
+			}
+			depth++;
+			stack.addAll(next);
+			next.clear();
+		}
+
+		stack.forEach(g -> ret.add(toPShape(g)));
+		return ret;
+	}
+
+	/**
+	 * Partitions a shape into simple polygons using Mark Bayazit's algorithm.
+	 * 
+	 * @param shape
+	 * @return list of convex (simple) polygons comprising the original shape
+	 */
+	public static List<PShape> partition(PShape shape) {
+		// https://mpen.ca/406/bayazit
+		// retry GreedyPolygonSplitter()?
+
+		Geometry g = fromPShape(shape);
+
+		ArrayList<PShape> out = new ArrayList<>();
+
+		for (int i = 0; i < g.getNumGeometries(); i++) {
+			Geometry child = g.getGeometryN(i);
+			if (child.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) { // skip any linestrings etc
+				List<Polygon> decomposed = PolygonDecomposition.decompose((Polygon) child);
+				for (Polygon polygon : decomposed) {
+					out.add(toPShape(polygon));
+				}
+			}
+		}
+
+		return out;
+	}
+
+	/**
+	 * Slice a shape using a line given by its start and endpoints.
+	 * 
+	 * @param shape
+	 * @param p1    must be outside shape
+	 * @param p2    must be outside shape
+	 * @return a list containg two PShapes
+	 */
+	public static List<PShape> slice(PShape shape, PVector p1, PVector p2) {
+		// adapted from https://gis.stackexchange.com/questions/189976/
+		final Geometry poly = fromPShape(shape);
+		final PreparedGeometry cache = PreparedGeometryFactory.prepare(poly);
+		final LineSegment ls = new LineSegment(p1.x, p1.y, p2.x, p2.y);
+		final LineString line = ls.toGeometry(PTS.GEOM_FACTORY);
+		final Geometry nodedLinework = poly.getBoundary().union(line);
+		final Geometry polys = polygonize(nodedLinework);
+
+		final ArrayList<Polygon> leftSlices = new ArrayList<>();
+		final ArrayList<Polygon> rightSlices = new ArrayList<>();
+
+		for (int i = 0; i < polys.getNumGeometries(); i++) {
+			final Polygon candpoly = (Polygon) polys.getGeometryN(i);
+			if (cache.contains(candpoly.getInteriorPoint())) {
+				if (ls.orientationIndex(candpoly.getCentroid().getCoordinate()) == Orientation.LEFT) {
+					leftSlices.add(candpoly);
+				} else {
+					rightSlices.add(candpoly);
+				}
+			}
+		}
+
+		ArrayList<PShape> output = new ArrayList<>();
+		output.add(toPShape(UnaryUnionOp.union(leftSlices)));
+		output.add(toPShape(UnaryUnionOp.union(rightSlices)));
+		return output;
+	}
+
+	/**
+	 * Used by slice()
+	 */
+	@SuppressWarnings("unchecked")
+	private static Geometry polygonize(Geometry geometry) {
+		List<LineString> lines = LineStringExtracter.getLines(geometry);
+		Polygonizer polygonizer = new Polygonizer();
+		polygonizer.add(lines);
+		Collection<Polygon> polys = polygonizer.getPolygons();
+		Polygon[] polyArray = GeometryFactory.toPolygonArray(polys);
+		return geometry.getFactory().createGeometryCollection(polyArray);
 	}
 
 }
