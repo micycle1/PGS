@@ -6,7 +6,6 @@ import static micycle.pts.Conversion.toPShape;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 import org.geodelivery.jap.concavehull.SnapHull;
@@ -29,8 +28,7 @@ import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.simplify.VWSimplifier;
 
 import micycle.pts.utility.PolygonDecomposition;
-import processing.core.PApplet;
-import processing.core.PConstants;
+import micycle.pts.utility.CornerRounding;
 import processing.core.PShape;
 import processing.core.PVector;
 import uk.osgb.algorithm.concavehull.ConcaveHull;
@@ -239,8 +237,9 @@ public class PTSMorphology {
 	}
 
 	/**
-	 * Smoothes a geometry. The smoothing algorithm inserts new vertices which are
-	 * positioned using Bezier splines.
+	 * Smoothes a shape. The smoothing algorithm inserts new vertices which are
+	 * positioned using Bezier splines. The output shape tends to be larger than the
+	 * input one.
 	 * 
 	 * @param shape
 	 * @param fit   tightness of fit from 0 (loose) to 1 (tight)
@@ -248,6 +247,21 @@ public class PTSMorphology {
 	 */
 	public static PShape smooth(PShape shape, float fit) {
 		return toPShape(JTS.smooth(fromPShape(shape), fit));
+	}
+
+	/**
+	 * Rounds the corners of a shape by substituting a circular arc for the corners.
+	 * Each corner is rounded in proportion to the smallest length of its 2
+	 * constituent lines.
+	 * 
+	 * @param shape
+	 * @param extent 0...1 (where 0 is no rounding, and 1 is the maximum rounding
+	 *               whilst keeping shape valid). Values greater than 1 are allowed
+	 *               by output undefined results.
+	 * @return
+	 */
+	public static PShape round(PShape shape, float extent) {
+		return CornerRounding.round(shape, extent);
 	}
 
 	/**

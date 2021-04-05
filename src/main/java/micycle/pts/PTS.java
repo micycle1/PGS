@@ -369,10 +369,19 @@ public class PTS {
 		return toPShape(shapeFactory.createArcPolygon(-Math.PI / 2 + orientation, angle));
 	}
 
+	/**
+	 * Returns an unclosed list of PVector coordinates making up the shape.
+	 * 
+	 * @param shape
+	 * @return
+	 */
 	public static List<PVector> toPVectorList(PShape shape) {
 		final ArrayList<PVector> vertices = new ArrayList<>();
 		for (int i = 0; i < shape.getVertexCount(); i++) {
 			vertices.add(shape.getVertex(i));
+		}
+		if (!vertices.isEmpty() && vertices.get(0).equals(vertices.get(vertices.size() - 1))) {
+			vertices.remove(vertices.size() - 1);
 		}
 		return vertices;
 	}

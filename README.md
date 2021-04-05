@@ -175,6 +175,14 @@ Minkowski sum and difference (a.k.a buffer one shape using another shape; pictur
 ### Smoothing
 <img src="resources/morphology/smooth.gif" alt="" width="50%"/>
 
+### Rounding
+
+<p float="middle">
+  <img src="resources/morphology/round.gif" alt="" width="49%"/>
+  <img src="resources/morphology/round2.gif" alt="" width="49%"/>
+</p>
+
+
 ### Concave Hull
 Concave hull of point sets.
 <p float="middle">
