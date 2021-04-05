@@ -5,29 +5,56 @@
 <h3 align="center"> 🚧 Under Construction 🚧 </h3>
 
 ---
-PTS is a library for geometric operations in Processing.
 
-Most methods operate on PShapes, and return PShapes (where applicable).
+PTS is a software project that provides easy access to geometric algorithms in the form of a [Processing](https://processing.org/) library.
 
-The library is stateless: methods are static.
+Methods in the library are static, and most of them take in and return PShapes.
 
-A library for shapes in Processing:
+## Example
 
-- Predicates
-  - >Does
-- Metrics
-  - >What is the area of this polygon?
-- Geometric Computation
-  - > The union of these two shapes
+```
+import micycle.pts.*;
+import java.util.List;
 
-PTS wraps JTS, enabling its methods to be applied to Processing's `PShape` objects. Beyond that, PTS provides other geometry __ such as splines.
+PShape polygon;
 
-[Contents from https://doc.cgal.org/latest/Manual/packages.html]
+void setup() {
+  size(800, 800, FX2D);
+  polygon = PTS.randomPolygon(6, width, height);
+}
 
-Much of, but by no means all, of the functionality is exemplified below.
-The library is split into a handful of classes as detailed below.
+void draw() {
+  background(0, 0, 40);
 
-## **2D Boolean Operations**
+  PShape inverse =  PTSShapeBoolean.complement(polygon, width, height);
+  inverse.setFill(color(0, 90, 200));
+  shape(inverse);
+  
+  PShape smaller = PTSMorphology.buffer(polygon, -30);
+  List<PVector> trianglePoints = PTSTriangulation.delaunayTriangulation(smaller, null, true, 4, true);
+  beginShape(TRIANGLES);
+  strokeWeight(1);
+  stroke(0);
+  for (int i = 0; i < trianglePoints.size(); i += 3) {
+    fill(trianglePoints.get(i).x % 255, trianglePoints.get(i).y % 255, 50);
+    vertex(trianglePoints.get(i).x, trianglePoints.get(i).y);
+    vertex(trianglePoints.get(i + 1).x, trianglePoints.get(i + 1).y);
+    vertex(trianglePoints.get(i + 2).x, trianglePoints.get(i + 2).y);
+  }
+  endShape();
+  
+  PVector closest = PTSGeometricOptimisation.closestPoint(inverse, new PVector(mouseX, mouseY));
+  strokeWeight(10);
+  stroke(255);
+  point(closest.x, closest.y);
+}
+```
+
+## **Overview**
+
+Much of the functionality (but by no means all) is exemplified below.
+
+## *2D Boolean Operations*
 *Boolean set-operations on shapes.*
 
 ### Union
@@ -46,7 +73,7 @@ The library is split into a handful of classes as detailed below.
 ### Complement
 <img src="resources/boolean/complement.png" alt="" width="50%"/>
 
-## **Transformation**
+## *Transformation*
 *These methods affect the vertex coordinates of PShapes, unlike Processing's transform methods that affect the affine matrix of shapes only (and thereby leave vertex coordinates in-tact).*
 
 *Methods beyond those offered in Processing are illustrated here:*
@@ -74,7 +101,7 @@ Projection-transform a shape with respect to a fixed point.
 
 <img src="resources/transform/homothetic.gif" alt="" width="50%"/>
 
-## **Geometric Predicates**
+## *Geometric Predicates*
 
 ### Intersects
 Do shapes intersect with each other?
@@ -93,10 +120,18 @@ For individual points and point sets.
 </p>
 
 
-### Predicates
-...
+### Metrics
+* Length
+* Circularity
+* Similarity
+* Holes
+* Simple?
+* Convex?
+* Distance
+* Area
+* Centroid
 
-## **Contour**
+## *Contour*
 *Methods to produce a variety of geometric contour lines within shapes.*
 ### Medial Axis
 <img src="resources/contour/medialAxis.png" alt="" width="50%"/>
@@ -152,7 +187,7 @@ Constrained & refined *Delaunay triangulation* of shapes and point sets.
   <img src="resources/contour/earCut2.png" alt="" width="49%"/>
 </p>
 
-## **Morphology**
+## *Morphology*
 *Methods to morph shapes (topology)*
 ### Buffer
 <img src="resources/pts/buffer.gif" alt="" width="50%"/>
@@ -196,7 +231,7 @@ Concave hull of point sets.
 ### Snap Hull
 <img src="resources/pts/snapHull.gif" alt="" width="50%"/>
 
-## **Geometry Processing**
+## *Geometry Processing*
 
 ### Point on Perimeter
 Find a point some fraction along the perimeter of a shape (with perpendicular offset).
@@ -229,7 +264,10 @@ Slice a shape in two along a given line
 
 <img src="resources/morphology/slice.gif" alt="" width="50%"/>
 
-## **Geometric Optimization**
+### Densification
+<img src="resources/pts/densify.gif" alt="" width="50%"/>
+
+## *Geometric Optimization*
 
 ### Closest Point
 <img src="resources/pts/closestVertex.gif" alt="" width="50%"/>
@@ -243,6 +281,12 @@ Slice a shape in two along a given line
 ### Minimum Bounding Rectangle
 <img src="resources/pts/minimumBoundingRectangle.png" alt="" width="50%"/>
 
-## Assorted
+## *Assorted*
 
-### Squircle
+### Supercircle
+<img src="resources/pts/superCircle.gif" alt="" width="50%"/>
+
+### Random Polygon
+Generate a random convex n-gon
+
+<img src="resources/pts/randomPolygon.gif" alt="" width="50%"/>

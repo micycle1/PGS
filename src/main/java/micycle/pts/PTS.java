@@ -150,6 +150,7 @@ public class PTS {
 	 * @return
 	 */
 	public static List<PVector> pointsOnPerimeter(PShape shape, float interPointDistance, float offsetDistance) {
+		// TODO points on hole
 		LengthIndexedLine l = new LengthIndexedLine(((Polygon) fromPShape(shape)).getExteriorRing());
 		if (interPointDistance > l.getEndIndex()) {
 			System.err.println("Interpoint length greater than shape length");
@@ -240,8 +241,8 @@ public class PTS {
 	}
 
 	/**
-	 * Returns a copy of the shape with its small holes (i.e. inner rings with area
-	 * < given threshold) removed.
+	 * Returns a copy of the shape with small holes (i.e. inner rings with area <
+	 * given threshold) are removed.
 	 * 
 	 * @param polygon
 	 * @return
@@ -251,10 +252,10 @@ public class PTS {
 		Polygon noHolePol = GEOM_FACTORY.createPolygon(polygon.getExteriorRing());
 		for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
 			LinearRing hole = polygon.getInteriorRingN(i);
-			if (hole.getArea() < area)
+			if (hole.getArea() < area) {
 				continue;
+			}
 			noHolePol = (Polygon) noHolePol.difference(hole);
-
 		}
 		return toPShape(noHolePol);
 	}
@@ -312,23 +313,6 @@ public class PTS {
 
 	/**
 	 * 
-	 * @param x      centre X
-	 * @param y      center Y
-	 * @param width  ?total? width
-	 * @param height ?total? height
-	 * @return
-	 */
-	public static PShape createSquircle(double x, double y, double width, double height) {
-		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-		shapeFactory.setNumPoints(CURVE_SAMPLES * 4);
-		shapeFactory.setCentre(new Coordinate(x, y));
-		shapeFactory.setWidth(width);
-		shapeFactory.setHeight(height);
-		return toPShape(shapeFactory.createSquircle());
-	}
-
-	/**
-	 * 
 	 * @param x
 	 * @param y
 	 * @param width
@@ -359,8 +343,7 @@ public class PTS {
 	 * @param angle       size of the arc angle in radians
 	 * @return
 	 */
-	public static PShape createArcPolygon(double x, double y, double width, double height, double orientation,
-			double angle) {
+	public static PShape createArc(double x, double y, double width, double height, double orientation, double angle) {
 		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
 		shapeFactory.setNumPoints(CURVE_SAMPLES * 2);
 		shapeFactory.setCentre(new Coordinate(x, y));

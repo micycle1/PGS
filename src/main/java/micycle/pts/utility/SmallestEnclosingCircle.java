@@ -23,7 +23,6 @@ package micycle.pts.utility;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
@@ -35,7 +34,7 @@ import processing.core.PVector;
  * in linear time. Adapts Nayuki's original implementation for easy use with
  * Processing.
  * 
- * @author micycle1
+ * @author Michael Carleton
  *
  */
 public final class SmallestEnclosingCircle {
@@ -157,23 +156,6 @@ public final class SmallestEnclosingCircle {
 	private static float cross(PVector a, PVector b) {
 		// Signed area / determinant thing
 		return a.x * b.y - a.y * b.x;
-	}
-
-	public static final class Circle {
-
-		private static final float MULTIPLICATIVE_EPSILON = (float) (1 + 1e-14);
-
-		public final PVector c; // Center
-		public final float r; // Radius
-
-		public Circle(PVector c, float r) {
-			this.c = c;
-			this.r = r;
-		}
-
-		public boolean contains(PVector p) {
-			return c.dist(p) <= r * MULTIPLICATIVE_EPSILON;
-		}
 	}
 
 }

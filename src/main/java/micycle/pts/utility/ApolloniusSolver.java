@@ -1,5 +1,7 @@
 package micycle.pts.utility;
 
+import processing.core.PVector;
+
 public class ApolloniusSolver {
 
 	/**
@@ -22,15 +24,15 @@ public class ApolloniusSolver {
 
 		// https://github.com/DIKU-Steiner/ProGAL/blob/master/src/ProGAL/geom2d/ApolloniusSolver.java
 
-		double x1 = c1.center[0];
-		double y1 = c1.center[1];
-		double r1 = c1.radius;
-		double x2 = c2.center[0];
-		double y2 = c2.center[1];
-		double r2 = c2.radius;
-		double x3 = c3.center[0];
-		double y3 = c3.center[1];
-		double r3 = c3.radius;
+		double x1 = c1.c.x;
+		double y1 = c1.c.y;
+		double r1 = c1.r;
+		double x2 = c2.c.x;
+		double y2 = c2.c.y;
+		double r2 = c2.r;
+		double x3 = c3.c.x;
+		double y3 = c3.c.y;
+		double r3 = c3.r;
 
 		// Currently optimized for fewest multiplications. Should be optimized for
 		// readability
@@ -64,23 +66,9 @@ public class ApolloniusSolver {
 		// Find a root of a quadratic equation. This requires the circle centers not
 		// to be e.g. colinear
 		double D = b * b - 4 * a * c;
-		double rs = (double) ((-b - Math.sqrt(D)) / (2 * a));
+		double rs = (-b - Math.sqrt(D)) / (2 * a);
 		double xs = M + N * rs;
 		double ys = P + Q * rs;
-		return new Circle(new double[] { xs, ys }, rs);
-	}
-
-	public static class Circle {
-		public double[] center;
-		public double radius;
-
-		public Circle(double[] center, double radius) {
-			this.center = center;
-			this.radius = radius;
-		}
-
-		public String toString() {
-			return String.format("Circle[x=%.2f,y=%.2f,r=%.2f]", center[0], center[1], radius);
-		}
+		return new Circle(new PVector((float) xs, (float) ys), (float) rs);
 	}
 }

@@ -23,9 +23,9 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Bounding Volumes, inscribed areas, Optimal Distances, etc.
+ * Bounding volumes, inscribed areas, optimal distances, etc.
  * 
- * @author MCarleton
+ * @author Michael Carleton
  *
  */
 public class PTSGeometricOptimisation {

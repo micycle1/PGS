@@ -82,8 +82,8 @@ public class PTSShapeBoolean {
 	 * Computes the shape's complement (or inverse) against a plane.
 	 * 
 	 * @param shape
-	 * @param width  width of the plane
-	 * @param height height of the plane
+	 * @param width  width of the rectangle plane to subtract shape from
+	 * @param height height of the rectangle plane to subtract shape from
 	 * @return
 	 */
 	public static PShape complement(PShape shape, double width, double height) {

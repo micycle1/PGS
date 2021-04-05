@@ -49,7 +49,7 @@ public class PTSVoronoi {
 		v.setClipEnvelope(new Envelope(0, 1000, 0, 1000)); // speeds up when lots of edges
 //		v.setSites(new ArrayList<Coordinate>(Arrays.asList(g.getCoordinates())));
 		Geometry out = v.getDiagram(GEOM_FACTORY);
-		return toPShape(out); // .intersection(g))
+		return toPShape(out.intersection(g));
 	}
 
 	/**
