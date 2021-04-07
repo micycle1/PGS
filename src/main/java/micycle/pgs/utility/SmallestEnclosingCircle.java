@@ -1,4 +1,4 @@
-package micycle.pts.utility;
+package micycle.pgs.utility;
 
 /* 
  * Smallest enclosing circle - Library (Java)

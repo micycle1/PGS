@@ -1,4 +1,4 @@
-package micycle.pts.color;
+package micycle.pgs.color;
 
 /**
  * Color blending for Processing colors (32bit ARGB integers).

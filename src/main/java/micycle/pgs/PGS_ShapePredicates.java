@@ -1,6 +1,6 @@
-package micycle.pts;
+package micycle.pgs;
 
-import static micycle.pts.Conversion.fromPShape;
+import static micycle.pgs.PGS_Conversion.fromPShape;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +23,7 @@ import processing.core.PVector;
  * @author Michael Carleton
  *
  */
-public class PTSShapePredicates {
+public class PGS_ShapePredicates {
 
 	// https://doc.cgal.org/latest/Polygon/index.html#Chapter_2D_Polygons
 
@@ -48,7 +48,7 @@ public class PTSShapePredicates {
 	 * @see #containsPoints(PShape, List)
 	 */
 	public static boolean containsPoint(PShape shape, PVector point) {
-		return fromPShape(shape).covers(PTS.pointFromPVector(point));
+		return fromPShape(shape).covers(PGS.pointFromPVector(point));
 	}
 
 	/**

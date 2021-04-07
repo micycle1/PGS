@@ -1,8 +1,8 @@
-package micycle.pts;
+package micycle.pgs;
 
-import static micycle.pts.Conversion.fromPShape;
-import static micycle.pts.Conversion.toPShape;
-import static micycle.pts.PTS.getPShapeFillColor;
+import static micycle.pgs.PGS.getPShapeFillColor;
+import static micycle.pgs.PGS_Conversion.fromPShape;
+import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.ArrayList;
 
@@ -11,7 +11,7 @@ import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
-import micycle.pts.color.Blending;
+import micycle.pgs.color.Blending;
 import processing.core.PShape;
 
 /**
@@ -20,9 +20,9 @@ import processing.core.PShape;
  * @author Michael Carleton
  *
  */
-public class PTSShapeBoolean {
+public class PGS_ShapeBoolean {
 
-	private PTSShapeBoolean() {
+	private PGS_ShapeBoolean() {
 
 	}
 
@@ -34,7 +34,7 @@ public class PTSShapeBoolean {
 	 */
 	public static PShape intersect(PShape a, PShape b) {
 		PShape out = toPShape(OverlayNG.overlay(fromPShape(a), fromPShape(b), OverlayNG.INTERSECTION));
-		Conversion.setAllFillColor(out, Blending.add(getPShapeFillColor(a), getPShapeFillColor(b)));
+		PGS_Conversion.setAllFillColor(out, Blending.add(getPShapeFillColor(a), getPShapeFillColor(b)));
 		return out;
 	}
 

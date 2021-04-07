@@ -1,4 +1,4 @@
-package micycle.pts.color;
+package micycle.pgs.color;
 
 public class RGB {
 

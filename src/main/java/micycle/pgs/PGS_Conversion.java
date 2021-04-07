@@ -1,7 +1,7 @@
-package micycle.pts;
+package micycle.pgs;
 
-import static micycle.pts.PTS.GEOM_FACTORY;
-import static micycle.pts.PTS.prepareLinesPShape;
+import static micycle.pgs.PGS.GEOM_FACTORY;
+import static micycle.pgs.PGS.prepareLinesPShape;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,7 +23,7 @@ import processing.core.PVector;
  * @author MCarleton
  *
  */
-public class Conversion implements PConstants {
+public class PGS_Conversion implements PConstants {
 
 	/**
 	 * TODO GROUP, PRIMITIVE, PATH, or GEOMETRY TODO CACHE recent 5 calls? TODO
@@ -56,7 +56,7 @@ public class Conversion implements PConstants {
 //		shape.getKind() // switch to get primitive, then == ELLIPSE
 		if (shape.getFamily() == PShape.PRIMITIVE) {
 			GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-			shapeFactory.setNumPoints(PTS.CURVE_SAMPLES * 4); // TODO magic constant
+			shapeFactory.setNumPoints(PGS.CURVE_SAMPLES * 4); // TODO magic constant
 			switch (shape.getKind()) {
 				case ELLIPSE:
 					// TODO split into createCircleGeom method
@@ -110,13 +110,13 @@ public class Conversion implements PConstants {
 
 				case QUADRATIC_VERTEX:
 					coords.get(lastGroup).addAll(getQuadraticBezierPoints(shape.getVertex(i - 1), shape.getVertex(i),
-							shape.getVertex(i + 1), PTS.CURVE_SAMPLES));
+							shape.getVertex(i + 1), PGS.CURVE_SAMPLES));
 					i += 1;
 					continue;
 
 				case BEZIER_VERTEX: // aka cubic bezier, untested
 					coords.get(lastGroup).addAll(getCubicBezierPoints(shape.getVertex(i - 1), shape.getVertex(i),
-							shape.getVertex(i + 1), shape.getVertex(i + 2), PTS.CURVE_SAMPLES));
+							shape.getVertex(i + 1), shape.getVertex(i + 2), PGS.CURVE_SAMPLES));
 					i += 2;
 					continue;
 

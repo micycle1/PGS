@@ -1,7 +1,7 @@
-package micycle.pts;
+package micycle.pgs;
 
-import static micycle.pts.Conversion.fromPShape;
-import static micycle.pts.Conversion.toPShape;
+import static micycle.pgs.PGS_Conversion.fromPShape;
+import static micycle.pgs.PGS_Conversion.toPShape;
 import static processing.core.PConstants.LINES;
 import static processing.core.PConstants.ROUND;
 
@@ -30,18 +30,18 @@ import org.locationtech.jts.shape.random.RandomPointsBuilder;
 import org.locationtech.jts.shape.random.RandomPointsInGridBuilder;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
-import micycle.pts.color.RGB;
-import micycle.pts.utility.RandomPolygon;
+import micycle.pgs.color.RGB;
+import micycle.pgs.utility.RandomPolygon;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * PTS | Processing Topology Suite
+ * PGS | Processing Geometry Suite
  * 
  * @author Michael Carleton
  */
-public class PTS {
+public class PGS {
 
 	// TODO check for getCoordinates() in loops (and replace) (if lots of child
 	// geometries)
@@ -68,7 +68,7 @@ public class PTS {
 	public static GeometryFactory GEOM_FACTORY = new GeometryFactory(
 			new PrecisionModel(PrecisionModel.FLOATING_SINGLE));
 
-	private PTS() {
+	private PGS() {
 
 	}
 

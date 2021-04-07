@@ -1,6 +1,6 @@
-package micycle.pts;
+package micycle.pgs;
 
-import static micycle.pts.Conversion.fromPShape;
+import static micycle.pgs.PGS_Conversion.fromPShape;
 import static processing.core.PConstants.TRIANGLES;
 
 import java.util.ArrayList;
@@ -20,8 +20,8 @@ import org.tinfour.standard.IncrementalTin;
 import org.tinfour.utils.TriangleCollector;
 
 import earcut4j.Earcut;
-import micycle.pts.PTS.LinearRingIterator;
-import micycle.pts.utility.PoissonDistribution;
+import micycle.pgs.PGS.LinearRingIterator;
+import micycle.pgs.utility.PoissonDistribution;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -31,7 +31,7 @@ import processing.core.PVector;
  * @author Michael Carleton
  *
  */
-public class PTSTriangulation {
+public class PGS_Triangulation {
 
 	/**
 	 * Constrained + refined Delaunay Triangulation of a shape.
@@ -163,7 +163,7 @@ public class PTSTriangulation {
 				e.getMinY() + e.getHeight(), spacing, 10);
 //		final IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(g);
 //		List<PVector> pp = poissonPoints.parallelStream()
-//				.filter(p -> pointLocator.locate(PTS.coordFromPVector(p)) != Location.EXTERIOR)
+//				.filter(p -> pointLocator.locate(PGS.coordFromPVector(p)) != Location.EXTERIOR)
 //				.collect(Collectors.toList());
 
 		IncrementalTin tin = delaunayTriangulationTin(shape, poissonPoints, true, 0, true);
@@ -195,7 +195,7 @@ public class PTSTriangulation {
 		triangulation.setStrokeWeight(2);
 		triangulation.setStroke(-123222);
 		triangulation.setFill(true);
-		triangulation.setFill(micycle.pts.color.RGB.composeColor(255, 255, 255, 255));
+		triangulation.setFill(micycle.pgs.color.RGB.composeColor(255, 255, 255, 255));
 		triangulation.beginShape(TRIANGLES);
 		for (int i = 0; i < triangles.size(); i += 3) {
 			final int v1 = 2 * triangles.get(i);

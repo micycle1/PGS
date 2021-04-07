@@ -1,12 +1,10 @@
-package micycle.pts;
+package micycle.pgs;
 
-import static micycle.pts.Conversion.fromPShape;
-import static micycle.pts.Conversion.toPShape;
-import static micycle.pts.color.RGB.composeColor;
-import static micycle.pts.PTS.GEOM_FACTORY;
-import static micycle.pts.PTS.prepareLinesPShape;
-import static processing.core.PConstants.LINES;
-import static processing.core.PConstants.ROUND;
+import static micycle.pgs.PGS.GEOM_FACTORY;
+import static micycle.pgs.PGS.prepareLinesPShape;
+import static micycle.pgs.PGS_Conversion.fromPShape;
+import static micycle.pgs.PGS_Conversion.toPShape;
+import static micycle.pgs.color.RGB.composeColor;
 
 import java.util.ArrayList;
 
@@ -25,12 +23,12 @@ import processing.core.PVector;
 
 /**
  * 
- * Voronoi Diagrams
+ * Voronoi Diagrams of shapes and point sets.
  * 
  * @author Michael Carleton
  *
  */
-public class PTSVoronoi {
+public class PGS_Voronoi {
 
 	// Rename to Mesh?
 

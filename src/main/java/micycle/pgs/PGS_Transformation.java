@@ -1,7 +1,7 @@
-package micycle.pts;
+package micycle.pgs;
 
-import static micycle.pts.Conversion.fromPShape;
-import static micycle.pts.Conversion.toPShape;
+import static micycle.pgs.PGS_Conversion.fromPShape;
+import static micycle.pgs.PGS_Conversion.toPShape;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
@@ -20,7 +20,7 @@ import processing.core.PVector;
  * @author Michael Carleton
  *
  */
-public class PTSTransform {
+public class PGS_Transformation {
 
 	/**
 	 * Scales the shape relative to its center point.
@@ -68,7 +68,7 @@ public class PTSTransform {
 		// NOTE uses DistanceOp.nearestPoints() which is n^2
 		while (dist > tolerance && iter < maxIter) {
 			Coordinate[] coords = DistanceOp.nearestPoints(scaleShape, fromPShape(other));
-			dist = PTS.distance(coords[0], coords[1]);
+			dist = PGS.distance(coords[0], coords[1]);
 
 			/**
 			 * If dist == 0, then shape is either fully contained within the container or
@@ -82,7 +82,7 @@ public class PTSTransform {
 					AffineTransformation t = AffineTransformation.scaleInstance(0.5, 0.5, centroid.x, centroid.y);
 					scaleShape = t.transform(scaleShape);
 					coords = DistanceOp.nearestPoints(scaleShape, fromPShape(other));
-					dist = PTS.distance(coords[0], coords[1]);
+					dist = PGS.distance(coords[0], coords[1]);
 					if (dist > 0) {
 						break;
 					}
@@ -92,8 +92,8 @@ public class PTSTransform {
 					return shape;
 				}
 			}
-			double d1 = PTS.distance(centroid, coords[0]);
-			double d2 = PTS.distance(centroid, coords[1]);
+			double d1 = PGS.distance(centroid, coords[0]);
+			double d2 = PGS.distance(centroid, coords[1]);
 			AffineTransformation t = AffineTransformation.scaleInstance(d2 / d1, d2 / d1, centroid.x, centroid.y);
 			scaleShape = t.transform(scaleShape);
 			iter++;
@@ -155,7 +155,7 @@ public class PTSTransform {
 						center.y + scaleY * (hole_coord[i].y - center.y));
 			holes[j] = geom.getFactory().createLinearRing(hole_coord_);
 		}
-		return toPShape(PTS.GEOM_FACTORY.createPolygon(lr, holes));
+		return toPShape(PGS.GEOM_FACTORY.createPolygon(lr, holes));
 	}
 
 	/**

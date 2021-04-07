@@ -1,7 +1,7 @@
-package micycle.pts;
+package micycle.pgs;
 
-import static micycle.pts.Conversion.fromPShape;
-import static micycle.pts.Conversion.toPShape;
+import static micycle.pgs.PGS_Conversion.fromPShape;
+import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -27,8 +27,8 @@ import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.simplify.VWSimplifier;
 
-import micycle.pts.utility.PolygonDecomposition;
-import micycle.pts.utility.CornerRounding;
+import micycle.pgs.utility.CornerRounding;
+import micycle.pgs.utility.PolygonDecomposition;
 import processing.core.PShape;
 import processing.core.PVector;
 import uk.osgb.algorithm.concavehull.ConcaveHull;
@@ -41,10 +41,10 @@ import uk.osgb.algorithm.minkowski_sum.Minkowski_Sum;
  * @author Michael Carleton
  *
  */
-public class PTSMorphology {
+public class PGS_Morphology {
 
 	static {
-		Minkowski_Sum.setGeometryFactory(PTS.GEOM_FACTORY);
+		Minkowski_Sum.setGeometryFactory(PGS.GEOM_FACTORY);
 	}
 
 	/**
@@ -144,7 +144,7 @@ public class PTSMorphology {
 			coords[i] = new Coordinate(points.get(i).x, points.get(i).y);
 		}
 
-		Geometry g = PTS.GEOM_FACTORY.createPolygon(coords);
+		Geometry g = PGS.GEOM_FACTORY.createPolygon(coords);
 		ConcaveHull hull = new ConcaveHull(g);
 		return toPShape(hull.getConcaveHullBFS(new TriCheckerChi(threshold), false, false).get(0));
 	}
@@ -193,7 +193,7 @@ public class PTSMorphology {
 			coords[i] = new Coordinate(points.get(i).x, points.get(i).y);
 		}
 
-		Geometry g = PTS.GEOM_FACTORY.createPolygon(coords);
+		Geometry g = PGS.GEOM_FACTORY.createPolygon(coords);
 
 		// TODO test AVG threshold heuristic
 		org.geodelivery.jap.concavehull.ConcaveHull hull = new org.geodelivery.jap.concavehull.ConcaveHull(threshold);
@@ -387,7 +387,7 @@ public class PTSMorphology {
 		final Geometry poly = fromPShape(shape);
 		final PreparedGeometry cache = PreparedGeometryFactory.prepare(poly);
 		final LineSegment ls = new LineSegment(p1.x, p1.y, p2.x, p2.y);
-		final LineString line = ls.toGeometry(PTS.GEOM_FACTORY);
+		final LineString line = ls.toGeometry(PGS.GEOM_FACTORY);
 		final Geometry nodedLinework = poly.getBoundary().union(line);
 		final Geometry polys = polygonize(nodedLinework);
 

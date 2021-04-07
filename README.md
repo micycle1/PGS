@@ -1,4 +1,4 @@
-[![](https://jitpack.io/v/micycle1/PTS.svg)](https://jitpack.io/#micycle1/PTS) [![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=micycle1_PTS&metric=ncloc)](https://sonarcloud.io/dashboard?id=micycle1_PTS)
+[![](https://jitpack.io/v/micycle1/PTS.svg)](https://jitpack.io/#micycle1/PGS) [![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=micycle1_PTS&metric=ncloc)](https://sonarcloud.io/dashboard?id=micycle1_PGS)
 
 # Processing Topology Suite
 
@@ -6,32 +6,32 @@
 
 ---
 
-PTS is a software project that provides easy access to geometric algorithms in the form of a [Processing](https://processing.org/) library.
+*Processing Geometry Suite* is a software project that provides easy access to geometric algorithms in the form of a [Processing](https://processing.org/) library.
 
 Methods in the library are static, and most of them take in and return PShapes.
 
 ## Example
 
 ```
-import micycle.pts.*;
+import micycle.pgs.*;
 import java.util.List;
 
 PShape polygon;
 
 void setup() {
   size(800, 800, FX2D);
-  polygon = PTS.randomPolygon(6, width, height);
+  polygon = PGS.randomPolygon(6, width, height);
 }
 
 void draw() {
   background(0, 0, 40);
 
-  PShape inverse =  PTSShapeBoolean.complement(polygon, width, height);
+  PShape inverse =  PGSShapeBoolean.complement(polygon, width, height);
   inverse.setFill(color(0, 90, 200));
   shape(inverse);
   
-  PShape smaller = PTSMorphology.buffer(polygon, -30);
-  List<PVector> trianglePoints = PTSTriangulation.delaunayTriangulation(smaller, null, true, 4, true);
+  PShape smaller = PGSMorphology.buffer(polygon, -30);
+  List<PVector> trianglePoints = PGSTriangulation.delaunayTriangulation(smaller, null, true, 4, true);
   beginShape(TRIANGLES);
   strokeWeight(1);
   stroke(0);
@@ -43,7 +43,7 @@ void draw() {
   }
   endShape();
   
-  PVector closest = PTSGeometricOptimisation.closestPoint(inverse, new PVector(mouseX, mouseY));
+  PVector closest = PGSGeometricOptimisation.closestPoint(inverse, new PVector(mouseX, mouseY));
   strokeWeight(10);
   stroke(255);
   point(closest.x, closest.y);
@@ -190,12 +190,12 @@ Constrained & refined *Delaunay triangulation* of shapes and point sets.
 ## *Morphology*
 *Methods to morph shapes (topology)*
 ### Buffer
-<img src="resources/pts/buffer.gif" alt="" width="50%"/>
+<img src="resources/pgs/buffer.gif" alt="" width="50%"/>
 
 ### Erosion-Dilation
 A negative followed by a positive buffer (in one operation).
 
-<img src="resources/pts/erosionDilation.gif" alt="" width="50%"/>
+<img src="resources/pgs/erosionDilation.gif" alt="" width="50%"/>
 
 ### Minkowski Addition
 Minkowski sum and difference (a.k.a buffer one shape using another shape; pictured: buffering using a rotating & growing triangle).
@@ -205,7 +205,7 @@ Minkowski sum and difference (a.k.a buffer one shape using another shape; pictur
 </p>
 
 ### Simplification
-<img src="resources/pts/simplifyVW.gif" alt="" width="50%"/>
+<img src="resources/pgs/simplifyVW.gif" alt="" width="50%"/>
 
 ### Smoothing
 <img src="resources/morphology/smooth.gif" alt="" width="50%"/>
@@ -221,37 +221,37 @@ Minkowski sum and difference (a.k.a buffer one shape using another shape; pictur
 ### Concave Hull
 Concave hull of point sets.
 <p float="middle">
-  <img src="resources/pts/concaveHull.gif" alt="" width="49%"/>
-  <img src="resources/pts/concaveHull2.gif" alt="" width="49%"/>
+  <img src="resources/pgs/concaveHull.gif" alt="" width="49%"/>
+  <img src="resources/pgs/concaveHull2.gif" alt="" width="49%"/>
 </p>
 
 ### Convex Hull
-<img src="resources/pts/convexHull.png" alt="" width="50%"/>
+<img src="resources/pgs/convexHull.png" alt="" width="50%"/>
 
 ### Snap Hull
-<img src="resources/pts/snapHull.gif" alt="" width="50%"/>
+<img src="resources/pgs/snapHull.gif" alt="" width="50%"/>
 
 ## *Geometry Processing*
 
 ### Point on Perimeter
 Find a point some fraction along the perimeter of a shape (with perpendicular offset).
 
-<img src="resources/pts/pointOnPerimeter.gif" alt="" width="50%"/>
+<img src="resources/pgs/pointOnPerimeter.gif" alt="" width="50%"/>
 
 ### Points on Perimeter
 Find *N* points (evenly distributed) along the perimeter of a shape, or points every *D* distance (with optional perpendicular offset).
 
 <p float="middle">
-  <img src="resources/pts/pointsOnPerimeter.gif" alt="" width="49%"/>
-  <img src="resources/pts/pointsOnPerimeter2.gif" alt="" width="49%"/>
+  <img src="resources/pgs/pointsOnPerimeter.gif" alt="" width="49%"/>
+  <img src="resources/pgs/pointsOnPerimeter2.gif" alt="" width="49%"/>
 </p>
 
 ### Partitioning
 Partition a shape into simple (convex) polygons.
 
 <p float="middle">
-  <img src="resources/pts/decompose1.png" alt="" width="49%"/>
-  <img src="resources/pts/decompose2.png" alt="" width="49%"/>
+  <img src="resources/pgs/decompose1.png" alt="" width="49%"/>
+  <img src="resources/pgs/decompose2.png" alt="" width="49%"/>
 </p>
 
 ### Splitting
@@ -265,28 +265,28 @@ Slice a shape in two along a given line
 <img src="resources/morphology/slice.gif" alt="" width="50%"/>
 
 ### Densification
-<img src="resources/pts/densify.gif" alt="" width="50%"/>
+<img src="resources/pgs/densify.gif" alt="" width="50%"/>
 
 ## *Geometric Optimization*
 
 ### Closest Point
-<img src="resources/pts/closestVertex.gif" alt="" width="50%"/>
+<img src="resources/pgs/closestVertex.gif" alt="" width="50%"/>
 
 ### Maximum Inscribed Circle
-<img src="resources/pts/inscribedCircle.gif" alt="" width="50%"/>
+<img src="resources/pgs/inscribedCircle.gif" alt="" width="50%"/>
 
 ### Minimum Bounding Circle
-<img src="resources/pts/minimumBoundingCircle.png" alt="" width="50%"/>
+<img src="resources/pgs/minimumBoundingCircle.png" alt="" width="50%"/>
 
 ### Minimum Bounding Rectangle
-<img src="resources/pts/minimumBoundingRectangle.png" alt="" width="50%"/>
+<img src="resources/pgs/minimumBoundingRectangle.png" alt="" width="50%"/>
 
 ## *Assorted*
 
 ### Supercircle
-<img src="resources/pts/superCircle.gif" alt="" width="50%"/>
+<img src="resources/pgs/superCircle.gif" alt="" width="50%"/>
 
 ### Random Polygon
 Generate a random convex n-gon
 
-<img src="resources/pts/randomPolygon.gif" alt="" width="50%"/>
+<img src="resources/pgs/randomPolygon.gif" alt="" width="50%"/>

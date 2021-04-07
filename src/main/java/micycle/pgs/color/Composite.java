@@ -1,4 +1,4 @@
-package micycle.pts.color;
+package micycle.pgs.color;
 
 /**
  * Various methods to composite two RGB colors.

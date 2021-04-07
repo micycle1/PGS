@@ -3,10 +3,10 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>micycle</groupId>
-	<artifactId>PTS</artifactId>
+	<artifactId>PGS</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>Processing Topology Suite</name>
-	<description>Topology &amp; geometry tools for Processing</description>
+	<name>Processing Geometry Suite</name>
+	<description>Geometric algorithms for Processing</description>
 
 	<properties>
 		<sonar.projectKey>micycle1_PTS</sonar.projectKey>

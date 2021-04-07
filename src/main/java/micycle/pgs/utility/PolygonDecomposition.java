@@ -22,9 +22,9 @@
  * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT 
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package micycle.pts.utility;
+package micycle.pgs.utility;
 
-import static micycle.pts.PTS.GEOM_FACTORY;
+import static micycle.pgs.PGS.GEOM_FACTORY;
 
 import java.util.ArrayList;
 import java.util.Collections;

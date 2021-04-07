@@ -1,9 +1,9 @@
-package micycle.pts;
+package micycle.pgs;
 
-import static micycle.pts.Conversion.fromPShape;
-import static micycle.pts.Conversion.toPShape;
-import static micycle.pts.PTS.prepareLinesPShape;
-import static micycle.pts.PTS.GEOM_FACTORY;
+import static micycle.pgs.PGS.GEOM_FACTORY;
+import static micycle.pgs.PGS.prepareLinesPShape;
+import static micycle.pgs.PGS_Conversion.fromPShape;
+import static micycle.pgs.PGS_Conversion.toPShape;
 import static processing.core.PConstants.LINES;
 import static processing.core.PConstants.ROUND;
 
@@ -44,10 +44,10 @@ import hageldave.jplotter.misc.Contours;
 import hageldave.jplotter.renderables.Lines.SegmentDetails;
 import micycle.medialAxis.MedialAxis;
 import micycle.medialAxis.MedialAxis.Branch;
-import micycle.pts.PTS.LinearRingIterator;
-import micycle.pts.color.RGB;
-import micycle.pts.utility.PoissonDistribution;
-import micycle.pts.utility.SolubSkeleton;
+import micycle.pgs.PGS.LinearRingIterator;
+import micycle.pgs.color.RGB;
+import micycle.pgs.utility.PoissonDistribution;
+import micycle.pgs.utility.SolubSkeleton;
 import processing.core.PApplet;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -65,7 +65,7 @@ import processing.core.PVector;
  * @author Michael Carleton
  *
  */
-public class Contour {
+public class PGS_Contour {
 
 	/**
 	 * TODO implement 'Base Point Split Algorithm for Generating Polygon Skeleton
@@ -692,7 +692,7 @@ public class Contour {
 			 * Major bottleneck is isoline computation so reduce points to only those
 			 * needed.
 			 */
-			if (cache.covers(PTS.pointFromPVector(v))) {
+			if (cache.covers(PGS.pointFromPVector(v))) {
 				double d = highPoint.dist(v);
 				maxDist = Math.max(d, maxDist);
 				tinVertices.add(new Vertex(v.x, v.y, d, 0));

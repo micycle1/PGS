@@ -1,9 +1,9 @@
-package micycle.pts;
+package micycle.pgs;
 
-import static micycle.pts.Conversion.fromPShape;
-import static micycle.pts.Conversion.toPShape;
-import static micycle.pts.PTS.CURVE_SAMPLES;
-import static micycle.pts.PTS.GEOM_FACTORY;
+import static micycle.pgs.PGS.CURVE_SAMPLES;
+import static micycle.pgs.PGS.GEOM_FACTORY;
+import static micycle.pgs.PGS_Conversion.fromPShape;
+import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +28,7 @@ import processing.core.PVector;
  * @author Michael Carleton
  *
  */
-public class PTSGeometricOptimisation {
+public class PGS_GeometricOptimisation {
 
 	/**
 	 * The Maximum Inscribed Circle is determined by a point in the interior of the
@@ -60,10 +60,10 @@ public class PTSGeometricOptimisation {
 	 */
 	public static PShape maximumInscribedCircle(PShape shape, PVector centerPoint) {
 		Geometry g = fromPShape(shape);
-		Point p = PTS.pointFromPVector(centerPoint);
+		Point p = PGS.pointFromPVector(centerPoint);
 		Coordinate closestEdgePoint = DistanceOp.nearestPoints(g.getBoundary(), p)[0];
 
-		double radius = PTS.distance(GEOM_FACTORY.createPoint(closestEdgePoint), p);
+		double radius = PGS.distance(GEOM_FACTORY.createPoint(closestEdgePoint), p);
 		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
 		shapeFactory.setNumPoints(CURVE_SAMPLES * 4); // TODO magic constant
 		shapeFactory.setCentre(p.getCoordinate());
@@ -127,7 +127,7 @@ public class PTSGeometricOptimisation {
 	 */
 	public static PVector closestPoint(PShape shape, PVector point) {
 		Geometry g = fromPShape(shape);
-		Coordinate coord = DistanceOp.nearestPoints(g, PTS.pointFromPVector(point))[0];
+		Coordinate coord = DistanceOp.nearestPoints(g, PGS.pointFromPVector(point))[0];
 		return new PVector((float) coord.x, (float) coord.y);
 	}
 
@@ -144,7 +144,7 @@ public class PTSGeometricOptimisation {
 		Geometry g = fromPShape(shape);
 		ArrayList<PVector> points = new ArrayList<>();
 		for (int i = 0; i < g.getNumGeometries(); i++) {
-			Coordinate coord = DistanceOp.nearestPoints(g.getGeometryN(i), PTS.pointFromPVector(point))[0];
+			Coordinate coord = DistanceOp.nearestPoints(g.getGeometryN(i), PGS.pointFromPVector(point))[0];
 			points.add(new PVector((float) coord.x, (float) coord.y));
 		}
 		return points;

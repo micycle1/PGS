@@ -1,7 +1,7 @@
-package micycle.pts.utility;
+package micycle.pgs.utility;
 
-import static micycle.pts.Conversion.fromPShape;
-import static micycle.pts.Conversion.toPShape;
+import static micycle.pgs.PGS_Conversion.fromPShape;
+import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.ArrayList;
 import java.util.concurrent.ThreadLocalRandom;
@@ -14,7 +14,7 @@ import org.locationtech.jts.triangulate.quadedge.QuadEdge;
 import org.locationtech.jts.triangulate.quadedge.QuadEdgeSubdivision;
 import org.locationtech.jts.triangulate.quadedge.Vertex;
 
-import micycle.pts.PTS;
+import micycle.pgs.PGS;
 import processing.core.PShape;
 
 /**
@@ -41,11 +41,23 @@ public class RuppertTriangulation {
 	// also see https://people.eecs.berkeley.edu/~jrs/meshpapers/delnotes.pdf
 	// https://people.eecs.berkeley.edu/~jrs/papers/2dj.pdf
 
+	// impl here?
+	// https://github.com/crowdmodeling20ss/vadere/blob/development/VadereMeshing/src/org/vadere/meshing/mesh/triangulation/triangulator/gen/GenRuppertsTriangulator.java
+
+//	Shortcomings with JTS native triangulation (`DelaunayTriangulationBuilder`):
+//
+//		- Doesn't respect concave shapes/holes (which arises from computing triangulation of the vertices only, not edges) (effectively triangulates the convex hull)
+//		- No refinement: comparison [here](http://www.cs.cmu.edu/~quake/triangle.quality.html)
+//		  - Long, thin triangles (bad angles)
+//		  - Large difference (non-uniform) in triangle areas
+//		  - No way to sub-divide without 
+//		  - Many triangles may share one boundary vertex
+
 	public static PShape delaunayTriangulation(PShape shape) {
 		Geometry g = fromPShape(shape);
 		DelaunayTriangulationBuilder d = new DelaunayTriangulationBuilder();
 		d.setSites(g);
-		Geometry out = d.getTriangles(PTS.GEOM_FACTORY); // triangulates convex hull of points
+		Geometry out = d.getTriangles(PGS.GEOM_FACTORY); // triangulates convex hull of points
 //		d.getSubdivision().fr
 //		var z = ((Polygon) g).getExteriorRing(); // segments
 		out = out.intersection(g); // get concave hull
@@ -72,7 +84,7 @@ public class RuppertTriangulation {
 			coords.add(g.getCoordinates()[i]);
 		}
 
-		Geometry out = d.getTriangles(PTS.GEOM_FACTORY);
+		Geometry out = d.getTriangles(PGS.GEOM_FACTORY);
 
 		int r = 0;
 
@@ -88,7 +100,7 @@ public class RuppertTriangulation {
 				coords.add(new Coordinate(circumcircle[0], circumcircle[1]));
 				d = new DelaunayTriangulationBuilder();
 				d.setSites(coords);
-				out = d.getTriangles(PTS.GEOM_FACTORY); // retriangulates concave hull of points (After one change)
+				out = d.getTriangles(PGS.GEOM_FACTORY); // retriangulates concave hull of points (After one change)
 //						coords.clear();
 //						for (int j = 0; j < out.getCoordinates().length; j++) {
 //							coords.add(out.getCoordinates()[j]);

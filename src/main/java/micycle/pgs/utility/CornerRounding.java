@@ -1,10 +1,10 @@
-package micycle.pts.utility;
+package micycle.pgs.utility;
 
 import java.util.List;
 
-import micycle.pts.Conversion;
-import micycle.pts.PTS;
-import micycle.pts.color.RGB;
+import micycle.pgs.PGS;
+import micycle.pgs.PGS_Conversion;
+import micycle.pgs.color.RGB;
 import processing.core.PApplet;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -28,10 +28,10 @@ public final class CornerRounding {
 	 */
 	public static PShape round(PShape shape, float extent) {
 		PShape rounded = new PShape(PShape.GEOMETRY);
-		Conversion.setAllFillColor(rounded, RGB.PINK);
+		PGS_Conversion.setAllFillColor(rounded, RGB.PINK);
 		rounded.beginShape();
 
-		final List<PVector> l = PTS.toPVectorList(shape);
+		final List<PVector> l = PGS.toPVectorList(shape);
 		final int size = l.size();
 		for (int i = 0; i < l.size(); i++) {
 			final PVector p1 = l.get(Math.floorMod(i - 1, size));
