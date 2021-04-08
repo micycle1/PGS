@@ -25,6 +25,10 @@ import processing.core.PVector;
  */
 public class PGS_Conversion implements PConstants {
 
+	private PGS_Conversion() {
+
+	}
+
 	/**
 	 * TODO GROUP, PRIMITIVE, PATH, or GEOMETRY TODO CACHE recent 5 calls? TODO
 	 * split into voronoi, delaunay, bool algebra classes Morph class: smooth
@@ -457,6 +461,14 @@ public class PGS_Conversion implements PConstants {
 			child.setStroke(true);
 			child.setStroke(color);
 			child.setStrokeWeight(strokeWeight);
+		});
+	}
+
+	public static void disableAllFill(PShape shape) {
+		ArrayList<PShape> all = new ArrayList<PShape>();
+		getChildren(shape, all);
+		all.forEach(child -> {
+			child.setFill(false);
 		});
 	}
 

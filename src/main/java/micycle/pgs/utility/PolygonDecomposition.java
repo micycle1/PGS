@@ -36,7 +36,6 @@ import org.dyn4j.geometry.Segment;
 import org.dyn4j.geometry.Vector2;
 import org.dyn4j.resources.Messages;
 import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Polygon;
 
 /**

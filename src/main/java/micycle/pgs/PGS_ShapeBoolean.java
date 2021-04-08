@@ -15,7 +15,7 @@ import micycle.pgs.color.Blending;
 import processing.core.PShape;
 
 /**
- * Provides Boolean Set-Operations on shapes.
+ * Boolean set-operations for 2D shapes.
  * 
  * @author Michael Carleton
  *
@@ -23,7 +23,6 @@ import processing.core.PShape;
 public class PGS_ShapeBoolean {
 
 	private PGS_ShapeBoolean() {
-
 	}
 
 	/**
@@ -49,6 +48,13 @@ public class PGS_ShapeBoolean {
 		return toPShape(OverlayNG.overlay(fromPShape(a), fromPShape(b), OverlayNG.UNION));
 	}
 
+	/**
+	 * Unions any variable number of shapes.
+	 * 
+	 * @param shapes
+	 * @return
+	 * @see #union(PShape, PShape)
+	 */
 	public static PShape union(PShape... shapes) {
 		// same as flatten?
 		ArrayList<Geometry> geoms = new ArrayList<>();
@@ -60,7 +66,7 @@ public class PGS_ShapeBoolean {
 
 	/**
 	 * Subtract is the opposite of Union. Subtract removes the area of a shape b
-	 * from the base shape. A.k.a difference.
+	 * from the base shape a. A.k.a "difference".
 	 * 
 	 * @return shape A - shape B
 	 */
@@ -69,8 +75,7 @@ public class PGS_ShapeBoolean {
 	}
 
 	/**
-	 * Symmetric difference: Compute the parts that the shapes do not have in
-	 * common.
+	 * Computes the parts that the shapes do not have in common.
 	 * 
 	 * @return A∪B - A∩B
 	 */

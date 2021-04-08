@@ -25,10 +25,11 @@ import processing.core.PVector;
  */
 public class PGS_ShapePredicates {
 
-	// https://doc.cgal.org/latest/Polygon/index.html#Chapter_2D_Polygons
+	private PGS_ShapePredicates() {
+	}
 
 	/**
-	 * Does the outer shape contain the inner shape? A shape contains itself.
+	 * Does the outer shape contain the inner shape? Note: a shape contains itself.
 	 * 
 	 * @param outer
 	 * @param inner
@@ -94,7 +95,8 @@ public class PGS_ShapePredicates {
 	}
 
 	/**
-	 * intersect/overlap: at least one point in common
+	 * Determines whether the shapes intersect/overlap (meaning that have at least
+	 * one point in common).
 	 * 
 	 * @param a
 	 * @param b
@@ -105,8 +107,8 @@ public class PGS_ShapePredicates {
 	}
 
 	/**
-	 * Checks whether the have at least one point in common, but their interiors do
-	 * not intersect.
+	 * Determines whether the have at least one point in common, but where their
+	 * interiors do not intersect.
 	 * 
 	 * @param a
 	 * @param b
@@ -132,7 +134,8 @@ public class PGS_ShapePredicates {
 	}
 
 	/**
-	 * Computes the centroid of a shape.
+	 * Computes the centroid of a shape. A centoid is the center of mass of the
+	 * shape.
 	 * 
 	 * @param shape
 	 * @return null if point is empty (geometry empty)
@@ -200,7 +203,7 @@ public class PGS_ShapePredicates {
 
 	/**
 	 * Determines whether a shape is convex. A shape is convex if its interior
-	 * angles less than or equal to 180°.
+	 * angles are less than or equal to 180°.
 	 */
 	public static boolean isConvex(PShape shape) {
 		final Geometry g = fromPShape(shape);

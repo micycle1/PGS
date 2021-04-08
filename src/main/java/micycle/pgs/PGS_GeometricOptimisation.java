@@ -30,6 +30,10 @@ import processing.core.PVector;
  */
 public class PGS_GeometricOptimisation {
 
+	private PGS_GeometricOptimisation() {
+
+	}
+
 	/**
 	 * The Maximum Inscribed Circle is determined by a point in the interior of the
 	 * area which has the farthest distance from the area boundary, along with a

@@ -96,19 +96,19 @@ public class PGS {
 	}
 
 	/**
-	 * Extracts a point from the perimeter of the given shape.
+	 * Extracts a point from the perimeter (exterior) of the given shape.
 	 * 
 	 * @param shape
 	 * @param distance       0...1 around shape perimeter; or -1...0 (other
 	 *                       direction)
 	 * @param offsetDistance perpendicular offset distance, where 0 is exactly on
-	 *                       the shape perimeter. The computed point is offset to
-	 *                       the left of the line if the offset distance is
-	 *                       positive, and to the right if negative
+	 *                       the shape exteriod. Positive values offset the point
+	 *                       away from the shape (outwards); negative values offset
+	 *                       the point inwards.
 	 * @return
-	 * @see #pointsOnPerimeter(PShape, int, float)
+	 * @see #pointsOnExterior(PShape, int, float)
 	 */
-	public static PVector pointOnPerimeter(PShape shape, float distance, float offsetDistance) {
+	public static PVector pointOnExterior(PShape shape, float distance, float offsetDistance) {
 		distance %= 1;
 		// TODO CHECK CAST (ITERATE OVER GROUP); apply to interior rings too?
 		LengthIndexedLine l = new LengthIndexedLine(((Polygon) fromPShape(shape)).getExteriorRing());
@@ -126,10 +126,10 @@ public class PGS {
 	 * @param offsetDistance offset distance along a line perpendicular to the
 	 *                       perimeter
 	 * @return
-	 * @see #pointOnPerimeter(PShape, float, float)
-	 * @see #pointsOnPerimeter(PShape, float, float)
+	 * @see #pointOnExterior(PShape, float, float)
+	 * @see #pointsOnExterior(PShape, float, float)
 	 */
-	public static List<PVector> pointsOnPerimeter(PShape shape, int points, float offsetDistance) {
+	public static List<PVector> pointsOnExterior(PShape shape, int points, float offsetDistance) {
 		// TODO another method that returns concave hull of returned points (when
 		// offset)
 		ArrayList<PVector> coords = new ArrayList<>(points);
@@ -143,13 +143,15 @@ public class PGS {
 	}
 
 	/**
+	 * Generates a list of points that lie on the exterior/perimeter of the given
+	 * shape.
 	 * 
 	 * @param shape
-	 * @param interPointDistance distance between each point on outline
+	 * @param interPointDistance distance between each exterior point
 	 * @param offsetDistance
 	 * @return
 	 */
-	public static List<PVector> pointsOnPerimeter(PShape shape, float interPointDistance, float offsetDistance) {
+	public static List<PVector> pointsOnExterior(PShape shape, float interPointDistance, float offsetDistance) {
 		// TODO points on hole
 		LengthIndexedLine l = new LengthIndexedLine(((Polygon) fromPShape(shape)).getExteriorRing());
 		if (interPointDistance > l.getEndIndex()) {

@@ -1,14 +1,36 @@
-[![](https://jitpack.io/v/micycle1/PTS.svg)](https://jitpack.io/#micycle1/PGS) [![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=micycle1_PTS&metric=ncloc)](https://sonarcloud.io/dashboard?id=micycle1_PGS)
+[![](https://jitpack.io/v/micycle1/PTS.svg)](https://jitpack.io/#micycle1/PGS) [![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=micycle1_PTS&metric=ncloc)](https://sonarcloud.io/dashboard?id=micycle1_PTS)
 
-# Processing Topology Suite
-
-<h3 align="center"> 🚧 Under Construction 🚧 </h3>
-
----
+# Processing Geometry Suite
 
 *Processing Geometry Suite* is a software project that provides easy access to geometric algorithms in the form of a [Processing](https://processing.org/) library.
 
-Methods in the library are static, and most of them take in and return PShapes.
+Methods in the library are static, and most of them take in and return [`PShape`](https://processing.org/reference/PShape.html) objects.
+
+Docs are hosted via *GitHub Pages* [here]().
+
+## Installation
+
+<details><summary>Processing — Quick</summary>
+<p>
+
+Download the latest *PGS.jar* from [releases](https://github.com/micycle1/PGS/releases) and drag-and-drop it onto the Processing IDE.
+</p>
+</details>
+
+<details><summary>Processing — Permanent</summary>
+<p>
+
+Download .zip and extract it to `Documents\Processing\libraries`.
+</p>
+</details>
+
+<details><summary>Maven/Gradle</summary>
+<p>
+
+You can use the library in a Maven or Gradle project via [Jitpack](https://jitpack.io/#micycle1/PGS). Hosted as a artifact via Jitpack. With this you can use PGS in a Maven or Gradle Java project outside the Processing IDE.
+</p>
+</details>
+
 
 ## Example
 
@@ -101,7 +123,7 @@ Projection-transform a shape with respect to a fixed point.
 
 <img src="resources/transform/homothetic.gif" alt="" width="50%"/>
 
-## *Geometric Predicates*
+## *Geometric Predicates & Metrics*
 
 ### Intersects
 Do shapes intersect with each other?
@@ -132,7 +154,7 @@ For individual points and point sets.
 * Centroid
 
 ## *Contour*
-*Methods to produce a variety of geometric contour lines within shapes.*
+*Methods to produce a variety of geometric contours within shapes.*
 ### Medial Axis
 <img src="resources/contour/medialAxis.png" alt="" width="50%"/>
 
@@ -188,7 +210,7 @@ Constrained & refined *Delaunay triangulation* of shapes and point sets.
 </p>
 
 ## *Morphology*
-*Methods to morph shapes (topology)*
+*Methods to morph shapes in different ways and create shapes from other shapes or point sets.*
 ### Buffer
 <img src="resources/pgs/buffer.gif" alt="" width="50%"/>
 

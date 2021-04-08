@@ -21,6 +21,7 @@ import org.tinfour.utils.TriangleCollector;
 
 import earcut4j.Earcut;
 import micycle.pgs.PGS.LinearRingIterator;
+import micycle.pgs.color.RGB;
 import micycle.pgs.utility.PoissonDistribution;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -33,6 +34,10 @@ import processing.core.PVector;
  */
 public class PGS_Triangulation {
 
+	private PGS_Triangulation() {
+
+	}
+
 	/**
 	 * Constrained + refined Delaunay Triangulation of a shape.
 	 * 
@@ -42,19 +47,72 @@ public class PGS_Triangulation {
 	 * @param constrain     Constrain the triangulation output using the shape
 	 *                      boundary (from point set). With shapes, you'll probably
 	 *                      want to this to be true.
-	 * @param refinements   number of triangulation refinements to perform. 0 or
-	 *                      greater. Refinements insert triangle centroids into the
-	 *                      triangulation.
-	 * @param pretty        false = enforce Delaunay nature during constraining and
-	 *                      don't check circumcircle during refinement. when true
-	 *                      output triangles may be slightly more regular in
-	 *                      shape/size. small performance overhead -- becomes more
-	 *                      considerable at higher refinement levels
-	 * @return array of coordinates, each triplet of coordinates are the vertices of
-	 *         one triangle
+	 * @param refinements   The number of triangulation refinement passes to
+	 *                      perform. Each pass inserts the centroids of every
+	 *                      existing triangle into the triangulation. Should be 0 or
+	 *                      greater (probably no more than 5).
+	 * @param pretty        Whether to both maintain the Delaunay nature when
+	 *                      constraining and check circumcircle location during
+	 *                      refinement. When true, triangles in the triangulation
+	 *                      may be slightly more regular in shape/size. There is a
+	 *                      small performance overhead which becomes more
+	 *                      considerable at higher refinement levels.
+	 * @return
+	 * @see #delaunayTriangulationPoints(PShape, List, boolean, int, boolean)
+	 * @see #delaunayTriangulationTin(PShape, List, boolean, int, boolean)
 	 */
-	public static List<PVector> delaunayTriangulation(PShape shape, List<PVector> steinerPoints, boolean constrain,
+	public static PShape delaunayTriangulation(PShape shape, List<PVector> steinerPoints, boolean constrain,
 			int refinements, boolean pretty) {
+		IncrementalTin tin = delaunayTriangulationTin(shape, steinerPoints, constrain, refinements, pretty);
+
+		PShape triangulation = new PShape(PShape.GEOMETRY);
+
+		PGS_Conversion.setAllFillColor(triangulation, RGB.composeColor(50, 50, 50));
+		PGS_Conversion.setAllStrokeColor(triangulation, RGB.PINK, 2);
+		triangulation.beginShape(TRIANGLES);
+
+		Consumer<Vertex[]> triangleVertexConsumer = t -> {
+			triangulation.vertex((float) t[0].x, (float) t[0].y);
+			triangulation.vertex((float) t[1].x, (float) t[1].y);
+			triangulation.vertex((float) t[2].x, (float) t[2].y);
+		};
+		if (constrain) {
+			TriangleCollector.visitTrianglesConstrained(tin, triangleVertexConsumer);
+		} else {
+			TriangleCollector.visitTriangles(tin, triangleVertexConsumer);
+		}
+
+		triangulation.endShape();
+		return triangulation;
+	}
+
+	/**
+	 * Constrained + refined Delaunay Triangulation of a shape. This method returns
+	 * the triangulation as a list of points.
+	 * 
+	 * @param shape
+	 * @param steinerPoints A list of additional points to triangulate in addition
+	 *                      to the input shape. Can be null.
+	 * @param constrain     Constrain the triangulation output using the shape
+	 *                      boundary (from point set). With shapes, you'll probably
+	 *                      want to this to be true.
+	 * @param refinements   The number of triangulation refinement passes to
+	 *                      perform. Each pass inserts the centroids of every
+	 *                      existing triangle into the triangulation. Should be 0 or
+	 *                      greater (probably no more than 5).
+	 * @param pretty        Whether to both maintain the Delaunay nature when
+	 *                      constraining and check circumcircle location during
+	 *                      refinement. When true, triangles in the triangulation
+	 *                      may be slightly more regular in shape/size. There is a
+	 *                      small performance overhead which becomes more
+	 *                      considerable at higher refinement levels.
+	 * @return List of coordinates, where each consecutive triplet of coordinates
+	 *         are the vertices belonging to one triangle
+	 * @see #delaunayTriangulationPoints(PShape, List, boolean, int, boolean)
+	 * @see #delaunayTriangulationTin(PShape, List, boolean, int, boolean)
+	 */
+	public static List<PVector> delaunayTriangulationPoints(PShape shape, List<PVector> steinerPoints,
+			boolean constrain, int refinements, boolean pretty) {
 		IncrementalTin tin = delaunayTriangulationTin(shape, steinerPoints, constrain, refinements, pretty);
 
 		ArrayList<PVector> triangles = new ArrayList<>();
@@ -72,15 +130,28 @@ public class PGS_Triangulation {
 	}
 
 	/**
-	 * Outputs the raw Tinfour triangulated network object
+	 * Delaunay Triangulation of a shape. This method returns the raw Tinfour
+	 * triangulated network object.
 	 * 
 	 * @param shape
-	 * @param steinerPoints
-	 * @param constrain
-	 * @param refinements
-	 * @param pretty
-	 * @return
+	 * @param steinerPoints A list of additional points to triangulate in addition
+	 *                      to the input shape. Can be null.
+	 * @param constrain     Constrain the triangulation output using the shape
+	 *                      boundary (from point set). With shapes, you'll probably
+	 *                      want to this to be true.
+	 * @param refinements   The number of triangulation refinement passes to
+	 *                      perform. Each pass inserts the centroids of every
+	 *                      existing triangle into the triangulation. Should be 0 or
+	 *                      greater (probably no more than 5).
+	 * @param pretty        Whether to both maintain the Delaunay nature when
+	 *                      constraining and check circumcircle location during
+	 *                      refinement. When true, triangles in the triangulation
+	 *                      may be slightly more regular in shape/size. There is a
+	 *                      small performance overhead which becomes more
+	 *                      considerable at higher refinement levels.
+	 * @return Triangulated Irregular Network object
 	 * @see #delaunayTriangulation(PShape, List, boolean, int, boolean)
+	 * @see #delaunayTriangulationPoints(PShape, List, boolean, int, boolean)
 	 */
 	public static IncrementalTin delaunayTriangulationTin(PShape shape, List<PVector> steinerPoints, boolean constrain,
 			int refinements, boolean pretty) {

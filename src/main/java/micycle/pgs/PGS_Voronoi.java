@@ -30,6 +30,10 @@ import processing.core.PVector;
  */
 public class PGS_Voronoi {
 
+	private PGS_Voronoi() {
+
+	}
+
 	// Rename to Mesh?
 
 	/**

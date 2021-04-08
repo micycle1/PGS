@@ -47,6 +47,10 @@ public class PGS_Morphology {
 		Minkowski_Sum.setGeometryFactory(PGS.GEOM_FACTORY);
 	}
 
+	private PGS_Morphology() {
+
+	}
+
 	/**
 	 * 
 	 * @param shape

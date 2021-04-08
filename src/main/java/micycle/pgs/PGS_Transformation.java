@@ -22,6 +22,10 @@ import processing.core.PVector;
  */
 public class PGS_Transformation {
 
+	private PGS_Transformation() {
+
+	}
+
 	/**
 	 * Scales the shape relative to its center point.
 	 * 

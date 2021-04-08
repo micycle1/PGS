@@ -72,6 +72,10 @@ public class PGS_Contour {
 	 * Lines'
 	 */
 
+	private PGS_Contour() {
+
+	}
+
 	/**
 	 * Set of points in space equidistant to 2 or more points on the surface. As
 	 * density of boundary points goes to infinity, a voronoi diagram converges to a
