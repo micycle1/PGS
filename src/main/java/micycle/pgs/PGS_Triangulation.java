@@ -4,6 +4,7 @@ import static micycle.pgs.PGS_Conversion.fromPShape;
 import static processing.core.PConstants.TRIANGLES;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.function.Consumer;
 import org.locationtech.jts.algorithm.Orientation;
@@ -159,10 +160,12 @@ public class PGS_Triangulation {
 		final IncrementalTin tin = new IncrementalTin(10);
 
 		final ArrayList<Vertex> vertices = new ArrayList<>();
-		for (int i = 0; i < shape.getVertexCount(); i++) {
-			PVector v = shape.getVertex(i);
-			vertices.add(new Vertex(v.x, v.y, 0));
+		Coordinate[] coords = g.getCoordinates();
+		for (int i = 0; i < coords.length; i++) {
+//			PVector v = shape.getVertex(i);
+			vertices.add(new Vertex(coords[i].x, coords[i].y, 0));
 		}
+
 		tin.add(vertices, null); // initial triangulation
 
 		if (steinerPoints != null) {
@@ -196,23 +199,26 @@ public class PGS_Triangulation {
 
 		if (constrain) {
 			List<IConstraint> constraints = new ArrayList<>();
-			LinearRingIterator lri = new LinearRingIterator(g);
-			lri.forEach(ring -> {
-				ArrayList<Vertex> points = new ArrayList<>();
-				Coordinate[] c = ring.getCoordinates();
-				if (Orientation.isCCW(c)) {
-					for (int i = 0; i < c.length; i++) {
-						points.add(new Vertex(c[i].x, c[i].y, 0));
+			for (int n = 0; n < g.getNumGeometries(); n++) {
+				LinearRingIterator lri = new LinearRingIterator(g.getGeometryN(n));
+				lri.forEach(ring -> {
+					ArrayList<Vertex> points = new ArrayList<>();
+					Coordinate[] c = ring.getCoordinates();
+					if (Orientation.isCCW(c)) {
+						for (int i = 0; i < c.length; i++) {
+							points.add(new Vertex(c[i].x, c[i].y, 0));
+						}
+					} else {
+						for (int i = c.length - 1; i >= 0; i--) { // iterate backwards if CW
+							points.add(new Vertex(c[i].x, c[i].y, 0));
+						}
 					}
-				} else {
-					for (int i = c.length - 1; i >= 0; i--) { // iterate backwards if CW
-						points.add(new Vertex(c[i].x, c[i].y, 0));
-					}
-				}
-				constraints.add(new PolygonConstraint(points));
-			});
+					constraints.add(new PolygonConstraint(points));
+				});
+			}
 			tin.addConstraints(constraints, pretty); // true/false is negligible?
 		}
+
 		return tin;
 	}
 

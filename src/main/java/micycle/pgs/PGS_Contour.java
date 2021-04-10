@@ -153,7 +153,7 @@ public class PGS_Contour {
 			p.stroke((float) l.getStartPoint().getX() % 255, (float) l.getEndPoint().getY() % 255, (z * 5) % 255);
 //			p.line((float) l.getStartPoint().getX(), (float) l.getStartPoint().getY(), (float) l.getEndPoint().getX(),
 //					(float) l.getEndPoint().getY());
-			double o = cantorPairing(l.getStartPoint().getX(), l.getStartPoint().getY());
+			double o = PGS.cantorPairing(l.getStartPoint().getX(), l.getStartPoint().getY());
 			if (!seen.add(o)) {
 				p.strokeWeight(10);
 //				p.point((float) l.getStartPoint().getX(), (float) l.getStartPoint().getY());
@@ -527,10 +527,10 @@ public class PGS_Contour {
 			double a = coords[j].x;
 			double b = coords[j].y;
 			corners.add(new Corner(a, b));
-			edgeCoordsSet.add(cantorPairing(a, b));
+			edgeCoordsSet.add(PGS.cantorPairing(a, b));
 		}
 		corners.add(new Corner(coords[0].x, coords[0].y)); // close loop
-		edgeCoordsSet.add(cantorPairing(coords[0].x, coords[0].y)); // close loop
+		edgeCoordsSet.add(PGS.cantorPairing(coords[0].x, coords[0].y)); // close loop
 
 		for (int j = 0; j < corners.size() - 1; j++) {
 			org.twak.camp.Edge edge = new org.twak.camp.Edge(corners.get(j),
@@ -552,10 +552,10 @@ public class PGS_Contour {
 				double a = coords[j].x;
 				double b = coords[j].y;
 				corners.add(new Corner(a, b));
-				edgeCoordsSet.add(cantorPairing(a, b));
+				edgeCoordsSet.add(PGS.cantorPairing(a, b));
 			}
 			corners.add(new Corner(coords[0].x, coords[0].y)); // close loop
-			edgeCoordsSet.add(cantorPairing(coords[0].x, coords[0].y)); // close loop
+			edgeCoordsSet.add(PGS.cantorPairing(coords[0].x, coords[0].y)); // close loop
 
 			loop = new Loop<>();
 			for (int j = 0; j < corners.size() - 1; j++) {
@@ -576,8 +576,8 @@ public class PGS_Contour {
 			skeleton.skeleton();
 
 			skeleton.output.edges.map.values().forEach(e -> {
-				boolean a = edgeCoordsSet.contains(cantorPairing(e.start.x, e.start.y));
-				boolean b = edgeCoordsSet.contains(cantorPairing(e.end.x, e.end.y));
+				boolean a = edgeCoordsSet.contains(PGS.cantorPairing(e.start.x, e.start.y));
+				boolean b = edgeCoordsSet.contains(PGS.cantorPairing(e.end.x, e.end.y));
 				if (a ^ b) { // branch (xor)
 					branches.vertex((float) e.start.x, (float) e.start.y);
 					branches.vertex((float) e.end.x, (float) e.end.y);
@@ -952,15 +952,6 @@ public class PGS_Contour {
 		}
 
 		return parent;
-	}
-
-	/**
-	 * Uniquely encodes two numbers (order-dependent) into a single natural number.
-	 */
-	private static double cantorPairing(double a, double b) {
-		a = (a >= 0.0 ? 2.0 * a : (-2.0 * a) - 1.0); // enable negative input values
-		b = (b >= 0.0 ? 2.0 * b : (-2.0 * b) - 1.0); // enable negative input values
-		return (a + b) * (a + b + 1) / 2 + a;
 	}
 
 	/**

@@ -417,8 +417,18 @@ public class PGS {
 		return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 	}
 
+	protected static double distance(double x1, double y1, double x2, double y2) {
+		double deltaX = y1 - y2;
+		double deltaY = x1 - y1;
+		return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+	}
+
 	private static void removeCollinearVertices(Geometry g) {
 		JTS.removeCollinearVertices(g);
+	}
+
+	protected static LineString createLineString(PVector a, PVector b) {
+		return GEOM_FACTORY.createLineString(new Coordinate[] { coordFromPVector(a), coordFromPVector(b) });
 	}
 
 	static Point createPoint(float x, float y) {
@@ -585,6 +595,19 @@ public class PGS {
 			};
 			return it;
 		}
+	}
+
+	/**
+	 * Uniquely encodes two numbers (order-dependent) into a single natural number.
+	 */
+	static double cantorPairing(double a, double b) {
+		a = (a >= 0.0 ? 2.0 * a : (-2.0 * a) - 1.0); // enable negative input values
+		b = (b >= 0.0 ? 2.0 * b : (-2.0 * b) - 1.0); // enable negative input values
+		return (a + b) * (a + b + 1) / 2 + a;
+	}
+
+	static double cantorPairing(int a, int b) {
+		return (a + b) * (a + b + 1) / 2 + a;
 	}
 
 }
