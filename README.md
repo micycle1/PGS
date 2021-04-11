@@ -27,7 +27,7 @@ Download .zip and extract it to `Documents\Processing\libraries`.
 <details><summary>Maven/Gradle</summary>
 <p>
 
-You can use the library in a Maven or Gradle project via [Jitpack](https://jitpack.io/#micycle1/PGS). Hosted as a artifact via Jitpack. With this you can use PGS in a Maven or Gradle Java project outside the Processing IDE.
+PGS is hosted as a Maven or Gradle artifact via [Jitpack](https://jitpack.io/#micycle1/PGS). With this you can easily use PGS in a Maven or Gradle Java project outside the Processing IDE.
 </p>
 </details>
 
@@ -185,15 +185,19 @@ Inner and exterior offset curves; based on *miter*, *bevel* or *round* offset st
 </p>
 
 ### Voronoi Diagram
+Point site voronoi diagram from shape vertices.
+
 <p float="middle">
   <img src="resources/contour/voronoi.gif" alt="" width="49%"/>
   <img src="resources/contour/voronoi1.png" alt="" width="49%"/>
 </p>
 
-### Circle Site Voronoi
-Circle-site Voronoi via point-site approximation. Use additional optimisation beyond the general diagram. 
-
-...
+### Circle Site Voronoi Diagram
+Circle-site voronoi diagram via point-site approximation.
+<p float="middle">
+  <img src="resources/contour/voronoiCircles.gif" alt="" width="49%"/>
+  <img src="resources/contour/voronoiCircles.png" alt="" width="49%"/>
+</p>
 
 ### Delaunay Triangulation
 Constrained & refined *Delaunay triangulation* of shapes and point sets.

@@ -22,6 +22,9 @@ import org.tinfour.standard.IncrementalTin;
 import org.tinfour.voronoi.BoundedVoronoiBuildOptions;
 import org.tinfour.voronoi.BoundedVoronoiDiagram;
 import org.tinfour.voronoi.ThiessenPolygon;
+import org.tinspin.index.PointDistanceFunction;
+import org.tinspin.index.kdtree.KDEntryDist;
+import org.tinspin.index.kdtree.KDTree;
 import org.tinspin.index.rtree.Entry;
 import org.tinspin.index.rtree.RTree;
 import org.tinspin.index.rtree.RTreeIterator;
@@ -44,7 +47,8 @@ public class PGS_Voronoi {
 	}
 
 	/**
-	 * Produces a voronoi diagram from a shape.
+	 * Produces a voronoi diagram from a shape, where shape vertices are voronoi
+	 * point sites.
 	 * 
 	 * @param shape     the shape whose vertices to use as vornoi sites
 	 * @param constrain whether to constrain the diagram lines to the shape. When
@@ -126,6 +130,7 @@ public class PGS_Voronoi {
 			});
 			axis.endShape();
 		} else { // no constrain: display all voronoi polygons/lines
+			final HashSet<Integer> seen = new HashSet<>();
 			v.getPolygons().forEach(poly -> {
 				poly.getEdges().forEach(e -> {
 					final boolean inA = tin
@@ -149,26 +154,38 @@ public class PGS_Voronoi {
 	}
 
 	/**
-	 * Circles are modelled by PVectors, where x, y correspond to the center of the
-	 * circle, and z corresponds to the radius.
+	 * Generates a Voronoi diagram with circle sites.
+	 * <p>
+	 * Circle sites are modelled by PVectors, where x, y correspond to the center of
+	 * the site and z corresponds to the radius of the site.
 	 * 
-	 * @param circles
-	 * @param samples 50 is suitable
-	 * @param p
+	 * @param circles       list of PVectors to use as circle sites
+	 * @param circleSamples defines how many samples from each circle's
+	 *                      circumference should be used to compute the voronoi
+	 *                      diagram. 50 is a suitable value
+	 * @param drawBranches  whether to the draw/output branches from the coming from
+	 *                      the sites
 	 * @return
 	 */
-	public static PShape voronoiCirclesDiagram(Iterable<PVector> circles, int samples, boolean drawFrom) {
+	public static PShape voronoiCirclesDiagram(Iterable<PVector> circles, int circleSamples, boolean drawBranches) {
 		final IncrementalTin tin = new IncrementalTin(5);
 
-		final double angleInc = Math.PI * 2 / samples;
+		final PointDistanceFunction pdf2D = (p1, p2) -> {
+			final double deltaX = p1[0] - p2[0];
+			final double deltaY = p1[1] - p2[1];
+			return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+		};
 
+		final KDTree<PVector> sites = KDTree.create(2, pdf2D);
+		final double angleInc = Math.PI * 2 / circleSamples;
 		circles.forEach(c -> {
-			double angle = 0;
-			while (angle < Math.PI * 2) {
-				if (c.z > 0) {
+			if (c.z > 0) {
+				sites.insert(new double[] { c.x, c.y }, c);
+				double angle = 0;
+				while (angle < Math.PI * 2) {
 					tin.add(new Vertex(c.z * Math.cos(angle) + c.x, c.z * Math.sin(angle) + c.y, 0));
+					angle += angleInc;
 				}
-				angle += angleInc;
 			}
 		});
 
@@ -178,7 +195,7 @@ public class PGS_Voronoi {
 
 		final PShape lines = PGS.prepareLinesPShape(RGB.PINK, PConstants.SQUARE, 3);
 		final HashSet<Integer> seen = new HashSet<>();
-
+		int n = 0;
 		for (ThiessenPolygon poly : v.getPolygons()) {
 			edge: for (IQuadEdge e : poly.getEdges()) {
 				final PVector a = new PVector((float) e.getA().x, (float) e.getA().y);
@@ -188,23 +205,28 @@ public class PGS_Voronoi {
 				if (!seen.add(hash)) { // reduces edges to check by ~2/3rds
 					continue;
 				}
-				for (PVector c : circles) { // check every circle O(n) but exit early
-					if (distWithin(c, a, c.z)) { // A is within circle
-						if (drawFrom && distGreater(a, b, c.z)) { // line a-b extends outside circle
-							PVector intersect = PVector.sub(b, a).normalize().mult(c.z).add(c);
-							lines.vertex(b.x, b.y);
-							lines.vertex(intersect.x, intersect.y);
-						}
-						continue edge;
+
+				KDEntryDist<PVector> nearestSite = sites.nnQuery(new double[] { e.getA().x, e.getA().y });
+
+				if (nearestSite.dist() < nearestSite.value().z) {
+					if (drawBranches && distGreater(a, b, nearestSite.value().z)) {
+						PVector intersect = PVector.sub(b, a).normalize().mult(nearestSite.value().z)
+								.add(nearestSite.value());
+						lines.vertex(b.x, b.y);
+						lines.vertex(intersect.x, intersect.y);
 					}
-					if (distWithin(c, b, c.z)) { // B is within circle
-						if (drawFrom && distGreater(a, b, c.z)) { // line a-b extends outside circle
-							PVector intersect = PVector.sub(a, b).normalize().mult(c.z).add(c);
-							lines.vertex(a.x, a.y);
-							lines.vertex(intersect.x, intersect.y);
-						}
-						continue edge;
+					continue edge;
+				}
+
+				nearestSite = sites.nnQuery(new double[] { e.getB().x, e.getB().y });
+				if (nearestSite.dist() < nearestSite.value().z) {
+					if (drawBranches && distGreater(a, b, nearestSite.value().z)) {
+						PVector intersect = PVector.sub(a, b).normalize().mult(nearestSite.value().z)
+								.add(nearestSite.value());
+						lines.vertex(a.x, a.y);
+						lines.vertex(intersect.x, intersect.y);
 					}
+					continue edge;
 				}
 
 				lines.vertex((float) e.getA().x, (float) e.getA().y);
@@ -214,14 +236,6 @@ public class PGS_Voronoi {
 
 		lines.endShape();
 		return lines;
-	}
-
-	// compare euclidean dist squared
-	private static boolean distWithin(PVector a, PVector b, float d) {
-		final double deltaX = a.x - b.x;
-		final double deltaY = a.y - b.y;
-		return deltaX * deltaX + deltaY * deltaY < (d * d);
-
 	}
 
 	private static boolean distGreater(PVector a, PVector b, float d) {
