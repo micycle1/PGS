@@ -186,9 +186,14 @@ Inner and exterior offset curves; based on *miter*, *bevel* or *round* offset st
 
 ### Voronoi Diagram
 <p float="middle">
+  <img src="resources/contour/voronoi.gif" alt="" width="49%"/>
   <img src="resources/contour/voronoi1.png" alt="" width="49%"/>
-  <img src="resources/contour/voronoi2.png" alt="" width="49%"/>
 </p>
+
+### Circle Site Voronoi
+Circle-site Voronoi via point-site approximation. Use additional optimisation beyond the general diagram. 
+
+...
 
 ### Delaunay Triangulation
 Constrained & refined *Delaunay triangulation* of shapes and point sets.
@@ -306,6 +311,8 @@ Slice a shape in two along a given line
 ## *Assorted*
 
 ### Supercircle
+Generate *supercircle* PShapes, using a configurable constant.
+
 <img src="resources/pgs/superCircle.gif" alt="" width="50%"/>
 
 ### Random Polygon
