@@ -4,20 +4,20 @@
 
 *Processing Geometry Suite* is a software project that provides easy access to geometric algorithms in the form of a [Processing](https://processing.org/) library.
 
-Methods in the library are static, and most of them take in and return [`PShape`](https://processing.org/reference/PShape.html) objects.
+All methods in the library are static, and most of them take in and return [`PShape`](https://processing.org/reference/PShape.html) objects.
 
 Docs are hosted via *GitHub Pages* [here]().
 
 ## Installation
 
-<details><summary>Processing — Quick</summary>
+<details><summary>Processing IDE — Quick</summary>
 <p>
 
-Download the latest *PGS.jar* from [releases](https://github.com/micycle1/PGS/releases) and drag-and-drop it onto the Processing IDE.
+Download the latest *PGS.jar* from [releases](https://github.com/micycle1/PGS/releases) and drag-and-drop it onto the [Processing IDE](https://processing.org/reference/environment/).
 </p>
 </details>
 
-<details><summary>Processing — Permanent</summary>
+<details><summary>Processing IDE — Permanent</summary>
 <p>
 
 Download .zip and extract it to `Documents\Processing\libraries`.
@@ -27,7 +27,7 @@ Download .zip and extract it to `Documents\Processing\libraries`.
 <details><summary>Maven/Gradle</summary>
 <p>
 
-PGS is hosted as a Maven or Gradle artifact via [Jitpack](https://jitpack.io/#micycle1/PGS). With this you can easily use PGS in a Maven or Gradle Java project outside the Processing IDE.
+PGS is hosted as a Maven or Gradle artifact via [Jitpack](https://jitpack.io/#micycle1/PGS). With this, you can easily use PGS in a Maven or Gradle Java project outside the Processing IDE.
 </p>
 </details>
 
@@ -74,7 +74,7 @@ void draw() {
 
 ## **Overview**
 
-Much of the functionality (but by no means all) is exemplified below.
+Many of the provided functionality and algorithms (but by no means all) are exemplified below.
 
 ## *2D Boolean Operations*
 *Boolean set-operations on shapes.*
@@ -101,7 +101,7 @@ Much of the functionality (but by no means all) is exemplified below.
 *Methods beyond those offered in Processing are illustrated here:*
 
 ### Rotate Around
-Rotate a shape around its centroid, or some other point.
+Rotate a shape around its centroid or an arbitrary point.
 
 <p float="middle">
   <img src="resources/transform/rotateCenter.gif" alt="" width="49%"/>
@@ -156,12 +156,12 @@ For individual points and point sets.
 ## *Contour*
 *Methods to produce a variety of geometric contours within shapes.*
 ### Medial Axis
-<img src="resources/contour/medialAxis.png" alt="" width="50%"/>
+Medial axis transform with feature pruning via distance, area or *axial angle*. 
 
-### Dissolved Medial Axis
-A medial axis where small line segments are dissolved into larger, straighter ones.
-
-<img src="resources/contour/medialAxisDissolved.png" alt="" width="50%"/>
+<p float="middle">
+  <img src="resources/contour/medialAxis.gif" alt="" width="49%"/>
+  <img src="resources/contour/medialAxis.png" alt="" width="49%"/>
+</p>
 
 ### Straight Skeleton
 <p float="middle">
@@ -170,6 +170,7 @@ A medial axis where small line segments are dissolved into larger, straighter on
 
 ### Isolines (topographic contour lines)
 Isolines from intra-shape euclidean distance, or point sets.
+
 <p float="middle">
   <img src="resources/contour/isolines.gif" alt="" width="49%"/>
   <img src="resources/contour/isolines2.gif" alt="" width="49%"/>
@@ -221,12 +222,12 @@ Constrained & refined *Delaunay triangulation* of shapes and point sets.
 ## *Morphology*
 *Methods to morph shapes in different ways and create shapes from other shapes or point sets.*
 ### Buffer
-<img src="resources/pgs/buffer.gif" alt="" width="50%"/>
+<img src="resources/morphology/buffer.gif" alt="" width="50%"/>
 
 ### Erosion-Dilation
-A negative followed by a positive buffer (in one operation).
+A negative followed by a positive buffer (in a single operation).
 
-<img src="resources/pgs/erosionDilation.gif" alt="" width="50%"/>
+<img src="resources/morphology/erosionDilation.gif" alt="" width="50%"/>
 
 ### Minkowski Addition
 Minkowski sum and difference (a.k.a buffer one shape using another shape; pictured: buffering using a rotating & growing triangle).
@@ -236,7 +237,7 @@ Minkowski sum and difference (a.k.a buffer one shape using another shape; pictur
 </p>
 
 ### Simplification
-<img src="resources/pgs/simplifyVW.gif" alt="" width="50%"/>
+<img src="resources/morphology/simplifyVW.gif" alt="" width="50%"/>
 
 ### Smoothing
 <img src="resources/morphology/smooth.gif" alt="" width="50%"/>
@@ -252,51 +253,59 @@ Minkowski sum and difference (a.k.a buffer one shape using another shape; pictur
 ### Concave Hull
 Concave hull of point sets.
 <p float="middle">
-  <img src="resources/pgs/concaveHull.gif" alt="" width="49%"/>
-  <img src="resources/pgs/concaveHull2.gif" alt="" width="49%"/>
+  <img src="resources/morphology/concaveHull.gif" alt="" width="49%"/>
+  <img src="resources/morphology/concaveHull2.gif" alt="" width="49%"/>
 </p>
 
 ### Convex Hull
-<img src="resources/pgs/convexHull.png" alt="" width="50%"/>
+<img src="resources/morphology/convexHull.png" alt="" width="50%"/>
 
 ### Snap Hull
-<img src="resources/pgs/snapHull.gif" alt="" width="50%"/>
+A convex hull with some level of shape-feature snapping.
+
+<img src="resources/morphology/snapHull.gif" alt="" width="50%"/>
 
 ## *Geometry Processing*
 
 ### Point on Perimeter
 Find a point some fraction along the perimeter of a shape (with perpendicular offset).
 
-<img src="resources/pgs/pointOnPerimeter.gif" alt="" width="50%"/>
+<img src="resources/geometry_processing/pointOnPerimeter.gif" alt="" width="50%"/>
 
 ### Points on Perimeter
 Find *N* points (evenly distributed) along the perimeter of a shape, or points every *D* distance (with optional perpendicular offset).
 
 <p float="middle">
-  <img src="resources/pgs/pointsOnPerimeter.gif" alt="" width="49%"/>
-  <img src="resources/pgs/pointsOnPerimeter2.gif" alt="" width="49%"/>
+  <img src="resources/geometry_processing/pointsOnPerimeter.gif" alt="" width="49%"/>
+  <img src="resources/geometry_processing/pointsOnPerimeter2.gif" alt="" width="49%"/>
 </p>
 
 ### Partitioning
 Partition a shape into simple (convex) polygons.
 
 <p float="middle">
-  <img src="resources/pgs/decompose1.png" alt="" width="49%"/>
-  <img src="resources/pgs/decompose2.png" alt="" width="49%"/>
+  <img src="resources/geometry_processing/decompose1.png" alt="" width="49%"/>
+  <img src="resources/geometry_processing/decompose2.png" alt="" width="49%"/>
 </p>
 
 ### Splitting
 Subdivide (recursively) a shape into quadrants
 
-<img src="resources/morphology/split.gif" alt="" width="50%"/>
+<img src="resources/geometry_processing/split.gif" alt="" width="50%"/>
 
 ### Slicing
 Slice a shape in two along a given line
 
-<img src="resources/morphology/slice.gif" alt="" width="50%"/>
+<img src="resources/geometry_processing/slice.gif" alt="" width="50%"/>
 
 ### Densification
-<img src="resources/pgs/densify.gif" alt="" width="50%"/>
+<img src="resources/geometry_processing/densify.gif" alt="" width="50%"/>
+
+### Constrained Random Point Set
+Generate constrained random point sets where all points lie within a shape. Points can be distributed entirely randomly or according to grid with configurable tightness.
+
+...
+
 
 ## *Geometric Optimization*
 

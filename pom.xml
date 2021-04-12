@@ -156,7 +156,7 @@
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>JMedialAxis</artifactId>
-			<version>-SNAPSHOT</version>
+			<version>cc252ac555</version>
 		</dependency>
 		<dependency>
 			<groupId>org.dyn4j</groupId>

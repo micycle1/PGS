@@ -4,33 +4,23 @@ import static micycle.pgs.PGS.GEOM_FACTORY;
 import static micycle.pgs.PGS.prepareLinesPShape;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
-import static processing.core.PConstants.LINES;
-import static processing.core.PConstants.ROUND;
-
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
+
 import org.locationtech.jts.algorithm.Orientation;
-import org.locationtech.jts.densify.Densifier;
 import org.locationtech.jts.dissolve.LineDissolver;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.locationtech.jts.operation.buffer.BufferOp;
 import org.locationtech.jts.operation.buffer.BufferParameters;
-import org.locationtech.jts.operation.linemerge.LineMergeEdge;
-import org.locationtech.jts.operation.linemerge.LineMergeGraph;
 import org.locationtech.jts.operation.linemerge.LineMerger;
-import org.locationtech.jts.planargraph.Node;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
-import org.locationtech.jts.triangulate.VoronoiDiagramBuilder;
-import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
 import org.tinfour.contour.ContourBuilderForTin;
 import org.tinfour.standard.IncrementalTin;
@@ -43,12 +33,10 @@ import org.twak.utils.collections.LoopL;
 import hageldave.jplotter.misc.Contours;
 import hageldave.jplotter.renderables.Lines.SegmentDetails;
 import micycle.medialAxis.MedialAxis;
-import micycle.medialAxis.MedialAxis.Branch;
 import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.color.RGB;
 import micycle.pgs.utility.PoissonDistribution;
 import micycle.pgs.utility.SolubSkeleton;
-import processing.core.PApplet;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -73,414 +61,40 @@ public class PGS_Contour {
 	 */
 
 	private PGS_Contour() {
-
 	}
 
 	/**
-	 * Set of points in space equidistant to 2 or more points on the surface. As
-	 * density of boundary points goes to infinity, a voronoi diagram converges to a
-	 * medial axis.
+	 * Computes the medial axis of the given shape. The 3 parameters can be used to
+	 * prune the medial axis according to different features (at the same time).
 	 * 
 	 * @param shape
-	 * @param density          distance tolerance for boundary densification
-	 *                         (smaller values more converge towards a more accurate
-	 *                         axis, but slower), 5-20 is appropriate
-	 * @param maximumCloseness the SQUARE of the
-	 * @return
+	 * @param axialThreshold    Prune edges based on their axial gradient. The axial
+	 *                          gradient measures the change in the width of the
+	 *                          shape per unit length of the axis (measured per edge
+	 *                          segment). Between 0...1, where 0 is no pruning and 1
+	 *                          is maximal pruning for this feature.
+	 * @param distanceThreshold Prune edges based on the spatial distance between
+	 *                          the medial axis root and edge's tail coordinate.
+	 *                          Between 0...1, where 0 is no pruning and 1 is
+	 *                          maximal pruning for this feature.
+	 * @param areaThreshold     Prune edges based on the sum of each edge and its
+	 *                          descendants underlying feature area. Between 0...1,
+	 *                          where 0 is no pruning and 1 is maximal pruning for
+	 *                          this feature.
+	 * @return PShape of lines where lines represent medial axis edges
 	 */
-	@SuppressWarnings("unchecked")
-	public static PShape medialAxis(PShape shape, float density, float maximumCloseness, PApplet p) {
-		// TODO remove the duplicate Voronoi edges ?
+	public static PShape medialAxis(PShape shape, double axialThreshold, double distanceThreshold,
+			double areaThreshold) {
 		final Geometry g = fromPShape(shape);
-		final Densifier d = new Densifier(fromPShape(shape));
-		d.setDistanceTolerance(density);
-		d.setValidate(false); // don't perform validation processing (a little faster)
-		final Geometry dense = d.getResultGeometry();
+		final MedialAxis m = new MedialAxis(g);
 
-		VoronoiDiagramBuilder v = new VoronoiDiagramBuilder();
-		v.setSites(dense);
-		Geometry voronoi = v.getDiagram(GEOM_FACTORY);
-
-		final Geometry small = dense.buffer(-maximumCloseness);
-		PreparedGeometry cache = PreparedGeometryFactory.prepare(small); // provides MUCH faster contains() check
-
-		// inline lines creation
-		PShape lines = prepareLinesPShape(null, null, null);
-
-		ArrayList<LineString> axis = new ArrayList<LineString>();
-
-		// TODO getCoordinates() call slow on cell too?
-
-		// TODO compare both points at once?
-		int z = 0;
-		for (int i = 0; i < voronoi.getNumGeometries(); i++) {
-			Polygon cell = (Polygon) voronoi.getGeometryN(i); // TODO .get(0) prevent occasional crash
-			for (int j = 0; j < cell.getCoordinates().length - 1; j++) {
-				Coordinate a = cell.getCoordinates()[j];
-//				CoordinateSequence seq = geometryFactory.getCoordinateSequenceFactory().create(new Coordinate[] { a });
-				if (cache.covers(GEOM_FACTORY.createPoint(a))) {
-					Coordinate b = cell.getCoordinates()[j + 1];
-//					seq = geometryFactory.getCoordinateSequenceFactory().create(new Coordinate[] { b });
-					if (cache.covers(GEOM_FACTORY.createPoint(b))) {
-//						lines.vertex((float) a.x, (float) a.y);
-//						lines.vertex((float) b.x, (float) b.y);
-//						p.stroke((float) a.x % 255, (float) b.y % 255, (z * 5) % 255);
-//						p.line((float) a.x, (float) a.y, (float) b.x, (float) b.y);
-						axis.add(GEOM_FACTORY.createLineString(new Coordinate[] { a, b }));
-						z++;
-//						lm.add(geometryFactory.createLineString(new Coordinate[] { a, b }));
-					}
-				}
-			}
-		}
-
-//		System.out.println("axis lines" + axis.size());
-		LineDissolver ld = new LineDissolver();
-		ld.add(axis);
-		Geometry medialAxisLines = ld.getResult();
-
-		HashSet<Double> seen = new HashSet<Double>();
-
-		LineMergeGraph graph = new LineMergeGraph();
-
-		// now use LineMergeGraph to sew edges
-
-		z = 0;
-		for (int i = 0; i < medialAxisLines.getNumGeometries(); i++) {
-			LineString l = (LineString) medialAxisLines.getGeometryN(i);
-			graph.addEdge(l);
-			p.strokeWeight(3);
-			p.stroke((float) l.getStartPoint().getX() % 255, (float) l.getEndPoint().getY() % 255, (z * 5) % 255);
-//			p.line((float) l.getStartPoint().getX(), (float) l.getStartPoint().getY(), (float) l.getEndPoint().getX(),
-//					(float) l.getEndPoint().getY());
-			double o = PGS.cantorPairing(l.getStartPoint().getX(), l.getStartPoint().getY());
-			if (!seen.add(o)) {
-				p.strokeWeight(10);
-//				p.point((float) l.getStartPoint().getX(), (float) l.getStartPoint().getY());
-			}
-			z++;
-		}
-//		System.out.println("axis lines" + z);
-
-		/**
-		 * Use kdtree to get nearest 4 points of a site; then use tin naviagator to get
-		 * triangles containing points?
-		 */
-
-//		PrimMinimumSpanningTree<Vertex, QuadEdge> pst = )
-
-		Iterator<Node> ni = (Iterator<Node>) graph.nodeIterator();
-
-		((HashSet<LineMergeEdge>) graph.getEdges()).forEach(e -> {
-			if ((e.getDirEdge(0).getFromNode().getDegree() > 1) && (e.getDirEdge(0).getToNode().getDegree() > 1)) {
-				final LineString l = e.getLine();
-				p.strokeWeight(3);
-				p.stroke((float) l.getStartPoint().getX() % 255, (float) l.getEndPoint().getY() % 255, 125);
-				p.line((float) l.getStartPoint().getX(), (float) l.getStartPoint().getY(),
-						(float) l.getEndPoint().getX(), (float) l.getEndPoint().getY());
-			}
+		final PShape lines = PGS.prepareLinesPShape(RGB.PINK, PShape.ROUND, 4);
+		m.getPrunedEdges(axialThreshold, distanceThreshold, areaThreshold).forEach(e -> {
+			lines.vertex((float) e.head.position.x, (float) e.head.position.y);
+			lines.vertex((float) e.tail.position.x, (float) e.tail.position.y);
 		});
-
-		p.stroke(123, 76, 81);
-		p.strokeWeight(10);
-		ni.forEachRemaining(n -> {
-//			n.get
-			if (n.getDegree() > 1) { // ignore linestring endpoints
-				p.point((float) n.getCoordinate().x, (float) n.getCoordinate().y);
-			}
-		});
-
-//		for (LineString l : ((List<LineString>) lm.getMergedLineStrings())) {
-//			z++;
-//			lines.vertex((float) l.getStartPoint().getX(), (float) l.getStartPoint().getY());
-//			lines.vertex((float) l.getEndPoint().getX(), (float) l.getEndPoint().getY());
-//		}
-//		System.out.println(z);
-
 		lines.endShape();
-//		return toPShape());
 		return lines;
-	}
-
-	/**
-	 * Returns a simplified medial axis graph leaving only maximal-length lines in
-	 * which every unique segment appears once only. The output lines run between
-	 * node vertices of the input, which are vertices which have either degree 1, or
-	 * degree 3 or greater.
-	 * 
-	 * @return
-	 */
-	private static PShape dissolvedMedialAxis() {
-		// use JTS GeometryGraph?
-		// TODO break out dissolver+linemergegraph into here
-		return null;
-	}
-
-	public static void medialAxis4(PShape shape, PApplet p) {
-		Geometry g = fromPShape(shape);
-		MedialAxis m = new MedialAxis(g);
-//		m.getDissolvedGeometry();
-//		p.shape(toPShape(
-//				DouglasPeuckerSimplifier.simplify(m.getDissolvedGeometry(), p.map(p.mouseX, 0, p.width, 0, 100))));
-		PShape s = toPShape(m.getDissolvedGeometry());
-
-		s = toPShape(DouglasPeuckerSimplifier.simplify(m.getDissolvedGeometry(), 15));
-
-		s.setStrokeWeight(15);
-		for (int i = 0; i < s.getChildCount(); i++) {
-			s.getChild(i).setStrokeWeight(6);
-			s.getChild(i).setStrokeCap(ROUND);
-			s.getChild(i).setStroke(p.color((i * 23.3f) % 255, 255 - (i * 33.3f) % 255, (i * 16.3f) % 255));
-		}
-		p.shape(s);
-
-		p.beginShape(LINES);
-		m.getEdges().forEach(e -> {
-//			p.line((float) e.head.position.x, (float) e.head.position.y, (float) e.tail.position.x,
-//					(float) e.tail.position.y);
-//			p.vertex((float) e.head.position.x, (float) e.head.position.y);
-//			p.vertex((float) e.tail.position.x, (float) e.tail.position.y);
-		});
-		p.endShape(LINES);
-//		m.getLineMergeGraph()
-
-		p.stroke(14, 150, 14);
-//		m.getDisks().forEach(d -> {
-//			p.ellipse((float) d.position.x, (float) d.position.y, (float) d.radius * 2, (float) d.radius * 2);
-//		});
-	}
-
-	/**
-	 * TODO remove...temporary method to test MedialAxis lib.
-	 * 
-	 * @param shape
-	 * @param p
-	 */
-	public static void medialAxis3(PShape shape, PApplet p) {
-		Geometry g = fromPShape(shape);
-		MedialAxis m = new MedialAxis(g);
-//		m.drawVDM(p);
-//		m.drawVDMPrune(p, p.map(p.mouseX, 0, p.width, 0, 1));
-//		m.drawVDMPrune(p, 500);
-//		p.noFill();
-		p.noStroke();
-		p.fill(0);
-//		m.getLeaves().forEach(l -> {
-//			p.ellipse((float) l.position.x, (float) l.position.y, 5, 5);
-//		});
-
-//		m.getAncestors(m.getLeaves().get(0)).forEach(v -> {
-//
-//		});
-//		List<micycle.medialAxis.MedialAxis.VD> ancestors = m
-//				.getAncestors(m.getLeaves().get((int) (p.frameCount * 0.1) % m.getLeaves().size()));
-//
-//		micycle.medialAxis.MedialAxis.VD base = ancestors.get(0);
-//		for (int i = 1; i < ancestors.size(); i++) {
-//			p.line((float) base.position.x, (float) base.position.y, (float) ancestors.get(i).position.x,
-//					(float) ancestors.get(i).position.y);
-//			base = ancestors.get(i);
-//		}
-
-//		for
-
-		p.fill(0);
-		p.stroke(0, 255, 0);
-		p.strokeWeight(8);
-//		m.voronoiDisks.forEach(v -> {
-//			final Coordinate pa = v.position;
-//			p.point((float) pa.getX(), (float) pa.getY());
-//		});
-
-		p.beginShape(PConstants.TRIANGLES);
-		p.noStroke();
-		m.getDisks().forEach(d -> {
-			final SimpleTriangle t = d.t;
-//			double r 
-			if (d.radius > 0) {
-//				p.beginShape();
-				p.noFill();
-				if (d.distance < p.map(p.mouseX, 0, p.width, 0, (float) m.furthestNode.distance)) {
-					p.fill(255, 0, 0);
-				} else {
-					p.fill(0, 255, 0);
-				}
-//				p.fill(150, p.map((float) d.distance, 0, (float) m.furthestNode.distance, 0, 255), 200);
-//				p.strokeWeight(2);
-//				p.stroke(255, 0, 0);
-				Vertex v = t.getVertexA();
-//				p.noStroke();
-				p.vertex((float) v.getX(), (float) v.getY());
-//				p.point((float) v.getX(), (float) v.getY());
-				v = t.getVertexB();
-				p.vertex((float) v.getX(), (float) v.getY());
-//				p.point((float) v.getX(), (float) v.getY());
-				v = t.getVertexC();
-				p.vertex((float) v.getX(), (float) v.getY());
-//				p.point((float) v.getX(), (float) v.getY());
-//				p.endShape(p.CLOSE);
-
-//				p.strokeWeight(2);
-//				p.stroke(0, 150, 0);
-//				System.out.println(t.area());
-				p.point((float) d.position.x, (float) d.position.y);
-//				p.ellipse((float) d.position.x, (float) d.position.y, (float) d.radius * 2, (float) d.radius * 2);
-				p.strokeWeight(7);
-//				TriangulationPoint va = t.points[0];
-//				p.point((float) va.getX(), (float) va.getY());
-//				va = t.points[1];
-//				p.point((float) va.getX(), (float) va.getY());
-//				va = t.points[2];
-//				p.point((float) va.getX(), (float) va.getY());
-			}
-		});
-		p.endShape();
-
-//		m.validTris.forEach(t -> {
-//
-//			double[] c = MedialAxis.circumcircle(t);
-//			if (c[2] > 100) {
-//				p.beginShape();
-//				p.noFill();
-//				p.strokeWeight(2);
-//				p.stroke(255, 0, 0);
-//				TriangulationPoint v = t.points[0];
-////				p.noStroke();
-//				p.vertex((float) v.getX(), (float) v.getY());
-////				p.point((float) v.getX(), (float) v.getY());
-//				v = t.points[1];
-//				p.vertex((float) v.getX(), (float) v.getY());
-////				p.point((float) v.getX(), (float) v.getY());
-//				v = t.points[2];
-//				p.vertex((float) v.getX(), (float) v.getY());
-////				p.point((float) v.getX(), (float) v.getY());
-//				p.endShape(p.CLOSE);
-//
-//				p.strokeWeight(2);
-//				p.stroke(0, 150, 0);
-//				System.out.println(t.area());
-//				p.point((float) c[0], (float) c[1]);
-//				p.ellipse((float) c[0], (float) c[1], (float) c[2] * 2, (float) c[2] * 2);
-//				p.strokeWeight(7);
-//				TriangulationPoint va = t.points[0];
-//				p.point((float) va.getX(), (float) va.getY());
-//				va = t.points[1];
-//				p.point((float) va.getX(), (float) va.getY());
-//				va = t.points[2];
-//				p.point((float) va.getX(), (float) va.getY());
-//			}
-//		});
-
-//		p.stroke(0);
-//		m.branches.forEach(b -> {
-//			System.out.println(b.size());
-//			b.forEach(vd -> {
-//
-//				p.point((float) vd.circumcircle[0], (float) vd.circumcircle[1]);
-//			});
-//		});
-
-//		System.out.println(m.branches.size());
-
-		int q = 0;
-		p.strokeWeight(3);
-//		for (List<MedialAxis.VD> disks : m.branches) {
-////			System.out.println("len" + disks.size());
-//			p.stroke((int) disks.get(0).circumcircle[0] % 255, q % 255, disks.size() * 71 % 255);
-//
-//			micycle.medialAxis.MedialAxis.VD last = disks.get(0); // use parent
-//			for (MedialAxis.VD vd : disks) {
-//				p.line((float) last.circumcircle[0], (float) last.circumcircle[1], (float) vd.circumcircle[0],
-//						(float) vd.circumcircle[1]);
-//				last = vd;
-//			}
-////			p.line((float) last.circumcircle[0], (float) last.circumcircle[1],
-////					(float) last.children.get(0).circumcircle[0], (float) last.children.get(0).circumcircle[1]);
-//			q += 37;
-//		}
-
-//		for (ArrayList<micycle.medialAxis.MedialAxis.VD> branch : m.getBranches()) {
-//			micycle.medialAxis.MedialAxis.VD last = branch.get(0); // use parent
-//			p.stroke((int) branch.get(0).circumcircle[0] % 255, q % 255, branch.size() * 71 % 255);
-//			for (MedialAxis.VD vd : branch) {
-//				p.line((float) last.circumcircle[0], (float) last.circumcircle[1], (float) vd.circumcircle[0],
-//						(float) vd.circumcircle[1]);
-//				last = vd;
-//			}
-//			q += 37;
-//		}
-
-		micycle.medialAxis.MedialAxis.MedialDisk d;
-		d = m.nearestDisk(p.mouseX, p.mouseY);
-//		System.err.println(d.featureArea);
-
-		d = m.rootNode;
-		p.noFill();
-		p.stroke(50, 150, 250);
-		float dist = p.map(p.mouseX, 0, p.width, 0, (float) m.furthestNode.distance) * 2;
-//		dist = (float) d.radius * 2;
-		p.ellipse((float) d.position.x, (float) d.position.y, dist, dist);
-//		p.point((float) d.position.x, (float) d.position.y);
-		p.fill(255);
-//		p.text(d.depthBF, 10, 80);
-//		p.textAlign(PConstants.LEFT);
-//		p.text((float) d.featureArea, 0, 100); // feature area
-
-		d = m.rootNode;
-		p.noFill();
-		p.stroke(50, 150, 250);
-//		p.ellipse((float) d.position.x, (float) d.position.y, (float) d.radius * 2, (float) d.radius * 2);
-//		p.point((float) d.position.x, (float) d.position.y);
-
-		p.stroke(255, 0, 0);
-//		TriangulationPoint v = d.t.points[0];
-//		p.point((float) v.getX(), (float) v.getY());
-//		v = d.t.points[1];
-//		p.point((float) v.getX(), (float) v.getY());
-//		v = d.t.points[2];
-//		p.point((float) v.getX(), (float) v.getY());
-//		p.point((float) d.position.x, (float) d.position.y);
-
-		p.strokeWeight(4);
-		p.colorMode(PConstants.HSB, 1, 1, 1, 1);
-		float x = 0;
-		for (Branch s : m.getBranches()) {
-			p.stroke((x += 1.618034) % 1, 1, 1);
-			s.edges.forEach(e -> {
-				p.line((float) e.head.position.x, (float) e.head.position.y, (float) e.tail.position.x,
-						(float) e.tail.position.y);
-			});
-		}
-		p.colorMode(PConstants.RGB, 255, 255, 255, 255);
-
-//		for (micycle.pts.MedialAxis.VD vd : m.getBifurcations()) {
-//			p.noFill();
-//			p.stroke(50, 150, 250);
-////				p.ellipse((float) vd.circumcircle[0], (float) vd.circumcircle[1], (float) vd.circumcircle[2] * 2,
-////						(float) vd.circumcircle[2] * 2);
-//			p.stroke(255, 0, 0);
-//			p.strokeWeight(15);
-//			p.point((float) vd.circumcircle[0], (float) vd.circumcircle[1]);
-//		}
-
-//			for (int i = 0; i < 300; i++) {
-//				SimpleTriangle t = m.voronoiDisks.get(i).t;
-//
-//				if (m.voronoiDisks.get(i).area > 1000) {
-//			v = vd.t.getVertexA();
-//			p.beginShape();
-//			p.noStroke();
-//			p.fill(100);
-//			p.vertex((float) v.x, (float) v.y);
-//			v = vd.t.getVertexB();
-//			p.vertex((float) v.x, (float) v.y);
-//			v = vd.t.getVertexC();
-//			p.vertex((float) v.x, (float) v.y);
-//			p.endShape();
-//				}
-//
-//			}
-
 	}
 
 	/**
@@ -991,6 +605,7 @@ public class PGS_Contour {
 	}
 
 	private static <T> void reverse(T[] a) {
+		// used in straightSkeleton()
 		int l = a.length;
 		for (int j = 0; j < l / 2; j++) {
 			T temp = a[j];
