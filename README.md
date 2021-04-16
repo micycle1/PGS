@@ -242,6 +242,9 @@ Minkowski sum and difference (a.k.a buffer one shape using another shape; pictur
 ### Smoothing
 <img src="resources/morphology/smooth.gif" alt="" width="50%"/>
 
+### Gaussian Smoothing
+<img src="resources/morphology/gaussianSmooth.gif" alt="" width="50%"/>
+
 ### Rounding
 
 <p float="middle">

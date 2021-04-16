@@ -28,6 +28,7 @@ import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.simplify.VWSimplifier;
 
 import micycle.pgs.utility.CornerRounding;
+import micycle.pgs.utility.GaussianLineSmoothing;
 import micycle.pgs.utility.PolygonDecomposition;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -57,7 +58,7 @@ public class PGS_Morphology {
 	 * @param buffer extent/width of the buffer (may be positive or negative)
 	 * @return
 	 */
-	public static PShape buffer(PShape shape, float buffer) {
+	public static PShape buffer(PShape shape, double buffer) {
 		return toPShape(fromPShape(shape).buffer(buffer, 4));
 	}
 
@@ -68,8 +69,7 @@ public class PGS_Morphology {
 	 * @param shape
 	 * @return
 	 */
-	public static PShape erosionDilation(PShape shape, float buffer) {
-//		buffer = Math.abs(buffer);
+	public static PShape erosionDilation(PShape shape, double buffer) {
 		return toPShape(fromPShape(shape).buffer(-buffer).buffer(buffer));
 	}
 
@@ -83,10 +83,10 @@ public class PGS_Morphology {
 	 * @param shape
 	 * @param distanceTolerance the tolerance to use
 	 * @return simplifed copy of the shape
-	 * @see #simplifyVW(PShape, float)
-	 * @see #simplifyTopology(PShape, float)
+	 * @see #simplifyVW(PShape, double)
+	 * @see #simplifyTopology(PShape, double)
 	 */
-	public static PShape simplify(PShape shape, float distanceTolerance) {
+	public static PShape simplify(PShape shape, double distanceTolerance) {
 		return toPShape(DouglasPeuckerSimplifier.simplify(fromPShape(shape), distanceTolerance));
 	}
 
@@ -99,10 +99,10 @@ public class PGS_Morphology {
 	 *                          distance.This is converted to an area tolerance by
 	 *                          squaring it.
 	 * @return simplifed copy of the shape
-	 * @see #simplify(PShape, float)
-	 * @see #simplifyTopology(PShape, float)
+	 * @see #simplify(PShape, double)
+	 * @see #simplifyTopology(PShape, double)
 	 */
-	public static PShape simplifyVW(PShape shape, float distanceTolerance) {
+	public static PShape simplifyVW(PShape shape, double distanceTolerance) {
 		return toPShape(VWSimplifier.simplify(fromPShape(shape), distanceTolerance));
 	}
 
@@ -113,10 +113,10 @@ public class PGS_Morphology {
 	 * @param shape
 	 * @param distanceTolerance the tolerance to use
 	 * @return simplifed copy of the shape
-	 * @see #simplify(PShape, float)
-	 * @see #simplifyVW(PShape, float)
+	 * @see #simplify(PShape, double)
+	 * @see #simplifyVW(PShape, double)
 	 */
-	public static PShape simplifyTopology(PShape shape, float distanceTolerance) {
+	public static PShape simplifyTopology(PShape shape, double distanceTolerance) {
 		return toPShape(TopologyPreservingSimplifier.simplify(fromPShape(shape), distanceTolerance));
 	}
 
@@ -140,9 +140,9 @@ public class PGS_Morphology {
 	 * @param points
 	 * @param threshold euclidean distance threshold
 	 * @return
-	 * @see #concaveHull2(List, float)
+	 * @see #concaveHull2(List, double)
 	 */
-	public static PShape concaveHull(List<PVector> points, float threshold) {
+	public static PShape concaveHull(List<PVector> points, double threshold) {
 
 		// calls Ordnance Survey implementation
 
@@ -180,9 +180,9 @@ public class PGS_Morphology {
 	 *                  typically produce optimal or near-optimal shape
 	 *                  characterization across a wide range of point distributions.
 	 * @return
-	 * @see #concaveHull(List, float)
+	 * @see #concaveHull(List, double)
 	 */
-	public static PShape concaveHull2(List<PVector> points, float threshold) {
+	public static PShape concaveHull2(List<PVector> points, double threshold) {
 
 		/**
 		 * (from https://doi.org/10.1016/j.patcog.2008.03.023) It is more convenient to
@@ -220,10 +220,10 @@ public class PGS_Morphology {
 	 * the shape. Adjust segment factor to change between
 	 * 
 	 * @param shape
-	 * @param segmentFactor
+	 * @param segmentFactor default = 4
 	 * @return
 	 */
-	public static PShape snapHull(PShape shape, float segmentFactor) {
+	public static PShape snapHull(PShape shape, double segmentFactor) {
 		return toPShape(SnapHull.snapHull(fromPShape(shape), segmentFactor));
 	}
 
@@ -243,11 +243,11 @@ public class PGS_Morphology {
 	 * Minkowski difference a.k.a erosion
 	 * 
 	 * @param source
-	 * @param addition
+	 * @param subtract
 	 * @return
 	 */
-	public static PShape minkDifference(PShape source, PShape addition) {
-		Geometry sum = Minkowski_Sum.compMinkDiff(fromPShape(source), fromPShape(addition), true, true);
+	public static PShape minkDifference(PShape source, PShape subtract) {
+		Geometry sum = Minkowski_Sum.compMinkDiff(fromPShape(source), fromPShape(subtract), true, true);
 		return toPShape(sum);
 	}
 
@@ -259,9 +259,37 @@ public class PGS_Morphology {
 	 * @param shape
 	 * @param fit   tightness of fit from 0 (loose) to 1 (tight)
 	 * @return smoothed copy of the shape
+	 * @see #smoothGaussian(PShape, double)
 	 */
-	public static PShape smooth(PShape shape, float fit) {
+	public static PShape smooth(PShape shape, double fit) {
 		return toPShape(JTS.smooth(fromPShape(shape), fit));
+	}
+
+	/**
+	 * Smoothes a shape by applying a gaussian filter to vertex coordinates. At
+	 * larger values, this morphs the input shape much more visually than
+	 * {@link #smooth(PShape, double)}.
+	 * 
+	 * @param shape
+	 * @param sigma The standard deviation of the gaussian kernel. Larger values
+	 *              provide more smoothing.
+	 * @return smoothed copy of the shape
+	 * @see #smooth(PShape, double)
+	 */
+	public static PShape smoothGaussian(PShape shape, double sigma) {
+		Geometry g = fromPShape(shape);
+		if (g.getGeometryType() == Geometry.TYPENAME_POLYGON) {
+			// TODO support holes
+			Polygon p = (Polygon) g;
+			return toPShape(GaussianLineSmoothing.get(p.getExteriorRing(), Math.max(sigma, 1)));
+		}
+		if (g.getGeometryType() == Geometry.TYPENAME_LINEARRING
+				|| g.getGeometryType() == Geometry.TYPENAME_LINEARRING) {
+			LineString l = (LineString) g;
+			return toPShape(GaussianLineSmoothing.get(l, Math.max(sigma, 1)));
+		}
+		System.err.println(g.getGeometryType() + " are not supported for this method (yet).");
+		return new PShape(PShape.GROUP);
 	}
 
 	/**
@@ -275,7 +303,7 @@ public class PGS_Morphology {
 	 *               by output undefined results.
 	 * @return
 	 */
-	public static PShape round(PShape shape, float extent) {
+	public static PShape round(PShape shape, double extent) {
 		return CornerRounding.round(shape, extent);
 	}
 
