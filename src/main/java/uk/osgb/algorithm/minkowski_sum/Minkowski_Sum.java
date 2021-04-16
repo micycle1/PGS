@@ -26,16 +26,11 @@
 //
 package uk.osgb.algorithm.minkowski_sum;
 
-import org.locationtech.jts.geom.LineString;
-import org.locationtech.jts.geom.LinearRing;
-import org.locationtech.jts.geom.MultiLineString;
-import org.locationtech.jts.geom.MultiPoint;
-import org.locationtech.jts.geom.MultiPolygon;
-import org.locationtech.jts.geom.Point;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Vector;
 
 import org.locationtech.jts.algorithm.ConvexHull;
@@ -43,8 +38,15 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryCollection;
 import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.LinearRing;
+import org.locationtech.jts.geom.MultiLineString;
+import org.locationtech.jts.geom.MultiPoint;
+import org.locationtech.jts.geom.MultiPolygon;
+import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.util.AffineTransformation;
+import org.locationtech.jts.operation.union.CascadedPolygonUnion;
 
 /**
  * This is an experimental implementation of Minkowski sum and difference based
@@ -61,6 +63,8 @@ import org.locationtech.jts.geom.util.AffineTransformation;
  * Any holes in "reference" polygon are ignored (in most cases it doesn't make
  * practical sense anyway).
  *
+ * @author Sheng Zhou
+ * @author small improvements by Michael Carleton
  */
 public class Minkowski_Sum {
 
@@ -1075,7 +1079,7 @@ public class Minkowski_Sum {
 	 *                    polygon is convex, the computation is simplier and robust
 	 * @return
 	 */
-	public static Geometry segPlgAddition(Coordinate[] refCoords, Coordinate segSp, Coordinate segEp,
+	public static Polygon segPlgAddition(Coordinate[] refCoords, Coordinate segSp, Coordinate segEp,
 			boolean isRefConvex, GeometryFactory gf) {
 		if (isRefConvex) {
 			int numCoord = refCoords.length;
@@ -1086,7 +1090,7 @@ public class Minkowski_Sum {
 				coords[i + numCoord] = new Coordinate(ref.x + segEp.x, ref.y + segEp.y);
 			}
 			ConvexHull ch = new ConvexHull(coords, gf);
-			return ch.getConvexHull();
+			return (Polygon) ch.getConvexHull();
 		} else {
 			int numCoord = refCoords.length;
 			Coordinate[] coords = new Coordinate[numCoord * 2];
@@ -1107,12 +1111,10 @@ public class Minkowski_Sum {
 			Geometry coreNew = coreHull.getConvexHull();
 			Polygon plg1 = gf.createPolygon(coords1);
 			Polygon plg2 = gf.createPolygon(coords2);
-			return coreNew.union(plg1).union(plg2);
+			return (Polygon) coreNew.union(plg1).union(plg2);
 		}
 	}
 
-	//
-	//
 	/**
 	 * vector addition of a segment and a linestring (open, although it will handle
 	 * linearing as well)
@@ -1123,23 +1125,19 @@ public class Minkowski_Sum {
 	 * @param segEp
 	 * @return the sum (may be an emtpy polygon)
 	 */
-	public static Geometry segLSAddition(Coordinate segSp, Coordinate segEp, Coordinate[] refCoords,
+	public static Polygon segLSAddition(Coordinate segSp, Coordinate segEp, Coordinate[] refCoords,
 			GeometryFactory gf) {
 		int numPts = refCoords.length;
-		Geometry sum = gf.createPolygon();
+		List<Polygon> parts = new ArrayList<>();
 		for (int i = 0; i < numPts - 1; ++i) {
 			Coordinate refSp = refCoords[i];
 			Coordinate refEp = refCoords[i + 1];
-			Geometry sum1 = segVectorAddition(segSp, segEp, refSp, refEp, gf); //
+			Polygon sum1 = segVectorAddition(segSp, segEp, refSp, refEp, gf);
 			if (sum1 != null) {
-				try {
-					sum = sum.union(sum1);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
+				parts.add(sum1);
 			}
 		}
-		return sum;
+		return (Polygon) CascadedPolygonUnion.union(parts);
 	}
 
 	/**
@@ -1154,7 +1152,7 @@ public class Minkowski_Sum {
 	 * @param refEp
 	 * @return a polygon (empty polygon if the sum is 0D or 1D)
 	 */
-	private static Geometry segVectorAddition(Coordinate segSp, Coordinate segEp, Coordinate refSp, Coordinate refEp,
+	private static Polygon segVectorAddition(Coordinate segSp, Coordinate segEp, Coordinate refSp, Coordinate refEp,
 			GeometryFactory gf) {
 		Coordinate[] coords = new Coordinate[4];
 		coords[0] = new Coordinate(refSp.x + segSp.x, refSp.y + segSp.y);
@@ -1162,7 +1160,7 @@ public class Minkowski_Sum {
 		coords[2] = new Coordinate(refEp.x + segEp.x, refEp.y + segEp.y);
 		coords[3] = new Coordinate(refSp.x + segEp.x, refSp.y + segEp.y);
 		ConvexHull ch = new ConvexHull(coords, gf);
-		Geometry hull = ch.getConvexHull();
+		Polygon hull = (Polygon) ch.getConvexHull();
 		if (hull.getDimension() > 1) {
 			return hull; // a polygon
 		} else {
@@ -1182,22 +1180,18 @@ public class Minkowski_Sum {
 	 */
 	private static Geometry coordArrayVectorAddition(Coordinate[] geomCoords, Coordinate[] refPlgCoords,
 			boolean isRefConvex, GeometryFactory gf) {
-		Geometry sumAll = gf.createPolygon();
+		List<Polygon> parts = new ArrayList<>();
 		for (int j = 0; j < geomCoords.length - 1; ++j) {
 			Coordinate segSp = geomCoords[j];
 			Coordinate segEp = geomCoords[j + 1];
 			if (!segSp.equals2D(segEp)) {
-				Geometry sum1 = segPlgAddition(refPlgCoords, segSp, segEp, isRefConvex, gf);
+				Polygon sum1 = segPlgAddition(refPlgCoords, segSp, segEp, isRefConvex, gf);
 				if (sum1 != null) {
-					try {
-						sumAll = sumAll.union(sum1);
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
+					parts.add(sum1);
 				}
 			}
 		}
-		return sumAll;
+		return CascadedPolygonUnion.union(parts);
 	}
 
 	/**
@@ -1216,22 +1210,18 @@ public class Minkowski_Sum {
 		if (refCoords[0].equals2D(refCoords[numPts - 1])) { // linear ring
 			return coordArrayVectorAddition(geomCoords, refCoords, false, gf);
 		}
-		Geometry sumAll = gf.createPolygon();
+		List<Polygon> parts = new ArrayList<>();
 		for (int j = 0; j < geomCoords.length - 1; ++j) {
 			Coordinate segSp = geomCoords[j];
 			Coordinate segEp = geomCoords[j + 1];
 			if (!segSp.equals2D(segEp)) {
-				Geometry sum1 = segLSAddition(segSp, segEp, refCoords, gf);
+				Polygon sum1 = segLSAddition(segSp, segEp, refCoords, gf);
 				if (sum1 != null) {
-					try {
-						sumAll = sumAll.union(sum1);
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
+					parts.add(sum1);
 				}
 			}
 		}
-		return sumAll;
+		return CascadedPolygonUnion.union(parts);
 	}
 
 	/**
