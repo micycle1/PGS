@@ -6,7 +6,6 @@ import static processing.core.PConstants.LINES;
 import static processing.core.PConstants.ROUND;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
@@ -23,9 +22,7 @@ import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.PrecisionModel;
-import org.locationtech.jts.geom.util.LineStringExtracter;
 import org.locationtech.jts.linearref.LengthIndexedLine;
-import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.shape.random.RandomPointsBuilder;
 import org.locationtech.jts.shape.random.RandomPointsInGridBuilder;
 import org.locationtech.jts.util.GeometricShapeFactory;
@@ -45,7 +42,6 @@ public class PGS {
 
 	// TODO check for getCoordinates() in loops (and replace) (if lots of child
 	// geometries)
-	// TODO replace line() in for-each with beginshape(LINES)...vertex...endShape()
 	// TODO use LinearRingIterator when possible (refactor)
 	// TODO https://ignf.github.io/CartAGen/docs/algorithms.html
 	// TODO take into account strokweight (buffer by stroke amount?)
@@ -206,18 +202,18 @@ public class PGS {
 	 * each cell) from the envelope of the shape
 	 * 
 	 * @param shape
-	 * @param maxPoints           number of points, if this shape was its own
+	 * @param maxPoints           max number of points, if this shape was its own
 	 *                            envelope
 	 * @param constrainedToCircle
 	 * 
 	 *                            Sets whether generated points are constrained to
 	 *                            liewithin a circle contained within each grid
-	 *                            cell.This provides greater separation between
-	 *                            pointsin adjacent cells.
+	 *                            cell. This provides greater separation between
+	 *                            points in adjacent cells.
 	 * @param gutterFraction      Sets the fraction of the grid cell side which will
-	 *                            be treated asa gutter, in which no points will be
-	 *                            created.The provided value is clamped to the range
-	 *                            [0.0, 1.0].
+	 *                            be treated as a gutter, in which no points will be
+	 *                            created. The provided value is clamped to the
+	 *                            range [0.0, 1.0].
 	 * 
 	 * @return
 	 */
@@ -314,9 +310,10 @@ public class PGS {
 	}
 
 	/**
+	 * Creates a supercircle PShape.
 	 * 
-	 * @param x
-	 * @param y
+	 * @param x      centre point X
+	 * @param y      centre point Y
 	 * @param width
 	 * @param height
 	 * @param power  circularity of super circle. Values less than 1 create
@@ -330,6 +327,59 @@ public class PGS {
 		shapeFactory.setWidth(width);
 		shapeFactory.setHeight(height);
 		return toPShape(shapeFactory.createSupercircle(power));
+	}
+
+	/**
+	 * Creates a supershape PShape. The parameters feed into the superformula, which
+	 * is a simple 2D analytical expression allowing to draw a wide variety of
+	 * geometric and natural shapes (starfish, petals, snowflakes) by choosing
+	 * suitable values relevant to few parameters.
+	 * 
+	 * @param x
+	 * @param y
+	 * @param width
+	 * @param m
+	 * @param n1
+	 * @param n2
+	 * @param n3
+	 * @return
+	 */
+	public static PShape createSuperShape(double x, double y, double width, double m, double n1, double n2, double n3) {
+		// http://paulbourke.net/geometry/supershape/
+		PShape shape = new PShape(PShape.GEOMETRY);
+		shape.setFill(true);
+		shape.setFill(RGB.WHITE);
+		shape.beginShape();
+
+		int points = 180;
+		final double angleInc = Math.PI * 2 / points;
+		double angle = 0;
+		while (angle < Math.PI * 2) {
+			double r;
+			double t1, t2;
+
+			t1 = Math.cos(m * angle / 4);
+			t1 = Math.abs(t1);
+			t1 = Math.pow(t1, n2);
+
+			t2 = Math.sin(m * angle / 4);
+			t2 = Math.abs(t2);
+			t2 = Math.pow(t2, n3);
+
+			r = Math.pow(t1 + t2, 1 / n1);
+			if (Math.abs(r) == 0) {
+			} else {
+				r = width / r;
+//				r *= 50;
+				shape.vertex((float) (x + r * Math.cos(angle)), (float) (y + r * Math.sin(angle)));
+			}
+
+			angle += angleInc;
+		}
+
+		shape.endShape();
+		return shape;
+
 	}
 
 	/**

@@ -5,6 +5,7 @@ import static micycle.pgs.PGS.prepareLinesPShape;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
@@ -18,18 +19,29 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * PShape<-->JTS Geometry conversion
+ * Conversion between Processing PShapes and JTS Geometries.
+ * <p>
+ * Methods in this class are used by the library but are kept accessible for
+ * more advanced user use cases.
  * 
- * @author MCarleton
+ * @author Michael Carleton
  *
  */
 public class PGS_Conversion implements PConstants {
 
 	private PGS_Conversion() {
+	}
 
+	private void toPShape(Geometry g, PShape source) {
+		// TODO use source fill, stroke etc, when creating new PShape
 	}
 
 	/**
+	 * Converts a PShape to an equivalent JTS Geometry.
+	 * <p>
+	 * The output geometry preserves the hierarchy of the shape (child PShapes,
+	 * etc.) (or flattened?). PShapes beziers are sampled at regular intervals.
+	 * <p>
 	 * TODO GROUP, PRIMITIVE, PATH, or GEOMETRY TODO CACHE recent 5 calls? TODO
 	 * split into voronoi, delaunay, bool algebra classes Morph class: smooth
 	 * simplify. etc.
@@ -108,7 +120,7 @@ public class PGS_Conversion implements PConstants {
 			}
 
 			/**
-			 * Sample bezier curves at intervals to produce smooth Geometry
+			 * Sample bezier curves at regular intervals to produce smooth Geometry
 			 */
 			switch (vertexCodes[i]) {
 
@@ -143,8 +155,7 @@ public class PGS_Conversion implements PConstants {
 		LinearRing outer = null;
 		if (outerCoords.length >= 4 || outerCoords.length == 0) {
 			outer = GEOM_FACTORY.createLinearRing(outerCoords);
-		}
-		else {
+		} else {
 //			System.out.println("coords: " + outerCoords.length);
 		}
 
@@ -163,7 +174,10 @@ public class PGS_Conversion implements PConstants {
 	}
 
 	/**
-	 * broken for P2D (due to createshape)
+	 * Converts a JTS Geometry to an equivalent PShape.
+	 * 
+	 * <p>
+	 * TODO broken for P2D (due to createshape)
 	 * 
 	 * @param polygon
 	 * @return
@@ -216,11 +230,11 @@ public class PGS_Conversion implements PConstants {
 	 * @return
 	 */
 	public static PShape toPShape(Geometry geometry) {
-		
+
 		if (geometry == null) {
 			return new PShape(GROUP);
 		}
-		
+
 		if (geometry.getNumGeometries() == 1) {
 			if (geometry.getNumPoints() == 1) { // single point
 				// TODO
@@ -315,68 +329,6 @@ public class PGS_Conversion implements PConstants {
 		}
 	}
 
-//	/**
-//	 * Converts PShapes to Gishur polygons. Only supports GEOMETRY-type PShapes so
-//	 * far. Doesn't support holes.
-//	 * 
-//	 * @param shape
-//	 * @return
-//	 */
-//	public static XPolygon toXPolygon(PShape shape) {
-//
-//		final int[] contourGroups = getContourGroups(shape.getVertexCodes());
-//		final int[] vertexCodes = getVertexTypes(shape);
-//
-//		final ArrayList<ArrayList<XPoint>> coords = new ArrayList<>(); // list of coords representing rings
-//
-//		int lastGroup = -1;
-//
-//		for (int i = 0; i < shape.getVertexCount(); i++) {
-//			if (contourGroups[i] != lastGroup) {
-//				lastGroup = contourGroups[i];
-//				coords.add(new ArrayList<>());
-//			}
-//
-//			/**
-//			 * Sample bezier curves at intervals to produce smooth Geometry
-//			 */
-//			switch (vertexCodes[i]) {
-//
-////				case QUADRATIC_VERTEX:
-////					coords.get(lastGroup).addAll(getQuadraticBezierPoints(shape.getVertex(i - 1), shape.getVertex(i),
-////							shape.getVertex(i + 1), PTS.CURVE_SAMPLES));
-////					i += 1;
-////					continue;
-////
-////				case BEZIER_VERTEX: // aka cubic bezier, untested
-////					coords.get(lastGroup).addAll(getCubicBezierPoints(shape.getVertex(i - 1), shape.getVertex(i),
-////							shape.getVertex(i + 1), shape.getVertex(i + 2), PTS.CURVE_SAMPLES));
-////					i += 2;
-////					continue;
-//
-//				default:
-//					coords.get(lastGroup).add(new XPoint(shape.getVertexX(i), shape.getVertexY(i)));
-////					System.out.println(new XPoint(shape.getVertexX(i), shape.getVertexY(i)).toString());
-//			}
-//		}
-//
-//		for (ArrayList<XPoint> contour : coords) {
-//			// xpolys are not closed via vertices
-////			contour.add(contour.get(0)); // Points of LinearRing must form a closed linestring
-//		}
-//
-//		coords.get(0).remove(coords.size() - 1); // pshape is closed, so remove last vertex
-//		final XPoint[] outerCoords = new XPoint[coords.get(0).size()];
-//		Arrays.setAll(outerCoords, coords.get(0)::get);
-//
-//		if (outerCoords.length >= 3 || outerCoords.length == 0) {
-//			return new XPolygon(outerCoords);
-//		} else {
-////			System.out.println("coords: " + outerCoords.length);
-//			return new XPolygon();
-//		}
-//	}
-
 	public static int[] getContourGroups(int[] vertexCodes) {
 
 		int group = 0;
@@ -425,7 +377,7 @@ public class PGS_Conversion implements PConstants {
 	 * @param visited
 	 * @return
 	 */
-	public static PShape getChildren(PShape shape, ArrayList<PShape> visited) {
+	public static PShape getChildren(PShape shape, List<PShape> visited) {
 		visited.add(shape);
 
 		if (shape.getChildCount() == 0 || shape.getKind() != GROUP) {
@@ -439,13 +391,14 @@ public class PGS_Conversion implements PConstants {
 	}
 
 	/**
-	 * Sets the color of the PShape and all of it's children recursively (and
+	 * Sets the fill color for the PShape and all of it's children recursively (and
 	 * disables stroke).
 	 * 
 	 * @param shape
+	 * @see #setAllStrokeColor(PShape, int, int)
 	 */
 	public static void setAllFillColor(PShape shape, int color) {
-		ArrayList<PShape> all = new ArrayList<PShape>();
+		List<PShape> all = new ArrayList<PShape>();
 		getChildren(shape, all);
 		all.forEach(child -> {
 			child.setStroke(false);
@@ -454,8 +407,14 @@ public class PGS_Conversion implements PConstants {
 		});
 	}
 
+	/**
+	 * Sets the stroke color for the PShape and all of it's children recursively.
+	 * 
+	 * @param shape
+	 * @see {@link #setAllFillColor(PShape, int)}
+	 */
 	public static void setAllStrokeColor(PShape shape, int color, int strokeWeight) {
-		ArrayList<PShape> all = new ArrayList<PShape>();
+		List<PShape> all = new ArrayList<PShape>();
 		getChildren(shape, all);
 		all.forEach(child -> {
 			child.setStroke(true);
@@ -480,7 +439,7 @@ public class PGS_Conversion implements PConstants {
 	 */
 	private static int[] getVertexTypes(PShape shape) {
 
-		ArrayList<Integer> codes = new ArrayList<>(shape.getVertexCodeCount());
+		List<Integer> codes = new ArrayList<>(shape.getVertexCodeCount());
 
 		for (int i = 0; i < shape.getVertexCodeCount(); i++) {
 			int vertexCode = shape.getVertexCode(i);
@@ -520,10 +479,10 @@ public class PGS_Conversion implements PConstants {
 	 * @param resolution points per spline
 	 * @return list of points along curve
 	 */
-	private static ArrayList<Coordinate> getQuadraticBezierPoints(PVector start, PVector controlPoint, PVector end,
+	private static List<Coordinate> getQuadraticBezierPoints(PVector start, PVector controlPoint, PVector end,
 			int resolution) {
 
-		ArrayList<Coordinate> coords = new ArrayList<>();
+		List<Coordinate> coords = new ArrayList<>();
 
 		for (int j = 0; j < resolution; j++) {
 			PVector bezierPoint = getQuadraticBezierCoordinate(start, controlPoint, end, j / (float) resolution);
@@ -546,10 +505,10 @@ public class PGS_Conversion implements PConstants {
 		return new PVector(x, y);
 	}
 
-	private static ArrayList<Coordinate> getCubicBezierPoints(PVector start, PVector controlPoint1,
+	private static List<Coordinate> getCubicBezierPoints(PVector start, PVector controlPoint1,
 			PVector controlPoint2, PVector end, int resolution) {
 
-		ArrayList<Coordinate> coords = new ArrayList<>();
+		List<Coordinate> coords = new ArrayList<>();
 
 		for (int j = 0; j < resolution; j++) {
 			PVector bezierPoint = getCubicBezierCoordinate(start, controlPoint1, controlPoint2, end,

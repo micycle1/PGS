@@ -4,7 +4,6 @@ import static micycle.pgs.PGS_Conversion.fromPShape;
 import static processing.core.PConstants.TRIANGLES;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.function.Consumer;
 import org.locationtech.jts.algorithm.Orientation;
@@ -36,7 +35,6 @@ import processing.core.PVector;
 public class PGS_Triangulation {
 
 	private PGS_Triangulation() {
-
 	}
 
 	/**
@@ -118,9 +116,9 @@ public class PGS_Triangulation {
 
 		ArrayList<PVector> triangles = new ArrayList<>();
 		Consumer<Vertex[]> triangleVertexConsumer = t -> {
-			triangles.add(pVectorFromVertex(t[0]));
-			triangles.add(pVectorFromVertex(t[1]));
-			triangles.add(pVectorFromVertex(t[2]));
+			triangles.add(toPVector(t[0]));
+			triangles.add(toPVector(t[1]));
+			triangles.add(toPVector(t[2]));
 		};
 		if (constrain) {
 			TriangleCollector.visitTrianglesConstrained(tin, triangleVertexConsumer);
@@ -247,15 +245,15 @@ public class PGS_Triangulation {
 
 		ArrayList<PVector> triangles = new ArrayList<>();
 		Consumer<Vertex[]> triangleVertexConsumer = t -> {
-			triangles.add(pVectorFromVertex(t[0]));
-			triangles.add(pVectorFromVertex(t[1]));
-			triangles.add(pVectorFromVertex(t[2]));
+			triangles.add(toPVector(t[0]));
+			triangles.add(toPVector(t[1]));
+			triangles.add(toPVector(t[2]));
 		};
 		TriangleCollector.visitTrianglesConstrained(tin, triangleVertexConsumer);
 		return triangles;
 	}
 
-	public static PShape earCutTriangulation(ArrayList<PVector> points) {
+	public static PShape earCutTriangulation(List<PVector> points) {
 		double[] arrCoords = new double[points.size() * 2];
 
 		for (int i = 0; i < points.size(); i++) {
@@ -286,7 +284,7 @@ public class PGS_Triangulation {
 		return triangulation;
 	}
 
-	private static PVector pVectorFromVertex(Vertex v) {
+	private static PVector toPVector(Vertex v) {
 		return new PVector((float) v.getX(), (float) v.getY());
 	}
 

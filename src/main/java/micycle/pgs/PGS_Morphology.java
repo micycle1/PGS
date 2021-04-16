@@ -48,10 +48,10 @@ public class PGS_Morphology {
 	}
 
 	private PGS_Morphology() {
-
 	}
 
 	/**
+	 * Computes a buffer area around the shape, having the given buffer width.
 	 * 
 	 * @param shape
 	 * @param buffer extent/width of the buffer (may be positive or negative)
@@ -74,44 +74,54 @@ public class PGS_Morphology {
 	}
 
 	/**
-	 * Simplifies a PShape using the Douglas-Peucker algorithm.
+	 * Simplifies a shape using the Douglas-Peucker algorithm, reducing the
+	 * complexity and number of vertices of the shape.
+	 * <p>
+	 * During the process shapes can be split, collapse to lines or disappear. Holes
+	 * can be created or disappear.
 	 * 
 	 * @param shape
-	 * @param distanceTolerance
-	 * @return
-	 * @see #topologySimplify(PShape, float)
+	 * @param distanceTolerance the tolerance to use
+	 * @return simplifed copy of the shape
+	 * @see #simplifyVW(PShape, float)
+	 * @see #simplifyTopology(PShape, float)
 	 */
 	public static PShape simplify(PShape shape, float distanceTolerance) {
 		return toPShape(DouglasPeuckerSimplifier.simplify(fromPShape(shape), distanceTolerance));
 	}
 
 	/**
-	 * Simplifies a shape using the Visvalingam-Whyatt area-based algorithm.
+	 * Simplifies a shape using the Visvalingam-Whyatt area-based algorithm,
+	 * reducing the complexity and number of vertices of the shape.
 	 * 
 	 * @param shape
 	 * @param distanceTolerance The simplification tolerance is specified as a
 	 *                          distance.This is converted to an area tolerance by
 	 *                          squaring it.
-	 * @return
+	 * @return simplifed copy of the shape
+	 * @see #simplify(PShape, float)
+	 * @see #simplifyTopology(PShape, float)
 	 */
 	public static PShape simplifyVW(PShape shape, float distanceTolerance) {
 		return toPShape(VWSimplifier.simplify(fromPShape(shape), distanceTolerance));
 	}
 
 	/**
-	 * Preserves topological structure (holes, etc.)
+	 * Simplifies a shape, whilst preserving the topological structure of the shape
+	 * (holes, etc.).
 	 * 
 	 * @param shape
-	 * @param distanceTolerance
-	 * @return
+	 * @param distanceTolerance the tolerance to use
+	 * @return simplifed copy of the shape
 	 * @see #simplify(PShape, float)
+	 * @see #simplifyVW(PShape, float)
 	 */
-	public static PShape topologySimplify(PShape shape, float distanceTolerance) {
+	public static PShape simplifyTopology(PShape shape, float distanceTolerance) {
 		return toPShape(TopologyPreservingSimplifier.simplify(fromPShape(shape), distanceTolerance));
 	}
 
 	/**
-	 * Computes the convex hull of multiple PShapes
+	 * Computes the convex hull of multiple PShapes.
 	 * 
 	 * @param shapes
 	 * @return
@@ -130,9 +140,9 @@ public class PGS_Morphology {
 	 * @param points
 	 * @param threshold euclidean distance threshold
 	 * @return
-	 * @see #concaveHull2(ArrayList, float)
+	 * @see #concaveHull2(List, float)
 	 */
-	public static PShape concaveHull(ArrayList<PVector> points, float threshold) {
+	public static PShape concaveHull(List<PVector> points, float threshold) {
 
 		// calls Ordnance Survey implementation
 
@@ -170,9 +180,9 @@ public class PGS_Morphology {
 	 *                  typically produce optimal or near-optimal shape
 	 *                  characterization across a wide range of point distributions.
 	 * @return
-	 * @see #concaveHull(ArrayList, float)
+	 * @see #concaveHull(List, float)
 	 */
-	public static PShape concaveHull2(ArrayList<PVector> points, float threshold) {
+	public static PShape concaveHull2(List<PVector> points, float threshold) {
 
 		/**
 		 * (from https://doi.org/10.1016/j.patcog.2008.03.023) It is more convenient to
@@ -206,7 +216,8 @@ public class PGS_Morphology {
 	}
 
 	/**
-	 * Adjust segment factor to change between
+	 * Computes the "snap hull" for a shape, which is a convex hull that snaps to
+	 * the shape. Adjust segment factor to change between
 	 * 
 	 * @param shape
 	 * @param segmentFactor
@@ -242,12 +253,12 @@ public class PGS_Morphology {
 
 	/**
 	 * Smoothes a shape. The smoothing algorithm inserts new vertices which are
-	 * positioned using Bezier splines. The output shape tends to be larger than the
-	 * input one.
+	 * positioned using Bezier splines. The output shape tends to be a little larger
+	 * than the input.
 	 * 
 	 * @param shape
 	 * @param fit   tightness of fit from 0 (loose) to 1 (tight)
-	 * @return
+	 * @return smoothed copy of the shape
 	 */
 	public static PShape smooth(PShape shape, float fit) {
 		return toPShape(JTS.smooth(fromPShape(shape), fit));
@@ -272,7 +283,7 @@ public class PGS_Morphology {
 	 * Splits a shape into 4 equal quadrants
 	 * 
 	 * @param shape
-	 * @return list containing the 4 split quadrants
+	 * @return list containing the 4 split quadrants of the input shape
 	 */
 	public static List<PShape> split(PShape shape) {
 		// https://stackoverflow.com/questions/64252638/how-to-split-a-jts-polygon

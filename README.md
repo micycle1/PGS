@@ -186,7 +186,7 @@ Inner and exterior offset curves; based on *miter*, *bevel* or *round* offset st
 </p>
 
 ### Voronoi Diagram
-Point site voronoi diagram from shape vertices.
+Point site voronoi diagrams from shape vertices.
 
 <p float="middle">
   <img src="resources/contour/voronoi.gif" alt="" width="49%"/>
@@ -194,7 +194,7 @@ Point site voronoi diagram from shape vertices.
 </p>
 
 ### Circle Site Voronoi Diagram
-Circle-site voronoi diagram via point-site approximation.
+Circle-site voronoi diagrams via point-site approximation.
 <p float="middle">
   <img src="resources/contour/voronoiCircles.gif" alt="" width="49%"/>
   <img src="resources/contour/voronoiCircles.png" alt="" width="49%"/>
@@ -324,7 +324,7 @@ Generate constrained random point sets where all points lie within a shape. Poin
 ## *Assorted*
 
 ### Supercircle
-Generate *supercircle* PShapes, using a configurable constant.
+Generate *supercircles*, with a configurable constant.
 
 <img src="resources/pgs/superCircle.gif" alt="" width="50%"/>
 

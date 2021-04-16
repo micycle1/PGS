@@ -31,7 +31,6 @@ import processing.core.PVector;
 public class PGS_GeometricOptimisation {
 
 	private PGS_GeometricOptimisation() {
-
 	}
 
 	/**
@@ -60,7 +59,7 @@ public class PGS_GeometricOptimisation {
 	 * 
 	 * @param shape
 	 * @param centerPoint
-	 * @return
+	 * @return A circular PShape
 	 */
 	public static PShape maximumInscribedCircle(PShape shape, PVector centerPoint) {
 		Geometry g = fromPShape(shape);
@@ -77,7 +76,7 @@ public class PGS_GeometricOptimisation {
 	}
 
 	/**
-	 * Computes the Minimum Bounding Circle (MBC)for the points in a Geometry. The
+	 * Computes the Minimum Bounding Circle (MBC) for the points in a Geometry. The
 	 * MBC is the smallest circle which covers all the vertices of the input shape
 	 * (this is also known as the Smallest Enclosing Circle). This is equivalent to
 	 * computing the Maximum Diameter of the input vertex set.
@@ -93,7 +92,9 @@ public class PGS_GeometricOptimisation {
 	}
 
 	/**
-	 * Gets the minimum rectangle enclosing a shape.
+	 * Computes the minimum bounding rectangle that encloses a shape. Unlike the
+	 * envelope for a shape, the rectangle returned by this method can have any
+	 * orientation.
 	 * 
 	 * @param shape
 	 * @return
@@ -104,13 +105,12 @@ public class PGS_GeometricOptimisation {
 	}
 
 	/**
-	 * 
-	 * 
-	 * Computes the minimum diameter of a shape. The minimum diameter is defined to
-	 * be the width of the smallest band that contains the shape, where a band is a
-	 * strip of the plane defined by two parallel lines. This can be thought of as
-	 * the smallest hole that the geometry can bemoved through, with a single
-	 * rotation.
+	 * Computes the minimum diameter of a shape.
+	 * <p>
+	 * The minimum diameter is defined to be the width of the smallest band that
+	 * contains the shape, where a band is a strip of the plane defined by two
+	 * parallel lines. This can be thought of as the smallest hole that the geometry
+	 * can bemoved through, with a single rotation.
 	 * 
 	 * @param shape
 	 * @return

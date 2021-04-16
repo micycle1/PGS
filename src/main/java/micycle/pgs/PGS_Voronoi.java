@@ -176,7 +176,7 @@ public class PGS_Voronoi {
 			return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 		};
 
-		final KDTree<PVector> sites = KDTree.create(2, pdf2D);
+		final KDTree<PVector> sites = KDTree.create(2, pdf2D); // TODO use vpTree?
 		final double angleInc = Math.PI * 2 / circleSamples;
 		circles.forEach(c -> {
 			if (c.z > 0) {
@@ -195,7 +195,6 @@ public class PGS_Voronoi {
 
 		final PShape lines = PGS.prepareLinesPShape(RGB.PINK, PConstants.SQUARE, 3);
 		final HashSet<Integer> seen = new HashSet<>();
-		int n = 0;
 		for (ThiessenPolygon poly : v.getPolygons()) {
 			edge: for (IQuadEdge e : poly.getEdges()) {
 				final PVector a = new PVector((float) e.getA().x, (float) e.getA().y);
@@ -254,8 +253,6 @@ public class PGS_Voronoi {
 	 */
 	private static class SweepLineSegmentIntersection {
 
-		// TODO see https://github.com/cardawid/balabanalgorithm
-
 		final List<Edge> polygonEdges;
 
 		private final EdgeSetIntersector i;
@@ -311,6 +308,7 @@ public class PGS_Voronoi {
 	 * @author Michael Carleton
 	 * @deprecated it's a little slower than IntersectionJTS
 	 */
+	@SuppressWarnings("unused")
 	private static class SegmentIntersection {
 
 		// TODO decide on PVectors / double[] etc
