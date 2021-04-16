@@ -49,6 +49,17 @@ public class PGS {
 	// see https://github.com/IGNF/CartAGen
 	// see https://ignf.github.io/CartAGen/docs/algorithms/others/spinalize.html
 
+	// remove ruppertTriangle
+	// mitered offset type
+	// conversion tests
+	// apollonus method
+	// SmallestEnclosingCircle
+	// investiage P2D pshape error
+	// add balaban?
+	// repalce float args with doubles
+	// curve samples depend on point distance
+	// fix polys with holes being joined up
+
 	/**
 	 * Calling Polygon#union repeatedly is one way to union several Polygons
 	 * together. But here’s a trick that can be significantly faster (seconds rather
@@ -595,6 +606,19 @@ public class PGS {
 	}
 
 	/**
+	 * Uniquely encodes two numbers (order-dependent) into a single natural number.
+	 */
+	static double cantorPairing(double a, double b) {
+		a = (a >= 0.0 ? 2.0 * a : (-2.0 * a) - 1.0); // enable negative input values
+		b = (b >= 0.0 ? 2.0 * b : (-2.0 * b) - 1.0); // enable negative input values
+		return (a + b) * (a + b + 1) / 2 + a;
+	}
+
+	static double cantorPairing(int a, int b) {
+		return (a + b) * (a + b + 1) / 2 + a; // TODO check /2. integer div?
+	}
+
+	/**
 	 * Provides convenient iteration of exterior and linear rings (if any) of a JTS
 	 * geometry.
 	 * 
@@ -645,19 +669,6 @@ public class PGS {
 			};
 			return it;
 		}
-	}
-
-	/**
-	 * Uniquely encodes two numbers (order-dependent) into a single natural number.
-	 */
-	static double cantorPairing(double a, double b) {
-		a = (a >= 0.0 ? 2.0 * a : (-2.0 * a) - 1.0); // enable negative input values
-		b = (b >= 0.0 ? 2.0 * b : (-2.0 * b) - 1.0); // enable negative input values
-		return (a + b) * (a + b + 1) / 2 + a;
-	}
-
-	static double cantorPairing(int a, int b) {
-		return (a + b) * (a + b + 1) / 2 + a;
 	}
 
 }

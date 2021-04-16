@@ -26,7 +26,7 @@ public final class CornerRounding {
 	 * @param extent 0...1
 	 * @return
 	 */
-	public static PShape round(PShape shape, float extent) {
+	public static PShape round(PShape shape, double extent) {
 		PShape rounded = new PShape(PShape.GEOMETRY);
 		PGS_Conversion.setAllFillColor(rounded, RGB.PINK);
 		rounded.beginShape();
@@ -44,7 +44,7 @@ public final class CornerRounding {
 	}
 
 	/**
-	 * Round a tripl
+	 * Round a triplet of points.
 	 * 
 	 * @param a
 	 * @param b      middle/enclosed point
@@ -52,13 +52,14 @@ public final class CornerRounding {
 	 * @param extent
 	 * @param shape
 	 */
-	private static void roundCorner(PVector a, PVector b, PVector c, float extent, PShape shape) {
-		// https://observablehq.com/@daformat/rounding-polygon-corners
+	private static void roundCorner(PVector a, PVector b, PVector c, double extent, PShape shape) {
 		if (clockwise(a, b, c)) {
 			PVector temp = a;
 			a = c;
 			c = temp;
 		}
+
+		final float extentF = (float) extent;
 
 		// line vectors
 		PVector ab = PVector.sub(a, b);
@@ -69,8 +70,8 @@ public final class CornerRounding {
 		final float maxRadius = PApplet.min(ab.div(2).mag(), cb.div(2).mag());
 		extent = extent * maxRadius;
 
-		final PVector A = PVector.add(b, ab.mult(extent / ab.mag())); // where circle touches AB
-		final PVector C = PVector.add(b, cb.mult(extent / cb.mag())); // where circle touches CB
+		final PVector A = PVector.add(b, ab.mult(extentF / ab.mag())); // where circle touches AB
+		final PVector C = PVector.add(b, cb.mult(extentF / cb.mag())); // where circle touches CB
 
 		PVector vBC = PVector.sub(C, b);
 

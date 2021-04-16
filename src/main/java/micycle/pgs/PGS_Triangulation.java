@@ -235,7 +235,7 @@ public class PGS_Triangulation {
 
 		PoissonDistribution pd = new PoissonDistribution(0);
 		List<PVector> poissonPoints = pd.generate(e.getMinX(), e.getMinY(), e.getMinX() + e.getWidth(),
-				e.getMinY() + e.getHeight(), spacing, 10);
+				e.getMinY() + e.getHeight(), spacing, 8);
 //		final IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(g);
 //		List<PVector> pp = poissonPoints.parallelStream()
 //				.filter(p -> pointLocator.locate(PGS.coordFromPVector(p)) != Location.EXTERIOR)
@@ -268,7 +268,7 @@ public class PGS_Triangulation {
 		// triangulation.setStrokeCap(ROUND);
 		triangulation.setStroke(true);
 		triangulation.setStrokeWeight(2);
-		triangulation.setStroke(-123222);
+		triangulation.setStroke(RGB.PINK);
 		triangulation.setFill(true);
 		triangulation.setFill(micycle.pgs.color.RGB.composeColor(255, 255, 255, 255));
 		triangulation.beginShape(TRIANGLES);
