@@ -1,7 +1,6 @@
 package micycle.pgs;
 
 import static micycle.pgs.PGS.GEOM_FACTORY;
-import static micycle.pgs.PGS.prepareLinesPShape;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,79 +31,145 @@ public class PGS_Conversion implements PConstants {
 	private PGS_Conversion() {
 	}
 
-	private void toPShape(Geometry g, PShape source) {
-		// TODO use source fill, stroke etc, when creating new PShape
-	}
+	/**
+		 * Converts a JTS Geometry to an equivalent PShape. MultiGeometries (collections
+		 * of geometries) become GROUP PShapes with children shapes.
+		 * 
+		 * @param g
+		 * @param source PShape to copy fill/stroke details from
+		 * @return
+		 */
+		public static PShape toPShape(final Geometry g) { // , final PShape source
+			// TODO use source fill, stroke etc, when creating new PShape
+	
+			if (g == null) {
+				return new PShape(PShape.GEOMETRY);
+			}
+	
+			PShape shape = new PShape();
+	
+			if (!(shape.getFamily() == GROUP || shape.getFamily() == PShape.PRIMITIVE) && shape.getVertexCount() > 0) {
+	//			shape.setStrokeWeight(source.getStrokeWeight(0));
+	//			shape.setStroke(source.stroke);
+	//			shape.setFill(source.getFill(0));
+			} else {
+			}
+			shape.setFill(true);
+			shape.setFill(micycle.pgs.color.RGB.WHITE);
+			shape.setStroke(true);
+			shape.setStroke(micycle.pgs.color.RGB.PINK);
+			shape.setStrokeWeight(4);
+	
+			switch (g.getGeometryType()) {
+				case Geometry.TYPENAME_GEOMETRYCOLLECTION:
+				case Geometry.TYPENAME_MULTIPOLYGON:
+				case Geometry.TYPENAME_MULTILINESTRING:
+					shape.setFamily(GROUP);
+					for (int i = 0; i < g.getNumGeometries(); i++) {
+						shape.addChild(toPShape(g.getGeometryN(i)));
+					}
+					break;
+	
+				case Geometry.TYPENAME_LINEARRING: // closed
+				case Geometry.TYPENAME_LINESTRING:
+					final LineString l = (LineString) g;
+					final boolean closed = l.isClosed();
+					shape.setFamily(PShape.PATH);
+					shape.beginShape();
+					Coordinate[] coords = l.getCoordinates();
+					for (int i = 0; i < coords.length - (closed ? 1 : 0); i++) {
+						shape.vertex((float) coords[i].x, (float) coords[i].y);
+					}
+					if (closed) { // closed vertex was skipped, so close the path
+						shape.endShape(CLOSE);
+					} else {
+						shape.endShape();
+					}
+	
+					break;
+	
+				case Geometry.TYPENAME_POLYGON:
+					final Polygon polygon = (Polygon) g;
+					shape.setFamily(PShape.PATH);
+					shape.beginShape();
+	
+					/**
+					 * Outer and inner loops are iterated up to length-1 to skip the point that
+					 * closes the JTS shape (same as the first point).
+					 */
+					coords = polygon.getExteriorRing().getCoordinates();
+					for (int i = 0; i < coords.length - 1; i++) {
+						Coordinate coord = coords[i];
+						shape.vertex((float) coord.x, (float) coord.y);
+					}
+	
+					for (int j = 0; j < polygon.getNumInteriorRing(); j++) { // holes
+						shape.beginContour();
+						coords = polygon.getInteriorRingN(j).getCoordinates();
+						for (int i = 0; i < coords.length - 1; i++) {
+							Coordinate coord = coords[i];
+							shape.vertex((float) coord.x, (float) coord.y);
+						}
+						shape.endContour();
+					}
+					shape.endShape(CLOSE);
+					break;
+				default:
+					System.err.println(g.getGeometryType() + " are unsupported.");
+					break;
+			}
+	
+			return shape;
+		}
 
 	/**
 	 * Converts a PShape to an equivalent JTS Geometry.
 	 * <p>
-	 * The output geometry preserves the hierarchy of the shape (child PShapes,
-	 * etc.) (or flattened?). PShapes beziers are sampled at regular intervals.
+	 * PShapes with bezier curves are sampled at regular intervals (in which case
+	 * the resulting geometry will have more vertices than the input)
 	 * <p>
-	 * TODO GROUP, PRIMITIVE, PATH, or GEOMETRY TODO CACHE recent 5 calls? TODO
-	 * split into voronoi, delaunay, bool algebra classes Morph class: smooth
-	 * simplify. etc.
-	 * 
-	 * USE arraylist.toArray() where possible
+	 * For now, a PShape with multiple children is flattened/unioned since most
+	 * library methods are not (yet) programmed to handle multi/disjoint geometries.
 	 * 
 	 * @param shape
-	 * @return
+	 * @return a JTS Polygon or MultiPolygon
 	 */
 	public static Geometry fromPShape(PShape shape) {
 
-		// TODO convert to switch statement
+		Geometry g = null;
 
-		if (shape.getFamily() == PShape.GROUP) {
-			ArrayList<PShape> flatChildren = new ArrayList<PShape>();
-			getChildren(shape, flatChildren);
-			flatChildren.removeIf(s -> s.getFamily() == PShape.GROUP); // aka .remove(shape)
-//			flatChildren.remove(shape);
-			Polygon[] children = new Polygon[flatChildren.size()];
-			for (int i = 0; i < children.length; i++) {
-				children[i] = (Polygon) fromPShape(flatChildren.get(i));
-			}
-			// TODO return to multipoly instead to prevent some crashes
-			return (GEOM_FACTORY.createMultiPolygon(children).buffer(0)); // TODO don't flatten?
-
+		switch (shape.getFamily()) {
+			case PShape.GROUP:
+				final ArrayList<PShape> flatChildren = new ArrayList<PShape>();
+				getChildren(shape, flatChildren);
+				flatChildren.removeIf(s -> s.getFamily() == PShape.GROUP);
+				Polygon[] children = new Polygon[flatChildren.size()];
+				for (int i = 0; i < children.length; i++) {
+					children[i] = (Polygon) fromPShape(flatChildren.get(i));
+				}
+				// TODO for now, buffer/flatten polygons so that methods handle them properly
+				return (GEOM_FACTORY.createMultiPolygon(children).buffer(0));
+			case PShape.GEOMETRY:
+			case PShape.PATH:
+				g = fromVertices(shape);
+				break;
+			case PShape.PRIMITIVE:
+				g = fromPrimitive(shape);
+				break;
 		}
 
-//		shape.getKind() // switch to get primitive, then == ELLIPSE
-		if (shape.getFamily() == PShape.PRIMITIVE) {
-			GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-			shapeFactory.setNumPoints(PGS.CURVE_SAMPLES * 4); // TODO magic constant
-			switch (shape.getKind()) {
-				case ELLIPSE:
-					// TODO split into createCircleGeom method
-					shapeFactory.setCentre(new Coordinate(shape.getParam(0), shape.getParam(1)));
-					shapeFactory.setWidth(shape.getParam(2));
-					shapeFactory.setHeight(shape.getParam(3));
-					return shapeFactory.createEllipse();
-				case TRIANGLE:
-//					shapeFactor
-					// TODO
-					break;
-				case QUAD:
-					// TODO 4-sided polygon
-					break;
-				case RECT:
-					shapeFactory.setCentre(new Coordinate(shape.getParam(0), shape.getParam(1)));
-					shapeFactory.setWidth(shape.getParam(2));
-					shapeFactory.setHeight(shape.getParam(3));
-					return shapeFactory.createRectangle();
-//				      * @param a x-coordinate of the ellipse
-//				      * @param b y-coordinate of the ellipse
-//				      * @param c width of the ellipse by default
-//				      * @param d height of the ellipse by default
-//					break;
+		return g;
+	}
 
-				default:
-					System.err.print("Primitive Shape" + shape.getKind() + " not implmented");
-					return null;
-			}
+	/**
+	 * Creates a JTS Polygon from a geometry or path PShape.
+	 */
+	private static Polygon fromVertices(PShape shape) {
+
+		if (shape.getVertexCount() < 3) {
+			System.err.println("Input PShape has less than 3 vertices (not polygonal).");
+			return GEOM_FACTORY.createPolygon();
 		}
-
-		/// GEOMETRY PShape types ///
 
 		final int[] contourGroups = getContourGroups(shape.getVertexCodes());
 		final int[] vertexCodes = getVertexTypes(shape);
@@ -112,7 +177,6 @@ public class PGS_Conversion implements PConstants {
 		final ArrayList<ArrayList<Coordinate>> coords = new ArrayList<>(); // list of coords representing rings
 
 		int lastGroup = -1;
-
 		for (int i = 0; i < shape.getVertexCount(); i++) {
 			if (contourGroups[i] != lastGroup) {
 				lastGroup = contourGroups[i];
@@ -123,19 +187,16 @@ public class PGS_Conversion implements PConstants {
 			 * Sample bezier curves at regular intervals to produce smooth Geometry
 			 */
 			switch (vertexCodes[i]) {
-
 				case QUADRATIC_VERTEX:
 					coords.get(lastGroup).addAll(getQuadraticBezierPoints(shape.getVertex(i - 1), shape.getVertex(i),
 							shape.getVertex(i + 1), PGS.CURVE_SAMPLES));
 					i += 1;
 					continue;
-
-				case BEZIER_VERTEX: // aka cubic bezier, untested
+				case BEZIER_VERTEX: // aka cubic bezier
 					coords.get(lastGroup).addAll(getCubicBezierPoints(shape.getVertex(i - 1), shape.getVertex(i),
 							shape.getVertex(i + 1), shape.getVertex(i + 2), PGS.CURVE_SAMPLES));
 					i += 2;
 					continue;
-
 				default:
 					coords.get(lastGroup).add(new Coordinate(shape.getVertexX(i), shape.getVertexY(i)));
 					break;
@@ -143,21 +204,14 @@ public class PGS_Conversion implements PConstants {
 		}
 
 		for (ArrayList<Coordinate> contour : coords) {
-			// TODO only add if first and last different
 			if (!contour.get(0).equals2D(contour.get(contour.size() - 1))) {
-				contour.add(contour.get(0)); // Points of LinearRing must form a closed linestring
+				contour.add(contour.get(0)); // points of LinearRing must form a closed linestring
 			}
 		}
 
-		final Coordinate[] outerCoords = new Coordinate[coords.get(0).size()];
-		Arrays.setAll(outerCoords, coords.get(0)::get);
+		final Coordinate[] outerCoords = coords.get(0).toArray(new Coordinate[coords.get(0).size()]);
 
-		LinearRing outer = null;
-		if (outerCoords.length >= 4 || outerCoords.length == 0) {
-			outer = GEOM_FACTORY.createLinearRing(outerCoords);
-		} else {
-//			System.out.println("coords: " + outerCoords.length);
-		}
+		LinearRing outer = GEOM_FACTORY.createLinearRing(outerCoords); // should always be valid
 
 		/**
 		 * Create linear ring for each hole in the shape
@@ -165,8 +219,7 @@ public class PGS_Conversion implements PConstants {
 		LinearRing[] holes = new LinearRing[coords.size() - 1];
 
 		for (int j = 1; j < coords.size(); j++) {
-			final Coordinate[] innerCoords = new Coordinate[coords.get(j).size()];
-			Arrays.setAll(innerCoords, coords.get(j)::get);
+			final Coordinate[] innerCoords = coords.get(j).toArray(new Coordinate[coords.get(j).size()]);
 			holes[j - 1] = GEOM_FACTORY.createLinearRing(innerCoords);
 		}
 
@@ -174,198 +227,61 @@ public class PGS_Conversion implements PConstants {
 	}
 
 	/**
-	 * Converts a JTS Geometry to an equivalent PShape.
-	 * 
-	 * <p>
-	 * TODO broken for P2D (due to createshape)
-	 * 
-	 * @param polygon
-	 * @return
+	 * Creates a JTS Polygon from a primitive PShape. Primitive PShapes are those
+	 * where createShape() is used to create them, and can take any of these types:
+	 * POINT, LINE, TRIANGLE, QUAD, RECT, ELLIPSE, ARC, BOX, SPHERE. They do not
+	 * have direct vertex data.
 	 */
-	public static PShape toPShape(Polygon polygon) {
-		PShape shape = new PShape();
-		shape.setFamily(PShape.GEOMETRY);
-		shape.setFill(true);
-		shape.setFill(255);
+	private static Polygon fromPrimitive(PShape shape) {
+		final GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
+		shapeFactory.setNumPoints(PGS.CURVE_SAMPLES * 4); // TODO magic constant
 
-		if (polygon == null) {
-			return shape;
+		switch (shape.getKind()) {
+			case ELLIPSE:
+				shapeFactory.setCentre(new Coordinate(shape.getParam(0), shape.getParam(1)));
+				shapeFactory.setWidth(shape.getParam(2));
+				shapeFactory.setHeight(shape.getParam(3));
+				return shapeFactory.createEllipse();
+			case TRIANGLE:
+				Coordinate[] coords = new Coordinate[3 + 1];
+				Coordinate c1 = new Coordinate(shape.getParam(0), shape.getParam(1));
+				coords[0] = c1;
+				coords[1] = new Coordinate(shape.getParam(2), shape.getParam(3));
+				coords[2] = new Coordinate(shape.getParam(4), shape.getParam(5));
+				coords[3] = c1.copy(); // close loop
+				return GEOM_FACTORY.createPolygon(coords);
+			case RECT:
+				shapeFactory.setCentre(new Coordinate(shape.getParam(0), shape.getParam(1)));
+				shapeFactory.setWidth(shape.getParam(2));
+				shapeFactory.setHeight(shape.getParam(3));
+				return shapeFactory.createRectangle();
+			case QUAD:
+				coords = new Coordinate[4 + 1];
+				c1 = new Coordinate(shape.getParam(0), shape.getParam(1));
+				coords[0] = c1;
+				coords[1] = new Coordinate(shape.getParam(2), shape.getParam(3));
+				coords[2] = new Coordinate(shape.getParam(4), shape.getParam(5));
+				coords[3] = new Coordinate(shape.getParam(6), shape.getParam(7));
+				coords[4] = c1.copy(); // close loop
+				return GEOM_FACTORY.createPolygon(coords);
+			case ARC:
+				shapeFactory.setCentre(new Coordinate(shape.getParam(0), shape.getParam(1)));
+				shapeFactory.setWidth(shape.getParam(2));
+				shapeFactory.setHeight(shape.getParam(3));
+				return shapeFactory.createArcPolygon(-Math.PI / 2 + shape.getParam(4), shape.getParam(5));
+			case LINE:
+			case POINT:
+				System.err.print("Non-polygon primitives are not supported.");
+				break;
+			case BOX:
+			case SPHERE:
+				System.err.print("3D primitives are not supported.");
+				break;
+			default:
+				System.err.print(shape.getKind() + " primitives are not supported.");
+
 		}
-
-		shape.beginShape();
-
-		/**
-		 * Draw one outer ring. Both inner and outer loops used to iterate upto length
-		 * -1 to skip the point that closes the JTS shape (same as the first point).
-		 * However calling buffer() produces broken results for some shapes.
-		 */
-		Coordinate[] coords = polygon.getExteriorRing().getCoordinates();
-		for (int i = 0; i < coords.length; i++) {
-			// -1: ignore last coord (a copy of the first) (TODO check)
-			Coordinate coord = coords[i];
-			shape.vertex((float) coord.x, (float) coord.y);
-		}
-
-		/**
-		 * Draw any Contours/inner rings
-		 */
-		for (int j = 0; j < polygon.getNumInteriorRing(); j++) {
-			shape.beginContour();
-			for (int i = 0; i < polygon.getInteriorRingN(j).getCoordinates().length; i++) {
-				// -1: ignore last coord (a copy of the first)
-				Coordinate coord = polygon.getInteriorRingN(j).getCoordinates()[i];
-				shape.vertex((float) coord.x, (float) coord.y);
-			}
-			shape.endContour();
-		}
-		shape.endShape(); // NOTE don't close (since points should be closed)
-
-		return shape;
-	}
-
-	/**
-	 * A geometry may include multiple geometries, so resulting PShape may contain
-	 * multiple children.
-	 * 
-	 * @return
-	 */
-	public static PShape toPShape(Geometry geometry) {
-
-		if (geometry == null) {
-			return new PShape(GROUP);
-		}
-
-		if (geometry.getNumGeometries() == 1) {
-			if (geometry.getNumPoints() == 1) { // single point
-				// TODO
-				PShape point = new PShape();
-				point.setFamily(PShape.GEOMETRY);
-				point.setStrokeCap(ROUND);
-				point.setStroke(true);
-				point.setStrokeWeight(5);
-				point.setStroke(-1232222);
-				point.beginShape(POINTS);
-				point.vertex((float) geometry.getCoordinate().x, (float) geometry.getCoordinate().y);
-				point.endShape();
-				return point;
-
-			} else {
-				if (geometry.getNumPoints() == 2) { // line
-					PShape line = prepareLinesPShape(null, null, 4);
-					line.vertex((float) geometry.getCoordinates()[0].x, (float) geometry.getCoordinates()[0].y);
-					line.vertex((float) geometry.getCoordinates()[1].x, (float) geometry.getCoordinates()[1].y);
-					line.endShape();
-					return line;
-				} else {
-					if (geometry.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) { // long linestring
-						PShape line = new PShape();
-						line.setFamily(PShape.PATH); // TODO check?
-						line.setStroke(true);
-						line.setStrokeWeight(4);
-						line.setStroke(-1232222);
-						line.beginShape();
-						Coordinate[] coords = geometry.getCoordinates();
-						for (int i = 0; i < coords.length - 1; i++) {
-							line.vertex((float) coords[i].x, (float) coords[i].y);
-						}
-						line.endShape(CLOSE);
-						return line;
-					} else {
-						return toPShape((Polygon) geometry);
-					}
-				}
-
-			}
-		} else { // not very primitive
-			PShape parent = new PShape(GROUP);
-			parent.setFill(-16711936); // TODO
-			for (int i = 0; i < geometry.getNumGeometries(); i++) {
-
-				PShape child = null;
-				if (geometry.getGeometryN(i).getNumGeometries() > 1) { // is geom collection
-					child = toPShape(geometry.getGeometryN(i));
-				} else {
-
-					// TODO switch case on: geometry.getGeometryType()
-
-					if (geometry.getGeometryN(i) instanceof LineString) {
-						LineString l = (LineString) geometry.getGeometryN(i);
-
-						// TODO remove if-else here?
-//						System.out.println("todo linestring: " + geometry.getCoordinates().length);
-						child = new PShape();
-						child.setFamily(PShape.GEOMETRY);
-//						child.setStrokeCap(ROUND);
-						child.setStroke(true);
-						child.setStrokeWeight(2);
-						child.setStroke(-1232222);
-						child.beginShape();
-						for (int j = 0; j < l.getCoordinates().length; j++) {
-							float vx = (float) l.getCoordinates()[j].x;
-							float vy = (float) l.getCoordinates()[j].y;
-							child.vertex(vx, vy);
-						}
-						child.endShape();
-						parent.addChild(child);
-					} else {
-
-						if (geometry.getGeometryN(i).getCoordinates().length > 2) { // not Point or linestring
-							child = toPShape((Polygon) geometry.getGeometryN(i));
-							child.setFill(-16711936); // TODO
-							child.setStrokeCap(ROUND);
-							child.setStroke(true);
-							child.setStrokeWeight(2);
-//					child.disableStyle(); // Inherit parent style; causes crash?
-
-						} else {
-//						System.out.println("debug line");
-							child = toPShape(geometry.getGeometryN(i)); // Point or LineString
-						}
-						parent.addChild(child);
-					}
-				}
-			}
-			return parent;
-		}
-	}
-
-	public static int[] getContourGroups(int[] vertexCodes) {
-
-		int group = 0;
-
-		ArrayList<Integer> groups = new ArrayList<>(vertexCodes.length * 2);
-
-		for (int vertexCode : vertexCodes) {
-			switch (vertexCode) {
-				case VERTEX:
-					groups.add(group);
-					break;
-
-				case QUADRATIC_VERTEX:
-					groups.add(group);
-					groups.add(group);
-					break;
-
-				case BEZIER_VERTEX:
-					groups.add(group);
-					groups.add(group);
-					groups.add(group);
-					break;
-
-				case CURVE_VERTEX:
-					groups.add(group);
-					break;
-
-				case BREAK:
-					// Marks beginning/end of new contour, and should be proceeded by a VERTEX
-					group++;
-					break;
-			}
-		}
-
-		final int[] vertexGroups = new int[groups.size()];
-		Arrays.setAll(vertexGroups, groups::get);
-		return vertexGroups;
+		return GEOM_FACTORY.createPolygon(); // empty polygon
 	}
 
 	/**
@@ -431,6 +347,45 @@ public class PGS_Conversion implements PConstants {
 		});
 	}
 
+	private static int[] getContourGroups(int[] vertexCodes) {
+
+		int group = 0;
+
+		ArrayList<Integer> groups = new ArrayList<>(vertexCodes.length * 2);
+
+		for (int vertexCode : vertexCodes) {
+			switch (vertexCode) {
+				case VERTEX:
+					groups.add(group);
+					break;
+
+				case QUADRATIC_VERTEX:
+					groups.add(group);
+					groups.add(group);
+					break;
+
+				case BEZIER_VERTEX:
+					groups.add(group);
+					groups.add(group);
+					groups.add(group);
+					break;
+
+				case CURVE_VERTEX:
+					groups.add(group);
+					break;
+
+				case BREAK:
+					// Marks beginning/end of new contour, and should be proceeded by a VERTEX
+					group++;
+					break;
+			}
+		}
+
+		final int[] vertexGroups = new int[groups.size()];
+		Arrays.setAll(vertexGroups, groups::get);
+		return vertexGroups;
+	}
+
 	/**
 	 * Basically getVertexCodes, but returns the vertex type for every vertex
 	 * 
@@ -472,6 +427,9 @@ public class PGS_Conversion implements PConstants {
 		return vertexGroups;
 	}
 
+	// TODO Modify interpolation resolution depending on bezier length (ideally
+	// sample per 1 unit)
+
 	/**
 	 * Subdivide/interpolate/discretise along a quadratic bezier curve, given by its
 	 * start, end and control points
@@ -505,8 +463,8 @@ public class PGS_Conversion implements PConstants {
 		return new PVector(x, y);
 	}
 
-	private static List<Coordinate> getCubicBezierPoints(PVector start, PVector controlPoint1,
-			PVector controlPoint2, PVector end, int resolution) {
+	private static List<Coordinate> getCubicBezierPoints(PVector start, PVector controlPoint1, PVector controlPoint2,
+			PVector end, int resolution) {
 
 		List<Coordinate> coords = new ArrayList<>();
 
