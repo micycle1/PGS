@@ -10,21 +10,15 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.geotools.geometry.jts.JTS;
-import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
-import org.locationtech.jts.densify.Densifier;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
-import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.PrecisionModel;
-import org.locationtech.jts.linearref.LengthIndexedLine;
-import org.locationtech.jts.shape.random.RandomPointsBuilder;
-import org.locationtech.jts.shape.random.RandomPointsInGridBuilder;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
 import micycle.pgs.color.RGB;
@@ -54,11 +48,7 @@ public class PGS {
 	// conversion tests
 	// apollonus method
 	// SmallestEnclosingCircle
-	// investiage P2D pshape error
 	// add balaban?
-	// repalce float args with doubles
-	// curve samples depend on point distance
-	// fix polys with holes being joined up
 
 	/**
 	 * Calling Polygon#union repeatedly is one way to union several Polygons
@@ -67,9 +57,6 @@ public class PGS {
 	 * with zero distance
 	 */
 
-	/**
-	 * Defines number of vertex samples per bezier line (during PShape->JTS)
-	 */
 	protected static final int CURVE_SAMPLES = 20;
 
 	public static GeometryFactory GEOM_FACTORY = new GeometryFactory(
@@ -77,17 +64,6 @@ public class PGS {
 
 	private PGS() {
 
-	}
-
-	/**
-	 * Densifies a Geometry by inserting extra vertices along the line segments
-	 * contained in the geometry. Specify maximum length of segments
-	 */
-	public static PShape densify(PShape shape, float distanceTolerance) {
-		Densifier d = new Densifier(fromPShape(shape));
-		d.setDistanceTolerance(distanceTolerance);
-		d.setValidate(false);
-		return toPShape(d.getResultGeometry());
 	}
 
 	/**
@@ -103,81 +79,6 @@ public class PGS {
 	}
 
 	/**
-	 * Extracts a point from the perimeter (exterior) of the given shape.
-	 * 
-	 * @param shape
-	 * @param distance       0...1 around shape perimeter; or -1...0 (other
-	 *                       direction)
-	 * @param offsetDistance perpendicular offset distance, where 0 is exactly on
-	 *                       the shape exteriod. Positive values offset the point
-	 *                       away from the shape (outwards); negative values offset
-	 *                       the point inwards.
-	 * @return
-	 * @see #pointsOnExterior(PShape, int, float)
-	 */
-	public static PVector pointOnExterior(PShape shape, float distance, float offsetDistance) {
-		distance %= 1;
-		// TODO CHECK CAST (ITERATE OVER GROUP); apply to interior rings too?
-		LengthIndexedLine l = new LengthIndexedLine(((Polygon) fromPShape(shape)).getExteriorRing());
-		Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
-		return new PVector((float) coord.x, (float) coord.y);
-	}
-
-	/**
-	 * Extracts many points from the perimeter (faster than calling other method
-	 * lots)
-	 * 
-	 * @param shape
-	 * @param points         number of points to return; evenly distibuted around
-	 *                       the perimeter of the shape
-	 * @param offsetDistance offset distance along a line perpendicular to the
-	 *                       perimeter
-	 * @return
-	 * @see #pointOnExterior(PShape, float, float)
-	 * @see #pointsOnExterior(PShape, float, float)
-	 */
-	public static List<PVector> pointsOnExterior(PShape shape, int points, float offsetDistance) {
-		// TODO another method that returns concave hull of returned points (when
-		// offset)
-		ArrayList<PVector> coords = new ArrayList<>(points);
-		LengthIndexedLine l = new LengthIndexedLine(((Polygon) fromPShape(shape)).getExteriorRing());
-		final double increment = 1d / points;
-		for (double distance = 0; distance < 1; distance += increment) {
-			Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
-			coords.add(new PVector((float) coord.x, (float) coord.y));
-		}
-		return coords;
-	}
-
-	/**
-	 * Generates a list of points that lie on the exterior/perimeter of the given
-	 * shape.
-	 * 
-	 * @param shape
-	 * @param interPointDistance distance between each exterior point
-	 * @param offsetDistance
-	 * @return
-	 */
-	public static List<PVector> pointsOnExterior(PShape shape, float interPointDistance, float offsetDistance) {
-		// TODO points on hole
-		LengthIndexedLine l = new LengthIndexedLine(((Polygon) fromPShape(shape)).getExteriorRing());
-		if (interPointDistance > l.getEndIndex()) {
-			System.err.println("Interpoint length greater than shape length");
-			return new ArrayList<PVector>();
-		}
-		final int points = (int) Math.round(l.getEndIndex() / interPointDistance);
-
-		ArrayList<PVector> coords = new ArrayList<>(points);
-
-		final double increment = 1d / points;
-		for (double distance = 0; distance < 1; distance += increment) {
-			Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
-			coords.add(new PVector((float) coord.x, (float) coord.y));
-		}
-		return coords;
-	}
-
-	/**
 	 * Returns a hole-less version of the shape, or boundary of group of shapes
 	 * 
 	 * @param shape
@@ -188,95 +89,13 @@ public class PGS {
 	}
 
 	/**
-	 * Get N random points contained within the PShape region. Points are
-	 * distributed randomly.
-	 * 
-	 * @param shape
-	 * @param points number of points to generate
-	 * @return
-	 */
-	public static ArrayList<PVector> generateRandomPoints(PShape shape, int points) {
-		RandomPointsBuilder r = new RandomPointsBuilder();
-		r.setExtent(fromPShape(shape));
-		r.setNumPoints(points);
-
-		ArrayList<PVector> vertices = new ArrayList<>();
-
-		for (Coordinate coord : r.getGeometry().getCoordinates()) {
-			vertices.add(new PVector((float) coord.x, (float) coord.y));
-		}
-		return vertices;
-	}
-
-	/**
-	 * Random points generated in a grid of cells (one point randomly located in
-	 * each cell) from the envelope of the shape
-	 * 
-	 * @param shape
-	 * @param maxPoints           max number of points, if this shape was its own
-	 *                            envelope
-	 * @param constrainedToCircle
-	 * 
-	 *                            Sets whether generated points are constrained to
-	 *                            liewithin a circle contained within each grid
-	 *                            cell. This provides greater separation between
-	 *                            points in adjacent cells.
-	 * @param gutterFraction      Sets the fraction of the grid cell side which will
-	 *                            be treated as a gutter, in which no points will be
-	 *                            created. The provided value is clamped to the
-	 *                            range [0.0, 1.0].
-	 * 
-	 * @return
-	 */
-	public static ArrayList<PVector> generateRandomGridPoints(PShape shape, int maxPoints, boolean constrainedToCircle,
-			double gutterFraction) {
-		Geometry g = fromPShape(shape);
-		IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(g);
-
-		RandomPointsInGridBuilder r = new RandomPointsInGridBuilder();
-		r.setConstrainedToCircle(constrainedToCircle);
-		r.setExtent(g.getEnvelopeInternal());
-		r.setNumPoints(maxPoints);
-		r.setGutterFraction(gutterFraction);
-
-		ArrayList<PVector> vertices = new ArrayList<>();
-
-		for (Coordinate coord : r.getGeometry().getCoordinates()) {
-			if (pointLocator.locate(coord) != Location.EXTERIOR) {
-				vertices.add(new PVector((float) coord.x, (float) coord.y));
-			}
-		}
-		return vertices;
-	}
-
-	/**
-	 * Returns a copy of the shape with small holes (i.e. inner rings with area <
-	 * given threshold) are removed.
-	 * 
-	 * @param polygon
-	 * @return
-	 */
-	public static PShape removeSmallHoles(PShape shape, float area) {
-		Polygon polygon = (Polygon) fromPShape(shape);
-		Polygon noHolePol = GEOM_FACTORY.createPolygon(polygon.getExteriorRing());
-		for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
-			LinearRing hole = polygon.getInteriorRingN(i);
-			if (hole.getArea() < area) {
-				continue;
-			}
-			noHolePol = (Polygon) noHolePol.difference(hole);
-		}
-		return toPShape(noHolePol);
-	}
-
-	/**
 	 * 
 	 * @param n    number of vertices
 	 * @param xMax
 	 * @param yMax
 	 * @return
 	 */
-	public static PShape randomPolygon(int n, float xMax, float yMax) {
+	public static PShape randomPolygon(int n, double xMax, double yMax) {
 		return pshapeFromPVector(RandomPolygon.generateRandomConvexPolygon(n, xMax, yMax));
 	}
 
@@ -492,7 +311,7 @@ public class PGS {
 		return GEOM_FACTORY.createLineString(new Coordinate[] { coordFromPVector(a), coordFromPVector(b) });
 	}
 
-	static Point createPoint(float x, float y) {
+	static Point createPoint(double x, double y) {
 		return GEOM_FACTORY.createPoint(new Coordinate(x, y));
 	}
 

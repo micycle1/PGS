@@ -28,9 +28,9 @@ import processing.core.PVector;
  * @author Michael Carleton
  *
  */
-public class PGS_GeometricOptimisation {
+public class PGS_Optimisation {
 
-	private PGS_GeometricOptimisation() {
+	private PGS_Optimisation() {
 	}
 
 	/**
@@ -42,7 +42,7 @@ public class PGS_GeometricOptimisation {
 	 * @param tolerance the distance tolerance for computing the centre point
 	 *                  (around 1)
 	 */
-	public static PShape maximumInscribedCircle(PShape shape, float tolerance) {
+	public static PShape maximumInscribedCircle(PShape shape, double tolerance) {
 		MaximumInscribedCircle mic = new MaximumInscribedCircle(fromPShape(shape), tolerance);
 
 		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();

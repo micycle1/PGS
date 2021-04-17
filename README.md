@@ -252,22 +252,6 @@ Minkowski sum and difference (a.k.a buffer one shape using another shape; pictur
   <img src="resources/morphology/round2.gif" alt="" width="49%"/>
 </p>
 
-
-### Concave Hull
-Concave hull of point sets.
-<p float="middle">
-  <img src="resources/morphology/concaveHull.gif" alt="" width="49%"/>
-  <img src="resources/morphology/concaveHull2.gif" alt="" width="49%"/>
-</p>
-
-### Convex Hull
-<img src="resources/morphology/convexHull.png" alt="" width="50%"/>
-
-### Snap Hull
-A convex hull with some level of shape-feature snapping.
-
-<img src="resources/morphology/snapHull.gif" alt="" width="50%"/>
-
 ## *Geometry Processing*
 
 ### Point on Perimeter
@@ -307,8 +291,28 @@ Slice a shape in two along a given line
 ### Constrained Random Point Set
 Generate constrained random point sets where all points lie within a shape. Points can be distributed entirely randomly or according to grid with configurable tightness.
 
-...
+<p float="middle">
+  <img src="resources/geometry_processing/randomGridPoints.gif" alt="" width="49%"/>
+    <img src="resources/geometry_processing/randomGridPoints2.gif" alt="" width="49%"/>
+</p>
 
+### Envelope
+<img src="resources/geometry_processing/envelope.png" alt="" width="50%"/>
+
+### Concave Hull
+Concave hull of point sets.
+<p float="middle">
+  <img src="resources/morphology/concaveHull.gif" alt="" width="49%"/>
+  <img src="resources/morphology/concaveHull2.gif" alt="" width="49%"/>
+</p>
+
+### Convex Hull
+<img src="resources/morphology/convexHull.png" alt="" width="50%"/>
+
+### Snap Hull
+A convex hull with some level of shape-feature snapping.
+
+<img src="resources/morphology/snapHull.gif" alt="" width="50%"/>
 
 ## *Geometric Optimization*
 
