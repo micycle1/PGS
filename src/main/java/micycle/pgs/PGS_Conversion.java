@@ -4,6 +4,7 @@ import static micycle.pgs.PGS.GEOM_FACTORY;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
 import org.locationtech.jts.geom.Coordinate;
@@ -28,99 +29,102 @@ import processing.core.PVector;
  */
 public class PGS_Conversion implements PConstants {
 
+	/** Approximate distance between successive sample points on bezier curves */
+	private static final float BEZIER_SAMPLE_DISTANCE = 2;
+
 	private PGS_Conversion() {
 	}
 
 	/**
-		 * Converts a JTS Geometry to an equivalent PShape. MultiGeometries (collections
-		 * of geometries) become GROUP PShapes with children shapes.
-		 * 
-		 * @param g
-		 * @param source PShape to copy fill/stroke details from
-		 * @return
-		 */
-		public static PShape toPShape(final Geometry g) { // , final PShape source
-			// TODO use source fill, stroke etc, when creating new PShape
-	
-			if (g == null) {
-				return new PShape(PShape.GEOMETRY);
-			}
-	
-			PShape shape = new PShape();
-	
-			if (!(shape.getFamily() == GROUP || shape.getFamily() == PShape.PRIMITIVE) && shape.getVertexCount() > 0) {
-	//			shape.setStrokeWeight(source.getStrokeWeight(0));
-	//			shape.setStroke(source.stroke);
-	//			shape.setFill(source.getFill(0));
-			} else {
-			}
-			shape.setFill(true);
-			shape.setFill(micycle.pgs.color.RGB.WHITE);
-			shape.setStroke(true);
-			shape.setStroke(micycle.pgs.color.RGB.PINK);
-			shape.setStrokeWeight(4);
-	
-			switch (g.getGeometryType()) {
-				case Geometry.TYPENAME_GEOMETRYCOLLECTION:
-				case Geometry.TYPENAME_MULTIPOLYGON:
-				case Geometry.TYPENAME_MULTILINESTRING:
-					shape.setFamily(GROUP);
-					for (int i = 0; i < g.getNumGeometries(); i++) {
-						shape.addChild(toPShape(g.getGeometryN(i)));
-					}
-					break;
-	
-				case Geometry.TYPENAME_LINEARRING: // closed
-				case Geometry.TYPENAME_LINESTRING:
-					final LineString l = (LineString) g;
-					final boolean closed = l.isClosed();
-					shape.setFamily(PShape.PATH);
-					shape.beginShape();
-					Coordinate[] coords = l.getCoordinates();
-					for (int i = 0; i < coords.length - (closed ? 1 : 0); i++) {
-						shape.vertex((float) coords[i].x, (float) coords[i].y);
-					}
-					if (closed) { // closed vertex was skipped, so close the path
-						shape.endShape(CLOSE);
-					} else {
-						shape.endShape();
-					}
-	
-					break;
-	
-				case Geometry.TYPENAME_POLYGON:
-					final Polygon polygon = (Polygon) g;
-					shape.setFamily(PShape.PATH);
-					shape.beginShape();
-	
-					/**
-					 * Outer and inner loops are iterated up to length-1 to skip the point that
-					 * closes the JTS shape (same as the first point).
-					 */
-					coords = polygon.getExteriorRing().getCoordinates();
+	 * Converts a JTS Geometry to an equivalent PShape. MultiGeometries (collections
+	 * of geometries) become GROUP PShapes with children shapes.
+	 * 
+	 * @param g
+	 * @param source PShape to copy fill/stroke details from
+	 * @return
+	 */
+	public static PShape toPShape(final Geometry g) { // , final PShape source
+		// TODO use source fill, stroke etc, when creating new PShape
+
+		if (g == null) {
+			return new PShape(PShape.GEOMETRY);
+		}
+
+		PShape shape = new PShape();
+
+		if (!(shape.getFamily() == GROUP || shape.getFamily() == PShape.PRIMITIVE) && shape.getVertexCount() > 0) {
+			// shape.setStrokeWeight(source.getStrokeWeight(0));
+			// shape.setStroke(source.stroke);
+			// shape.setFill(source.getFill(0));
+		} else {
+		}
+		shape.setFill(true);
+		shape.setFill(micycle.pgs.color.RGB.WHITE);
+		shape.setStroke(true);
+		shape.setStroke(micycle.pgs.color.RGB.PINK);
+		shape.setStrokeWeight(4);
+
+		switch (g.getGeometryType()) {
+			case Geometry.TYPENAME_GEOMETRYCOLLECTION:
+			case Geometry.TYPENAME_MULTIPOLYGON:
+			case Geometry.TYPENAME_MULTILINESTRING:
+				shape.setFamily(GROUP);
+				for (int i = 0; i < g.getNumGeometries(); i++) {
+					shape.addChild(toPShape(g.getGeometryN(i)));
+				}
+				break;
+
+			case Geometry.TYPENAME_LINEARRING: // closed
+			case Geometry.TYPENAME_LINESTRING:
+				final LineString l = (LineString) g;
+				final boolean closed = l.isClosed();
+				shape.setFamily(PShape.PATH);
+				shape.beginShape();
+				Coordinate[] coords = l.getCoordinates();
+				for (int i = 0; i < coords.length - (closed ? 1 : 0); i++) {
+					shape.vertex((float) coords[i].x, (float) coords[i].y);
+				}
+				if (closed) { // closed vertex was skipped, so close the path
+					shape.endShape(CLOSE);
+				} else {
+					shape.endShape();
+				}
+
+				break;
+
+			case Geometry.TYPENAME_POLYGON:
+				final Polygon polygon = (Polygon) g;
+				shape.setFamily(PShape.PATH);
+				shape.beginShape();
+
+				/**
+				 * Outer and inner loops are iterated up to length-1 to skip the point that
+				 * closes the JTS shape (same as the first point).
+				 */
+				coords = polygon.getExteriorRing().getCoordinates();
+				for (int i = 0; i < coords.length - 1; i++) {
+					Coordinate coord = coords[i];
+					shape.vertex((float) coord.x, (float) coord.y);
+				}
+
+				for (int j = 0; j < polygon.getNumInteriorRing(); j++) { // holes
+					shape.beginContour();
+					coords = polygon.getInteriorRingN(j).getCoordinates();
 					for (int i = 0; i < coords.length - 1; i++) {
 						Coordinate coord = coords[i];
 						shape.vertex((float) coord.x, (float) coord.y);
 					}
-	
-					for (int j = 0; j < polygon.getNumInteriorRing(); j++) { // holes
-						shape.beginContour();
-						coords = polygon.getInteriorRingN(j).getCoordinates();
-						for (int i = 0; i < coords.length - 1; i++) {
-							Coordinate coord = coords[i];
-							shape.vertex((float) coord.x, (float) coord.y);
-						}
-						shape.endContour();
-					}
-					shape.endShape(CLOSE);
-					break;
-				default:
-					System.err.println(g.getGeometryType() + " are unsupported.");
-					break;
-			}
-	
-			return shape;
+					shape.endContour();
+				}
+				shape.endShape(CLOSE);
+				break;
+			default:
+				System.err.println(g.getGeometryType() + " are unsupported.");
+				break;
 		}
+
+		return shape;
+	}
 
 	/**
 	 * Converts a PShape to an equivalent JTS Geometry.
@@ -179,6 +183,9 @@ public class PGS_Conversion implements PConstants {
 		int lastGroup = -1;
 		for (int i = 0; i < shape.getVertexCount(); i++) {
 			if (contourGroups[i] != lastGroup) {
+				if (lastGroup == -1 && contourGroups[0] > 0) {
+					lastGroup = 0;
+				}
 				lastGroup = contourGroups[i];
 				coords.add(new ArrayList<>());
 			}
@@ -186,15 +193,15 @@ public class PGS_Conversion implements PConstants {
 			/**
 			 * Sample bezier curves at regular intervals to produce smooth Geometry
 			 */
-			switch (vertexCodes[i]) {
+			switch (vertexCodes[i]) { // VERTEX, BEZIER_VERTEX, CURVE_VERTEX, or BREAK
 				case QUADRATIC_VERTEX:
 					coords.get(lastGroup).addAll(getQuadraticBezierPoints(shape.getVertex(i - 1), shape.getVertex(i),
-							shape.getVertex(i + 1), PGS.CURVE_SAMPLES));
+							shape.getVertex(i + 1), BEZIER_SAMPLE_DISTANCE));
 					i += 1;
 					continue;
 				case BEZIER_VERTEX: // aka cubic bezier
 					coords.get(lastGroup).addAll(getCubicBezierPoints(shape.getVertex(i - 1), shape.getVertex(i),
-							shape.getVertex(i + 1), shape.getVertex(i + 2), PGS.CURVE_SAMPLES));
+							shape.getVertex(i + 1), shape.getVertex(i + 2), BEZIER_SAMPLE_DISTANCE));
 					i += 2;
 					continue;
 				default:
@@ -204,20 +211,30 @@ public class PGS_Conversion implements PConstants {
 		}
 
 		for (ArrayList<Coordinate> contour : coords) {
-			if (!contour.get(0).equals2D(contour.get(contour.size() - 1))) {
-				contour.add(contour.get(0)); // points of LinearRing must form a closed linestring
+			final Iterator<Coordinate> iterator = contour.iterator();
+			if (iterator.hasNext()) { // at least one vertex
+				Coordinate previous = iterator.next();
+				final List<Coordinate> duplicates = new ArrayList<>();
+
+				while (iterator.hasNext()) { // find adjacent matching coordinates
+					Coordinate current = iterator.next();
+					if (current.equals2D(previous)) {
+						duplicates.add(current);
+					}
+					previous = current;
+				}
+				contour.removeAll(duplicates); // remove adjacent matching coordinates
+
+				if (!contour.get(0).equals2D(contour.get(contour.size() - 1))) {
+					contour.add(contour.get(0)); // points of LinearRing must form a closed linestring
+				}
 			}
 		}
 
 		final Coordinate[] outerCoords = coords.get(0).toArray(new Coordinate[coords.get(0).size()]);
-
 		LinearRing outer = GEOM_FACTORY.createLinearRing(outerCoords); // should always be valid
 
-		/**
-		 * Create linear ring for each hole in the shape
-		 */
-		LinearRing[] holes = new LinearRing[coords.size() - 1];
-
+		LinearRing[] holes = new LinearRing[coords.size() - 1]; // Create linear ring for each hole in the shape
 		for (int j = 1; j < coords.size(); j++) {
 			final Coordinate[] innerCoords = coords.get(j).toArray(new Coordinate[coords.get(j).size()]);
 			holes[j - 1] = GEOM_FACTORY.createLinearRing(innerCoords);
@@ -234,13 +251,15 @@ public class PGS_Conversion implements PConstants {
 	 */
 	private static Polygon fromPrimitive(PShape shape) {
 		final GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-		shapeFactory.setNumPoints(PGS.CURVE_SAMPLES * 4); // TODO magic constant
-
 		switch (shape.getKind()) {
 			case ELLIPSE:
+				final double a = shape.getParam(2) / 2d;
+				final double b = shape.getParam(3) / 2d;
+				final double perimeter = Math.PI * (3 * (a + b) - Math.sqrt((3 * a + b) * (a + 3 * b)));
 				shapeFactory.setCentre(new Coordinate(shape.getParam(0), shape.getParam(1)));
-				shapeFactory.setWidth(shape.getParam(2));
-				shapeFactory.setHeight(shape.getParam(3));
+				shapeFactory.setWidth(a * 2);
+				shapeFactory.setHeight(b * 2);
+				shapeFactory.setNumPoints((int) (perimeter / BEZIER_SAMPLE_DISTANCE));
 				return shapeFactory.createEllipse();
 			case TRIANGLE:
 				Coordinate[] coords = new Coordinate[3 + 1];
@@ -268,6 +287,9 @@ public class PGS_Conversion implements PConstants {
 				shapeFactory.setCentre(new Coordinate(shape.getParam(0), shape.getParam(1)));
 				shapeFactory.setWidth(shape.getParam(2));
 				shapeFactory.setHeight(shape.getParam(3));
+				// circumference (if it was full circle)
+				final double circumference = Math.PI * Math.max(shape.getParam(2), shape.getParam(3));
+				shapeFactory.setNumPoints((int) (circumference / BEZIER_SAMPLE_DISTANCE));
 				return shapeFactory.createArcPolygon(-Math.PI / 2 + shape.getParam(4), shape.getParam(5));
 			case LINE:
 			case POINT:
@@ -347,13 +369,20 @@ public class PGS_Conversion implements PConstants {
 		});
 	}
 
+	/**
+	 * For every vertexcode, store the group (i.e. hole) it belongs to.
+	 * 
+	 * @param vertexCodes
+	 * @return
+	 */
 	private static int[] getContourGroups(int[] vertexCodes) {
 
 		int group = 0;
 
 		ArrayList<Integer> groups = new ArrayList<>(vertexCodes.length * 2);
 
-		for (int vertexCode : vertexCodes) {
+		for (int i = 0; i < vertexCodes.length; i++) {
+			final int vertexCode = vertexCodes[i];
 			switch (vertexCode) {
 				case VERTEX:
 					groups.add(group);
@@ -375,8 +404,11 @@ public class PGS_Conversion implements PConstants {
 					break;
 
 				case BREAK:
-					// Marks beginning/end of new contour, and should be proceeded by a VERTEX
-					group++;
+					// BREAK marks beginning/end of new contour, and should be proceeded by a VERTEX
+					if (i > 0) {
+						// In P2D, svg-loaded shapes begin with a break (so we don't want to increment)
+						group++;
+					}
 					break;
 			}
 		}
@@ -427,25 +459,32 @@ public class PGS_Conversion implements PConstants {
 		return vertexGroups;
 	}
 
-	// TODO Modify interpolation resolution depending on bezier length (ideally
-	// sample per 1 unit)
-
 	/**
 	 * Subdivide/interpolate/discretise along a quadratic bezier curve, given by its
 	 * start, end and control points
 	 * 
-	 * @param resolution points per spline
 	 * @return list of points along curve
 	 */
 	private static List<Coordinate> getQuadraticBezierPoints(PVector start, PVector controlPoint, PVector end,
-			int resolution) {
-
+			float sampleDistance) {
 		List<Coordinate> coords = new ArrayList<>();
 
-		for (int j = 0; j < resolution; j++) {
-			PVector bezierPoint = getQuadraticBezierCoordinate(start, controlPoint, end, j / (float) resolution);
+		if (start.dist(end) <= sampleDistance) {
+			coords.add(new Coordinate(start.x, start.y));
+			coords.add(new Coordinate(end.x, end.y));
+			return coords;
+		}
+
+		final float length = bezierLengthQuadratic(start, controlPoint, end);
+		final int samples = (int) Math.ceil(length / sampleDistance); // sample every x unit length (approximately)
+
+		coords.add(new Coordinate(start.x, start.y));
+		for (int j = 1; j < samples; j++) { // start at 1 -- don't sample at t=0
+			final PVector bezierPoint = getQuadraticBezierCoordinate(start, controlPoint, end, j / (float) samples);
 			coords.add(new Coordinate(bezierPoint.x, bezierPoint.y));
 		}
+		coords.add(new Coordinate(end.x, end.y));
+
 		return coords;
 	}
 
@@ -463,16 +502,49 @@ public class PGS_Conversion implements PConstants {
 		return new PVector(x, y);
 	}
 
-	private static List<Coordinate> getCubicBezierPoints(PVector start, PVector controlPoint1, PVector controlPoint2,
-			PVector end, int resolution) {
+	/**
+	 * Approximate bezier length using Gravesen's approach. The insight is that the
+	 * actual bezier length is always somewhere between the distance between the
+	 * endpoints (the length of the chord) and the perimeter of the control polygon.
+	 * For a quadratic Bézier, 2/3 the first + 1/3 the second is a reasonably good
+	 * estimate.
+	 * 
+	 * @return
+	 */
+	private static float bezierLengthQuadratic(PVector start, PVector controlPoint, PVector end) {
+		// https://raphlinus.github.io/curves/2018/12/28/bezier-arclength.html
+		final float chord = PVector.sub(end, start).mag();
+		final float cont_net = PVector.sub(start, controlPoint).mag() + PVector.sub(end, controlPoint).mag();
+		return (2 * chord + cont_net) / 3f;
 
+	}
+
+	/**
+	 * Generates a list of samples of a cubic bezier curve.
+	 * 
+	 * @param sampleDistance distance between successive samples on the curve
+	 * @return
+	 */
+	private static List<Coordinate> getCubicBezierPoints(PVector start, PVector controlPoint1, PVector controlPoint2,
+			PVector end, float sampleDistance) {
 		List<Coordinate> coords = new ArrayList<>();
 
-		for (int j = 0; j < resolution; j++) {
-			PVector bezierPoint = getCubicBezierCoordinate(start, controlPoint1, controlPoint2, end,
-					j / (float) resolution);
+		if (start.dist(end) <= sampleDistance) {
+			coords.add(new Coordinate(start.x, start.y));
+			coords.add(new Coordinate(end.x, end.y));
+			return coords;
+		}
+
+		final float length = bezierLengthCubic(start, controlPoint1, controlPoint2, end);
+		final int samples = (int) Math.ceil(length / sampleDistance); // sample every x unit length (approximately)
+
+		coords.add(new Coordinate(start.x, start.y));
+		for (int j = 1; j < samples; j++) { // start at 1 -- don't sample at t=0
+			final PVector bezierPoint = getCubicBezierCoordinate(start, controlPoint1, controlPoint2, end,
+					j / (float) samples);
 			coords.add(new Coordinate(bezierPoint.x, bezierPoint.y));
 		}
+		coords.add(new Coordinate(end.x, end.y));
 		return coords;
 	}
 
@@ -484,5 +556,21 @@ public class PGS_Conversion implements PConstants {
 		float y = start.y * t1 * t1 * t1 + 3 * controlPoint1.y * t * t1 * t1 + 3 * controlPoint2.y * t * t * t1
 				+ end.y * t * t * t;
 		return new PVector(x, y);
+	}
+
+	/**
+	 * Approximate bezier length using Gravesen's approach. The insight is that the
+	 * actual bezier length is always somewhere between the distance between the
+	 * endpoints (the length of the chord) and the perimeter of the control polygon.
+	 * 
+	 * @return
+	 */
+	private static float bezierLengthCubic(PVector start, PVector controlPoint1, PVector controlPoint2, PVector end) {
+		// https://stackoverflow.com/a/37862545/9808792
+		final float chord = PVector.sub(end, start).mag();
+		final float cont_net = PVector.sub(start, controlPoint1).mag() + PVector.sub(controlPoint2, controlPoint1).mag()
+				+ PVector.sub(end, controlPoint2).mag();
+		return (cont_net + chord) / 2;
+
 	}
 }
