@@ -144,7 +144,7 @@ public class PGS_Conversion implements PConstants {
 
 		switch (shape.getFamily()) {
 			case PShape.GROUP:
-				final ArrayList<PShape> flatChildren = new ArrayList<PShape>();
+				final List<PShape> flatChildren = new ArrayList<>();
 				getChildren(shape, flatChildren);
 				flatChildren.removeIf(s -> s.getFamily() == PShape.GROUP);
 				Polygon[] children = new Polygon[flatChildren.size()];
@@ -336,7 +336,7 @@ public class PGS_Conversion implements PConstants {
 	 * @see #setAllStrokeColor(PShape, int, int)
 	 */
 	public static void setAllFillColor(PShape shape, int color) {
-		List<PShape> all = new ArrayList<PShape>();
+		List<PShape> all = new ArrayList<>();
 		getChildren(shape, all);
 		all.forEach(child -> {
 			child.setStroke(false);
@@ -352,7 +352,7 @@ public class PGS_Conversion implements PConstants {
 	 * @see {@link #setAllFillColor(PShape, int)}
 	 */
 	public static void setAllStrokeColor(PShape shape, int color, int strokeWeight) {
-		List<PShape> all = new ArrayList<PShape>();
+		List<PShape> all = new ArrayList<>();
 		getChildren(shape, all);
 		all.forEach(child -> {
 			child.setStroke(true);
@@ -362,7 +362,7 @@ public class PGS_Conversion implements PConstants {
 	}
 
 	public static void disableAllFill(PShape shape) {
-		ArrayList<PShape> all = new ArrayList<PShape>();
+		ArrayList<PShape> all = new ArrayList<>();
 		getChildren(shape, all);
 		all.forEach(child -> {
 			child.setFill(false);

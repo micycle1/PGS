@@ -41,9 +41,6 @@ public class PGS {
 	// TODO maintain pshape fill, etc on output
 	// see https://github.com/IGNF/CartAGen
 
-	// conversion tests
-	// add balaban?
-
 	/**
 	 * Calling Polygon#union repeatedly is one way to union several Polygons
 	 * together. But here’s a trick that can be significantly faster (seconds rather

@@ -15,7 +15,11 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Geometric transformations for PShapes. Topology remains intact.
+ * A variety of geometric and affine transformations for PShapes.
+ * <p>
+ * These transformation methods affect the vertex coordinates of PShapes, unlike
+ * Processing's transform methods that affect the affine matrix of shapes only
+ * (and thereby leave vertex coordinates in-tact).
  * 
  * @author Michael Carleton
  *

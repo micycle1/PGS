@@ -31,6 +31,10 @@ import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.shape.random.RandomPointsBuilder;
 import org.locationtech.jts.shape.random.RandomPointsInGridBuilder;
 
+import micycle.balaban.BalabanSolver;
+import micycle.balaban.IntersectionCallback;
+import micycle.balaban.Point;
+import micycle.balaban.Segment;
 import micycle.pgs.utility.PolygonDecomposition;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -120,22 +124,56 @@ public class PGS_Processing {
 	 * @return
 	 */
 	public static List<PVector> pointsOnExterior(PShape shape, double interPointDistance, double offsetDistance) {
-		// TODO points on hole
+		// TODO points on holes
 		LengthIndexedLine l = new LengthIndexedLine(((Polygon) fromPShape(shape)).getExteriorRing());
 		if (interPointDistance > l.getEndIndex()) {
 			System.err.println("Interpoint length greater than shape length");
 			return new ArrayList<PVector>();
 		}
 		final int points = (int) Math.round(l.getEndIndex() / interPointDistance);
-	
+
 		ArrayList<PVector> coords = new ArrayList<>(points);
-	
+
 		final double increment = 1d / points;
 		for (double distance = 0; distance < 1; distance += increment) {
 			Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
 			coords.add(new PVector((float) coord.x, (float) coord.y));
 		}
 		return coords;
+	}
+
+	/**
+	 * Computes all points of intersection between segment pairs from a set of
+	 * segments. The input set is first processed to remove degenerate segments
+	 * (does not mutate the input).
+	 * 
+	 * @param lineSegments a list of PVectors where each pair (couplet) of PVectors
+	 *                     represent the start and end point of one segment
+	 * @return A list of PVectors each representing the intersection point of a
+	 *         segment pair
+	 */
+	public static List<PVector> lineSegmentIntersections(List<PVector> lineSegments) {
+		final List<PVector> intersections = new ArrayList<PVector>();
+		if (lineSegments.size() % 2 != 0) {
+			System.err.println("Error: detected an odd number of line segment vertices.");
+			return intersections;
+		}
+
+		Collection<Segment> segments = new ArrayList<>();
+		for (int i = 0; i < lineSegments.size(); i += 2) { // iterate pairwise
+			final PVector p1 = lineSegments.get(i);
+			final PVector p2 = lineSegments.get(i + 1);
+			segments.add(new Segment(p1.x, p1.y, p2.x, p2.y));
+		}
+
+		final BalabanSolver balabanSolver = new BalabanSolver((a, b) -> {
+			final Point pX = a.getIntersection(b);
+			intersections.add(new PVector((float) pX.x, (float) pX.y));
+		});
+		segments.removeAll(balabanSolver.findDegenerateSegments(segments));
+		balabanSolver.computeIntersections(segments);
+
+		return intersections;
 	}
 
 	/**
@@ -150,9 +188,9 @@ public class PGS_Processing {
 		RandomPointsBuilder r = new RandomPointsBuilder();
 		r.setExtent(fromPShape(shape));
 		r.setNumPoints(points);
-	
+
 		ArrayList<PVector> vertices = new ArrayList<>();
-	
+
 		for (Coordinate coord : r.getGeometry().getCoordinates()) {
 			vertices.add(new PVector((float) coord.x, (float) coord.y));
 		}
@@ -183,15 +221,15 @@ public class PGS_Processing {
 			double gutterFraction) {
 		Geometry g = fromPShape(shape);
 		IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(g);
-	
+
 		RandomPointsInGridBuilder r = new RandomPointsInGridBuilder();
 		r.setConstrainedToCircle(constrainedToCircle);
 		r.setExtent(g.getEnvelopeInternal());
 		r.setNumPoints(maxPoints);
 		r.setGutterFraction(gutterFraction);
-	
+
 		ArrayList<PVector> vertices = new ArrayList<>();
-	
+
 		for (Coordinate coord : r.getGeometry().getCoordinates()) {
 			if (pointLocator.locate(coord) != Location.EXTERIOR) {
 				vertices.add(new PVector((float) coord.x, (float) coord.y));
@@ -243,9 +281,9 @@ public class PGS_Processing {
 	 * @see #concaveHull2(List, double)
 	 */
 	public static PShape concaveHull(List<PVector> points, double threshold) {
-	
+
 		// calls Ordnance Survey implementation
-	
+
 		final Coordinate[] coords;
 		if (!points.get(0).equals(points.get(points.size() - 1))) {
 			coords = new Coordinate[points.size() + 1];
@@ -253,11 +291,11 @@ public class PGS_Processing {
 		} else { // already closed
 			coords = new Coordinate[points.size()];
 		}
-	
+
 		for (int i = 0; i < coords.length; i++) {
 			coords[i] = new Coordinate(points.get(i).x, points.get(i).y);
 		}
-	
+
 		Geometry g = PGS.GEOM_FACTORY.createPolygon(coords);
 		ConcaveHull hull = new ConcaveHull(g);
 		return toPShape(hull.getConcaveHullBFS(new TriCheckerChi(threshold), false, false).get(0));
@@ -283,7 +321,7 @@ public class PGS_Processing {
 	 * @see #concaveHull(List, double)
 	 */
 	public static PShape concaveHull2(List<PVector> points, double threshold) {
-	
+
 		/**
 		 * (from https://doi.org/10.1016/j.patcog.2008.03.023) It is more convenient to
 		 * normalize the threshold parameter with respect to a particular set of points
@@ -294,7 +332,7 @@ public class PGS_Processing {
 		 * Delaunay triangulation cannot increase the number of edges that will be
 		 * removed.
 		 */
-	
+
 		final Coordinate[] coords;
 		if (!points.get(0).equals(points.get(points.size() - 1))) {
 			coords = new Coordinate[points.size() + 1];
@@ -302,16 +340,16 @@ public class PGS_Processing {
 		} else { // already closed
 			coords = new Coordinate[points.size()];
 		}
-	
+
 		for (int i = 0; i < coords.length; i++) {
 			coords[i] = new Coordinate(points.get(i).x, points.get(i).y);
 		}
-	
+
 		Geometry g = PGS.GEOM_FACTORY.createPolygon(coords);
-	
+
 		// TODO test AVG threshold heuristic
 		org.geodelivery.jap.concavehull.ConcaveHull hull = new org.geodelivery.jap.concavehull.ConcaveHull(threshold);
-	
+
 		return toPShape(hull.transform(g));
 	}
 
@@ -337,7 +375,7 @@ public class PGS_Processing {
 		// https://stackoverflow.com/questions/64252638/how-to-split-a-jts-polygon
 		Geometry p = fromPShape(shape);
 		ArrayList<PShape> ret = new ArrayList<>();
-	
+
 		final Envelope envelope = p.getEnvelopeInternal();
 		double minX = envelope.getMinX();
 		double maxX = envelope.getMaxX();
@@ -345,7 +383,7 @@ public class PGS_Processing {
 		double minY = envelope.getMinY();
 		double maxY = envelope.getMaxY();
 		double midY = minY + (maxY - minY) / 2.0;
-	
+
 		Envelope llEnv = new Envelope(minX, midX, minY, midY);
 		Envelope lrEnv = new Envelope(midX, maxX, minY, midY);
 		Envelope ulEnv = new Envelope(minX, midX, midY, maxY);
@@ -358,7 +396,7 @@ public class PGS_Processing {
 		ret.add(toPShape(UR));
 		ret.add(toPShape(LL));
 		ret.add(toPShape(LR));
-	
+
 		return ret;
 	}
 
@@ -372,10 +410,10 @@ public class PGS_Processing {
 		splitDepth = Math.max(0, splitDepth);
 		ArrayDeque<Geometry> stack = new ArrayDeque<>();
 		stack.add(fromPShape(shape));
-	
+
 		ArrayList<PShape> ret = new ArrayList<>(); // add to when recursion depth reached
 		ArrayList<Geometry> next = new ArrayList<>(); // add to when recursion depth reached
-	
+
 		int depth = 0;
 		while (depth < splitDepth) {
 			while (!stack.isEmpty()) {
@@ -387,7 +425,7 @@ public class PGS_Processing {
 				final double minY = envelope.getMinY();
 				final double maxY = envelope.getMaxY();
 				final double midY = minY + (maxY - minY) / 2.0;
-	
+
 				Envelope llEnv = new Envelope(minX, midX, minY, midY);
 				Envelope lrEnv = new Envelope(midX, maxX, minY, midY);
 				Envelope ulEnv = new Envelope(minX, midX, midY, maxY);
@@ -405,7 +443,7 @@ public class PGS_Processing {
 			stack.addAll(next);
 			next.clear();
 		}
-	
+
 		stack.forEach(g -> ret.add(toPShape(g)));
 		return ret;
 	}
@@ -419,11 +457,11 @@ public class PGS_Processing {
 	public static List<PShape> partition(PShape shape) {
 		// https://mpen.ca/406/bayazit
 		// retry GreedyPolygonSplitter()?
-	
+
 		Geometry g = fromPShape(shape);
-	
+
 		ArrayList<PShape> out = new ArrayList<>();
-	
+
 		for (int i = 0; i < g.getNumGeometries(); i++) {
 			Geometry child = g.getGeometryN(i);
 			if (child.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) { // skip any linestrings etc
@@ -433,7 +471,7 @@ public class PGS_Processing {
 				}
 			}
 		}
-	
+
 		return out;
 	}
 
@@ -453,10 +491,10 @@ public class PGS_Processing {
 		final LineString line = ls.toGeometry(PGS.GEOM_FACTORY);
 		final Geometry nodedLinework = poly.getBoundary().union(line);
 		final Geometry polys = polygonize(nodedLinework);
-	
+
 		final ArrayList<Polygon> leftSlices = new ArrayList<>();
 		final ArrayList<Polygon> rightSlices = new ArrayList<>();
-	
+
 		for (int i = 0; i < polys.getNumGeometries(); i++) {
 			final Polygon candpoly = (Polygon) polys.getGeometryN(i);
 			if (cache.contains(candpoly.getInteriorPoint())) {
@@ -467,7 +505,7 @@ public class PGS_Processing {
 				}
 			}
 		}
-	
+
 		ArrayList<PShape> output = new ArrayList<>();
 		output.add(toPShape(UnaryUnionOp.union(leftSlices)));
 		output.add(toPShape(UnaryUnionOp.union(rightSlices)));

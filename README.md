@@ -96,9 +96,9 @@ Many of the provided functionality and algorithms (but by no means all) are exem
 <img src="resources/boolean/complement.png" alt="" width="50%"/>
 
 ## *Transformation*
-*These methods affect the vertex coordinates of PShapes, unlike Processing's transform methods that affect the affine matrix of shapes only (and thereby leave vertex coordinates in-tact).*
+*PGS transformation methods affect the vertex coordinates of PShapes, unlike Processing's transform methods that affect the affine matrix of shapes only (and thereby leave vertex coordinates in-tact).*
 
-*Methods beyond those offered in Processing are illustrated here:*
+*Only methods beyond those offered in Processing are illustrated below.*
 
 ### Rotate Around
 Rotate a shape around its centroid or an arbitrary point.
@@ -313,6 +313,13 @@ Concave hull of point sets.
 A convex hull with some level of shape-feature snapping.
 
 <img src="resources/morphology/snapHull.gif" alt="" width="50%"/>
+
+### Segment Set Intersection
+
+<p float="middle">
+  <img src="resources/geometry_processing/segmentIntersection.png" alt="" width="49%"/>
+  <img src="resources/geometry_processing/segmentIntersection2.png" alt="" width="49%"/>
+</p>
 
 ## *Geometric Optimisation*
 
