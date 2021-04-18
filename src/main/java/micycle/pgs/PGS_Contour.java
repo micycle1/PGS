@@ -4,6 +4,7 @@ import static micycle.pgs.PGS.GEOM_FACTORY;
 import static micycle.pgs.PGS.prepareLinesPShape;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -22,6 +23,7 @@ import org.locationtech.jts.operation.buffer.BufferParameters;
 import org.locationtech.jts.operation.linemerge.LineMerger;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.tinfour.common.Vertex;
+import org.tinfour.contour.Contour;
 import org.tinfour.contour.ContourBuilderForTin;
 import org.tinfour.standard.IncrementalTin;
 import org.twak.camp.Corner;
@@ -54,7 +56,7 @@ import processing.core.PVector;
  *
  */
 public class PGS_Contour {
-
+	
 	/**
 	 * TODO implement 'Base Point Split Algorithm for Generating Polygon Skeleton
 	 * Lines'
@@ -273,7 +275,7 @@ public class PGS_Contour {
 	 * @param intervalSpacing
 	 * @return
 	 */
-	public static PShape isolines(PShape shape, PVector highPoint, float intervalSpacing) {
+	public static PShape isolines(PShape shape, PVector highPoint, double intervalSpacing) {
 
 		/**
 		 * Also See:
@@ -282,38 +284,36 @@ public class PGS_Contour {
 		 * http://indiemaps.com/blog/2008/06/isolining-package-for-actionscript-3/
 		 */
 
-		// https://github.com/hageldave/JPlotter/blob/master/jplotter/src/main/java/hageldave/jplotter/misc/Contours.java
-
 		Geometry g = fromPShape(shape);
 		if (g.getCoordinates().length > 2000) {
-			g = DouglasPeuckerSimplifier.simplify(g, 2);
+			g = DouglasPeuckerSimplifier.simplify(g, 1);
 		}
-		int buffer = Math.max(10, Math.round(intervalSpacing) + 1);
+		final int buffer = (int) Math.max(10, Math.round(intervalSpacing) + 1);
 		PreparedGeometry cache = PreparedGeometryFactory.prepare(g.buffer(10));
 
-		List<Vertex> tinVertices = new ArrayList<Vertex>(200);
+		final List<Vertex> tinVertices = new ArrayList<Vertex>(200);
 		double maxDist = 0;
 
-		PoissonDistribution pd = new PoissonDistribution(0);
-		Coordinate[] e = g.getEnvelope().getCoordinates(); // envelope/bounding box of shape
 
 		/**
 		 * Poisson a little faster, but isolines are more rough
 		 */
 //		ArrayList<PVector> randomPoints = pd.generate(e[0].x - buffer, e[0].y - buffer, e[3].x + buffer,
 //				e[1].y + buffer, intervalSpacing, 6);
+//		PoissonDistribution pd = new PoissonDistribution(0);
+		Coordinate[] e = g.getEnvelope().getCoordinates(); // envelope/bounding box of shape
 		ArrayList<PVector> randomPoints = generateGrid(e[0].x - buffer, e[0].y - buffer, e[3].x + buffer,
 				e[1].y + buffer, intervalSpacing, intervalSpacing);
 
 		for (PVector v : randomPoints) {
 			/**
-			 * Major bottleneck is isoline computation so reduce points to only those
-			 * needed.
+			 * Major bottleneck of method is isoline computation so reduce points to only
+			 * those needed.
 			 */
 			if (cache.covers(PGS.pointFromPVector(v))) {
 				double d = highPoint.dist(v);
 				maxDist = Math.max(d, maxDist);
-				tinVertices.add(new Vertex(v.x, v.y, d, 0));
+				tinVertices.add(new Vertex(v.x, v.y, d));
 			}
 //			if (g.isWithinDistance(PTS.pointFromPVector(v), 10)) {
 //				double d = highPoint.dist(v);
@@ -350,8 +350,15 @@ public class PGS_Contour {
 			ld.add(GEOM_FACTORY.createLineString(coords));
 		}
 
-		return toPShape(DouglasPeuckerSimplifier.simplify(ld.getResult(), 2).intersection(g)); // contains check
-																								// instead?
+		PShape out = new PShape();
+		try {
+			// TODO use faster approach to intersection()
+			out = toPShape(DouglasPeuckerSimplifier.simplify(ld.getResult(), 1).intersection(g));
+			PGS_Conversion.disableAllFill(out);
+		} catch (Exception e2) {
+			// catch non-noded intersection
+		}
+		return out;
 	}
 
 	/**
@@ -363,10 +370,10 @@ public class PGS_Contour {
 	 *                             isolines
 	 * @param isolineMin           minimum value represented by isolines
 	 * @param isolineMax           maximum value represented by isolines
-	 * @return
+	 * @return A PShape where each child PShape corresponds to one isoline
 	 */
-	public static PShape isolines(List<PVector> points, float intervalValueSpacing, float isolineMin,
-			float isolineMax) {
+	public static PShape isolines(List<PVector> points, double intervalValueSpacing, double isolineMin,
+			double isolineMax) {
 		// lines = max-min/spacing
 		final IncrementalTin tin = new IncrementalTin(10);
 		points.forEach(point -> {
@@ -374,39 +381,40 @@ public class PGS_Contour {
 		});
 
 		double[] intervals = generateDoubleSequence(isolineMin, isolineMax, intervalValueSpacing);
-		ContourBuilderForTin builder = null;
-//		try {
-		// catch org.tinfour.contour.PerimeterLink.addContourTip error if any vertex has
-		// near-zero coordinate
-		builder = new ContourBuilderForTin(tin, null, intervals, true);
-//		} catch (Exception e) {
-//			return new PShape();
-//		}
 
-		List<org.tinfour.contour.Contour> contours = builder.getContours();
+		final ContourBuilderForTin builder = new ContourBuilderForTin(tin, null, intervals, false);
+		List<Contour> contours = builder.getContours();
 
-		PShape parent = new PShape(PConstants.GROUP);
-		parent.setKind(PConstants.GROUP);
+		final PShape parent = new PShape(PConstants.GROUP);
 
-		LineDissolver ld = new LineDissolver();
-		for (org.tinfour.contour.Contour contour : contours) {
-			Coordinate[] coords = new Coordinate[contour.getCoordinates().length / 2];
-			for (int i = 0; i < contour.getCoordinates().length; i += 2) {
-				float vx = (float) contour.getCoordinates()[i];
-				float vy = (float) contour.getCoordinates()[i + 1];
-				coords[i / 2] = new Coordinate(vx, vy);
+		for (Contour contourLine : contours) {
+			final PShape isoline = new PShape();
+			isoline.setFamily(PShape.PATH);
+			isoline.setStroke(true);
+			isoline.setStrokeWeight(2);
+			isoline.setStroke(RGB.PINK);
+			isoline.beginShape();
+
+			final double[] coords = contourLine.getCoordinates(); // [x1, y1, x2, y2, ...]
+			for (int i = 0; i < coords.length; i += 2) {
+				float vx = (float) coords[i];
+				float vy = (float) coords[i + 1];
+				isoline.vertex(vx, vy);
 			}
-			ld.add(GEOM_FACTORY.createLineString(coords));
+
+			isoline.endShape();
+			parent.addChild(isoline);
 		}
 
-		return toPShape(ld.getResult()); // contains check instead?
+		return parent;
 	}
 
 	/**
-	 * Generates isolines from grid of values.
+	 * Generates isolines from grid of Z values.
 	 * 
-	 * @param values
-	 * @param isoValue
+	 * @param values   z-coordinates for the grid points
+	 * @param isoValue the iso value for which the contour (iso) lines should be
+	 *                 computed
 	 * @return
 	 */
 	public static PShape isolinesJP(double[][] values, double isoValue) {
@@ -428,23 +436,36 @@ public class PGS_Contour {
 	}
 
 	/**
+	 * Specifies the join style for offset curves.
+	 */
+	public enum OffsetStyle {
+		
+		MITER(BufferParameters.JOIN_MITRE),
+		BEVEL(BufferParameters.JOIN_BEVEL),
+		ROUND(BufferParameters.JOIN_ROUND);
+	
+		private final int style;
+	    private OffsetStyle(int style) {
+	        this.style = style;
+	    }
+	}
+
+	/**
+	 * Produces inwards offset curves from the shape.
 	 * 
 	 * @param shape
-	 * @param spacing spacing between offsets. should be >=1
-	 * @param p
-	 * @return
-	 * @see #miteredOffset(PShape, double)
+	 * @param spacing Spacing between successive offset curves. Should be >=1.
+	 * @return A GROUP PShape, where each child shape is one curve
+	 * @see #offsetCurvesOutward(PShape, double, int)
 	 */
-	public static PShape miteredOffset(PShape shape, double spacing) {
+	public static PShape offsetCurvesInward(PShape shape, OffsetStyle style, double spacing) {
 		Geometry g = fromPShape(shape);
 
 		if (g.getCoordinates().length > 2000) {
-			g = DouglasPeuckerSimplifier.simplify(g, 0.2);
+			g = DouglasPeuckerSimplifier.simplify(g, 0.5);
 		}
 
-		final int joinStyle = BufferParameters.JOIN_MITRE; // TODO as input argument
-
-		BufferParameters bufParams = new BufferParameters(4, BufferParameters.CAP_FLAT, joinStyle,
+		final BufferParameters bufParams = new BufferParameters(8, BufferParameters.CAP_FLAT, style.style,
 				BufferParameters.DEFAULT_MITRE_LIMIT);
 
 //		bufParams.setSimplifyFactor(5); // can produce "poor" yet interesting results
@@ -470,10 +491,6 @@ public class PGS_Contour {
 				lines.setFamily(PShape.PATH);
 				lines.setStroke(true);
 				lines.setStrokeWeight(2);
-//				lines.setStroke(
-//						RGB.composeclr((int) PApplet.map((float) g.getCoordinates()[0].x, 0, p.width, 0, 254), n * 10 % 255,
-//								150,
-//								255));
 				lines.setStroke(RGB.PINK);
 				lines.beginShape();
 				for (int i = 0; i < coords.length; i++) {
@@ -487,11 +504,11 @@ public class PGS_Contour {
 				g = b.getResultGeometry(spacing);
 
 				for (int i = 0; i < g.getNumGeometries(); i++) {
-					if (joinStyle == BufferParameters.JOIN_MITRE || coords.length < 20) {
+					if (style == OffsetStyle.MITER || coords.length < 20) {
 						geometries.add(g.getGeometryN(i));
 					} else {
 						// because rounded miters produce LOADS of dense vertices
-						geometries.add(DouglasPeuckerSimplifier.simplify(g.getGeometryN(i), 0.1));
+						geometries.add(DouglasPeuckerSimplifier.simplify(g.getGeometryN(i), 0.5));
 					}
 				}
 			}
@@ -501,27 +518,23 @@ public class PGS_Contour {
 	}
 
 	/**
-	 * A mitered offset that emanates from the shape
+	 * Produces offset curves that emanate outwards from the shape.
 	 * 
 	 * @param shape
-	 * @param spacing
+	 * @param spacing Spacing between successive offset curves. Should be >=1.
 	 * @param curves  number of offset curves (including the original shape outline)
-	 * @return A group PShape, where each child shape is a
-	 * @see #miteredOffset(PShape, double)
+	 * @return A GROUP PShape, where each child shape is one curve
+	 * @see #offsetCurvesInward(PShape, double)
 	 */
-	public static PShape miteredOffsetOutwards(PShape shape, double spacing, final int curves) {
+	public static PShape offsetCurvesOutward(PShape shape, OffsetStyle style, double spacing, final int curves) {
 		Geometry g = fromPShape(shape);
 
 		if (g.getCoordinates().length > 2000) {
 			g = DouglasPeuckerSimplifier.simplify(g, 0.5);
 		}
 
-		final int joinStyle = BufferParameters.JOIN_MITRE; // TODO as input argument
-
-		BufferParameters bufParams = new BufferParameters(4, BufferParameters.CAP_FLAT, joinStyle,
+		final BufferParameters bufParams = new BufferParameters(8, BufferParameters.CAP_FLAT, style.style,
 				BufferParameters.DEFAULT_MITRE_LIMIT);
-
-//		bufParams.setSimplifyFactor(5); // can produce "poor" yet interesting results
 
 		spacing = Math.max(1, Math.abs(spacing)); // ensure positive and >=1
 
@@ -555,11 +568,11 @@ public class PGS_Contour {
 			BufferOp b = new BufferOp(g, bufParams);
 			g = b.getResultGeometry(spacing);
 			for (int i = 0; i < g.getNumGeometries(); i++) {
-				if (joinStyle == BufferParameters.JOIN_MITRE) {
+				if (style == OffsetStyle.MITER) {
 					geometries.add(g.getGeometryN(i));
 				} else {
 					// because rounded miters produce LOADS of dense vertices
-					geometries.add(DouglasPeuckerSimplifier.simplify(g.getGeometryN(i), 0.1));
+					geometries.add(DouglasPeuckerSimplifier.simplify(g.getGeometryN(i), 0.5));
 				}
 			}
 			currentCurves++;

@@ -314,7 +314,7 @@ A convex hull with some level of shape-feature snapping.
 
 <img src="resources/morphology/snapHull.gif" alt="" width="50%"/>
 
-## *Geometric Optimization*
+## *Geometric Optimisation*
 
 ### Closest Point
 <img src="resources/pgs/closestVertex.gif" alt="" width="50%"/>
@@ -327,6 +327,13 @@ A convex hull with some level of shape-feature snapping.
 
 ### Minimum Bounding Rectangle
 <img src="resources/pgs/minimumBoundingRectangle.png" alt="" width="50%"/>
+
+### Problem of Apollonius
+
+<p float="middle">
+  <img src="resources/optimisation/apollonius1.gif" alt="" width="49%"/>
+  <img src="resources/optimisation/apollonius2.gif" alt="" width="49%"/>
+</p>
 
 ## *Assorted*
 

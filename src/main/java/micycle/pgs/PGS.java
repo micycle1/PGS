@@ -38,16 +38,10 @@ public class PGS {
 	// geometries)
 	// TODO use LinearRingIterator when possible (refactor)
 	// TODO https://ignf.github.io/CartAGen/docs/algorithms.html
-	// TODO take into account strokweight (buffer by stroke amount?)
 	// TODO maintain pshape fill, etc on output
 	// see https://github.com/IGNF/CartAGen
-	// see https://ignf.github.io/CartAGen/docs/algorithms/others/spinalize.html
 
-	// remove ruppertTriangle
-	// mitered offset type
 	// conversion tests
-	// apollonus method
-	// SmallestEnclosingCircle
 	// add balaban?
 
 	/**

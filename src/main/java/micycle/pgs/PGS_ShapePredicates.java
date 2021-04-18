@@ -134,6 +134,18 @@ public class PGS_ShapePredicates {
 	}
 
 	/**
+	 * Computes the ratio (density) of the shape's area compared to the area of it's
+	 * envelope.
+	 * 
+	 * @param shape
+	 * @return Density value. A rectangular shape will have a value of 1.
+	 */
+	public static float density(PShape shape) {
+		Geometry g = fromPShape(shape);
+		return (float) (g.getArea() / g.getEnvelope().getArea());
+	}
+
+	/**
 	 * Computes the centroid of a shape. A centoid is the center of mass of the
 	 * shape.
 	 * 

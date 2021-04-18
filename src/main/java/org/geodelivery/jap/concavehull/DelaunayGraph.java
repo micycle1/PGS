@@ -1,7 +1,5 @@
 package org.geodelivery.jap.concavehull;
 
-//import org.geodelivery.jap.core.Transform;
-
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;

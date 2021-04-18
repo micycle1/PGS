@@ -3,15 +3,10 @@ package micycle.pgs;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
 
-import java.util.Collection;
-
 import org.geotools.geometry.jts.JTS;
 import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Polygon;
-import org.locationtech.jts.geom.util.LineStringExtracter;
-import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.simplify.VWSimplifier;

@@ -52,12 +52,12 @@ public class PGS_Conversion implements PConstants {
 
 		PShape shape = new PShape();
 
-		if (!(shape.getFamily() == GROUP || shape.getFamily() == PShape.PRIMITIVE) && shape.getVertexCount() > 0) {
-			// shape.setStrokeWeight(source.getStrokeWeight(0));
-			// shape.setStroke(source.stroke);
-			// shape.setFill(source.getFill(0));
-		} else {
-		}
+//		if (!(shape.getFamily() == GROUP || shape.getFamily() == PShape.PRIMITIVE) && shape.getVertexCount() > 0) {
+//			// shape.setStrokeWeight(source.getStrokeWeight(0));
+//			// shape.setStroke(source.stroke);
+//			// shape.setFill(source.getFill(0));
+//		} else {
+//		}
 		shape.setFill(true);
 		shape.setFill(micycle.pgs.color.RGB.WHITE);
 		shape.setStroke(true);
