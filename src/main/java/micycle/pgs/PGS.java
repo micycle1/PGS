@@ -23,6 +23,7 @@ import org.locationtech.jts.util.GeometricShapeFactory;
 
 import micycle.pgs.color.RGB;
 import micycle.pgs.utility.RandomPolygon;
+import micycle.pgs.utility.Star;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -33,13 +34,6 @@ import processing.core.PVector;
  * @author Michael Carleton
  */
 public class PGS {
-
-	// TODO check for getCoordinates() in loops (and replace) (if lots of child
-	// geometries)
-	// TODO use LinearRingIterator when possible (refactor)
-	// TODO https://ignf.github.io/CartAGen/docs/algorithms.html
-	// TODO maintain pshape fill, etc on output
-	// see https://github.com/IGNF/CartAGen
 
 	/**
 	 * Calling Polygon#union repeatedly is one way to union several Polygons
@@ -80,8 +74,9 @@ public class PGS {
 	}
 
 	/**
+	 * Generates a random simple convex polygon (n-gon).
 	 * 
-	 * @param n    number of vertices
+	 * @param n    number of vertices/sides
 	 * @param xMax
 	 * @param yMax
 	 * @return
@@ -223,6 +218,27 @@ public class PGS {
 		shapeFactory.setWidth(width);
 		shapeFactory.setHeight(height);
 		return toPShape(shapeFactory.createArcPolygon(-Math.PI / 2 + orientation, angle));
+	}
+
+	/**
+	 * Creates a star shape.
+	 * 
+	 * @param centerX     The x coordinate of the center
+	 * @param centerY     The y coordinate of the center
+	 * @param numRays     The number of rays that the star should have
+	 * @param innerRadius The inner radius of the star
+	 * @param outerRadius The outer radius of the star
+	 * @param roundness   A roundness value between 0.0 and 1.0, for the inner and
+	 *                    outer corners of the star.
+	 * @return The star shape
+	 */
+	public static PShape createStar(double x, double y, int numRays, double innerRadius, double outerRadius,
+			double roundness) {
+		roundness = Math.max(Math.min(1, roundness), 0);
+		final PShape shape = Star.createStarShape(x, y, innerRadius, outerRadius, numRays, roundness);
+		shape.setFill(true);
+		shape.setFill(255);
+		return shape;
 	}
 
 	/**

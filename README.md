@@ -1,10 +1,10 @@
-[![](https://jitpack.io/v/micycle1/PTS.svg)](https://jitpack.io/#micycle1/PGS) [![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=micycle1_PTS&metric=ncloc)](https://sonarcloud.io/dashboard?id=micycle1_PTS)
+[![](https://jitpack.io/v/micycle1/PGS.svg)](https://jitpack.io/#micycle1/PGS) [![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=micycle1_PTS&metric=ncloc)](https://sonarcloud.io/dashboard?id=micycle1_PTS)
 
 # Processing Geometry Suite
 
-*Processing Geometry Suite* is a software project that provides easy access to geometric algorithms in the form of a [Processing](https://processing.org/) library.
+*Processing Geometry Suite* is a software project that provides easy access to 2D geometric algorithms in the form of a [Processing](https://processing.org/) library.
 
-All methods in the library are static, and most of them take in and return [`PShape`](https://processing.org/reference/PShape.html) objects.
+All methods in the library are static, and most of them take in and return [`PShapes`](https://processing.org/reference/PShape.html) or [`PVectors`](https://processing.org/reference/PVector.html).
 
 Docs are hosted via *GitHub Pages* [here]().
 
@@ -348,6 +348,14 @@ A convex hull with some level of shape-feature snapping.
 Generate *supercircles*, with a configurable constant.
 
 <img src="resources/pgs/superCircle.gif" alt="" width="50%"/>
+
+
+### Star
+
+<p float="middle">
+  <img src="resources/pgs/star.gif" alt="" width="49%"/>
+  <img src="resources/pgs/star2.gif" alt="" width="49%"/>
+</p>
 
 ### Random Polygon
 Generate a random convex n-gon
