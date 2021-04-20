@@ -6,6 +6,7 @@ import static micycle.pgs.PGS_Conversion.toPShape;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 
 import org.geodelivery.jap.concavehull.SnapHull;
@@ -26,13 +27,17 @@ import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.locationtech.jts.geom.util.LineStringExtracter;
 import org.locationtech.jts.linearref.LengthIndexedLine;
+import org.locationtech.jts.noding.MCIndexSegmentSetMutualIntersector;
+import org.locationtech.jts.noding.SegmentIntersectionDetector;
+import org.locationtech.jts.noding.SegmentIntersector;
+import org.locationtech.jts.noding.SegmentString;
+import org.locationtech.jts.noding.SegmentStringUtil;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.shape.random.RandomPointsBuilder;
 import org.locationtech.jts.shape.random.RandomPointsInGridBuilder;
 
 import micycle.balaban.BalabanSolver;
-import micycle.balaban.IntersectionCallback;
 import micycle.balaban.Point;
 import micycle.balaban.Segment;
 import micycle.pgs.utility.PolygonDecomposition;
@@ -140,6 +145,35 @@ public class PGS_Processing {
 			coords.add(new PVector((float) coord.x, (float) coord.y));
 		}
 		return coords;
+	}
+
+	/**
+	 * Calculate all the points of intersection between two shapes.
+	 * 
+	 * @param a one shape
+	 * @param b the other shape
+	 * @return list of all intersecting points represented by PVectors
+	 */
+	public static List<PVector> shapeIntersections(PShape a, PShape b) {
+
+		final HashSet<PVector> points = new HashSet<>();
+
+		final MCIndexSegmentSetMutualIntersector mci = new MCIndexSegmentSetMutualIntersector(
+				SegmentStringUtil.extractSegmentStrings(fromPShape(a)));
+		final SegmentIntersectionDetector sid = new SegmentIntersectionDetector();
+
+		mci.process(SegmentStringUtil.extractSegmentStrings(fromPShape(b)), new SegmentIntersector() {
+			public void processIntersections(SegmentString e0, int segIndex0, SegmentString e1, int segIndex1) {
+				sid.processIntersections(e0, segIndex0, e1, segIndex1);
+				if (sid.getIntersection() != null) {
+					points.add(new PVector((float) sid.getIntersection().x, (float) sid.getIntersection().y));
+				}
+			}
+			public boolean isDone() {
+				return false;
+			}
+		});
+		return new ArrayList<>(points);
 	}
 
 	/**

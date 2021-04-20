@@ -19,6 +19,9 @@ import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.operation.distance.DistanceOp;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
+import micycle.pgs.color.RGB;
+import micycle.pgs.utility.MaximumInscribedRectangle;
+import micycle.pgs.utility.MinimumBoundingEllipse;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -76,6 +79,32 @@ public class PGS_Optimisation {
 	}
 
 	/**
+	 * Compute the minimum inscribed rectangle for a shape. The method computes the
+	 * MIR for convex shapes only; if a concave shape is passed in, the resulting
+	 * rectangle will be computed based on its convex hull.
+	 * 
+	 * <p>
+	 * This method uses a brute force algorithm to perform an exhaustive search for
+	 * a solution (therefore it is slow relative to other optimisation methods).
+	 * 
+	 * @param shape
+	 * @param fast  whether to compute MIR based on a lower resolution input. When
+	 *              true processing is ~6 times faster but potentially a little
+	 *              inaccurate
+	 */
+	public static PShape maximumInscribedRectangle(PShape shape, boolean fast) {
+		double f = fast ? 5 : 2;
+		final MaximumInscribedRectangle mir = new MaximumInscribedRectangle(fromPShape(shape), f);
+		int[] r = mir.getInscribedRectangle();
+
+		final GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
+		shapeFactory.setCentre(new Coordinate((r[0] + r[2] / 2) * f, (r[1] + r[3] / 2) * f));
+		shapeFactory.setWidth(r[2] * f);
+		shapeFactory.setHeight(r[3] * f);
+		return toPShape(shapeFactory.createRectangle());
+	}
+
+	/**
 	 * Computes the Minimum Bounding Circle (MBC) for the points in a Geometry. The
 	 * MBC is the smallest circle which covers all the vertices of the input shape
 	 * (this is also known as the Smallest Enclosing Circle). This is equivalent to
@@ -94,7 +123,7 @@ public class PGS_Optimisation {
 	/**
 	 * Computes the minimum bounding rectangle that encloses a shape. Unlike the
 	 * envelope for a shape, the rectangle returned by this method can have any
-	 * orientation.
+	 * orientation (it's not axis-aligned).
 	 * 
 	 * @param shape
 	 * @return
@@ -102,6 +131,41 @@ public class PGS_Optimisation {
 	public static PShape minimumBoundingRectangle(PShape shape) {
 		Polygon md = (Polygon) MinimumDiameter.getMinimumRectangle(fromPShape(shape));
 		return toPShape(md);
+	}
+
+	/**
+	 * Computes the minimum bounding ellipse that encloses a shape.
+	 * 
+	 * @param shape
+	 * @param tolerance 0.001 to 0.01 recommended. Higher values are a looser (yet
+	 *                  quicker) fit.
+	 * @return
+	 */
+	public static PShape minimumBoundingEllipse(PShape shape, double tolerance) {
+		// TODO investigate: calc mbc then squeeze until touches (squeeze perpendicular
+		// to span line?)
+		final Geometry hull = fromPShape(shape).convexHull();
+		final Coordinate[] coords = hull.getCoordinates();
+
+		double[][] points = new double[coords.length][2];
+		for (int i = 0; i < points.length; i++) {
+			points[i][0] = coords[i].x;
+			points[i][1] = coords[i].y;
+		}
+
+		final MinimumBoundingEllipse e = new MinimumBoundingEllipse(points, Math.max(tolerance, 0.001));
+		double[][] eEoords = e.getBoundingCoordinates(100);
+
+		final PShape ellipse = new PShape(PShape.PATH);
+		ellipse.setFill(true);
+		ellipse.setFill(RGB.WHITE);
+		ellipse.beginShape();
+		for (int i = 0; i < eEoords.length; i++) {
+			ellipse.vertex((float) eEoords[i][0], (float) eEoords[i][1]);
+		}
+		ellipse.endShape();
+
+		return ellipse;
 	}
 
 	/**
@@ -171,9 +235,9 @@ public class PGS_Optimisation {
 	 * @return The circle (as a PVector) that is tangent to c1, c2 and c3.
 	 */
 	public static PVector solveApollonius(PVector c1, PVector c2, PVector c3, int s1, int s2, int s3) {
-	
+
 		// https://github.com/DIKU-Steiner/ProGAL/blob/master/src/ProGAL/geom2d/ApolloniusSolver.java
-	
+
 		double x1 = c1.x;
 		double y1 = c1.y;
 		double r1 = c1.z;
@@ -183,36 +247,36 @@ public class PGS_Optimisation {
 		double x3 = c3.x;
 		double y3 = c3.y;
 		double r3 = c3.z;
-	
+
 		// Currently optimized for fewest multiplications. Should be optimized for
 		// readability
 		double v11 = 2 * x2 - 2 * x1;
 		double v12 = 2 * y2 - 2 * y1;
 		double v13 = x1 * x1 - x2 * x2 + y1 * y1 - y2 * y2 - r1 * r1 + r2 * r2;
 		double v14 = 2 * s2 * r2 - 2 * s1 * r1;
-	
+
 		double v21 = 2 * x3 - 2 * x2;
 		double v22 = 2 * y3 - 2 * y2;
 		double v23 = x2 * x2 - x3 * x3 + y2 * y2 - y3 * y3 - r2 * r2 + r3 * r3;
 		double v24 = 2 * s3 * r3 - 2 * s2 * r2;
-	
+
 		double w12 = v12 / v11;
 		double w13 = v13 / v11;
 		double w14 = v14 / v11;
-	
+
 		double w22 = v22 / v21 - w12;
 		double w23 = v23 / v21 - w13;
 		double w24 = v24 / v21 - w14;
-	
+
 		double P = -w23 / w22;
 		double Q = w24 / w22;
 		double M = -w12 * P - w13;
 		double N = w14 - w12 * Q;
-	
+
 		double a = N * N + Q * Q - 1;
 		double b = 2 * M * N - 2 * N * x1 + 2 * P * Q - 2 * Q * y1 + 2 * s1 * r1;
 		double c = x1 * x1 + M * M - 2 * M * x1 + P * P + y1 * y1 - 2 * P * y1 - r1 * r1;
-	
+
 		// Find a root of a quadratic equation. This requires the circle centers not
 		// to be e.g. colinear
 		double D = b * b - 4 * a * c;

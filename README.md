@@ -147,8 +147,8 @@ For individual points and point sets.
 * Circularity
 * Similarity
 * Holes
-* Simple?
-* Convex?
+* Is simple?
+* Is convex?
 * Distance
 * Area
 * Centroid
@@ -314,7 +314,14 @@ A convex hull with some level of shape-feature snapping.
 
 <img src="resources/morphology/snapHull.gif" alt="" width="50%"/>
 
+### Shape Intersection
+Find all points of intersection between two shapes.
+
+<img src="resources/geometry_processing/shapeIntersection.gif" alt="" width="50%"/>
+
 ### Segment Set Intersection
+
+Find all points of intersection between a collection of line segments.
 
 <p float="middle">
   <img src="resources/geometry_processing/segmentIntersection.png" alt="" width="49%"/>
@@ -329,8 +336,27 @@ A convex hull with some level of shape-feature snapping.
 ### Maximum Inscribed Circle
 <img src="resources/pgs/inscribedCircle.gif" alt="" width="50%"/>
 
+### Maximum Inscribed Rectangle
+Maximum inscribed axis-aligned rectangle of convex shapes.
+
+<p float="middle">
+  <img src="resources/optimisation/mir1.png" alt="" width="49%"/>
+  <img src="resources/optimisation/mir2.png" alt="" width="49%"/>
+</p>
+
 ### Minimum Bounding Circle
-<img src="resources/pgs/minimumBoundingCircle.png" alt="" width="50%"/>
+
+<p float="middle">
+  <img src="resources/pgs/minimumBoundingCircle.png" alt="" width="49%"/>
+  <img src="resources/optimisation/mbc2.png" alt="" width="49%"/>
+</p>
+
+### Minimum Bounding Ellipse
+
+<p float="middle">
+  <img src="resources/optimisation/mbe1.png" alt="" width="49%"/>
+  <img src="resources/optimisation/mbe2.png" alt="" width="49%"/>
+</p>
 
 ### Minimum Bounding Rectangle
 <img src="resources/pgs/minimumBoundingRectangle.png" alt="" width="50%"/>
