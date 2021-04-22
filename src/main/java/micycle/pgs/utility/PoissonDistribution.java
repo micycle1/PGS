@@ -11,6 +11,7 @@ import static processing.core.PApplet.dist;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -44,14 +45,14 @@ public final class PoissonDistribution {
 
 	public PoissonDistribution(long seed) {
 		random = new Random(seed);
-		points = new ArrayList<PVector>();
+		points = new ArrayList<>();
 	}
 
-	public ArrayList<PVector> getPoints() {
+	public List<PVector> getPoints() {
 		return points;
 	}
 
-	public ArrayList<PVector> generate(double xmin, double ymin, double xmax, double ymax, double minDist,
+	public List<PVector> generate(double xmin, double ymin, double xmax, double ymax, double minDist,
 			int rejectionLimit) {
 		return generate((float) xmin, (float) ymin, (float) xmax, (float) ymax, (float) minDist, rejectionLimit);
 	}
@@ -59,7 +60,7 @@ public final class PoissonDistribution {
 	/**
 	 * rejection limit sometimes known as k
 	 **/
-	public ArrayList<PVector> generate(float xmin, float ymin, float xmax, float ymax, float minDist,
+	public List<PVector> generate(float xmin, float ymin, float xmax, float ymax, float minDist,
 			int rejectionLimit) {
 		this.xmin = xmin;
 		this.xmax = xmax;
@@ -71,7 +72,7 @@ public final class PoissonDistribution {
 		int s = gridWidth * gridHeight;
 		grid = new ArrayList<ArrayList<PVector>>();
 		for (int i = 0; i < s; i++)
-			grid.add(new ArrayList<PVector>());
+			grid.add(new ArrayList<>());
 
 		points.clear();
 		LinkedList<PVector> processList = new LinkedList<PVector>(); // active list
@@ -98,7 +99,7 @@ public final class PoissonDistribution {
 			}
 		}
 
-		return new ArrayList<PVector>(points);
+		return new ArrayList<>(points);
 	}
 
 	private boolean insideBoundaries(PVector p, float border) {

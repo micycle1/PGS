@@ -38,40 +38,6 @@ class LittleThumblingDensifier {
 		return densifier.getResultGeometry();
 	}
 
-	/**
-	 * Densifies a coordinate sequence.
-	 * 
-	 * @param pts
-	 * @param stepLength the step length
-	 * @return the densified coordinate sequence
-	 */
-	private static Coordinate[] densifyPoints(Coordinate[] pts, double stepLength, PrecisionModel precModel) {
-		// out coords
-		LineString line = new GeometryFactory(precModel).createLineString(pts);
-		int nb = (int) (line.getLength() / stepLength);
-		Coordinate[] out = new Coordinate[nb + 1];
-
-		double d = 0.0, a = 0.0, dTot;
-		int densIndex = 0;
-		for (int i = 0; i < pts.length - 1; i++) {
-			Coordinate c0 = pts[i], c1 = pts[i + 1];
-			dTot = c0.distance(c1);
-			if (d <= dTot)
-				a = Math.atan2(c1.y - c0.y, c1.x - c0.x);
-			while (d <= dTot) {
-				// use LineSegment.pointAlong instead ?
-				Coordinate c = new Coordinate(c0.x + d * Math.cos(a), c0.y + d * Math.sin(a));
-				precModel.makePrecise(c);
-				out[densIndex] = c;
-				densIndex++;
-				d += stepLength;
-			}
-			d -= dTot;
-		}
-		out[nb] = pts[pts.length - 1];
-		return out;
-	}
-
 	private Geometry inputGeom;
 	private double stepLength;
 
@@ -95,15 +61,17 @@ class LittleThumblingDensifier {
 	}
 
 	private static class LittleThumblingDensifyTransformer extends GeometryTransformer {
+
 		double stepLength;
 
 		LittleThumblingDensifyTransformer(double stepLength) {
 			this.stepLength = stepLength;
 		}
 
+		@Override
 		protected CoordinateSequence transformCoordinates(CoordinateSequence coords, Geometry parent) {
 			Coordinate[] inputPts = coords.toCoordinateArray();
-			Coordinate[] newPts = LittleThumblingDensifier.densifyPoints(inputPts, stepLength,
+			Coordinate[] newPts = densifyPoints(inputPts, stepLength,
 					parent.getPrecisionModel());
 			// prevent creation of invalid linestrings
 			if (parent instanceof LineString && newPts.length == 1) {
@@ -112,6 +80,7 @@ class LittleThumblingDensifier {
 			return factory.getCoordinateSequenceFactory().create(newPts);
 		}
 
+		@Override
 		protected Geometry transformPolygon(Polygon geom, Geometry parent) {
 			Geometry roughGeom = super.transformPolygon(geom, parent);
 			// don't try and correct if the parent is going to do this
@@ -121,6 +90,7 @@ class LittleThumblingDensifier {
 			return createValidArea(roughGeom);
 		}
 
+		@Override
 		protected Geometry transformMultiPolygon(MultiPolygon geom, Geometry parent) {
 			Geometry roughGeom = super.transformMultiPolygon(geom, parent);
 			return createValidArea(roughGeom);
@@ -139,6 +109,40 @@ class LittleThumblingDensifier {
 		 */
 		private Geometry createValidArea(Geometry roughAreaGeom) {
 			return roughAreaGeom.buffer(0.0);
+		}
+
+		/**
+		 * Densifies a coordinate sequence.
+		 * 
+		 * @param pts
+		 * @param stepLength the step length
+		 * @return the densified coordinate sequence
+		 */
+		private static Coordinate[] densifyPoints(Coordinate[] pts, double stepLength, PrecisionModel precModel) {
+			// out coords
+			LineString line = new GeometryFactory(precModel).createLineString(pts);
+			int nb = (int) (line.getLength() / stepLength);
+			Coordinate[] out = new Coordinate[nb + 1];
+		
+			double d = 0.0, a = 0.0, dTot;
+			int densIndex = 0;
+			for (int i = 0; i < pts.length - 1; i++) {
+				Coordinate c0 = pts[i], c1 = pts[i + 1];
+				dTot = c0.distance(c1);
+				if (d <= dTot)
+					a = Math.atan2(c1.y - c0.y, c1.x - c0.x);
+				while (d <= dTot) {
+					// use LineSegment.pointAlong instead ?
+					Coordinate c = new Coordinate(c0.x + d * Math.cos(a), c0.y + d * Math.sin(a));
+					precModel.makePrecise(c);
+					out[densIndex] = c;
+					densIndex++;
+					d += stepLength;
+				}
+				d -= dTot;
+			}
+			out[nb] = pts[pts.length - 1];
+			return out;
 		}
 	}
 

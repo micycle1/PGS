@@ -309,6 +309,7 @@ public class PGS_Voronoi {
 	 * @deprecated it's a little slower than IntersectionJTS
 	 */
 	@SuppressWarnings("unused")
+	@Deprecated
 	private static class SegmentIntersection {
 
 		// TODO decide on PVectors / double[] etc

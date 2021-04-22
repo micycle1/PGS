@@ -2,7 +2,6 @@ package micycle.pgs.utility;
 
 import java.util.List;
 
-import micycle.pgs.PGS;
 import micycle.pgs.PGS_Conversion;
 import micycle.pgs.color.RGB;
 import processing.core.PApplet;
@@ -31,7 +30,7 @@ public final class CornerRounding {
 		PGS_Conversion.setAllFillColor(rounded, RGB.PINK);
 		rounded.beginShape();
 
-		final List<PVector> l = PGS.toPVectorList(shape);
+		final List<PVector> l = PGS_Conversion.toPVector(shape);
 		final int size = l.size();
 		for (int i = 0; i < l.size(); i++) {
 			final PVector p1 = l.get(Math.floorMod(i - 1, size));

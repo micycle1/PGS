@@ -307,6 +307,42 @@ public class PGS_Conversion implements PConstants {
 	}
 
 	/**
+	 * Returns the vertices of a PShape as an unclosed list of PVector coordinates.
+	 * 
+	 * @param shape
+	 * @return
+	 */
+	public static List<PVector> toPVector(PShape shape) {
+		final ArrayList<PVector> vertices = new ArrayList<>();
+		for (int i = 0; i < shape.getVertexCount(); i++) {
+			vertices.add(shape.getVertex(i));
+		}
+		if (!vertices.isEmpty() && vertices.get(0).equals(vertices.get(vertices.size() - 1))) {
+			vertices.remove(vertices.size() - 1);
+		}
+		return vertices;
+	}
+
+	/**
+	 * Generate a simple polygon (no holes) from the given coordinate list. Used by
+	 * randomPolygon().
+	 */
+	public static PShape fromPVector(List<PVector> coords) {
+		PShape shape = new PShape();
+		shape.setFamily(PShape.GEOMETRY);
+		shape.setFill(micycle.pgs.color.RGB.WHITE);
+		shape.setFill(true);
+		shape.beginShape();
+	
+		for (PVector v : coords) {
+			shape.vertex(v.x, v.y);
+		}
+	
+		shape.endShape(PConstants.CLOSE);
+		return shape;
+	}
+
+	/**
 	 * Kinda recursive, caller must provide fresh arraylist. Output includes the
 	 * parent-most (input) shape. Output is flattened, does not respect a hierarchy
 	 * of parent-child PShapes.

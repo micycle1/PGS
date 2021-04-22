@@ -4,7 +4,7 @@
 
 *Processing Geometry Suite* is a software project that provides easy access to 2D geometric algorithms in the form of a [Processing](https://processing.org/) library.
 
-All methods in the library are static, and most of them take in and return [`PShapes`](https://processing.org/reference/PShape.html) or [`PVectors`](https://processing.org/reference/PVector.html).
+The focus of the library is on visualisation rather than providing underlying data structures. To this end all methods in the library are static and most of them take in and return [`PShapes`](https://processing.org/reference/PShape.html) or [`PVectors`](https://processing.org/reference/PVector.html).
 
 Docs are hosted via *GitHub Pages* [here]().
 
@@ -13,21 +13,21 @@ Docs are hosted via *GitHub Pages* [here]().
 <details><summary>Processing IDE — Quick</summary>
 <p>
 
-Download the latest *PGS.jar* from [releases](https://github.com/micycle1/PGS/releases) and drag-and-drop it onto the [Processing IDE](https://processing.org/reference/environment/).
+Download the latest *PGS.jar* from [releases](https://github.com/micycle1/PGS/releases) and simply drag-and-drop it onto the [Processing IDE](https://processing.org/reference/environment/).
 </p>
 </details>
 
 <details><summary>Processing IDE — Permanent</summary>
 <p>
 
-Download .zip and extract it to `Documents\Processing\libraries`.
+Download this repo as a .zip (via *Code>Download ZIP*) and extract it to `Documents\Processing\libraries`.
 </p>
 </details>
 
 <details><summary>Maven/Gradle</summary>
 <p>
 
-PGS is hosted as a Maven or Gradle artifact via [Jitpack](https://jitpack.io/#micycle1/PGS). With this, you can easily use PGS in a Maven or Gradle Java project outside the Processing IDE.
+PGS is hosted as an artifact for use in Maven or Gradle projects via [Jitpack](https://jitpack.io/#micycle1/PGS) — follow the instructions there (very easy). 
 </p>
 </details>
 
@@ -48,12 +48,12 @@ void setup() {
 void draw() {
   background(0, 0, 40);
 
-  PShape inverse =  PGSShapeBoolean.complement(polygon, width, height);
+  PShape inverse =  PGS_ShapeBoolean.complement(polygon, width, height);
   inverse.setFill(color(0, 90, 200));
   shape(inverse);
   
-  PShape smaller = PGSMorphology.buffer(polygon, -30);
-  List<PVector> trianglePoints = PGSTriangulation.delaunayTriangulation(smaller, null, true, 4, true);
+  PShape smaller = PGS_Morphology.buffer(polygon, -30);
+  List<PVector> trianglePoints = PGS_Triangulation.delaunayTriangulationPoints(smaller, null, true, 4, true);
   beginShape(TRIANGLES);
   strokeWeight(1);
   stroke(0);
@@ -65,7 +65,7 @@ void draw() {
   }
   endShape();
   
-  PVector closest = PGSGeometricOptimisation.closestPoint(inverse, new PVector(mouseX, mouseY));
+  PVector closest = PGS_Optimisation.closestPoint(inverse, new PVector(mouseX, mouseY));
   strokeWeight(10);
   stroke(255);
   point(closest.x, closest.y);

@@ -133,7 +133,7 @@ public class PGS_Processing {
 		LengthIndexedLine l = new LengthIndexedLine(((Polygon) fromPShape(shape)).getExteriorRing());
 		if (interPointDistance > l.getEndIndex()) {
 			System.err.println("Interpoint length greater than shape length");
-			return new ArrayList<PVector>();
+			return new ArrayList<>();
 		}
 		final int points = (int) Math.round(l.getEndIndex() / interPointDistance);
 
@@ -187,7 +187,7 @@ public class PGS_Processing {
 	 *         segment pair
 	 */
 	public static List<PVector> lineSegmentIntersections(List<PVector> lineSegments) {
-		final List<PVector> intersections = new ArrayList<PVector>();
+		final List<PVector> intersections = new ArrayList<>();
 		if (lineSegments.size() % 2 != 0) {
 			System.err.println("Error: detected an odd number of line segment vertices.");
 			return intersections;
@@ -218,7 +218,7 @@ public class PGS_Processing {
 	 * @param points number of points to generate
 	 * @return
 	 */
-	public static ArrayList<PVector> generateRandomPoints(PShape shape, int points) {
+	public static List<PVector> generateRandomPoints(PShape shape, int points) {
 		RandomPointsBuilder r = new RandomPointsBuilder();
 		r.setExtent(fromPShape(shape));
 		r.setNumPoints(points);
@@ -251,7 +251,7 @@ public class PGS_Processing {
 	 * 
 	 * @return
 	 */
-	public static ArrayList<PVector> generateRandomGridPoints(PShape shape, int maxPoints, boolean constrainedToCircle,
+	public static List<PVector> generateRandomGridPoints(PShape shape, int maxPoints, boolean constrainedToCircle,
 			double gutterFraction) {
 		Geometry g = fromPShape(shape);
 		IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(g);

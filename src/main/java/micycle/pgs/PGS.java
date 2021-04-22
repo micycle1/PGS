@@ -1,17 +1,14 @@
 package micycle.pgs;
 
-import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
 import static processing.core.PConstants.LINES;
 import static processing.core.PConstants.ROUND;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
 import org.geotools.geometry.jts.JTS;
 import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
@@ -24,7 +21,6 @@ import org.locationtech.jts.util.GeometricShapeFactory;
 import micycle.pgs.color.RGB;
 import micycle.pgs.utility.RandomPolygon;
 import micycle.pgs.utility.Star;
-import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -35,94 +31,24 @@ import processing.core.PVector;
  */
 public class PGS {
 
-	/**
-	 * Calling Polygon#union repeatedly is one way to union several Polygons
-	 * together. But here’s a trick that can be significantly faster (seconds rather
-	 * than minutes) – add the Polygons to a GeometryCollection, then apply a buffer
-	 * with zero distance
-	 */
-
 	protected static final int CURVE_SAMPLES = 20;
 
-	public static GeometryFactory GEOM_FACTORY = new GeometryFactory(
+	public static final GeometryFactory GEOM_FACTORY = new GeometryFactory(
 			new PrecisionModel(PrecisionModel.FLOATING_SINGLE));
 
 	private PGS() {
-
-	}
-
-	/**
-	 * Flatten, or merge/union, a shape's children
-	 * 
-	 * @param shape
-	 * @return
-	 */
-	public static PShape flatten(PShape shape) {
-		// TODO iterate over geometries shapes, then create group PShape
-		Polygon poly = (Polygon) fromPShape(shape).union().getGeometryN(0);
-		return toPShape(poly.getExteriorRing());
-	}
-
-	/**
-	 * Returns a hole-less version of the shape, or boundary of group of shapes
-	 * 
-	 * @param shape
-	 * @return
-	 */
-	public static PShape boundary(PShape shape) {
-		return toPShape(fromPShape(shape).getBoundary());
 	}
 
 	/**
 	 * Generates a random simple convex polygon (n-gon).
 	 * 
-	 * @param n    number of vertices/sides
-	 * @param xMax
-	 * @param yMax
+	 * @param n         number of polygon vertices/sides
+	 * @param maxWidth
+	 * @param maxHeight
 	 * @return
 	 */
-	public static PShape randomPolygon(int n, double xMax, double yMax) {
-		return pshapeFromPVector(RandomPolygon.generateRandomConvexPolygon(n, xMax, yMax));
-	}
-
-	/**
-	 * Same as getVertices for geometry PShapes; different (subdivides) for circles
-	 * etc.
-	 * 
-	 * @param shape
-	 * @return
-	 */
-	public static PVector[] vertices(PShape shape) {
-		Coordinate[] coords = fromPShape(shape).getCoordinates();
-		PVector[] vertices = new PVector[coords.length];
-		for (int i = 0; i < coords.length; i++) {
-			Coordinate coord = coords[i];
-			vertices[i] = new PVector((float) coord.x, (float) coord.y);
-		}
-		return vertices;
-	}
-
-	/**
-	 * aka envelope
-	 * 
-	 * @param shape
-	 * @return float[] of [X,Y,W,H]
-	 */
-	public static float[] bounds(PShape shape) {
-		// TODO move to ShapeMetrics?
-		Envelope e = (Envelope) fromPShape(shape).getEnvelopeInternal();
-		return new float[] { (float) e.getMinX(), (float) e.getMinY(), (float) e.getWidth(), (float) e.getHeight() };
-	}
-
-	/**
-	 * aka envelope
-	 * 
-	 * @param shape
-	 * @return float[] of [X1, Y1, X2, Y2]
-	 */
-	public static float[] boundCoords(PShape shape) {
-		Envelope e = (Envelope) fromPShape(shape).getEnvelopeInternal();
-		return new float[] { (float) e.getMinX(), (float) e.getMinY(), (float) e.getMaxX(), (float) e.getMaxY() };
+	public static PShape createRandomPolygon(int n, double maxWidth, double maxHeight) {
+		return PGS_Conversion.fromPVector(RandomPolygon.generateRandomConvexPolygon(n, maxWidth, maxHeight));
 	}
 
 	/**
@@ -151,13 +77,13 @@ public class PGS {
 	 * geometric and natural shapes (starfish, petals, snowflakes) by choosing
 	 * suitable values relevant to few parameters.
 	 * 
-	 * @param x
-	 * @param y
+	 * @param x     centre point X
+	 * @param y     centre point Y
 	 * @param width
-	 * @param m
-	 * @param n1
-	 * @param n2
-	 * @param n3
+	 * @param m     Increasing m adds rotational symmetry to the shape
+	 * @param n1    supershape parameter 1
+	 * @param n2    supershape parameter 2
+	 * @param n3    supershape parameter 3
 	 * @return
 	 */
 	public static PShape createSuperShape(double x, double y, double width, double m, double n1, double n2, double n3) {
@@ -242,23 +168,6 @@ public class PGS {
 	}
 
 	/**
-	 * Returns an unclosed list of PVector coordinates making up the shape.
-	 * 
-	 * @param shape
-	 * @return
-	 */
-	public static List<PVector> toPVectorList(PShape shape) {
-		final ArrayList<PVector> vertices = new ArrayList<>();
-		for (int i = 0; i < shape.getVertexCount(); i++) {
-			vertices.add(shape.getVertex(i));
-		}
-		if (!vertices.isEmpty() && vertices.get(0).equals(vertices.get(vertices.size() - 1))) {
-			vertices.remove(vertices.size() - 1);
-		}
-		return vertices;
-	}
-
-	/**
 	 * Create a LINES PShape, ready for vertices.
 	 * 
 	 * @param strokeColor  nullable
@@ -266,7 +175,7 @@ public class PGS {
 	 * @param strokeWeight nullable. default = 2
 	 * @return
 	 */
-	static PShape prepareLinesPShape(Integer strokeColor, Integer strokeCap, Integer strokeWeight) {
+	protected static PShape prepareLinesPShape(Integer strokeColor, Integer strokeCap, Integer strokeWeight) {
 		if (strokeColor == null) {
 			strokeColor = RGB.PINK;
 		}
@@ -310,15 +219,11 @@ public class PGS {
 		return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 	}
 
-	private static void removeCollinearVertices(Geometry g) {
-		JTS.removeCollinearVertices(g);
-	}
-
 	protected static LineString createLineString(PVector a, PVector b) {
 		return GEOM_FACTORY.createLineString(new Coordinate[] { coordFromPVector(a), coordFromPVector(b) });
 	}
 
-	static Point createPoint(double x, double y) {
+	protected static Point createPoint(double x, double y) {
 		return GEOM_FACTORY.createPoint(new Coordinate(x, y));
 	}
 
@@ -332,21 +237,6 @@ public class PGS {
 
 	protected static Coordinate coordFromPVector(PVector p) {
 		return new Coordinate(p.x, p.y);
-	}
-
-	/**
-	 * cirumcircle center must lie inside triangle
-	 * 
-	 * @param a
-	 * @param b
-	 * @param c
-	 * @return
-	 */
-	private static double smallestSide(Coordinate a, Coordinate b, Coordinate c) {
-		double ab = Math.sqrt((b.y - a.y) * (b.y - a.y) + (b.x - a.x) * (b.x - a.x));
-		double bc = Math.sqrt((c.y - b.y) * (c.y - b.y) + (c.x - b.x) * (c.x - b.x));
-		double ca = Math.sqrt((a.y - c.y) * (a.y - c.y) + (a.x - c.x) * (a.x - c.x));
-		return Math.min(Math.min(ab, bc), ca);
 	}
 
 	/**
@@ -364,53 +254,12 @@ public class PGS {
 	}
 
 	/**
-	 * Generate a simple polygon (no holes) from the given coordinate list. Used by
-	 * randomPolygon().
-	 */
-	public static PShape pshapeFromPVector(List<PVector> coords) {
-		PShape shape = new PShape();
-		shape.setFamily(PShape.GEOMETRY);
-		shape.setStroke(true);
-		shape.setStrokeWeight(2);
-		shape.setStroke(0);
-		shape.setFill(-123712);
-		shape.setFill(true);
-		shape.beginShape();
-
-		for (PVector v : coords) {
-			shape.vertex(v.x, v.y);
-		}
-
-		shape.endShape(PConstants.CLOSE);
-		return shape;
-	}
-
-	/**
-	 * From com.badlogic.gdx
-	 */
-	private static boolean isClockwise(float[] polygon, int offset, int count) {
-		if (count <= 2) {
-			return false;
-		}
-		float area = 0;
-		int last = offset + count - 2;
-		float x1 = polygon[last], y1 = polygon[last + 1];
-		for (int i = offset; i <= last; i += 2) {
-			float x2 = polygon[i], y2 = polygon[i + 1];
-			area += x1 * y2 - x2 * y1;
-			x1 = x2;
-			y1 = y2;
-		}
-		return area < 0;
-	}
-
-	/**
 	 * Requires a closed hole
 	 * 
 	 * @param points
 	 * @return
 	 */
-	static boolean isClockwise(List<PVector> points) {
+	protected static boolean isClockwise(List<PVector> points) {
 		boolean closed = true;
 		if (points.get(0).equals(points.get(points.size() - 1))) {
 			closed = false;
@@ -431,17 +280,8 @@ public class PGS {
 		return (area < 0);
 	}
 
-	/**
-	 * Uniquely encodes two numbers (order-dependent) into a single natural number.
-	 */
-	static double cantorPairing(double a, double b) {
-		a = (a >= 0.0 ? 2.0 * a : (-2.0 * a) - 1.0); // enable negative input values
-		b = (b >= 0.0 ? 2.0 * b : (-2.0 * b) - 1.0); // enable negative input values
-		return (a + b) * (a + b + 1) / 2 + a;
-	}
-
-	static double cantorPairing(int a, int b) {
-		return (a + b) * (a + b + 1) / 2 + a; // TODO check /2. integer div?
+	private static void removeCollinearVertices(Geometry g) {
+		JTS.removeCollinearVertices(g);
 	}
 
 	/**

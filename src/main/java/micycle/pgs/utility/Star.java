@@ -88,7 +88,7 @@ public class Star {
 		}
 
 		// Create the list containing the inner and outer tip points
-		List<PVector> points = new ArrayList<PVector>();
+		List<PVector> points = new ArrayList<>();
 		double deltaAngleRad = Math.PI / numRays;
 		for (int i = 0; i < numRays * 2; i++) {
 			double angleRad = startAngleRad + i * deltaAngleRad;

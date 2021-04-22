@@ -98,7 +98,7 @@ public class PGS_Optimisation {
 		int[] r = mir.getInscribedRectangle();
 
 		final GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-		shapeFactory.setCentre(new Coordinate((r[0] + r[2] / 2) * f, (r[1] + r[3] / 2) * f));
+		shapeFactory.setCentre(new Coordinate((r[0] + r[2] / 2d) * f, (r[1] + r[3] / 2d) * f));
 		shapeFactory.setWidth(r[2] * f);
 		shapeFactory.setHeight(r[3] * f);
 		return toPShape(shapeFactory.createRectangle());
