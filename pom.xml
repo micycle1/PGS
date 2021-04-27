@@ -153,7 +153,7 @@
 		<dependency>
 			<groupId>com.github.gwlucastrig</groupId>
 			<artifactId>Tinfour</artifactId>
-			<version>0aa0843cb6</version>
+			<version>2.1.6</version>
 		</dependency>
 		<dependency>
 			<groupId>io.github.earcut4j</groupId>
