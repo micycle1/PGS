@@ -17,9 +17,15 @@ jobs:
         with:
           java-version: 11
       - name: Build javadocs with Maven
-        run: mvn javadoc:javadoc -Ddoclint=none
+        run: mvn javadoc:javadoc -Ddoclint=none -Dsubpackages=micycle.pgs
       - name: Publish javadocs
         uses: JamesIves/github-pages-deploy-action@4.1.1
         with:
           branch: gh-pages # The branch the action should deploy to.
           folder: target/site/apidocs # The folder the action should deploy.
+      - name: Cache Maven packages
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
