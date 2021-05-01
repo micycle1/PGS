@@ -4,6 +4,7 @@
  * <p>
  * Functionality is split over the following classes:
  * <ul>
+ * <li>{@link micycle.pgs.PGS_Construction Construction}</li>
  * <li>{@link micycle.pgs.PGS_Contour Contour}</li>
  * <li>{@link micycle.pgs.PGS_Conversion Conversion}</li>
  * <li>{@link micycle.pgs.PGS_Morphology Morpholoy}</li>

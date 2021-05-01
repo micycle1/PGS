@@ -1,5 +1,8 @@
 package micycle.pgs.color;
 
+import static micycle.pgs.color.RGB.composeclr;
+import static micycle.pgs.color.RGB.decomposeclr;
+
 /**
  * Color blending for Processing colors (32bit ARGB integers).
  * <p>
@@ -13,20 +16,6 @@ package micycle.pgs.color;
  *
  */
 public class Blending {
-
-	private static final float INV_255 = 1f / 255f; // used to normalise RGB values to 0...1
-
-	// Normal: src.
-	// Lighten: max(src, dst).
-	// Darken: min(src, dst).
-
-	// Add: min(1.0, src + dst).
-	// Subtract: max(0.0, src - dst).
-	// Multiply: (src * dst).
-	// Screen: 1 - (1 - dst) * (1 - src).
-	// Average: src + (dst - src) * 0.5.
-	// Difference: abs(src - dst).
-	// Exclusion: src - 2 * src * dst + dst.
 
 	public static int subtract(int colorA, int colorB) {
 		float[] decomposedA = decomposeclr(colorA);
@@ -102,29 +91,6 @@ public class Blending {
 	private static float[] exclusion(float[] src, float[] dst) {
 		return new float[] { src[0] - 2 * src[0] * dst[0] + dst[1], src[1] - 2 * src[1] * dst[1] + dst[1],
 				src[2] - 2 * src[2] * dst[2] + dst[2], src[3] - 2 * src[3] * dst[3] + dst[3] };
-	}
-
-	/**
-	 * Decompose and pre-multiply alpha
-	 * 
-	 * @param clr
-	 * @return RGBA
-	 */
-	private static float[] decomposeclr(int clr) {
-		final float alpha = (clr >> 24 & 0xff) == 255 ? 1 : (clr >> 24 & 0xff) * INV_255;
-		return new float[] { (clr >> 16 & 0xff) * INV_255 * alpha, (clr >> 8 & 0xff) * INV_255 * alpha,
-				(clr & 0xff) * INV_255 * alpha, alpha };
-	}
-
-	/**
-	 * Compose a 32 bit sARGB int from float[] 0...1
-	 * 
-	 * @param in RGBA
-	 * @return
-	 */
-	private static int composeclr(float[] RGBA) {
-		return (int) (RGBA[3] * 255) << 24 | (int) (RGBA[0] * 255) << 16 | (int) (RGBA[1] * 255) << 8
-				| (int) (RGBA[2] * 255);
 	}
 
 }

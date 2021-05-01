@@ -37,7 +37,6 @@ import hageldave.jplotter.renderables.Lines.SegmentDetails;
 import micycle.medialAxis.MedialAxis;
 import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.color.RGB;
-import micycle.pgs.utility.PoissonDistribution;
 import micycle.pgs.utility.SolubSkeleton;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -420,6 +419,7 @@ public class PGS_Contour {
 	public static PShape isolinesJP(double[][] values, double isoValue) {
 		PShape lines = prepareLinesPShape(null, null, null);
 		LineMerger m = new LineMerger();
+		// TODO cleanup
 
 		List<SegmentDetails> segments = Contours.computeContourLines(values, isoValue,
 				RGB.composeColor(0, 255, 0, 255));

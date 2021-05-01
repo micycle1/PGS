@@ -24,8 +24,6 @@
  */
 package micycle.pgs.utility;
 
-import static micycle.pgs.PGS.GEOM_FACTORY;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -36,7 +34,9 @@ import org.dyn4j.geometry.Segment;
 import org.dyn4j.geometry.Vector2;
 import org.dyn4j.resources.Messages;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.PrecisionModel;
 
 /**
  * Implementation of the Bayazit convex decomposition algorithm for simple
@@ -52,6 +52,8 @@ import org.locationtech.jts.geom.Polygon;
  * @see <a href="http://mnbayazit.com/406/bayazit" target="_blank">Bayazit</a>
  */
 public class PolygonDecomposition {
+	
+	private static final GeometryFactory GEOM_FACTORY = new GeometryFactory(new PrecisionModel(PrecisionModel.FLOATING_SINGLE));
 
 	public static List<Polygon> decompose(Polygon polygon) {
 		Vector2[] points = new Vector2[polygon.getCoordinates().length];

@@ -74,7 +74,33 @@ void draw() {
 
 ## **Overview**
 
-Many of the provided functionality and algorithms (but by no means all) are exemplified below.
+Library functionality is split over the following classes:
+
+* `PGS_Construction`
+  * Construct uncommon 2D primitives
+* `PGS_Contour`
+  * Methods that produce various contours from shapes: medial axes, straight skeletons, offset curves, etc.
+* `PGS_Conversion`
+  * Conversion between PShapes and JTS Geometries 
+* `PGS_Morphology`
+  * Methods that affect the geometry or topology of shapes (buffering, simplification, smoothing, etc.)
+* `PGS_Optimsation`
+  * Solve geometric optimisation problems, such as finding the maximum inscribed circle, or the closest vertex to a coordinate
+* `PGS_Processing`
+  * Methods that process a shape in some way: compute hulls, partition, slice, etc. 
+* `PGS_ShapeBoolean`
+  * Boolean set-operations for 2D shapes
+* `PGS_ShapePredicates`
+  * Various shape metrics (area, circularity, etc.) and predicates (*"do these shapes intersect?"*)
+* `PGS_Transformation`
+  * Various geometric and affine transformations that affect vertex coordinates
+* `PGS_Triangulation`
+  * Delaunay triangulation (constrained and refined) and earcut triangulation of shapes and point sets
+* `PGS_Voronoi`
+  * Voronoi Diagrams of shapes and point sets
+
+
+Much of the functionality (but by no means all) is exemplified below:
 
 ## *2D Boolean Operations*
 *Boolean set-operations on shapes.*
@@ -368,12 +394,15 @@ Maximum inscribed axis-aligned rectangle of convex shapes.
   <img src="resources/optimisation/apollonius2.gif" alt="" width="49%"/>
 </p>
 
-## *Assorted*
+## *Construction*
 
 ### Supercircle
 Generate *supercircles*, with a configurable constant.
 
 <img src="resources/pgs/superCircle.gif" alt="" width="50%"/>
+
+### Supershape
+...
 
 
 ### Star

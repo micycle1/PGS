@@ -5,6 +5,8 @@ public class RGB {
 	public static final int BLACK = composeColor(0, 0, 0);
 	public static final int WHITE = composeColor(255, 255, 255);
 	public static final int PINK = composeColor(237, 50, 162);
+	
+	private static final float INV_255 = 1f / 255f; // used to normalise RGB values to 0...1
 
 	/**
 	 * @param red   ∈[0, 255]
@@ -25,6 +27,29 @@ public class RGB {
 	 */
 	public static int composeColor(final int red, final int green, final int blue) {
 		return -16777216 | red << 16 | green << 8 | blue;
+	}
+	
+	/**
+	 * Compose a 32 bit sARGB int from float[] 0...1
+	 * 
+	 * @param in
+	 * @return
+	 */
+	static int composeclr(float[] RGBA) {
+		return (int) (RGBA[3] * 255) << 24 | (int) (RGBA[0] * 255) << 16 | (int) (RGBA[1] * 255) << 8
+				| (int) (RGBA[2] * 255);
+	}
+	
+	/**
+	 * Decompose and pre-multiply alpha
+	 * 
+	 * @param clr
+	 * @return premultiplied clr
+	 */
+	static float[] decomposeclr(int clr) {
+		final float alpha = (clr >> 24 & 0xff) == 255 ? 1 : (clr >> 24 & 0xff) * INV_255;
+		return new float[] { (clr >> 16 & 0xff) * INV_255 * alpha, (clr >> 8 & 0xff) * INV_255 * alpha,
+				(clr & 0xff) * INV_255 * alpha, alpha };
 	}
 
 }
