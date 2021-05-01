@@ -18,7 +18,7 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Various shape metrics & predicates
+ * Various shape metrics &amp; predicates
  * 
  * @author Michael Carleton
  *
