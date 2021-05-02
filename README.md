@@ -411,7 +411,7 @@ Generate *supercircles*, with a configurable constant.
 
 ### Supershape
 
-<img src="resources/pgs/superShape.gif" alt="" width="50%"/>
+<img src="resources/pgs/supershape.gif" alt="" width="50%"/>
 
 
 ### Star

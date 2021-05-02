@@ -19,6 +19,9 @@ public final class CornerRounding {
 
 	// Inspired by https://observablehq.com/@daformat/rounding-polygon-corners
 
+	private CornerRounding() {
+	}
+
 	/**
 	 * 
 	 * @param shape
@@ -58,16 +61,15 @@ public final class CornerRounding {
 			c = temp;
 		}
 
-		final float extentF = (float) extent;
-
 		// line vectors
 		PVector ab = PVector.sub(a, b);
 		PVector cb = PVector.sub(c, b);
 
 		float theta = PApplet.acos(ab.dot(cb) / (ab.mag() * cb.mag())); // same as a.angleBetween(a, c)
 
-		final float maxRadius = PApplet.min(ab.div(2).mag(), cb.div(2).mag());
-		extent = extent * maxRadius;
+//		final float maxRadius = PApplet.min(ab.div(2).mag(), cb.div(2).mag());
+//		extent = extent * maxRadius;
+		final float extentF = (float) extent;
 
 		final PVector A = PVector.add(b, ab.mult(extentF / ab.mag())); // where circle touches AB
 		final PVector C = PVector.add(b, cb.mult(extentF / cb.mag())); // where circle touches CB
@@ -102,9 +104,9 @@ public final class CornerRounding {
 		if (startAngle > endAngle) {
 			startAngle -= PConstants.TWO_PI;
 		}
-		int n = 4; // every n degrees // TODO magic constant
+		final float n = 4; // every n degrees // TODO magic constant
 		final float angleInc = (endAngle - startAngle) / (360 / n);
-		float angle = startAngle;// +angleInc;
+		float angle = startAngle;
 		while (angle < endAngle) {
 			shape.vertex(r * PApplet.cos(angle) + center.x, center.y + r * PApplet.sin(angle));
 			angle += angleInc;

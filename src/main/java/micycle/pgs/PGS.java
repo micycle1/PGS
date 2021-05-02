@@ -80,12 +80,6 @@ class PGS {
 		return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 	}
 
-	protected static double distance(double x1, double y1, double x2, double y2) {
-		double deltaX = y1 - y2;
-		double deltaY = x1 - y1;
-		return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-	}
-
 	protected static LineString createLineString(PVector a, PVector b) {
 		return GEOM_FACTORY.createLineString(new Coordinate[] { coordFromPVector(a), coordFromPVector(b) });
 	}

@@ -22,7 +22,7 @@ public class MaximumInscribedRectangle {
 	// https://github.com/pborissow/Poly2Rect
 
 	private final ArrayList<Point> points; // use Point class for native integer x,y values
-	private int[] r;
+	private int[] rectangle;
 	private int xmin, xmax, ymin, ymax; // position of hull
 
 	public MaximumInscribedRectangle(Geometry polygon, double f) {
@@ -48,10 +48,10 @@ public class MaximumInscribedRectangle {
 	 * @return int[x, y, w, h]
 	 */
 	public int[] getInscribedRectangle() {
-		if (r == null) {
-			r = computeLargestRectangle();
+		if (rectangle == null) {
+			rectangle = computeLargestRectangle();
 		}
-		return r;
+		return rectangle;
 	}
 
 	/**
@@ -61,7 +61,7 @@ public class MaximumInscribedRectangle {
 	 */
 	private int[] computeLargestRectangle() {
 		if (points.size() < 3) {
-			return null;
+			return new int[4];
 		}
 		int[] r = new int[] { 0, 0, 0, 0 };
 
@@ -81,7 +81,6 @@ public class MaximumInscribedRectangle {
 			xIntercepts.add(new Point(x, y));
 		}
 
-		int q = 0;
 		// Scan for rectangle starting from the left-most position of the convex hull
 		for (int x = xmin; x < xmax; x++) {
 
@@ -115,7 +114,6 @@ public class MaximumInscribedRectangle {
 							}
 						}
 					}
-					q++;
 				}
 			}
 
@@ -127,7 +125,7 @@ public class MaximumInscribedRectangle {
 				bottomEdge = findEdge(x, false, edgeList);
 			}
 		}
-		System.out.println(q);
+		
 		return r;
 	}
 

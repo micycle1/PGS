@@ -7,7 +7,7 @@
  * <li>{@link micycle.pgs.PGS_Construction Construction}</li>
  * <li>{@link micycle.pgs.PGS_Contour Contour}</li>
  * <li>{@link micycle.pgs.PGS_Conversion Conversion}</li>
- * <li>{@link micycle.pgs.PGS_Morphology Morpholoy}</li>
+ * <li>{@link micycle.pgs.PGS_Morphology Morphology}</li>
  * <li>{@link micycle.pgs.PGS_Optimisation Optimisation}</li>
  * <li>{@link micycle.pgs.PGS_Processing Processing}</li>
  * <li>{@link micycle.pgs.PGS_ShapeBoolean Shape Boolean}</li>

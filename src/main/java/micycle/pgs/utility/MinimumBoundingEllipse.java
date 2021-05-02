@@ -21,28 +21,31 @@ public class MinimumBoundingEllipse {
 	private double thu;
 
 	/**
-	 * @param P An array of points. Each entry in the array contains an x,y
-	 *          coordinate. The points must form a closed loop. Consider
-	 *          pre-processing a geometry to find its convex hull, and supply thos
-	 *          coordinates to compute the MBE.
+	 * Khachiyan’s Algorithm for the Computation of Minimum Volume Enclosing
+	 * Ellipsoids.
+	 * 
+	 * @param points    An array of points. Each entry in the array contains an x,y
+	 *                  coordinate. The points must form a closed loop. Consider
+	 *                  pre-processing a geometry to find its convex hull, and
+	 *                  supply thos coordinates to compute the MBE.
+	 * @param tolerance the error tolerance to use when terminating optimisation. 0.001 to 0.01 recommended.
 	 */
-	public MinimumBoundingEllipse(double[][] P, double tolerance) {
+	public MinimumBoundingEllipse(double[][] points, double tolerance) {
 
 		// Dimension of the points
-		double d = 2;
+		final double d = 2;
 
 		// Number of points
-		int N = P.length;
+		final int N = points.length;
 
 		// Rotate the array of points
-		P = transpose(P);
+		points = transpose(points);
 
 		// Add a row of 1s to the 2xN matrix P - so Q is 3xN now.
 		// Q = [P;ones(1,N)]
-		double[][] Q = merge(P, ones(1, N));
+		double[][] Q = merge(points, ones(1, N));
 
 		// Initialize
-		int count = 1;
 		double err = 1;
 
 		// u is an Nx1 vector where each element is 1/N
@@ -84,14 +87,13 @@ public class MinimumBoundingEllipse {
 			// between new_u and u
 			err = Math.sqrt(ssd(new_u, u));
 
-			// Increment count and replace u
-			count = count + 1;
+			// Replace u
 			u = new_u;
 		}
 
 		// Compute center point
 		// c = P * u
-		double[][] c = multiply(P, u);
+		double[][] c = multiply(points, u);
 		center = transpose(c)[0];
 
 		// Put the elements of the vector u into the diagonal of a matrix
@@ -100,47 +102,37 @@ public class MinimumBoundingEllipse {
 
 		// Compute the A-matrix
 		// A = (1/d) * inv(P * U * P' - (P * u)*(P*u)' );
-		double[][] pup = multiply(multiply(P, U), transpose(P));
-		double[][] pupu = multiply(multiply(P, u), transpose(multiply(P, u)));
+		double[][] pup = multiply(multiply(points, U), transpose(points));
+		double[][] pupu = multiply(multiply(points, u), transpose(multiply(points, u)));
 		double[][] pup_pupu = minus(pup, pupu);
 		A = multiply(1 / d, inv(pup_pupu));
 
 		// Compute Eigen vectors and values
-		// A=inv(A);
-		// [Ve,De]=eig(A);
-		RealMatrix m = new Array2DRowRealMatrix(inv(A)); // TODO
+		RealMatrix m = new Array2DRowRealMatrix(inv(A));
 		EigenDecomposition eig = new EigenDecomposition(m);
-//		Eigen eig = new Eigen(inv(A));
 		double[][] Ve = eig.getV().getData(); // eigenvalues
 		double[][] De = eig.getD().getData(); // right eigenvectors
 		reorderEigenVectors(De);
 		reorderEigenValues(Ve);
 
-		// v=sqrt(diag(De));
 		double[] v = sqrt(diag(De));
 
-		// [l1,Ie] = max(v);
 		l1 = max(v);
 		int Ie = find_maximum_value_location(v, l1); // off by one from MatLab but I think it's ok here
 
-		// veig=Ve(:,Ie);
 		double[] veig = new double[Ve.length];
 		for (int i = 0; i < veig.length; i++) {
 			veig[i] = Ve[Ie][i];
 		}
 
-		// thu=atan2(veig(2),veig(1));
 		thu = Math.atan2(veig[1], veig[0]);
 
-		// l2=v(setdiff([1 2],Ie));
 		l2 = v[setdiff(new int[] { 0, 1 }, Ie)];
 	}
 
-	// **************************************************************************
-	// ** getCenter
-	// **************************************************************************
 	/**
 	 * Returns the center point of the ellipse
+	 * @return double[2] containing center x and y coordinates
 	 */
 	public double[] getCenter() {
 		double[] pt = new double[2];
@@ -149,9 +141,6 @@ public class MinimumBoundingEllipse {
 		return pt;
 	}
 
-	// **************************************************************************
-	// ** getMatrix
-	// **************************************************************************
 	/**
 	 * Returns a matrix containing all the information regarding the shape of the
 	 * ellipsoid. To get the radii and orientation of the ellipsoid take the
@@ -161,9 +150,6 @@ public class MinimumBoundingEllipse {
 		return A;
 	}
 
-	// **************************************************************************
-	// ** getBoundingCoordinates
-	// **************************************************************************
 	/**
 	 * Returns a list of coordinates that can be used to render the ellipse.
 	 *
@@ -177,9 +163,7 @@ public class MinimumBoundingEllipse {
 		double[] tq = linspace(-Math.PI, Math.PI, numPoints);
 
 		// U=[cos(thu) -sin(thu);sin(thu) cos(thu)]*[l1*cos(tq);l2*sin(tq)];
-		double[][] U = multiply(
-				new double[][] { createVector(Math.cos(thu), -Math.sin(thu)),
-						createVector(Math.sin(thu), Math.cos(thu)) },
+		double[][] U = multiply(new double[][] { createVector(Math.cos(thu), -Math.sin(thu)), createVector(Math.sin(thu), Math.cos(thu)) },
 				new double[][] { multiply(l1, cos(tq)), multiply(l2, sin(tq)) });
 		// System.out.println(toString(transpose(U)));
 
@@ -195,9 +179,6 @@ public class MinimumBoundingEllipse {
 		return coords;
 	}
 
-	// **************************************************************************
-	// ** reorderEigenVectors
-	// **************************************************************************
 	/**
 	 * Eigen values generated from Apache Common Math and JAMA are different than
 	 * MatLab. The vectors are in the reverse order than expected. This function
@@ -208,9 +189,6 @@ public class MinimumBoundingEllipse {
 		rotateMatrix(De);
 	}
 
-	// **************************************************************************
-	// ** reorderEigenValues
-	// **************************************************************************
 	/**
 	 * Eigen values generated from Apache Common Math and JAMA are different than
 	 * MatLab. The vectors are in reverse order than expected and with an opposite
@@ -225,9 +203,6 @@ public class MinimumBoundingEllipse {
 		}
 	}
 
-	// **************************************************************************
-	// ** linspace
-	// **************************************************************************
 	private double[] linspace(double min, double max, int points) {
 		double[] d = new double[points];
 		for (int i = 0; i < points; i++) {
@@ -236,17 +211,14 @@ public class MinimumBoundingEllipse {
 		return d;
 	}
 
-	// **************************************************************************
-	// ** ssd
-	// **************************************************************************
 	/**
-	 * Returns the sum-of-square-differences between tow arrays. Takes two vectors
+	 * Returns the sum-of-square-differences between two arrays. Takes two vectors
 	 * of the same size, creates a new vector by finding the difference between
 	 * corresponding elements, squaring each difference and adding them all
 	 * together. So if the vectors were: a = [1 2 3] and b = [5 4 6], then: SSD =
 	 * (1-5)^2 + (2-4)^2 + (3-6)^2;
 	 */
-	private double ssd(double[] a, double[] b) {
+	private static double ssd(double[] a, double[] b) {
 		double ssd = 0;
 		for (int i = 0; i < a.length; i++) {
 			final double n = a[i] - b[i];
@@ -255,9 +227,6 @@ public class MinimumBoundingEllipse {
 		return ssd;
 	}
 
-	// **************************************************************************
-	// ** ones
-	// **************************************************************************
 	/**
 	 * Creates an array of all ones. For example, ones(2,3) returns a 2-by-3 array
 	 * of ones.
@@ -269,7 +238,7 @@ public class MinimumBoundingEllipse {
 	 *
 	 * Reference: https://www.mathworks.com/help/matlab/ref/ones.html
 	 */
-	private double[][] ones(int rows, int cols) {
+	private static double[][] ones(int rows, int cols) {
 		double[][] arr = new double[rows][];
 		for (int i = 0; i < arr.length; i++) {
 			double[] row = new double[cols];
@@ -281,13 +250,10 @@ public class MinimumBoundingEllipse {
 		return arr;
 	}
 
-	// **************************************************************************
-	// ** merge
-	// **************************************************************************
 	/**
 	 * Used to combine two arrays into one
 	 */
-	private double[][] merge(double[][] m1, double[][] m2) {
+	private static double[][] merge(double[][] m1, double[][] m2) {
 		int x = 0;
 		double[][] out = new double[m1.length + m2.length][];
 		for (int i = 0; i < m1.length; i++) {
@@ -301,14 +267,11 @@ public class MinimumBoundingEllipse {
 		return out;
 	}
 
-	// **************************************************************************
-	// ** multiply
-	// **************************************************************************
 	/**
 	 * Used to multiply all the values in the vector (arr) by n. This is called
 	 * scalar multiplication.
 	 */
-	private double[] multiply(double n, double[] arr) {
+	private static double[] multiply(double n, double[] arr) {
 		double[] out = new double[arr.length];
 		for (int i = 0; i < arr.length; i++) {
 			out[i] = arr[i] * n;
@@ -316,13 +279,10 @@ public class MinimumBoundingEllipse {
 		return out;
 	}
 
-	// **************************************************************************
-	// ** multiply
-	// **************************************************************************
 	/**
 	 * Used to multiply all the values in the matrix (arr) by n
 	 */
-	private double[][] multiply(double n, double[][] arr) {
+	private static double[][] multiply(double n, double[][] arr) {
 		double[][] out = new double[arr.length][];
 		for (int i = 0; i < arr.length; i++) {
 			double[] row = arr[i];
@@ -335,13 +295,10 @@ public class MinimumBoundingEllipse {
 		return out;
 	}
 
-	// **************************************************************************
-	// ** multiply
-	// **************************************************************************
 	/**
 	 * Multiply a matrix with a vector by converting the vector to a matrix
 	 */
-	private double[][] multiply(double[][] P, double[] u) {
+	private static double[][] multiply(double[][] P, double[] u) {
 		double[][] m2 = new double[u.length][];
 		for (int i = 0; i < m2.length; i++) {
 			double[] row = new double[1];
@@ -351,20 +308,14 @@ public class MinimumBoundingEllipse {
 		return multiply(P, m2);
 	}
 
-	// **************************************************************************
-	// ** multiply
-	// **************************************************************************
 	/**
 	 * Used to multiply two matrices. Credit: https://stackoverflow.com/a/23817780
 	 */
-	private double[][] multiply(double[][] m1, double[][] m2) {
-		int m1ColLength = m1[0].length; // m1 columns length
-		int m2RowLength = m2.length; // m2 rows length
-		if (m1ColLength != m2RowLength) {
-			return null; // matrix multiplication is not possible
-		}
-		int mRRowLength = m1.length; // m result rows length
-		int mRColLength = m2[0].length; // m result columns length
+	private static double[][] multiply(double[][] m1, double[][] m2) {
+		final int m1ColLength = m1[0].length; // m1 columns length
+		final int mRRowLength = m1.length; // m result rows length
+		final int mRColLength = m2[0].length; // m result columns length
+		
 		double[][] mResult = new double[mRRowLength][mRColLength];
 		for (int i = 0; i < mRRowLength; i++) { // rows from m1
 			for (int j = 0; j < mRColLength; j++) { // columns from m2
@@ -376,15 +327,12 @@ public class MinimumBoundingEllipse {
 		return mResult;
 	}
 
-	// **************************************************************************
-	// ** diag
-	// **************************************************************************
 	/**
 	 * Returns a matrix for a given vector. The values in the vector will appear
 	 * diagonally in the output. Reference:
 	 * https://www.mathworks.com/help/matlab/ref/diag.html
 	 */
-	private double[][] diag(double[] arr) {
+	private static double[][] diag(double[] arr) {
 		double[][] out = new double[arr.length][];
 		for (int i = 0; i < arr.length; i++) {
 			double[] row = new double[arr.length];
@@ -400,14 +348,11 @@ public class MinimumBoundingEllipse {
 		return out;
 	}
 
-	// **************************************************************************
-	// ** diag
-	// **************************************************************************
 	/**
 	 * Returns a vector representing values that appear diagonally in the given
 	 * matrix. Reference: https://www.mathworks.com/help/matlab/ref/diag.html
 	 */
-	private double[] diag(double[][] arr) {
+	private static double[] diag(double[][] arr) {
 		double[] out = new double[arr.length];
 		for (int i = 0; i < arr.length; i++) {
 			out[i] = arr[i][i];
@@ -415,14 +360,11 @@ public class MinimumBoundingEllipse {
 		return out;
 	}
 
-	// **************************************************************************
-	// ** transpose
-	// **************************************************************************
 	/**
 	 * Interchanges the row and column index for each element Reference:
 	 * https://www.mathworks.com/help/matlab/ref/transpose.html
 	 */
-	private double[][] transpose(double[][] arr) {
+	private static double[][] transpose(double[][] arr) {
 		int rows = arr.length;
 		int cols = arr[0].length;
 
@@ -436,9 +378,6 @@ public class MinimumBoundingEllipse {
 		return out;
 	}
 
-	// **************************************************************************
-	// ** inv
-	// **************************************************************************
 	/**
 	 * Returns the inverse of a matrix. Relies on 2 different implementations. The
 	 * first implementation is more accurate (passes inverse check) but has the
@@ -446,7 +385,7 @@ public class MinimumBoundingEllipse {
 	 * partial-pivoting Gaussian elimination. Reference:
 	 * https://www.mathworks.com/help/matlab/ref/inv.html
 	 */
-	private double[][] inv(double[][] matrix) {
+	private static double[][] inv(double[][] matrix) {
 		try {
 			return inv1(matrix);
 		} catch (Exception e) {
@@ -458,9 +397,6 @@ public class MinimumBoundingEllipse {
 		}
 	}
 
-	// **************************************************************************
-	// ** inv1
-	// **************************************************************************
 	/**
 	 * Returns the inverse of a matrix. This implementation passes inverse check so
 	 * I think it's valid but it has a tendency to fail. For example, the following
@@ -473,7 +409,7 @@ public class MinimumBoundingEllipse {
 	 *
 	 * Credit: https://github.com/rchen8/Algorithms/blob/master/Matrix.java
 	 */
-	private double[][] inv1(double[][] matrix) {
+	private static double[][] inv1(double[][] matrix) {
 		double[][] inverse = new double[matrix.length][matrix.length];
 
 		// minors and cofactors
@@ -525,15 +461,12 @@ public class MinimumBoundingEllipse {
 		return minor;
 	}
 
-	// **************************************************************************
-	// ** inv2
-	// **************************************************************************
 	/**
 	 * Returns the inverse of a matrix. This implementation successfully executes
 	 * but does not pass the inverse check. Credit:
 	 * https://www.sanfoundry.com/java-program-find-inverse-matrix/
 	 */
-	public static double[][] inv2(double a[][]) {
+	private static double[][] inv2(double a[][]) {
 
 		int n = a.length;
 		double x[][] = new double[n][n];
@@ -573,7 +506,7 @@ public class MinimumBoundingEllipse {
 
 	// Method to carry out the partial-pivoting Gaussian
 	// elimination. Here index[] stores pivoting order.
-	public static void gaussian(double a[][], int index[]) {
+	private static void gaussian(double a[][], int index[]) {
 
 		int n = index.length;
 		double c[] = new double[n];
@@ -626,13 +559,10 @@ public class MinimumBoundingEllipse {
 		}
 	}
 
-	// **************************************************************************
-	// ** max
-	// **************************************************************************
 	/**
 	 * Returns the max value in a vector
 	 */
-	private double max(double[] arr) {
+	private static double max(double[] arr) {
 		double max = arr[0];
 		for (double d : arr) {
 			max = Math.max(d, max);
@@ -640,13 +570,10 @@ public class MinimumBoundingEllipse {
 		return max;
 	}
 
-	// **************************************************************************
-	// ** find_maximum_value_location
-	// **************************************************************************
 	/**
 	 * Returns the index of the max value in a vector
 	 */
-	private int find_maximum_value_location(double[] arr, double max) {
+	private static int find_maximum_value_location(double[] arr, double max) {
 		for (int i = 0; i < arr.length; i++) {
 			if (arr[i] == max) {
 				return i;
@@ -655,14 +582,11 @@ public class MinimumBoundingEllipse {
 		return 0;
 	}
 
-	// **************************************************************************
-	// ** minus
-	// **************************************************************************
 	/**
 	 * Used to subtract array B from array A and returns the result Reference:
 	 * https://www.mathworks.com/help/matlab/ref/minus.html
 	 */
-	private double[][] minus(double[][] a, double[][] b) {
+	private static double[][] minus(double[][] a, double[][] b) {
 		double[][] out = new double[a.length][];
 		for (int i = 0; i < out.length; i++) {
 			double[] row = new double[a[i].length];
@@ -674,14 +598,11 @@ public class MinimumBoundingEllipse {
 		return out;
 	}
 
-	// **************************************************************************
-	// ** sqrt
-	// **************************************************************************
 	/**
 	 * Returns the square root of each element in a vector Reference:
 	 * https://www.mathworks.com/help/matlab/ref/sqrt.html
 	 */
-	private double[] sqrt(double[] arr) {
+	private static double[] sqrt(double[] arr) {
 		double[] out = new double[arr.length];
 		for (int i = 0; i < out.length; i++) {
 			out[i] = Math.sqrt(arr[i]);
@@ -689,7 +610,7 @@ public class MinimumBoundingEllipse {
 		return out;
 	}
 
-	private double[] cos(double[] arr) {
+	private static double[] cos(double[] arr) {
 		double[] out = new double[arr.length];
 		for (int i = 0; i < out.length; i++) {
 			out[i] = Math.cos(arr[i]);
@@ -697,7 +618,7 @@ public class MinimumBoundingEllipse {
 		return out;
 	}
 
-	private double[] sin(double[] arr) {
+	private static double[] sin(double[] arr) {
 		double[] out = new double[arr.length];
 		for (int i = 0; i < out.length; i++) {
 			out[i] = Math.sin(arr[i]);
@@ -705,13 +626,10 @@ public class MinimumBoundingEllipse {
 		return out;
 	}
 
-	// **************************************************************************
-	// ** setdiff
-	// **************************************************************************
 	/**
 	 * Partial implementation of setdiff
 	 */
-	private int setdiff(int[] arr, int x) {
+	private static int setdiff(int[] arr, int x) {
 		for (int i : arr) {
 			if (i != x) {
 				return i;
@@ -720,10 +638,7 @@ public class MinimumBoundingEllipse {
 		return 0; // ?
 	}
 
-	// **************************************************************************
-	// ** rotateMatrix
-	// **************************************************************************
-	private void rotateMatrix(double mat[][]) {
+	private static void rotateMatrix(double mat[][]) {
 		int N = mat[0].length;
 
 		// Consider all squares one by one
@@ -749,13 +664,10 @@ public class MinimumBoundingEllipse {
 		}
 	}
 
-	// **************************************************************************
-	// ** createVector
-	// **************************************************************************
 	/**
 	 * Used to generate a vector for testing purposes
 	 */
-	private double[] createVector(double... d) {
+	private static double[] createVector(double... d) {
 		double[] arr = new double[d.length];
 		for (int i = 0; i < arr.length; i++) {
 			arr[i] = d[i];
