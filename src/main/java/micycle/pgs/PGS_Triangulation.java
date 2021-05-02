@@ -231,7 +231,7 @@ public class PGS_Triangulation {
 	public static List<PVector> poissonTriangulation(PShape shape, double spacing) {
 
 		final Geometry g = fromPShape(shape).buffer(-spacing);
-		Envelope e = (Envelope) g.getEnvelopeInternal();
+		Envelope e = g.getEnvelopeInternal();
 
 		PoissonDistribution pd = new PoissonDistribution(0);
 		List<PVector> poissonPoints = pd.generate(e.getMinX(), e.getMinY(), e.getMinX() + e.getWidth(),

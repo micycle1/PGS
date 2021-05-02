@@ -87,11 +87,7 @@ public class PGS_ShapePredicates {
 		final IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(fromPShape(shape));
 		ArrayList<Boolean> bools = new ArrayList<>(points.size());
 		for (PVector p : points) {
-			if (pointLocator.locate(new Coordinate(p.x, p.y)) == Location.EXTERIOR) {
-				bools.add(false);
-			} else {
-				bools.add(true);
-			}
+			bools.add(pointLocator.locate(new Coordinate(p.x, p.y)) != Location.EXTERIOR);
 		}
 		return bools;
 	}

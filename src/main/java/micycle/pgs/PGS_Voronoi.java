@@ -129,23 +129,18 @@ public class PGS_Voronoi {
 				}
 			});
 			axis.endShape();
-		} else { // no constrain: display all voronoi polygons/lines
-			final HashSet<Integer> seen = new HashSet<>();
-			v.getPolygons().forEach(poly -> {
-				poly.getEdges().forEach(e -> {
-					final boolean inA = tin
-							.getRegionConstraint(navigator.getNeighborEdge(e.getA().x, e.getA().y)) != null;
-					if (!inA) {
-						final boolean inB = tin
-								.getRegionConstraint(navigator.getNeighborEdge(e.getB().x, e.getB().y)) != null;
-						if (!inB) {
-							lines.vertex((float) e.getA().x, (float) e.getA().y);
-							lines.vertex((float) e.getB().x, (float) e.getB().y);
-						}
+		} else { // no constraining: display all voronoi polygons/lines
+			v.getPolygons().forEach(poly -> poly.getEdges().forEach(e -> {
+				final boolean inA = tin.getRegionConstraint(navigator.getNeighborEdge(e.getA().x, e.getA().y)) != null;
+				if (!inA) {
+					final boolean inB = tin.getRegionConstraint(navigator.getNeighborEdge(e.getB().x, e.getB().y)) != null;
+					if (!inB) {
+						lines.vertex((float) e.getA().x, (float) e.getA().y);
+						lines.vertex((float) e.getB().x, (float) e.getB().y);
 					}
+				}
 
-				});
-			});
+			}));
 		}
 		lines.endShape();
 		voronoi.addChild(lines);
@@ -196,7 +191,7 @@ public class PGS_Voronoi {
 		final PShape lines = PGS.prepareLinesPShape(RGB.PINK, PConstants.SQUARE, 3);
 		final HashSet<Integer> seen = new HashSet<>();
 		for (ThiessenPolygon poly : v.getPolygons()) {
-			edge: for (IQuadEdge e : poly.getEdges()) {
+			for (IQuadEdge e : poly.getEdges()) {
 				final PVector a = new PVector((float) e.getA().x, (float) e.getA().y);
 				final PVector b = new PVector((float) e.getB().x, (float) e.getB().y);
 				final int hash = a.hashCode() + b.hashCode();
@@ -209,23 +204,21 @@ public class PGS_Voronoi {
 
 				if (nearestSite.dist() < nearestSite.value().z) {
 					if (drawBranches && distGreater(a, b, nearestSite.value().z)) {
-						PVector intersect = PVector.sub(b, a).normalize().mult(nearestSite.value().z)
-								.add(nearestSite.value());
+						PVector intersect = PVector.sub(b, a).normalize().mult(nearestSite.value().z).add(nearestSite.value());
 						lines.vertex(b.x, b.y);
 						lines.vertex(intersect.x, intersect.y);
 					}
-					continue edge;
+					continue;
 				}
 
 				nearestSite = sites.nnQuery(new double[] { e.getB().x, e.getB().y });
 				if (nearestSite.dist() < nearestSite.value().z) {
 					if (drawBranches && distGreater(a, b, nearestSite.value().z)) {
-						PVector intersect = PVector.sub(a, b).normalize().mult(nearestSite.value().z)
-								.add(nearestSite.value());
+						PVector intersect = PVector.sub(a, b).normalize().mult(nearestSite.value().z).add(nearestSite.value());
 						lines.vertex(a.x, a.y);
 						lines.vertex(intersect.x, intersect.y);
 					}
-					continue edge;
+					continue;
 				}
 
 				lines.vertex((float) e.getA().x, (float) e.getA().y);
@@ -325,8 +318,7 @@ public class PGS_Voronoi {
 		 */
 		public void insert(double x1, double y1, double x2, double y2) {
 			E e = new E(x1, y1, x2, y2);
-			rtree.insert(new double[] { Math.min(x1, x2), Math.min(y1, y2) },
-					new double[] { Math.max(x1, x2), Math.max(y1, y2) }, e);
+			rtree.insert(new double[] { Math.min(x1, x2), Math.min(y1, y2) }, new double[] { Math.max(x1, x2), Math.max(y1, y2) }, e);
 		}
 
 		/**

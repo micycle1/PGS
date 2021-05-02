@@ -11,10 +11,12 @@ import java.util.HashSet;
 import java.util.List;
 
 import org.locationtech.jts.algorithm.Orientation;
+import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.dissolve.LineDissolver;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LinearRing;
+import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
@@ -43,7 +45,8 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Methods that produce a variety of methods for producing different kinds of shape contours.
+ * Methods that produce a variety of methods for producing different kinds of
+ * shape contours.
  * 
  * <p>
  * A 2D contour is a closed sequence (a cycle) of 3 or more connected 2D
@@ -267,15 +270,16 @@ public class PGS_Contour {
 	 * centroid and the point.
 	 * 
 	 * @param shape
-	 * @param highPoint
-	 * @param intervalSpacing
+	 * @param highPoint       position of "high" point within the shape
+	 * @param intervalSpacing distance between successive isolines
 	 * @return
 	 */
 	public static PShape isolines(PShape shape, PVector highPoint, double intervalSpacing) {
 
-		/**
+		/*
 		 * Also See:
-		 * https://github.com/hageldave/JPlotter/blob/master/jplotter/src/main/java/hageldave/jplotter/misc/Contours.java
+		 * https://github.com/hageldave/JPlotter/blob/master/jplotter/src/main/java/
+		 * hageldave/jplotter/misc/Contours.java
 		 * https://blog.bruce-hill.com/meandering-triangles
 		 * http://indiemaps.com/blog/2008/06/isolining-package-for-actionscript-3/
 		 */
@@ -347,7 +351,10 @@ public class PGS_Contour {
 
 		PShape out = new PShape();
 		try {
-			// TODO use faster approach to intersection()
+			// NOTE need to use intersection() rather than checkling whether vertices are
+			// contained within the shape (faster) because vertices of longer (straight)
+			// line segments may lie within the shape when the segment extends outside the
+			// shape
 			out = toPShape(DouglasPeuckerSimplifier.simplify(ld.getResult(), 1).intersection(g));
 			PGS_Conversion.disableAllFill(out);
 		} catch (Exception e2) {

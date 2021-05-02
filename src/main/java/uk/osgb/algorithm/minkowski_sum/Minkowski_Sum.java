@@ -513,7 +513,7 @@ public class Minkowski_Sum {
 		final LineString extRing = src.getExteriorRing();
 		final Coordinate[] extCoords = extRing.getCoordinates();
 		Geometry extSum = expansionShell(gf.createPolygon(extCoords), refCoords, isRefConvex);
-		if (extSum != null) {
+		if (extSum == null) {
 			return getGeometryFactory().createEmpty(2); // rather than return null
 		}
 		final int numHoles = src.getNumInteriorRing();
