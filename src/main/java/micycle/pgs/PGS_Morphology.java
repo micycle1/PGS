@@ -39,7 +39,7 @@ public class PGS_Morphology {
 	 * @return
 	 */
 	public static PShape buffer(PShape shape, double buffer) {
-		return toPShape(fromPShape(shape).buffer(buffer, 4));
+		return toPShape(fromPShape(shape).buffer(buffer, 8));
 	}
 
 	/**

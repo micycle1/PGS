@@ -4,6 +4,7 @@ import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
 
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Point;
@@ -15,11 +16,12 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Various geometric and affine transformations for PShapes that affect vertex coordinates.
+ * Various geometric and affine transformations for PShapes that affect vertex
+ * coordinates.
  * <p>
- * Notably, these transformation methods affect the vertex coordinates of PShapes, unlike
- * Processing's transform methods that affect the affine matrix of shapes only
- * (and thereby leave vertex coordinates in-tact).
+ * Notably, these transformation methods affect the vertex coordinates of
+ * PShapes, unlike Processing's transform methods that affect the affine matrix
+ * of shapes only (and thereby leave vertex coordinates in-tact).
  * 
  * @author Michael Carleton
  *
@@ -54,6 +56,22 @@ public class PGS_Transformation {
 	public static PShape scale(PShape shape, double scaleX, double scaleY) {
 		AffineTransformation t = AffineTransformation.scaleInstance(scaleX, scaleY);
 		return toPShape(t.transform(fromPShape(shape)));
+	}
+
+	/**
+	 * Resizes a shape (based on its envelope) to the given dimensions. The output is repositioned to (0, 0).
+	 * 
+	 * @param shape
+	 * @param targetWidth width of the output copy
+	 * @param targetHeight height of the output copy
+	 * @return resized copy of input
+	 */
+	public static PShape resize(PShape shape, double targetWidth, double targetHeight) {
+		Geometry geometry = fromPShape(shape);
+		Envelope e = geometry.getEnvelopeInternal();
+		
+		AffineTransformation t = AffineTransformation.scaleInstance(targetWidth / e.getWidth(), targetHeight / e.getHeight());
+		return translateToOrigin(toPShape(t.transform(geometry)));
 	}
 
 	/**
@@ -111,6 +129,7 @@ public class PGS_Transformation {
 
 	/**
 	 * Translates a shape by the given coordinates.
+	 * 
 	 * @param shape
 	 * @param x
 	 * @param y
@@ -141,6 +160,20 @@ public class PGS_Transformation {
 	}
 
 	/**
+	 * Translates a shape such that the top-left corner of its bounding box is at (0,
+	 * 0) (in Processing coordinates).
+	 * 
+	 * @param shape
+	 * @return translated copy of input
+	 */
+	public static PShape translateToOrigin(PShape shape) {
+		final Geometry g = fromPShape(shape);
+		final Envelope e = g.getEnvelopeInternal();
+		AffineTransformation t = AffineTransformation.translationInstance(-e.getMinX(), -e.getMinY());
+		return toPShape(t.transform(g));
+	}
+
+	/**
 	 * Calculate a Homothetic Transformation of the shape.
 	 * 
 	 * @param shape  shape input
@@ -151,15 +184,14 @@ public class PGS_Transformation {
 	 */
 	public static PShape homotheticTransformation(PShape shape, PVector center, double scaleX, double scaleY) {
 		Polygon geom = (Polygon) fromPShape(shape);
-	
+
 		// external contour
 		Coordinate[] coord = geom.getExteriorRing().getCoordinates();
 		Coordinate[] coord_ = new Coordinate[coord.length];
 		for (int i = 0; i < coord.length; i++)
-			coord_[i] = new Coordinate(center.x + scaleX * (coord[i].x - center.x),
-					center.y + scaleY * (coord[i].y - center.y));
+			coord_[i] = new Coordinate(center.x + scaleX * (coord[i].x - center.x), center.y + scaleY * (coord[i].y - center.y));
 		LinearRing lr = geom.getFactory().createLinearRing(coord_);
-	
+
 		// holes
 		LinearRing[] holes = new LinearRing[geom.getNumInteriorRing()];
 		for (int j = 0; j < geom.getNumInteriorRing(); j++) {

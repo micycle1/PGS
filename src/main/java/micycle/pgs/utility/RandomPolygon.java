@@ -29,7 +29,7 @@ public class RandomPolygon {
 		List<Double> yPool = new ArrayList<>(n);
 
 		for (int i = 0; i < n; i++) {
-			xPool.add(RAND.nextDouble() * yMax);
+			xPool.add(RAND.nextDouble() * xMax);
 			yPool.add(RAND.nextDouble() * yMax);
 		}
 

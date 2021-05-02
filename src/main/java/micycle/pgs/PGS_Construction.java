@@ -17,7 +17,7 @@ import processing.core.PShape;
  *
  */
 public class PGS_Construction {
-	
+
 	private PGS_Construction() {
 	}
 
@@ -25,12 +25,29 @@ public class PGS_Construction {
 	 * Generates a random simple convex polygon (n-gon).
 	 * 
 	 * @param n         number of polygon vertices/sides
-	 * @param maxWidth
-	 * @param maxHeight
+	 * @param maxWidth  maximum width of generated random polygon
+	 * @param maxHeight maximum height of generated random polygon
 	 * @return
+	 * @see {@link #createRandomPolygonExact(int, double, double)} to specify exact
+	 *      dimensions
 	 */
 	public static PShape createRandomPolygon(int n, double maxWidth, double maxHeight) {
-		return PGS_Conversion.fromPVector(RandomPolygon.generateRandomConvexPolygon(n, maxWidth, maxHeight));
+		return PGS_Transformation.translateTo(PGS_Conversion.fromPVector(RandomPolygon.generateRandomConvexPolygon(n, maxWidth, maxHeight)),
+				maxWidth / 2, maxHeight / 2);
+	}
+
+	/**
+	 * Generates a random simple convex polygon (n-gon), where the output's bounding
+	 * box has the dimensions of those specified.
+	 * 
+	 * @param n      number of polygon vertices/sides
+	 * @param width  width of generated random polygon
+	 * @param height height of generated random polygon
+	 * @return
+	 */
+	public static PShape createRandomPolygonExact(int n, double width, double height) {
+		return PGS_Transformation.resize(PGS_Conversion.fromPVector(RandomPolygon.generateRandomConvexPolygon(n, width, height)), width,
+				height);
 	}
 
 	/**
@@ -54,57 +71,57 @@ public class PGS_Construction {
 	}
 
 	/**
-		 * Creates a supershape PShape. The parameters feed into the superformula, which
-		 * is a simple 2D analytical expression allowing to draw a wide variety of
-		 * geometric and natural shapes (starfish, petals, snowflakes) by choosing
-		 * suitable values relevant to few parameters.
-		 * 
-		 * @param x     centre point X
-		 * @param y     centre point Y
-		 * @param width
-		 * @param m     Increasing m adds rotational symmetry to the shape
-		 * @param n1    supershape parameter 1
-		 * @param n2    supershape parameter 2
-		 * @param n3    supershape parameter 3
-		 * @return
-		 */
-		public static PShape createSuperShape(double x, double y, double width, double m, double n1, double n2, double n3) {
-			// http://paulbourke.net/geometry/supershape/
-			PShape shape = new PShape(PShape.GEOMETRY);
-			shape.setFill(true);
-			shape.setFill(RGB.WHITE);
-			shape.beginShape();
-	
-			int points = 180;
-			final double angleInc = Math.PI * 2 / points;
-			double angle = 0;
-			while (angle < Math.PI * 2) {
-				double r;
-				double t1, t2;
-	
-				t1 = Math.cos(m * angle / 4);
-				t1 = Math.abs(t1);
-				t1 = Math.pow(t1, n2);
-	
-				t2 = Math.sin(m * angle / 4);
-				t2 = Math.abs(t2);
-				t2 = Math.pow(t2, n3);
-	
-				r = Math.pow(t1 + t2, 1 / n1);
-				if (Math.abs(r) == 0) {
-				} else {
-					r = width / r;
-	//				r *= 50;
-					shape.vertex((float) (x + r * Math.cos(angle)), (float) (y + r * Math.sin(angle)));
-				}
-	
-				angle += angleInc;
+	 * Creates a supershape PShape. The parameters feed into the superformula, which
+	 * is a simple 2D analytical expression allowing to draw a wide variety of
+	 * geometric and natural shapes (starfish, petals, snowflakes) by choosing
+	 * suitable values relevant to few parameters.
+	 * 
+	 * @param x      centre point X
+	 * @param y      centre point Y
+	 * @param radius maximum radius
+	 * @param m      specifies the rotational symmetry of the shape (3 = 3 sided; 4
+	 *               = 4 sided)
+	 * @param n1     supershape parameter 1
+	 * @param n2     supershape parameter 2
+	 * @param n3     supershape parameter 3
+	 * @return
+	 */
+	public static PShape createSuperShape(double centerX, double centerY, double radius, double m, double n1, double n2, double n3) {
+		// http://paulbourke.net/geometry/supershape/
+		PShape shape = new PShape(PShape.GEOMETRY);
+		shape.setFill(true);
+		shape.setFill(RGB.WHITE);
+		shape.beginShape();
+
+		int points = 180;
+		final double angleInc = Math.PI * 2 / points;
+		double angle = 0;
+		while (angle < Math.PI * 2) {
+			double r;
+			double t1, t2;
+
+			t1 = Math.cos(m * angle / 4);
+			t1 = Math.abs(t1);
+			t1 = Math.pow(t1, n2);
+
+			t2 = Math.sin(m * angle / 4);
+			t2 = Math.abs(t2);
+			t2 = Math.pow(t2, n3);
+
+			r = Math.pow(t1 + t2, 1 / n1);
+			if (Math.abs(r) != 0) {
+				r *= radius; // multiply r (0...1) by (max) radius
+//				r = radius/r;
+				shape.vertex((float) (centerX + r * Math.cos(angle)), (float) (centerY + r * Math.sin(angle)));
 			}
-	
-			shape.endShape();
-			return shape;
-	
+
+			angle += angleInc;
 		}
+
+		shape.endShape();
+		return shape;
+
+	}
 
 	/**
 	 * Creates an elliptical arc polygon. The polygon is formed from the specified

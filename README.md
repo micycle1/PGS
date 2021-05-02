@@ -8,7 +8,34 @@ The focus of the library is on visualisation rather than providing underlying da
 
 Docs are hosted via *GitHub Pages* [here](https://micycle1.github.io/PGS/).
 
-## Installation
+## **Overview**
+
+Library functionality is split over the following classes:
+
+* `PGS_Construction`
+  * Construct uncommon 2D primitives
+* `PGS_Contour`
+  * Methods that produce various contours from shapes: medial axes, straight skeletons, offset curves, etc.
+* `PGS_Conversion`
+  * Conversion between PShapes and JTS Geometries 
+* `PGS_Morphology`
+  * Methods that affect the geometry or topology of shapes (buffering, simplification, smoothing, etc.)
+* `PGS_Optimsation`
+  * Solve geometric optimisation problems, such as finding the maximum inscribed circle, or the closest vertex to a coordinate
+* `PGS_Processing`
+  * Methods that process a shape in some way: compute hulls, partition, slice, etc. 
+* `PGS_ShapeBoolean`
+  * Boolean set-operations for 2D shapes
+* `PGS_ShapePredicates`
+  * Various shape metrics (area, circularity, etc.) and predicates (*"do these shapes intersect?"*)
+* `PGS_Transformation`
+  * Various geometric and affine transformations that affect vertex coordinates
+* `PGS_Triangulation`
+  * Delaunay triangulation (constrained and refined) and earcut triangulation of shapes and point sets
+* `PGS_Voronoi`
+  * Voronoi Diagrams of shapes and point sets
+
+## **Installation**
 
 <details><summary>Processing IDE — Quick</summary>
 <p>
@@ -20,7 +47,9 @@ Download the latest *PGS.jar* from [releases](https://github.com/micycle1/PGS/re
 <details><summary>Processing IDE — Permanent</summary>
 <p>
 
-Download this repo as a .zip (via *Code>Download ZIP*) and extract it to `Documents\Processing\libraries`.
+Download the latest *PGS.jar* from [releases](https://github.com/micycle1/PGS/releases) and save it to `Documents\Processing\libraries\PGS\library`.
+
+Result: `Documents\Processing\libraries\PGS\library\PGS.jar`. (Note the *.jar* and the folder **must** be called `PGS`).
 </p>
 </details>
 
@@ -31,8 +60,11 @@ PGS is hosted as an artifact for use in Maven or Gradle projects via [Jitpack](h
 </p>
 </details>
 
+## **Example**
 
-## Example
+A single example is provided below. See [examples]() for more.
+
+<details><summary>Code...</summary>
 
 ```
 import micycle.pgs.*;
@@ -42,7 +74,7 @@ PShape polygon;
 
 void setup() {
   size(800, 800, FX2D);
-  polygon = PGS.randomPolygon(6, width, height);
+  polygon = PGS_Construction.createRandomPolygon(6, width, height);
 }
 
 void draw() {
@@ -71,36 +103,11 @@ void draw() {
   point(closest.x, closest.y);
 }
 ```
+</details>
 
-## **Overview**
+## **Illustrations**
 
-Library functionality is split over the following classes:
-
-* `PGS_Construction`
-  * Construct uncommon 2D primitives
-* `PGS_Contour`
-  * Methods that produce various contours from shapes: medial axes, straight skeletons, offset curves, etc.
-* `PGS_Conversion`
-  * Conversion between PShapes and JTS Geometries 
-* `PGS_Morphology`
-  * Methods that affect the geometry or topology of shapes (buffering, simplification, smoothing, etc.)
-* `PGS_Optimsation`
-  * Solve geometric optimisation problems, such as finding the maximum inscribed circle, or the closest vertex to a coordinate
-* `PGS_Processing`
-  * Methods that process a shape in some way: compute hulls, partition, slice, etc. 
-* `PGS_ShapeBoolean`
-  * Boolean set-operations for 2D shapes
-* `PGS_ShapePredicates`
-  * Various shape metrics (area, circularity, etc.) and predicates (*"do these shapes intersect?"*)
-* `PGS_Transformation`
-  * Various geometric and affine transformations that affect vertex coordinates
-* `PGS_Triangulation`
-  * Delaunay triangulation (constrained and refined) and earcut triangulation of shapes and point sets
-* `PGS_Voronoi`
-  * Voronoi Diagrams of shapes and point sets
-
-
-Much of the functionality (but by no means all) is exemplified below:
+Much of the functionality (but by no means all) is demonstrated below:
 
 ## *2D Boolean Operations*
 *Boolean set-operations on shapes.*
@@ -249,6 +256,7 @@ Constrained & refined *Delaunay triangulation* of shapes and point sets.
 *Methods to morph shapes in different ways and create shapes from other shapes or point sets.*
 ### Buffer
 <img src="resources/morphology/buffer.gif" alt="" width="50%"/>
+
 
 ### Erosion-Dilation
 A negative followed by a positive buffer (in a single operation).
@@ -402,7 +410,8 @@ Generate *supercircles*, with a configurable constant.
 <img src="resources/pgs/superCircle.gif" alt="" width="50%"/>
 
 ### Supershape
-...
+
+<img src="resources/pgs/superShape.gif" alt="" width="50%"/>
 
 
 ### Star
