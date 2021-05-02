@@ -397,6 +397,10 @@ public class PGS_Conversion implements PConstants {
 		});
 	}
 
+	/**
+	 * Calls setFill(false) on a PShape and all its children.  
+	 * @param shape
+	 */
 	public static void disableAllFill(PShape shape) {
 		ArrayList<PShape> all = new ArrayList<>();
 		getChildren(shape, all);

@@ -17,6 +17,9 @@ import processing.core.PShape;
  *
  */
 public class PGS_Construction {
+	
+	private PGS_Construction() {
+	}
 
 	/**
 	 * Generates a random simple convex polygon (n-gon).

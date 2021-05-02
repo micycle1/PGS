@@ -43,8 +43,10 @@ public class PGS_Morphology {
 	}
 
 	/**
-	 * small edges are removed, while the general structure of the shape is
-	 * preserved. This process is known as "opening" in computer vision.
+	 * Applies a negative followed by a positive buffer (in a single operation). The
+	 * effect of which is Small edges are removed, while the general structure of
+	 * the shape is preserved. This process is known as "opening" in computer
+	 * vision.
 	 * 
 	 * @param shape
 	 * @return
@@ -156,8 +158,7 @@ public class PGS_Morphology {
 			Polygon p = (Polygon) g;
 			return toPShape(GaussianLineSmoothing.get(p.getExteriorRing(), Math.max(sigma, 1)));
 		}
-		if (g.getGeometryType().equals(Geometry.TYPENAME_LINEARRING)
-				|| g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
+		if (g.getGeometryType().equals(Geometry.TYPENAME_LINEARRING) || g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
 			LineString l = (LineString) g;
 			return toPShape(GaussianLineSmoothing.get(l, Math.max(sigma, 1)));
 		}

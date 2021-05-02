@@ -26,7 +26,7 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Bounding volumes, inscribed areas, optimal distances, etc.
+ * Solve geometric optimisation problems, such as bounding volumes, inscribed areas, optimal distances, etc.
  * 
  * @author Michael Carleton
  *

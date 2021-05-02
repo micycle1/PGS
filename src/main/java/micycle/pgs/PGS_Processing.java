@@ -47,7 +47,8 @@ import uk.osgb.algorithm.concavehull.ConcaveHull;
 import uk.osgb.algorithm.concavehull.TriCheckerChi;
 
 /**
- * Geometry Processing.
+ * Geometry Processing -- methods that process a shape in some way: compute
+ * hulls, partition, slice, etc.
  * 
  * @author Michael Carleton
  *
@@ -57,13 +58,26 @@ public class PGS_Processing {
 	private PGS_Processing() {
 	}
 
+	/**
+	 * Computes the shape's envelope. The envelope represents the bounding box of
+	 * the shape.
+	 * 
+	 * @param shape
+	 * @return
+	 */
 	public static PShape envelope(PShape shape) {
 		return toPShape(fromPShape(shape).getEnvelope());
 	}
 
 	/**
-	 * Densifies a Geometry by inserting extra vertices along the line segments
-	 * contained in the geometry. Specify maximum length of segments
+	 * Densifies a shape by inserting extra vertices along the line segments
+	 * contained in the shape.
+	 * 
+	 * @param shape
+	 * @param distanceTolerance the densification tolerance to use. All line
+	 *                          segments in the densified geometry will be no longer
+	 *                          than the distance tolerance. The distance tolerance
+	 *                          must be positive.
 	 */
 	public static PShape densify(PShape shape, double distanceTolerance) {
 		Densifier d = new Densifier(fromPShape(shape));
@@ -73,7 +87,8 @@ public class PGS_Processing {
 	}
 
 	/**
-	 * Extracts a point from the perimeter (exterior) of the given shape.
+	 * Extracts a point from the perimeter (exterior) of the shape at a given
+	 * fraction around it perimeter.
 	 * 
 	 * @param shape
 	 * @param distance       0...1 around shape perimeter; or -1...0 (other
@@ -169,6 +184,7 @@ public class PGS_Processing {
 					points.add(new PVector((float) sid.getIntersection().x, (float) sid.getIntersection().y));
 				}
 			}
+
 			public boolean isDone() {
 				return false;
 			}
@@ -251,8 +267,7 @@ public class PGS_Processing {
 	 * 
 	 * @return
 	 */
-	public static List<PVector> generateRandomGridPoints(PShape shape, int maxPoints, boolean constrainedToCircle,
-			double gutterFraction) {
+	public static List<PVector> generateRandomGridPoints(PShape shape, int maxPoints, boolean constrainedToCircle, double gutterFraction) {
 		Geometry g = fromPShape(shape);
 		IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(g);
 

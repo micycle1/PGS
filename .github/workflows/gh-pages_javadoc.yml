@@ -17,7 +17,7 @@ jobs:
         with:
           java-version: 11
       - name: Build javadocs with Maven
-        run: mvn javadoc:javadoc -Ddoclint=none -Dsubpackages=micycle.pgs
+        run: mvn javadoc:javadoc -Ddoclint=none -Dpackagenames=micycle.pgs
       - name: Publish javadocs
         uses: JamesIves/github-pages-deploy-action@4.1.1
         with:

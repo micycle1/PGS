@@ -38,7 +38,7 @@ public class PGS_Triangulation {
 	}
 
 	/**
-	 * Constrained + refined Delaunay Triangulation of a shape.
+	 * Performs constrained + refined Delaunay Triangulation of a shape.
 	 * 
 	 * @param shape
 	 * @param steinerPoints A list of additional points to triangulate in addition
@@ -86,7 +86,7 @@ public class PGS_Triangulation {
 	}
 
 	/**
-	 * Constrained + refined Delaunay Triangulation of a shape. This method returns
+	 * Performs Constrained + refined Delaunay Triangulation of a shape. This method returns
 	 * the triangulation as a list of points.
 	 * 
 	 * @param shape
@@ -129,7 +129,7 @@ public class PGS_Triangulation {
 	}
 
 	/**
-	 * Delaunay Triangulation of a shape. This method returns the raw Tinfour
+	 * Performs Delaunay Triangulation of a shape. This method returns the raw Tinfour
 	 * triangulated network object.
 	 * 
 	 * @param shape
@@ -253,6 +253,11 @@ public class PGS_Triangulation {
 		return triangles;
 	}
 
+	/**
+	 * Computes a trianglation of the points according to the ear clipping ("earcut") method.
+	 * @param points
+	 * @return
+	 */
 	public static PShape earCutTriangulation(List<PVector> points) {
 		double[] arrCoords = new double[points.size() * 2];
 

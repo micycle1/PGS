@@ -15,9 +15,9 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * A variety of geometric and affine transformations for PShapes.
+ * Various geometric and affine transformations for PShapes that affect vertex coordinates.
  * <p>
- * These transformation methods affect the vertex coordinates of PShapes, unlike
+ * Notably, these transformation methods affect the vertex coordinates of PShapes, unlike
  * Processing's transform methods that affect the affine matrix of shapes only
  * (and thereby leave vertex coordinates in-tact).
  * 
@@ -109,6 +109,13 @@ public class PGS_Transformation {
 		return toPShape(scaleShape);
 	}
 
+	/**
+	 * Translates a shape by the given coordinates.
+	 * @param shape
+	 * @param x
+	 * @param y
+	 * @return translated copy
+	 */
 	public static PShape translate(PShape shape, double x, double y) {
 		Geometry g = fromPShape(shape);
 		AffineTransformation t = AffineTransformation.translationInstance(x, y);
@@ -116,7 +123,7 @@ public class PGS_Transformation {
 	}
 
 	/**
-	 * Translates the shape such that its centroid is equivalent to the given
+	 * Translates a shape such that its centroid is equivalent to the given
 	 * coordinates.
 	 * 
 	 * @param shape
@@ -198,7 +205,7 @@ public class PGS_Transformation {
 	}
 
 	/**
-	 * Flips the shape horizontally based on its centre point
+	 * Flips the shape horizontally based on its centre point.
 	 * 
 	 * @param shape
 	 * @return
@@ -211,7 +218,7 @@ public class PGS_Transformation {
 	}
 
 	/**
-	 * Flip based on a line given by its Y location
+	 * Flips the shape horizontally based on a line given by its Y location.
 	 * 
 	 * @param shape
 	 * @param y
@@ -222,6 +229,12 @@ public class PGS_Transformation {
 		return toPShape(t.transform(fromPShape(shape)));
 	}
 
+	/**
+	 * Flips the shape vertically based on its centre point.
+	 * 
+	 * @param shape
+	 * @return
+	 */
 	public static PShape flipVertical(PShape shape) {
 		Geometry g = fromPShape(shape);
 		Point c = g.getCentroid();
@@ -229,6 +242,13 @@ public class PGS_Transformation {
 		return toPShape(t.transform(g));
 	}
 
+	/**
+	 * Flips the shape vertically based on a line given by its X location.
+	 * 
+	 * @param shape
+	 * @param y
+	 * @return
+	 */
 	public static PShape flipVertical(PShape shape, double x) {
 		AffineTransformation t = AffineTransformation.reflectionInstance(x, -1, x, 1);
 		return toPShape(t.transform(fromPShape(shape)));

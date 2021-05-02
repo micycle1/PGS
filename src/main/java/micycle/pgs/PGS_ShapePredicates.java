@@ -53,8 +53,10 @@ public class PGS_ShapePredicates {
 	}
 
 	/**
-	 * Faster than calling {@link #containsPoint(PShape, PVector)} repeatedly.
-	 * Points that lie on the boundary of the shape considered to be contained.
+	 * Determines whether a shape contains all of the given points. It is faster to
+	 * use method rather than than calling {@link #containsPoint(PShape, PVector)}
+	 * repeatedly. Points that lie on the boundary of the shape considered to be
+	 * contained.
 	 * 
 	 * @param shape
 	 * @param points list of PVectors to check
@@ -119,7 +121,7 @@ public class PGS_ShapePredicates {
 	}
 
 	/**
-	 * Returns the minimum distance between two shapes.
+	 * Computes the minimum distance between two shapes.
 	 * 
 	 * @param a shape A
 	 * @param b shape B
@@ -129,6 +131,12 @@ public class PGS_ShapePredicates {
 		return (float) fromPShape(a).distance(fromPShape(b));
 	}
 
+	/**
+	 * Computes the area of the given shape.
+	 * 
+	 * @param shape
+	 * @return
+	 */
 	public static float area(PShape shape) {
 		return (float) fromPShape(shape).getArea();
 	}
@@ -178,8 +186,7 @@ public class PGS_ShapePredicates {
 	 */
 	public static float circularity(PShape shape) {
 		Polygon poly = (Polygon) fromPShape(shape);
-		return (float) (4 * PConstants.PI * poly.getArea()
-				/ (poly.getBoundary().getLength() * poly.getBoundary().getLength()));
+		return (float) (4 * PConstants.PI * poly.getArea() / (poly.getBoundary().getLength() * poly.getBoundary().getLength()));
 	}
 
 	/**

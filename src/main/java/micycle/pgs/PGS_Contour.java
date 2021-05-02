@@ -43,7 +43,7 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Houses a variety of methods for producing different kinds of shape contours.
+ * Methods that produce a variety of methods for producing different kinds of shape contours.
  * 
  * <p>
  * A 2D contour is a closed sequence (a cycle) of 3 or more connected 2D
@@ -55,7 +55,7 @@ import processing.core.PVector;
  *
  */
 public class PGS_Contour {
-	
+
 	/**
 	 * TODO implement 'Base Point Split Algorithm for Generating Polygon Skeleton
 	 * Lines'
@@ -84,8 +84,7 @@ public class PGS_Contour {
 	 *                          this feature.
 	 * @return PShape of lines where lines represent medial axis edges
 	 */
-	public static PShape medialAxis(PShape shape, double axialThreshold, double distanceThreshold,
-			double areaThreshold) {
+	public static PShape medialAxis(PShape shape, double axialThreshold, double distanceThreshold, double areaThreshold) {
 		final Geometry g = fromPShape(shape);
 		final MedialAxis m = new MedialAxis(g);
 
@@ -148,8 +147,7 @@ public class PGS_Contour {
 		edgeCoordsSet.add(coords[0]); // close loop
 
 		for (int j = 0; j < corners.size() - 1; j++) {
-			org.twak.camp.Edge edge = new org.twak.camp.Edge(corners.get(j),
-					corners.get((j + 1) % (corners.size() - 1)));
+			org.twak.camp.Edge edge = new org.twak.camp.Edge(corners.get(j), corners.get((j + 1) % (corners.size() - 1)));
 			edge.machine = speed;
 			loop.append(edge);
 		}
@@ -174,8 +172,7 @@ public class PGS_Contour {
 
 			loop = new Loop<>();
 			for (int j = 0; j < corners.size() - 1; j++) {
-				org.twak.camp.Edge edge = new org.twak.camp.Edge(corners.get(j),
-						corners.get((j + 1) % (corners.size() - 1)));
+				org.twak.camp.Edge edge = new org.twak.camp.Edge(corners.get(j), corners.get((j + 1) % (corners.size() - 1)));
 				edge.machine = speed;
 				loop.append(edge);
 			}
@@ -262,9 +259,9 @@ public class PGS_Contour {
 	}
 
 	/**
-	 * Generate a Topographic-like isoline contour map of the shape. The "elevation"
-	 * (or z values) of points is the euclidean distance between a point in the
-	 * shape and the given high point.
+	 * Generates a topographic-like isoline contour map from the shape's vertices.
+	 * The "elevation" (or z value) of points is the euclidean distance between a
+	 * point in the shape and the given "high" point.
 	 * <p>
 	 * Assigns each point feature a number equal to the distance between geometry's
 	 * centroid and the point.
@@ -293,7 +290,6 @@ public class PGS_Contour {
 		final List<Vertex> tinVertices = new ArrayList<Vertex>(200);
 		double maxDist = 0;
 
-
 		/**
 		 * Poisson a little faster, but isolines are more rough
 		 */
@@ -301,8 +297,8 @@ public class PGS_Contour {
 //				e[1].y + buffer, intervalSpacing, 6);
 //		PoissonDistribution pd = new PoissonDistribution(0);
 		Coordinate[] e = g.getEnvelope().getCoordinates(); // envelope/bounding box of shape
-		ArrayList<PVector> randomPoints = generateGrid(e[0].x - buffer, e[0].y - buffer, e[3].x + buffer,
-				e[1].y + buffer, intervalSpacing, intervalSpacing);
+		ArrayList<PVector> randomPoints = generateGrid(e[0].x - buffer, e[0].y - buffer, e[3].x + buffer, e[1].y + buffer, intervalSpacing,
+				intervalSpacing);
 
 		for (PVector v : randomPoints) {
 			/**
@@ -361,18 +357,20 @@ public class PGS_Contour {
 	}
 
 	/**
+	 * Generates a topographic-like isoline contour map from the given points. This
+	 * method uses the Z value of each PVector point as the "elevation" of that
+	 * location in the map.
 	 * 
 	 * @param points               List of PVectors: the z coordinate for each
-	 *                             PVector should define the contour height at that
-	 *                             point
+	 *                             PVector defines the contour height at that
+	 *                             location
 	 * @param intervalValueSpacing contour height distance represented by successive
 	 *                             isolines
 	 * @param isolineMin           minimum value represented by isolines
 	 * @param isolineMax           maximum value represented by isolines
 	 * @return A PShape where each child PShape corresponds to one isoline
 	 */
-	public static PShape isolines(List<PVector> points, double intervalValueSpacing, double isolineMin,
-			double isolineMax) {
+	public static PShape isolines(List<PVector> points, double intervalValueSpacing, double isolineMin, double isolineMax) {
 		// lines = max-min/spacing
 		final IncrementalTin tin = new IncrementalTin(10);
 		points.forEach(point -> {
@@ -409,7 +407,7 @@ public class PGS_Contour {
 	}
 
 	/**
-	 * Generates isolines from grid of Z values.
+	 * Generates isolines from a grid of elevation values.
 	 * 
 	 * @param values   z-coordinates for the grid points
 	 * @param isoValue the iso value for which the contour (iso) lines should be
@@ -421,8 +419,7 @@ public class PGS_Contour {
 		LineMerger m = new LineMerger();
 		// TODO cleanup
 
-		List<SegmentDetails> segments = Contours.computeContourLines(values, isoValue,
-				RGB.composeColor(0, 255, 0, 255));
+		List<SegmentDetails> segments = Contours.computeContourLines(values, isoValue, RGB.composeColor(0, 255, 0, 255));
 		segments.forEach(s -> {
 			lines.vertex((float) s.p0.getX() * 2, (float) s.p0.getY() * 2);
 			lines.vertex((float) s.p1.getX() * 2, (float) s.p1.getY() * 2);
@@ -439,15 +436,14 @@ public class PGS_Contour {
 	 * Specifies the join style for offset curves.
 	 */
 	public enum OffsetStyle {
-		
-		MITER(BufferParameters.JOIN_MITRE),
-		BEVEL(BufferParameters.JOIN_BEVEL),
-		ROUND(BufferParameters.JOIN_ROUND);
-	
+
+		MITER(BufferParameters.JOIN_MITRE), BEVEL(BufferParameters.JOIN_BEVEL), ROUND(BufferParameters.JOIN_ROUND);
+
 		private final int style;
-	    private OffsetStyle(int style) {
-	        this.style = style;
-	    }
+
+		private OffsetStyle(int style) {
+			this.style = style;
+		}
 	}
 
 	/**
@@ -603,8 +599,7 @@ public class PGS_Contour {
 	 * @param spacingY
 	 * @return
 	 */
-	private static ArrayList<PVector> generateGrid(double minX, double minY, double maxX, double maxY, double spacingX,
-			double spacingY) {
+	private static ArrayList<PVector> generateGrid(double minX, double minY, double maxX, double maxY, double spacingX, double spacingY) {
 		ArrayList<PVector> grid = new ArrayList<>();
 		double[] y = generateDoubleSequence(minY, maxY, spacingY);
 		double[] x = generateDoubleSequence(minX, maxX, spacingX);
