@@ -16,6 +16,9 @@ import static micycle.pgs.color.RGB.decomposeclr;
  *
  */
 public class Blending {
+	
+	private Blending() {
+	}
 
 	public static int subtract(int colorA, int colorB) {
 		float[] decomposedA = decomposeclr(colorA);

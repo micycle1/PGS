@@ -5,6 +5,7 @@ import static processing.core.PConstants.ROUND;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import org.geotools.geometry.jts.JTS;
 import org.locationtech.jts.geom.Coordinate;
@@ -175,7 +176,7 @@ class PGS {
 
 		@Override
 		public Iterator<LinearRing> iterator() {
-			Iterator<LinearRing> it = new Iterator<LinearRing>() {
+			return new Iterator<LinearRing>() {
 
 				private int currentIndex = 0;
 
@@ -186,6 +187,9 @@ class PGS {
 
 				@Override
 				public LinearRing next() {
+					if (!hasNext()) {
+						throw new NoSuchElementException();
+					}
 					return array[currentIndex++];
 				}
 
@@ -194,7 +198,6 @@ class PGS {
 					throw new UnsupportedOperationException();
 				}
 			};
-			return it;
 		}
 	}
 

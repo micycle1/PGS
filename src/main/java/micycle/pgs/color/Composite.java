@@ -24,6 +24,9 @@ public class Composite {
 //	Destination In: [dst[0]*src[3], dst[1]*src[3], dst[2]*src[3], dst[3]*src[3]]. Uses the destination color/alpha with the source alpha as the "mask".
 //	Destination Held Out: [dst[0]*(1 - src[3]), dst[1]*(1 - src[3]), dst[2]*(1 - src[3]), dst[3]*(1 - src[3])].
 //	Destination Atop: [dst[3]*src[0] - dst[0]*(src[3] - 1), dst[3]*src[1] - dst[1]*(src[3] - 1), dst[3]*src[2] - dst[2]*(src[3] - 1), dst[3]].
+	
+	private Composite() {
+	}
 
 	public static int xor(int colorA, int colorB) {
 		float[] decomposedA = decomposeclr(colorA);

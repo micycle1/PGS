@@ -509,15 +509,14 @@ public class Minkowski_Sum {
 		if (src == null || src.isEmpty()) {
 			return src;
 		}
-		boolean isRefRing = false;
-		if (refCoords[0].equals2D(refCoords[refCoords.length - 1])) { // reference is a linear ring
-			isRefRing = true;
-		}
-		//
-		LineString extRing = src.getExteriorRing();
-		Coordinate[] extCoords = extRing.getCoordinates();
+
+		final LineString extRing = src.getExteriorRing();
+		final Coordinate[] extCoords = extRing.getCoordinates();
 		Geometry extSum = expansionShell(gf.createPolygon(extCoords), refCoords, isRefConvex);
-		int numHoles = src.getNumInteriorRing();
+		if (extSum != null) {
+			return getGeometryFactory().createEmpty(2); // rather than return null
+		}
+		final int numHoles = src.getNumInteriorRing();
 		if (numHoles > 0) {
 			for (int k = 0; k < numHoles; ++k) {
 				LineString holeRing = src.getInteriorRingN(k);
@@ -548,9 +547,9 @@ public class Minkowski_Sum {
 		if (refCoords[0].equals2D(refCoords[refCoords.length - 1])) { // reference is a linear ring
 			isRefRing = true;
 		}
-		//
+
 		Geometry sum = null;
-		//
+
 		LineString extRing = src.getExteriorRing();
 		Coordinate[] extCoords = extRing.getCoordinates();
 		// expanding the shell of original geometry (on two directions)

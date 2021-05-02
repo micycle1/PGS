@@ -7,6 +7,9 @@ public class RGB {
 	public static final int PINK = composeColor(237, 50, 162);
 	
 	private static final float INV_255 = 1f / 255f; // used to normalise RGB values to 0...1
+	
+	private RGB() {
+	}
 
 	/**
 	 * @param red   ∈[0, 255]
