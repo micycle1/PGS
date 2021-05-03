@@ -67,7 +67,7 @@ PGS is hosted as an artifact for use in Maven or Gradle projects via [Jitpack](h
 A handful of example Processing sketches are provided in [examples](https://github.com/micycle1/PGS/tree/master/examples).
 
 <p float="middle">
-  <img src="resources/examples/drawOffsetCurves.png" alt="" width="24%"/>
+  <a href="examples/drawOffsetCurves"><img src="resources/examples/drawOffsetCurves.png" alt="" width="24%"/></a>
   <img src="resources/examples/partitionSmooth.png" alt="" width="24%"/>
   <img src="resources/examples/triangulate.png" alt="" width="24%"/>
   <img src="resources/examples/minkShearLetters.png" alt="" width="24%"/>
@@ -93,37 +93,53 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top"><img src="resources/boolean/subtract.gif"></td>
     <td valign="top" ><img src="resources/boolean/symDifference.gif"></td>
   </tr>
-</table>
 
-### Complement
-<img src="resources/boolean/complement.png" alt="" width="25%"/>
+  <tr>
+    <td align="center" valign="center">Complement</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/boolean/complement.png"></td>
+  </tr>
+</table>
 
 ## *Transformation*
 
-*Only methods beyond those offered in Processing are illustrated below.*
+<table>
+  <tr>
+    <td align="center" valign="center" colspan="2">Rotate Around</td>
+    <td align="center" valign="center">Translate To</td>
+    <td align="center" valign="center">Touch Scale</td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="resources/transform/rotateCenter.gif"></td>
+    <td valign="top"><img src="resources/transform/rotate.gif"></td>
+    <td valign="top"><img src="resources/transform/translateTo.gif"></td>
+    <td valign="top" ><img src="resources/transform/touchScale.gif"></td>
+  </tr>
+    <tr>
+    <td align="center" valign="center" colspan="2">Rotate a shape around its centroid or an arbitrary point.</td>
+    <td align="center" valign="center">Translate a shape such that its centroid matches some position.</td>
+    <td align="center" valign="center">Scale one shape such that it touches another.</td>
+  </tr>
+</table>
 
-### Rotate Around
-Rotate a shape around its centroid or an arbitrary point.
-
-<p float="middle">
-  <img src="resources/transform/rotateCenter.gif" alt="" width="25%"/>
-  <img src="resources/transform/rotate.gif" alt="" width="25%"/>
-</p>
-
-### Translate To
-Translate a shape such that its centroid matches some position.
-
-<img src="resources/transform/translateTo.gif" alt="" width="25%"/>
-
-### Touch Scale
-Scale one shape such that it touches another.
-
-<img src="resources/transform/touchScale.gif" alt="" width="25%"/>
-
-### Homothetic Transformation
-Projection-transform a shape with respect to a fixed point.
-
-<img src="resources/transform/homothetic.gif" alt="" width="25%"/>
+<table width = 75%>
+  <tr>
+    <td align="center" valign="center">Resize</td>
+    <td align="center" valign="center">Homothetic Transformation</td>
+    <td align="center" valign="center">Shear</td>
+  </tr>
+  <tr>
+    <td valign="top" width="33.33%"><img src="resources/transform/resize.gif"></td>
+    <td valign="top" width="33.33%"><img src="resources/transform/homothetic.gif"></td>
+    <td valign="top" width="33.33%"><img src="resources/transform/shear.gif"></td>
+  </tr>
+    <tr>
+    <td align="center" valign="center"></td>
+    <td align="center" valign="center">Projection-transform a shape with respect to a fixed point.</td>
+    <td align="center" valign="center"></td>
+  </tr>
+</table>
 
 ## *Geometric Predicates & Metrics*
 
@@ -153,46 +169,21 @@ Projection-transform a shape with respect to a fixed point.
 
 ## *Contour*
 
-### Medial Axis
-Medial axis transform with feature pruning via distance, area or *axial angle*. 
-
-<p float="middle">
-  <img src="resources/contour/medialAxis.gif" alt="" width="25%"/>
-  <img src="resources/contour/medialAxis.png" alt="" width="25%"/>
-</p>
-
-### Straight Skeleton
-<p float="middle">
-  <img src="resources/contour/straightSkeleton.png" alt="" width="25%"/>
-</p>
-
-### Isolines (topographic contour lines)
-Isolines from intra-shape euclidean distance, or point sets.
-
-<p float="middle">
-  <img src="resources/contour/isolines.gif" alt="" width="25%"/>
-  <img src="resources/contour/isolines2.gif" alt="" width="25%"/>
-</p>
-
-
-### Offset Curves
-Inner and exterior offset curves; based on *miter*, *bevel* or *round* offset styles. 
-
-<p float="middle">
-  <img src="resources/contour/miteredInterior.gif" alt="" width="25%"/>
-  <img src="resources/contour/miteredExterior.gif" alt="" width="25%"/>
-</p>
-
 <table>
   <tr>
-    <td align="center" valign="center" colspan="2">Voronoi Diagram</td>
-    <td align="center" valign="center" colspan="2">Circle-site Voronoi Diagram</td>
+    <td align="center" valign="center" colspan="2">Isolines</td>
+    <td align="center" valign="center" colspan="2">Offset Curves</td>
   </tr>
   <tr>
-    <td valign="top" width="25%"><img src="resources/contour/voronoi.gif"></td>
-    <td valign="top" width="25%"><img src="resources/contour/voronoi1.png"></td>
-    <td valign="top" width="25%"><img src="resources/contour/voronoiCircles.gif"></td>
-    <td valign="top" width="25%"><img src="resources/contour/voronoiCircles.png"></td>
+    <td valign="top"><img src="resources/contour/isolines.gif"></td>
+    <td valign="top"><img src="resources/contour/isolines2.gif"></td>
+    <td valign="top"><img src="resources/contour/miteredInterior.gif"></td>
+    <td valign="top" ><img src="resources/contour/miteredExterior.gif"></td>
+  </tr>
+    </tr>
+    <tr>
+    <td align="center" valign="center" colspan="2">Isolines from intra-shape euclidean distance, or point sets.</td>
+    <td align="center" valign="center" colspan="2">Inner and exterior offset curves; based on <i>miter, bevel</i> or <i>round</i> offset styles.</td>
   </tr>
 </table>
 
@@ -207,12 +198,36 @@ Inner and exterior offset curves; based on *miter*, *bevel* or *round* offset st
     <td valign="top"><img src="resources/contour/earCut.png"></td>
     <td valign="top" ><img src="resources/contour/earCut2.png"></td>
   </tr>
+
+  <tr>
+    <td align="center" valign="center" colspan="2">Voronoi Diagram</td>
+    <td align="center" valign="center" colspan="2">Circle-site Voronoi Diagram</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/contour/voronoi.gif"></td>
+    <td valign="top" width="25%"><img src="resources/contour/voronoi1.png"></td>
+    <td valign="top" width="25%"><img src="resources/contour/voronoiCircles.gif"></td>
+    <td valign="top" width="25%"><img src="resources/contour/voronoiCircles.png"></td>
+  </tr>
+
+  <tr>
+    <td align="center" valign="center">Poisson Delaunay Triangulation</td>
+    <td align="center" valign="center">Straight Skeleton</td>
+    <td align="center" valign="center" colspan="2">Medial Axis</td>
+  </tr>
+  <tr>
+    <td valign="top" ><img src="resources/contour/poissonTriangulation.gif"></td>
+    <td valign="top"><img src="resources/contour/straightSkeleton.png"></td>
+    <td valign="top"><img src="resources/contour/medialAxis.gif"></td>
+    <td valign="top"><img src="resources/contour/medialAxis.png"></td>
+  </tr>
+    </tr>
+    <tr>
+    <td align="center" valign="center"><i>Delaunay triangulation</i> of shapes where <i>steiner points</i> generated by poisson disk sampling are inserted.</td>
+    <td align="center" valign="center"></td>
+    <td align="center" valign="center" colspan="2">Medial axis transform with feature pruning via distance, area or <i>axial angle</i>. </td>
+  </tr>
 </table>
-
-### Poisson Delaunay Triangulation
-*Delaunay triangulation* of shapes where *steiner points* generated by poisson disk sampling are inserted.
-
-<img src="resources/contour/poissonTriangulation.gif" alt="" width="25%"/>
 
 ## *Morphology*
 
@@ -235,9 +250,6 @@ Inner and exterior offset curves; based on *miter*, *bevel* or *round* offset st
   </tr>
 </table>
 
-### Simplification
-<img src="resources/morphology/simplifyVW.gif" alt="" width="25%"/>
-
 <table>
   <tr>
     <td align="center" valign="center">Smoothing</td>
@@ -250,102 +262,106 @@ Inner and exterior offset curves; based on *miter*, *bevel* or *round* offset st
     <td valign="top"><img src="resources/morphology/round.gif"></td>
     <td valign="top" ><img src="resources/morphology/round2.gif"></td>
   </tr>
-</table>
 
+  <tr>
+    <td align="center" valign="center">Simplification</td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="resources/morphology/simplifyVW.gif"></td>
+  </tr>
+</table>
 
 ## *Geometry Processing*
 
-### Point on Perimeter
-Find a point some fraction along the perimeter of a shape (with perpendicular offset).
+<table>
+  <tr>
+    <td align="center" valign="center" colspan="2">Points on Perimeter</td>
+    <td align="center" valign="center">Point on Perimeter</td>
+    <td align="center" valign="center">Densification</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/pointsOnPerimeter.gif"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/pointsOnPerimeter2.gif"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/pointOnPerimeter.gif"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/densify.gif"></td>
+  </tr>
+    <tr>
+    <td align="center" valign="center" colspan="2">Find <i>N</i> points (evenly distributed) along the perimeter of a shape, or points every <i>D</i> distance (with optional perpendicular offset).</td>
+    <td align="center" valign="center">Find a point some fraction along the perimeter of a shape (with perpendicular offset).</td>
+    <td align="center" valign="center"></td>
+  </tr>
+</table>
 
-<img src="resources/geometry_processing/pointOnPerimeter.gif" alt="" width="25%"/>
+<table>
+  <tr>
+    <td align="center" valign="center" colspan="2">Partitioning</td>
+    <td align="center" valign="center">Splitting</td>
+    <td align="center" valign="center">Slicing</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/decompose1.png"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/decompose2.png"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/split.gif"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/slice.gif"></td>
+  </tr>
+    <tr>
+    <td align="center" valign="center" colspan="2">Partition a shape into simple (convex) polygons.</td>
+    <td align="center" valign="center">Subdivide (recursively) a shape into quadrants.</td>
+    <td align="center" valign="center">Slice a shape in two along a given line.</td>
+  </tr>
+</table>
 
-### Points on Perimeter
-Find *N* points (evenly distributed) along the perimeter of a shape, or points every *D* distance (with optional perpendicular offset).
+<table>
+  <tr>
+    <td align="center" valign="center" colspan="2">Constrained Random Point Set</td>
+    <td align="center" valign="center" colspan="2">Segment Set Intersection</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/randomGridPoints.gif"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/randomGridPoints2.gif"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/segmentIntersection.png"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/segmentIntersection2.png"></td>
+  </tr>
+    <tr>
+    <td align="center" valign="center" colspan="2">Generate constrained random point sets where all points lie within a shape. Points can be distributed entirely randomly or according to grid with configurable tightness.</td>
+    <td align="center" valign="center" colspan="2">Find all points of intersection between a collection of line segments.</td>
+  </tr>
+</table>
 
-<p float="middle">
-  <img src="resources/geometry_processing/pointsOnPerimeter.gif" alt="" width="25%"/>
-  <img src="resources/geometry_processing/pointsOnPerimeter2.gif" alt="" width="25%"/>
-</p>
-
-### Partitioning
-Partition a shape into simple (convex) polygons.
-
-<p float="middle">
-  <img src="resources/geometry_processing/decompose1.png" alt="" width="25%"/>
-  <img src="resources/geometry_processing/decompose2.png" alt="" width="25%"/>
-</p>
-
-### Splitting
-Subdivide (recursively) a shape into quadrants
-
-<img src="resources/geometry_processing/split.gif" alt="" width="25%"/>
-
-### Slicing
-Slice a shape in two along a given line
-
-<img src="resources/geometry_processing/slice.gif" alt="" width="25%"/>
-
-### Densification
-<img src="resources/geometry_processing/densify.gif" alt="" width="25%"/>
-
-### Constrained Random Point Set
-Generate constrained random point sets where all points lie within a shape. Points can be distributed entirely randomly or according to grid with configurable tightness.
-
-<p float="middle">
-  <img src="resources/geometry_processing/randomGridPoints.gif" alt="" width="25%"/>
-    <img src="resources/geometry_processing/randomGridPoints2.gif" alt="" width="25%"/>
-</p>
-
-### Envelope
-<img src="resources/geometry_processing/envelope.png" alt="" width="25%"/>
-
-### Concave Hull
-Concave hull of point sets.
-<p float="middle">
-  <img src="resources/morphology/concaveHull.gif" alt="" width="25%"/>
-  <img src="resources/morphology/concaveHull2.gif" alt="" width="25%"/>
-</p>
-
-### Convex Hull
-<img src="resources/morphology/convexHull.png" alt="" width="25%"/>
-
-### Snap Hull
-A convex hull with some level of shape-feature snapping.
-
-<img src="resources/morphology/snapHull.gif" alt="" width="25%"/>
-
-### Shape Intersection
-Find all points of intersection between two shapes.
-
-<img src="resources/geometry_processing/shapeIntersection.gif" alt="" width="25%"/>
-
-### Segment Set Intersection
-
-Find all points of intersection between a collection of line segments.
-
-<p float="middle">
-  <img src="resources/geometry_processing/segmentIntersection.png" alt="" width="25%"/>
-  <img src="resources/geometry_processing/segmentIntersection2.png" alt="" width="25%"/>
-</p>
+<table>
+  <tr>
+    <td align="center" valign="center" colspan="2">Concave Hull</td>
+    <td align="center" valign="center">Convex Hull</td>
+    <td align="center" valign="center">Snap Hull</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/morphology/concaveHull.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/concaveHull2.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/convexHull.png"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/snapHull.gif"></td>
+  </tr>
+    <tr>
+    <td align="center" valign="center" colspan="2">Concave hull of point sets.</td>
+    <td align="center" valign="center"></td>
+    <td align="center" valign="center">A convex hull with some level of shape-feature snapping.</td>
+  </tr>
+</table>
 
 ## *Geometric Optimisation*
 
-### Closest Point
-<img src="resources/pgs/closestVertex.gif" alt="" width="25%"/>
-
-### Maximum Inscribed Circle
-<img src="resources/pgs/inscribedCircle.gif" alt="" width="25%"/>
-
-### Maximum Inscribed Rectangle
-Maximum inscribed axis-aligned rectangle of convex shapes.
-
-<p float="middle">
-  <img src="resources/optimisation/mir1.png" alt="" width="25%"/>
-  <img src="resources/optimisation/mir2.png" alt="" width="25%"/>
-</p>
-
 <table>
+  <tr>
+    <td align="center" valign="center">Maximum Inscribed Circle</td>
+    <td align="center" valign="center">Minimum Bounding Rectangle</td>
+    <td align="center" valign="center" colspan="2">Maximum Inscribed Rectangle</td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="resources/pgs/inscribedCircle.gif"></td>
+    <td valign="top"><img src="resources/pgs/minimumBoundingRectangle.png"></td>
+    <td valign="top"><img src="resources/optimisation/mir1.png"></td>
+    <td valign="top" ><img src="resources/optimisation/mir2.png"></td>
+  </tr>
+
   <tr>
     <td align="center" valign="center" colspan="2">Minimum Bounding Circle</td>
     <td align="center" valign="center" colspan="2">Minimum Bounding Ellipse</td>
@@ -356,18 +372,20 @@ Maximum inscribed axis-aligned rectangle of convex shapes.
     <td valign="top"><img src="resources/optimisation/mbe1.png"></td>
     <td valign="top" ><img src="resources/optimisation/mbe2.png"></td>
   </tr>
+
+  <tr>
+    <td align="center" valign="center">Envelope</td>
+    <td align="center" valign="center">Closest Vertex</td>
+    <td align="center" valign="center" colspan="2">Problem of Apollonius</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/envelope.png"></td>
+    <td valign="top"><img src="resources/pgs/closestVertex.gif"></td>
+    <td valign="top"><img src="resources/optimisation/apollonius1.gif"></td>
+    <td valign="top"><img src="resources/optimisation/apollonius2.gif"></td>
+  </tr>
+  
 </table>
-
-
-### Minimum Bounding Rectangle
-<img src="resources/pgs/minimumBoundingRectangle.png" alt="" width="25%"/>
-
-### Problem of Apollonius
-
-<p float="middle">
-  <img src="resources/optimisation/apollonius1.gif" alt="" width="25%"/>
-  <img src="resources/optimisation/apollonius2.gif" alt="" width="25%"/>
-</p>
 
 ## *Construction*
 
@@ -383,9 +401,11 @@ Maximum inscribed axis-aligned rectangle of convex shapes.
     <td valign="top"><img src="resources/pgs/star.gif"></td>
     <td valign="top" ><img src="resources/pgs/star2.gif"></td>
   </tr>
+
+  <tr>
+    <td align="center" valign="center">Random Convex Polygon</td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="resources/pgs/randomPolygon.gif"></td>
+  </tr>
 </table>
-
-### Random Polygon
-Generate a random convex n-gon
-
-<img src="resources/pgs/randomPolygon.gif" alt="" width="25%"/>

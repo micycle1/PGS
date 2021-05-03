@@ -37,6 +37,17 @@ public class PGS_Optimisation {
 	}
 
 	/**
+	 * Computes the shape's envelope. The envelope represents the bounding box of
+	 * the shape.
+	 * 
+	 * @param shape
+	 * @return
+	 */
+	public static PShape envelope(PShape shape) {
+		return toPShape(fromPShape(shape).getEnvelope());
+	}
+
+	/**
 	 * The Maximum Inscribed Circle is determined by a point in the interior of the
 	 * area which has the farthest distance from the area boundary, along with a
 	 * boundary point at that distance.

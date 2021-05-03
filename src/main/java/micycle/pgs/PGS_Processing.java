@@ -59,17 +59,6 @@ public class PGS_Processing {
 	}
 
 	/**
-	 * Computes the shape's envelope. The envelope represents the bounding box of
-	 * the shape.
-	 * 
-	 * @param shape
-	 * @return
-	 */
-	public static PShape envelope(PShape shape) {
-		return toPShape(fromPShape(shape).getEnvelope());
-	}
-
-	/**
 	 * Densifies a shape by inserting extra vertices along the line segments
 	 * contained in the shape.
 	 * 

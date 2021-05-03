@@ -67,6 +67,8 @@ public class PGS_Transformation {
 	 * @return resized copy of input
 	 */
 	public static PShape resize(PShape shape, double targetWidth, double targetHeight) {
+		targetWidth = Math.max(targetWidth, 0.001);
+		targetHeight = Math.max(targetHeight, 0.001);
 		Geometry geometry = fromPShape(shape);
 		Envelope e = geometry.getEnvelopeInternal();
 		
