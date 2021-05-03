@@ -82,10 +82,10 @@ Much of the functionality (but by no means all) is demonstrated below:
 
 <table>
   <tr>
-    <td align="center" valign="center"><h3>Union</td>
-    <td align="center" valign="center"><h3>Intersection</td>
-    <td align="center" valign="center"><h3>Subtraction</td>
-    <td align="center" valign="center"><h3>Symmetric Difference</td>
+    <td align="center" valign="center">Union</td>
+    <td align="center" valign="center">Intersection</td>
+    <td align="center" valign="center">Subtraction</td>
+    <td align="center" valign="center">Symmetric Difference</td>
   </tr>
   <tr>
     <td valign="top"><img src="resources/boolean/union.gif"></td>
@@ -129,9 +129,9 @@ Projection-transform a shape with respect to a fixed point.
 
 <table table-layout="fixed">
   <tr>
-    <td align="center" valign="center"><h3>Intersects</td>
-    <td align="center" valign="center"><h3>Contains Shape</td>
-    <td align="center" valign="center"><h3>Contains Point</td>
+    <td align="center" valign="center">Intersects</td>
+    <td align="center" valign="center">Contains Shape</td>
+    <td align="center" valign="center">Contains Point</td>
   </tr>
   <tr>
     <td valign="top" align="center" width="33%"> <img src="resources/predicate/intersect.gif"><br>Do shapes intersect with each other?</td>
@@ -343,19 +343,19 @@ Maximum inscribed axis-aligned rectangle of convex shapes.
   <img src="resources/optimisation/mir2.png" alt="" width="25%"/>
 </p>
 
-### Minimum Bounding Circle
+<table>
+  <tr>
+    <td align="center" valign="center" colspan="2">Minimum Bounding Circle</td>
+    <td align="center" valign="center" colspan="2">Minimum Bounding Ellipse</td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="resources/pgs/minimumBoundingCircle.png"></td>
+    <td valign="top"><img src="resources/optimisation/mbc2.png"></td>
+    <td valign="top"><img src="resources/optimisation/mbe1.png"></td>
+    <td valign="top" ><img src="resources/optimisation/mbe2.png"></td>
+  </tr>
+</table>
 
-<p float="middle">
-  <img src="resources/pgs/minimumBoundingCircle.png" alt="" width="25%"/>
-  <img src="resources/optimisation/mbc2.png" alt="" width="25%"/>
-</p>
-
-### Minimum Bounding Ellipse
-
-<p float="middle">
-  <img src="resources/optimisation/mbe1.png" alt="" width="25%"/>
-  <img src="resources/optimisation/mbe2.png" alt="" width="25%"/>
-</p>
 
 ### Minimum Bounding Rectangle
 <img src="resources/pgs/minimumBoundingRectangle.png" alt="" width="25%"/>
@@ -369,22 +369,19 @@ Maximum inscribed axis-aligned rectangle of convex shapes.
 
 ## *Construction*
 
-### Supercircle
-Generate *supercircles*, with a configurable constant.
-
-<img src="resources/pgs/superCircle.gif" alt="" width="25%"/>
-
-### Supershape
-
-<img src="resources/pgs/supershape.gif" alt="" width="25%"/>
-
-
-### Star
-
-<p float="middle">
-  <img src="resources/pgs/star.gif" alt="" width="25%"/>
-  <img src="resources/pgs/star2.gif" alt="" width="25%"/>
-</p>
+<table>
+  <tr>
+    <td align="center" valign="center">Supercircle</td>
+    <td align="center" valign="center">Supershape</td>
+    <td align="center" valign="center" colspan="2">Star</td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="resources/pgs/superCircle.gif"></td>
+    <td valign="top"><img src="resources/pgs/supershape.gif"></td>
+    <td valign="top"><img src="resources/pgs/star.gif"></td>
+    <td valign="top" ><img src="resources/pgs/star2.gif"></td>
+  </tr>
+</table>
 
 ### Random Polygon
 Generate a random convex n-gon
