@@ -44,12 +44,14 @@ Download the latest *PGS.jar* from [releases](https://github.com/micycle1/PGS/re
 </p>
 </details>
 
-<details><summary>Processing IDE — Permanent</summary>
+<details><summary>Processing IDE — Permanently</summary>
 <p>
 
 Download the latest *PGS.jar* from [releases](https://github.com/micycle1/PGS/releases) and save it to `Documents\Processing\libraries\PGS\library`.
 
-Result: `Documents\Processing\libraries\PGS\library\PGS.jar`. (Note the *.jar* and the folder **must** be called `PGS`).
+Result: `Documents\Processing\libraries\PGS\library\PGS.jar`.
+
+(Note the *.jar* and the folder **must** be called `PGS` — rename the .jar if this is not the case).
 </p>
 </details>
 

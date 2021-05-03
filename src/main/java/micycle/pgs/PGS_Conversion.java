@@ -398,7 +398,7 @@ public class PGS_Conversion implements PConstants {
 	}
 
 	/**
-	 * Calls setFill(false) on a PShape and all its children.  
+	 * Calls setFill(false) on a PShape and all its children. This method mutates the input shape.
 	 * @param shape
 	 */
 	public static void disableAllFill(PShape shape) {
@@ -406,6 +406,18 @@ public class PGS_Conversion implements PConstants {
 		getChildren(shape, all);
 		all.forEach(child -> {
 			child.setFill(false);
+		});
+	}
+	
+	/**
+	 * Calls setStrokefalse) on a PShape and all its children. This method mutates the input shape. 
+	 * @param shape
+	 */
+	public static void disableAllStroke(PShape shape) {
+		ArrayList<PShape> all = new ArrayList<>();
+		getChildren(shape, all);
+		all.forEach(child -> {
+			child.setStroke(false);
 		});
 	}
 

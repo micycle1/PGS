@@ -1,10 +1,21 @@
 # Examples
 
-A folder contained example Processing sketches.
+A collection of example Processing sketches using *Processing Geometry Suite*.
 
 The examples are dynamic. Shown below are merely screenshots.
 
-<p float="middle">
-  <img src="../resources/examples/slice.png" alt="" width="49%"/>
-  <img src="../resources/contour/medialAxis.png" alt="" width="49%"/>
-</p>
+## drawOffsetCurves
+
+<img src="../resources/examples/drawOffsetCurves.png" alt="" width="500"/>
+
+## partitionSmooth
+
+<img src="../resources/examples/partitionSmooth.png" alt="" width="500"/>
+
+## slice
+
+<img src="../resources/examples/slice.png" alt="" width="500"/>
+
+## triangulate
+
+<img src="../resources/examples/triangulate.png" alt="" width="500"/>
