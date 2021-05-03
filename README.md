@@ -68,9 +68,9 @@ A handful of example Processing sketches are provided in [examples](https://gith
 
 <p float="middle">
   <a href="examples/drawOffsetCurves"><img src="resources/examples/drawOffsetCurves.png" alt="" width="24%"/></a>
-  <img src="resources/examples/partitionSmooth.png" alt="" width="24%"/>
-  <img src="resources/examples/triangulate.png" alt="" width="24%"/>
-  <img src="resources/examples/minkShearLetters.png" alt="" width="24%"/>
+  <a href="examples/partitionSmooth"><img src="resources/examples/partitionSmooth.png" alt="" width="24%"/></a>
+  <a href="examples/triangulate"><img src="resources/examples/triangulate.png" alt="" width="24%"/></a>
+  <a href="examples/minkShearLetters"><img src="resources/examples/minkShearLetters.png" alt="" width="24%"/></a>
 </p>
 
 
@@ -82,10 +82,10 @@ Much of the functionality (but by no means all) is demonstrated below:
 
 <table>
   <tr>
-    <td align="center" valign="center">Union</td>
-    <td align="center" valign="center">Intersection</td>
-    <td align="center" valign="center">Subtraction</td>
-    <td align="center" valign="center">Symmetric Difference</td>
+    <td align="center" valign="center"><b>Union</td>
+    <td align="center" valign="center"><b>Intersection</td>
+    <td align="center" valign="center"><b>Subtraction</td>
+    <td align="center" valign="center"><b>Symmetric Difference</td>
   </tr>
   <tr>
     <td valign="top"><img src="resources/boolean/union.gif"></td>
@@ -95,7 +95,7 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
-    <td align="center" valign="center">Complement</td>
+    <td align="center" valign="center"><b>Complement</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/boolean/complement.png"></td>
@@ -106,9 +106,9 @@ Much of the functionality (but by no means all) is demonstrated below:
 
 <table>
   <tr>
-    <td align="center" valign="center" colspan="2">Rotate Around</td>
-    <td align="center" valign="center">Translate To</td>
-    <td align="center" valign="center">Touch Scale</td>
+    <td align="center" valign="center" colspan="2"><b>Rotate Around</td>
+    <td align="center" valign="center"><b>Translate To</td>
+    <td align="center" valign="center"><b>Touch Scale</td>
   </tr>
   <tr>
     <td valign="top"><img src="resources/transform/rotateCenter.gif"></td>
@@ -121,18 +121,19 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center">Translate a shape such that its centroid matches some position.</td>
     <td align="center" valign="center">Scale one shape such that it touches another.</td>
   </tr>
-</table>
-
-<table width = 75%>
+  
   <tr>
-    <td align="center" valign="center">Resize</td>
-    <td align="center" valign="center">Homothetic Transformation</td>
-    <td align="center" valign="center">Shear</td>
+  </tr>
+
+  <tr>
+    <td align="center" valign="center"><b>Resize</td>
+    <td align="center" valign="center"><b>Homothetic Transformation</td>
+    <td align="center" valign="center"><b>Shear</td>
   </tr>
   <tr>
-    <td valign="top" width="33.33%"><img src="resources/transform/resize.gif"></td>
-    <td valign="top" width="33.33%"><img src="resources/transform/homothetic.gif"></td>
-    <td valign="top" width="33.33%"><img src="resources/transform/shear.gif"></td>
+    <td valign="top"><img src="resources/transform/resize.gif"></td>
+    <td valign="top"><img src="resources/transform/homothetic.gif"></td>
+    <td valign="top"><img src="resources/transform/shear.gif"></td>
   </tr>
     <tr>
     <td align="center" valign="center"></td>
@@ -143,11 +144,11 @@ Much of the functionality (but by no means all) is demonstrated below:
 
 ## *Geometric Predicates & Metrics*
 
-<table table-layout="fixed">
+<table>
   <tr>
-    <td align="center" valign="center">Intersects</td>
-    <td align="center" valign="center">Contains Shape</td>
-    <td align="center" valign="center">Contains Point</td>
+    <td align="center" valign="center"><b>Intersects</td>
+    <td align="center" valign="center"><b>Contains Shape</td>
+    <td align="center" valign="center"><b>Contains Point</td>
   </tr>
   <tr>
     <td valign="top" align="center" width="33%"> <img src="resources/predicate/intersect.gif"><br>Do shapes intersect with each other?</td>
@@ -171,8 +172,8 @@ Much of the functionality (but by no means all) is demonstrated below:
 
 <table>
   <tr>
-    <td align="center" valign="center" colspan="2">Isolines</td>
-    <td align="center" valign="center" colspan="2">Offset Curves</td>
+    <td align="center" valign="center" colspan="2"><b>Isolines</td>
+    <td align="center" valign="center" colspan="2"><b>Offset Curves</td>
   </tr>
   <tr>
     <td valign="top"><img src="resources/contour/isolines.gif"></td>
@@ -189,8 +190,8 @@ Much of the functionality (but by no means all) is demonstrated below:
 
 <table>
   <tr>
-    <td align="center" valign="center" colspan="2">Delaunay Triangulation</td>
-    <td align="center" valign="center" colspan="2">Earcut Triangulation</td>
+    <td align="center" valign="center" colspan="2"><b>Delaunay Triangulation</td>
+    <td align="center" valign="center" colspan="2"><b>Earcut Triangulation</td>
   </tr>
   <tr>
     <td valign="top"><img src="resources/contour/triangulation1.png"></td>
@@ -200,8 +201,8 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
-    <td align="center" valign="center" colspan="2">Voronoi Diagram</td>
-    <td align="center" valign="center" colspan="2">Circle-site Voronoi Diagram</td>
+    <td align="center" valign="center" colspan="2"><b>Voronoi Diagram</td>
+    <td align="center" valign="center" colspan="2"><b>Circle-site Voronoi Diagram</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/contour/voronoi.gif"></td>
@@ -211,8 +212,8 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
-    <td align="center" valign="center">Poisson Delaunay Triangulation</td>
-    <td align="center" valign="center">Straight Skeleton</td>
+    <td align="center" valign="center"><b>Poisson Delaunay Triangulation</td>
+    <td align="center" valign="center"><b>Straight Skeleton</td>
     <td align="center" valign="center" colspan="2">Medial Axis</td>
   </tr>
   <tr>
@@ -233,9 +234,9 @@ Much of the functionality (but by no means all) is demonstrated below:
 
 <table>
   <tr>
-    <td align="center" valign="center">Buffer</td>
-    <td align="center" valign="center">Erosion-Dilation</td>
-    <td align="center" valign="center" colspan="2">Minkowski Addition</td>
+    <td align="center" valign="center"><b>Buffer</td>
+    <td align="center" valign="center"><b>Erosion-Dilation</td>
+    <td align="center" valign="center" colspan="2"><b>Minkowski Addition</td>
   </tr>
   <tr>
     <td valign="top"><img src="resources/morphology/buffer.gif"></td>
@@ -252,9 +253,9 @@ Much of the functionality (but by no means all) is demonstrated below:
 
 <table>
   <tr>
-    <td align="center" valign="center">Smoothing</td>
-    <td align="center" valign="center">Gaussian Smoothing</td>
-    <td align="center" valign="center" colspan="2">Rounding</td>
+    <td align="center" valign="center"><b>Smoothing</td>
+    <td align="center" valign="center"><b>Gaussian Smoothing</td>
+    <td align="center" valign="center" colspan="2"><b>Rounding</td>
   </tr>
   <tr>
     <td valign="top"><img src="resources/morphology/smooth.gif"></td>
@@ -264,7 +265,7 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
-    <td align="center" valign="center">Simplification</td>
+    <td align="center" valign="center"><b>Simplification</td>
   </tr>
   <tr>
     <td valign="top"><img src="resources/morphology/simplifyVW.gif"></td>
@@ -275,9 +276,9 @@ Much of the functionality (but by no means all) is demonstrated below:
 
 <table>
   <tr>
-    <td align="center" valign="center" colspan="2">Points on Perimeter</td>
-    <td align="center" valign="center">Point on Perimeter</td>
-    <td align="center" valign="center">Densification</td>
+    <td align="center" valign="center" colspan="2"><b>Points on Perimeter</td>
+    <td align="center" valign="center"><b>Point on Perimeter</td>
+    <td align="center" valign="center"><b>Densification</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/geometry_processing/pointsOnPerimeter.gif"></td>
@@ -294,9 +295,9 @@ Much of the functionality (but by no means all) is demonstrated below:
 
 <table>
   <tr>
-    <td align="center" valign="center" colspan="2">Partitioning</td>
-    <td align="center" valign="center">Splitting</td>
-    <td align="center" valign="center">Slicing</td>
+    <td align="center" valign="center" colspan="2"><b>Partitioning</td>
+    <td align="center" valign="center"><b>Splitting</td>
+    <td align="center" valign="center"><b>Slicing</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/geometry_processing/decompose1.png"></td>
@@ -313,8 +314,8 @@ Much of the functionality (but by no means all) is demonstrated below:
 
 <table>
   <tr>
-    <td align="center" valign="center" colspan="2">Constrained Random Point Set</td>
-    <td align="center" valign="center" colspan="2">Segment Set Intersection</td>
+    <td align="center" valign="center" colspan="2"><b>Constrained Random Point Set</td>
+    <td align="center" valign="center" colspan="2"><b>Segment Set Intersection</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/geometry_processing/randomGridPoints.gif"></td>
@@ -330,9 +331,9 @@ Much of the functionality (but by no means all) is demonstrated below:
 
 <table>
   <tr>
-    <td align="center" valign="center" colspan="2">Concave Hull</td>
-    <td align="center" valign="center">Convex Hull</td>
-    <td align="center" valign="center">Snap Hull</td>
+    <td align="center" valign="center" colspan="2"><b>Concave Hull</td>
+    <td align="center" valign="center"><b>Convex Hull</td>
+    <td align="center" valign="center"><b>Snap Hull</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/morphology/concaveHull.gif"></td>
@@ -351,9 +352,9 @@ Much of the functionality (but by no means all) is demonstrated below:
 
 <table>
   <tr>
-    <td align="center" valign="center">Maximum Inscribed Circle</td>
-    <td align="center" valign="center">Minimum Bounding Rectangle</td>
-    <td align="center" valign="center" colspan="2">Maximum Inscribed Rectangle</td>
+    <td align="center" valign="center"><b>Maximum Inscribed Circle</td>
+    <td align="center" valign="center"><b>Minimum Bounding Rectangle</td>
+    <td align="center" valign="center" colspan="2"><b>Maximum Inscribed Rectangle</td>
   </tr>
   <tr>
     <td valign="top"><img src="resources/pgs/inscribedCircle.gif"></td>
@@ -363,8 +364,8 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
-    <td align="center" valign="center" colspan="2">Minimum Bounding Circle</td>
-    <td align="center" valign="center" colspan="2">Minimum Bounding Ellipse</td>
+    <td align="center" valign="center" colspan="2"><b>Minimum Bounding Circle</td>
+    <td align="center" valign="center" colspan="2"><b>Minimum Bounding Ellipse</td>
   </tr>
   <tr>
     <td valign="top"><img src="resources/pgs/minimumBoundingCircle.png"></td>
@@ -374,9 +375,9 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
-    <td align="center" valign="center">Envelope</td>
-    <td align="center" valign="center">Closest Vertex</td>
-    <td align="center" valign="center" colspan="2">Problem of Apollonius</td>
+    <td align="center" valign="center"><b>Envelope</td>
+    <td align="center" valign="center"><b>Closest Vertex</td>
+    <td align="center" valign="center" colspan="2"><b>Problem of Apollonius</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/geometry_processing/envelope.png"></td>
@@ -391,9 +392,9 @@ Much of the functionality (but by no means all) is demonstrated below:
 
 <table>
   <tr>
-    <td align="center" valign="center">Supercircle</td>
-    <td align="center" valign="center">Supershape</td>
-    <td align="center" valign="center" colspan="2">Star</td>
+    <td align="center" valign="center"><b>Supercircle</td>
+    <td align="center" valign="center"><b>Supershape</td>
+    <td align="center" valign="center" colspan="2"><b>Star</td>
   </tr>
   <tr>
     <td valign="top"><img src="resources/pgs/superCircle.gif"></td>
@@ -403,7 +404,7 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
-    <td align="center" valign="center">Random Convex Polygon</td>
+    <td align="center" valign="center"><b>Random Convex Polygon</td>
   </tr>
   <tr>
     <td valign="top"><img src="resources/pgs/randomPolygon.gif"></td>
