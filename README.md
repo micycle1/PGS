@@ -64,7 +64,7 @@ PGS is hosted as an artifact for use in Maven or Gradle projects via [Jitpack](h
 
 ## **Example**
 
-A single example is provided below. See [examples]() for more.
+A single example is provided below. See [examples](https://github.com/micycle1/PGS/tree/master/examples) for more.
 
 <details><summary>Code...</summary>
 

@@ -1,12 +1,20 @@
 # Examples
 
-A collection of example Processing sketches using *Processing Geometry Suite*.
+A collection of example Processing sketches using *Processing Geometry Suite*. They should be able to be copy & pasted into and run immediately from the Processing IDE.
 
-The examples are dynamic. Shown below are merely screenshots.
+All examples are dynamic or interactive. Shown below are merely screenshots.
 
 ## drawOffsetCurves
 
 <img src="../resources/examples/drawOffsetCurves.png" alt="" width="500"/>
+
+## intersectionBoids
+
+<img src="../resources/examples/intersectionBoids.png" alt="" width="500"/>
+
+## minkShearLetters
+
+<img src="../resources/examples/minkShearLetters.png" alt="" width="500"/>
 
 ## partitionSmooth
 
