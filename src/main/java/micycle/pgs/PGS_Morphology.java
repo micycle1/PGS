@@ -132,12 +132,17 @@ public class PGS_Morphology {
 	 * than the input.
 	 * 
 	 * @param shape
-	 * @param fit   tightness of fit from 0 (loose) to 1 (tight)
+	 * @param fit   tightness of fit from 0 (tight/no smooth) to 1 (loose/most smoothed)
 	 * @return smoothed copy of the shape
 	 * @see #smoothGaussian(PShape, double)
 	 */
 	public static PShape smooth(PShape shape, double fit) {
-		return toPShape(JTS.smooth(fromPShape(shape), fit));
+		try {
+			return toPShape(JTS.smooth(fromPShape(shape), 1 - fit));
+		} catch (Exception e) {
+			return new PShape();
+		}
+		
 	}
 
 	/**

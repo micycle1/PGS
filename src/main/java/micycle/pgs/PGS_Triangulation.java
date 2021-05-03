@@ -60,8 +60,8 @@ public class PGS_Triangulation {
 	 * @see #delaunayTriangulationPoints(PShape, List, boolean, int, boolean)
 	 * @see #delaunayTriangulationTin(PShape, List, boolean, int, boolean)
 	 */
-	public static PShape delaunayTriangulation(PShape shape, List<PVector> steinerPoints, boolean constrain,
-			int refinements, boolean pretty) {
+	public static PShape delaunayTriangulation(PShape shape, List<PVector> steinerPoints, boolean constrain, int refinements,
+			boolean pretty) {
 		IncrementalTin tin = delaunayTriangulationTin(shape, steinerPoints, constrain, refinements, pretty);
 
 		PShape triangulation = new PShape(PShape.GEOMETRY);
@@ -86,8 +86,8 @@ public class PGS_Triangulation {
 	}
 
 	/**
-	 * Performs Constrained + refined Delaunay Triangulation of a shape. This method returns
-	 * the triangulation as a list of points.
+	 * Performs Constrained + refined Delaunay Triangulation of a shape. This method
+	 * returns the triangulation as a list of points.
 	 * 
 	 * @param shape
 	 * @param steinerPoints A list of additional points to triangulate in addition
@@ -110,8 +110,8 @@ public class PGS_Triangulation {
 	 * @see #delaunayTriangulationPoints(PShape, List, boolean, int, boolean)
 	 * @see #delaunayTriangulationTin(PShape, List, boolean, int, boolean)
 	 */
-	public static List<PVector> delaunayTriangulationPoints(PShape shape, List<PVector> steinerPoints,
-			boolean constrain, int refinements, boolean pretty) {
+	public static List<PVector> delaunayTriangulationPoints(PShape shape, List<PVector> steinerPoints, boolean constrain, int refinements,
+			boolean pretty) {
 		IncrementalTin tin = delaunayTriangulationTin(shape, steinerPoints, constrain, refinements, pretty);
 
 		ArrayList<PVector> triangles = new ArrayList<>();
@@ -129,8 +129,8 @@ public class PGS_Triangulation {
 	}
 
 	/**
-	 * Performs Delaunay Triangulation of a shape. This method returns the raw Tinfour
-	 * triangulated network object.
+	 * Performs Delaunay Triangulation of a shape. This method returns the raw
+	 * Tinfour triangulated network object.
 	 * 
 	 * @param shape
 	 * @param steinerPoints A list of additional points to triangulate in addition
@@ -152,8 +152,8 @@ public class PGS_Triangulation {
 	 * @see #delaunayTriangulation(PShape, List, boolean, int, boolean)
 	 * @see #delaunayTriangulationPoints(PShape, List, boolean, int, boolean)
 	 */
-	public static IncrementalTin delaunayTriangulationTin(PShape shape, List<PVector> steinerPoints, boolean constrain,
-			int refinements, boolean pretty) {
+	public static IncrementalTin delaunayTriangulationTin(PShape shape, List<PVector> steinerPoints, boolean constrain, int refinements,
+			boolean pretty) {
 		final Geometry g = fromPShape(shape);
 		final IncrementalTin tin = new IncrementalTin(10);
 
@@ -226,7 +226,8 @@ public class PGS_Triangulation {
 	 * 
 	 * @param shape
 	 * @param spacing (Minimum) spacing between poisson points
-	 * @return
+	 * @return list of PVectors, where each successive triplet of PVectors
+	 *         correspond to the vertices of one triangle
 	 */
 	public static List<PVector> poissonTriangulation(PShape shape, double spacing) {
 
@@ -234,8 +235,8 @@ public class PGS_Triangulation {
 		Envelope e = g.getEnvelopeInternal();
 
 		PoissonDistribution pd = new PoissonDistribution(0);
-		List<PVector> poissonPoints = pd.generate(e.getMinX(), e.getMinY(), e.getMinX() + e.getWidth(),
-				e.getMinY() + e.getHeight(), spacing, 8);
+		List<PVector> poissonPoints = pd.generate(e.getMinX(), e.getMinY(), e.getMinX() + e.getWidth(), e.getMinY() + e.getHeight(),
+				spacing, 8);
 //		final IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(g);
 //		List<PVector> pp = poissonPoints.parallelStream()
 //				.filter(p -> pointLocator.locate(PGS.coordFromPVector(p)) != Location.EXTERIOR)
@@ -254,7 +255,9 @@ public class PGS_Triangulation {
 	}
 
 	/**
-	 * Computes a trianglation of the points according to the ear clipping ("earcut") method.
+	 * Computes a trianglation of the points according to the ear clipping
+	 * ("earcut") method.
+	 * 
 	 * @param points
 	 * @return
 	 */
