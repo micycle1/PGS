@@ -7,16 +7,15 @@ import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-
+import java.util.Map;
 import org.locationtech.jts.algorithm.Orientation;
-import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.dissolve.LineDissolver;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LinearRing;
-import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
@@ -372,12 +371,12 @@ public class PGS_Contour {
 	 *                             PVector defines the contour height at that
 	 *                             location
 	 * @param intervalValueSpacing contour height distance represented by successive
-	 *                             isolines
+	 *                             isolines (e.g. a value of 1 will generate isolines at each 1 unit of height)
 	 * @param isolineMin           minimum value represented by isolines
 	 * @param isolineMax           maximum value represented by isolines
-	 * @return A PShape where each child PShape corresponds to one isoline
+	 * @return a map of {isoline -> height of the isoline}
 	 */
-	public static PShape isolines(List<PVector> points, double intervalValueSpacing, double isolineMin, double isolineMax) {
+	public static Map<PShape, Float> isolines(List<PVector> points, double intervalValueSpacing, double isolineMin, double isolineMax) {
 		// lines = max-min/spacing
 		final IncrementalTin tin = new IncrementalTin(10);
 		points.forEach(point -> {
@@ -389,7 +388,7 @@ public class PGS_Contour {
 		final ContourBuilderForTin builder = new ContourBuilderForTin(tin, null, intervals, false);
 		List<Contour> contours = builder.getContours();
 
-		final PShape parent = new PShape(PConstants.GROUP);
+		Map<PShape, Float> isolines = new HashMap<PShape, Float>(contours.size());
 
 		for (Contour contourLine : contours) {
 			final PShape isoline = new PShape();
@@ -407,10 +406,10 @@ public class PGS_Contour {
 			}
 
 			isoline.endShape();
-			parent.addChild(isoline);
+			isolines.put(isoline, (float) contourLine.getZ());
 		}
 
-		return parent;
+		return isolines;
 	}
 
 	/**

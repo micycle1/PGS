@@ -2,7 +2,11 @@
 
 A collection of example Processing sketches using *Processing Geometry Suite*. They should be able to be copy & pasted into and run immediately from the Processing IDE.
 
-All examples are dynamic or interactive. Shown below are merely screenshots.
+All examples are dynamic and/or interactive. Shown below are merely screenshots.
+
+## contourMap
+
+<img src="../resources/examples/contourMap.png" alt="" width="500"/>
 
 ## drawOffsetCurves
 
@@ -27,3 +31,7 @@ All examples are dynamic or interactive. Shown below are merely screenshots.
 ## triangulate
 
 <img src="../resources/examples/triangulate.png" alt="" width="500"/>
+
+## voronoiCutout
+
+<img src="../resources/examples/voronoiCutout.png" alt="" width="500"/>

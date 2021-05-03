@@ -64,15 +64,14 @@ PGS is hosted as an artifact for use in Maven or Gradle projects via [Jitpack](h
 
 ## **Examples**
 
-A handful of example Processing sketches are provided in [examples](https://github.com/micycle1/PGS/tree/master/examples).
+A number of example Processing sketches are provided in [examples](https://github.com/micycle1/PGS/tree/master/examples).
 
 <p float="middle">
-  <a href="examples/drawOffsetCurves"><img src="resources/examples/drawOffsetCurves.png" alt="" width="24%"/></a>
   <a href="examples/partitionSmooth"><img src="resources/examples/partitionSmooth.png" alt="" width="24%"/></a>
+  <a href="examples/drawOffsetCurves"><img src="resources/examples/drawOffsetCurves.png" alt="" width="24%"/></a>
   <a href="examples/triangulate"><img src="resources/examples/triangulate.png" alt="" width="24%"/></a>
-  <a href="examples/minkShearLetters"><img src="resources/examples/minkShearLetters.png" alt="" width="24%"/></a>
+  <a href="examples/contourMap"><img src="resources/examples/contourMap.png" alt="" width="24%"/></a>
 </p>
-
 
 ## **Illustrations**
 
@@ -120,9 +119,6 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center" colspan="2">Rotate a shape around its centroid or an arbitrary point.</td>
     <td align="center" valign="center">Translate a shape such that its centroid matches some position.</td>
     <td align="center" valign="center">Scale one shape such that it touches another.</td>
-  </tr>
-  
-  <tr>
   </tr>
 
   <tr>
@@ -186,9 +182,7 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center" colspan="2">Isolines from intra-shape euclidean distance, or point sets.</td>
     <td align="center" valign="center" colspan="2">Inner and exterior offset curves; based on <i>miter, bevel</i> or <i>round</i> offset styles.</td>
   </tr>
-</table>
 
-<table>
   <tr>
     <td align="center" valign="center" colspan="2"><b>Delaunay Triangulation</td>
     <td align="center" valign="center" colspan="2"><b>Earcut Triangulation</td>
@@ -247,11 +241,9 @@ Much of the functionality (but by no means all) is demonstrated below:
     <tr>
     <td align="center" valign="center"></td>
     <td align="center" valign="center">A negative followed by a positive buffer (in a single operation).</td>
-    <td align="center" valign="center" colspan="2">Minkowski sum and difference (a.k.a buffer one shape using another shape; pictured: buffering using a rotating & growing triangle).</td>
+    <td align="center" valign="center" colspan="2">Minkowski sum and difference (a.k.a buffer one shape using another shape; the examples add a rotating & growing triangle).</td>
   </tr>
-</table>
 
-<table>
   <tr>
     <td align="center" valign="center"><b>Smoothing</td>
     <td align="center" valign="center"><b>Gaussian Smoothing</td>
@@ -291,9 +283,7 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center">Find a point some fraction along the perimeter of a shape (with perpendicular offset).</td>
     <td align="center" valign="center"></td>
   </tr>
-</table>
 
-<table>
   <tr>
     <td align="center" valign="center" colspan="2"><b>Partitioning</td>
     <td align="center" valign="center"><b>Splitting</td>
@@ -310,9 +300,7 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center">Subdivide (recursively) a shape into quadrants.</td>
     <td align="center" valign="center">Slice a shape in two along a given line.</td>
   </tr>
-</table>
 
-<table>
   <tr>
     <td align="center" valign="center" colspan="2"><b>Constrained Random Point Set</td>
     <td align="center" valign="center" colspan="2"><b>Segment Set Intersection</td>
@@ -327,9 +315,7 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center" colspan="2">Generate constrained random point sets where all points lie within a shape. Points can be distributed entirely randomly or according to grid with configurable tightness.</td>
     <td align="center" valign="center" colspan="2">Find all points of intersection between a collection of line segments.</td>
   </tr>
-</table>
 
-<table>
   <tr>
     <td align="center" valign="center" colspan="2"><b>Concave Hull</td>
     <td align="center" valign="center"><b>Convex Hull</td>
@@ -346,7 +332,19 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center"></td>
     <td align="center" valign="center">A convex hull with some level of shape-feature snapping.</td>
   </tr>
+
+  <tr>
+    <td align="center" valign="center"><b>Shape Intersection</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/shapeIntersection.gif"></td>
+
+  </tr>
+    <tr>
+    <td align="center" valign="center">Find all points of intersection between a collection of line segments.</td>
+  </tr>
 </table>
+
 
 ## *Geometric Optimisation*
 

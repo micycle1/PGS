@@ -152,13 +152,13 @@ public class PGS_Processing {
 	}
 
 	/**
-	 * Calculate all the points of intersection between two shapes.
+	 * Computes all points of intersection between two shapes.
 	 * 
 	 * @param a one shape
-	 * @param b the other shape
+	 * @param b another shape
 	 * @return list of all intersecting points represented by PVectors
 	 */
-	public static List<PVector> shapeIntersections(PShape a, PShape b) {
+	public static List<PVector> shapeIntersection(PShape a, PShape b) {
 
 		final HashSet<PVector> points = new HashSet<>();
 
@@ -191,7 +191,7 @@ public class PGS_Processing {
 	 * @return A list of PVectors each representing the intersection point of a
 	 *         segment pair
 	 */
-	public static List<PVector> lineSegmentIntersections(List<PVector> lineSegments) {
+	public static List<PVector> lineSegmentsIntersection(List<PVector> lineSegments) {
 		final List<PVector> intersections = new ArrayList<>();
 		if (lineSegments.size() % 2 != 0) {
 			System.err.println("Error: detected an odd number of line segment vertices.");
