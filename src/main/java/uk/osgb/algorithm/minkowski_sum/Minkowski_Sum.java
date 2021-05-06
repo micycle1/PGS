@@ -26,10 +26,7 @@
 //
 package uk.osgb.algorithm.minkowski_sum;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Vector;
 
@@ -41,7 +38,6 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.MultiLineString;
-import org.locationtech.jts.geom.MultiPoint;
 import org.locationtech.jts.geom.MultiPolygon;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
@@ -64,13 +60,24 @@ import org.locationtech.jts.operation.union.CascadedPolygonUnion;
  * practical sense anyway).
  *
  * @author Sheng Zhou
- * @author small improvements by Michael Carleton
+ * @author Small improvements by Michael Carleton
  */
 public class Minkowski_Sum {
 
 	private static GeometryFactory gf = new GeometryFactory();
 
-	//
+	/**
+	 * Minkowski sum of two general geometries, computed without any presumption
+	 * 
+	 * @param src source geometry which might be
+	 *            polygon/multipolygon/linestring/multilinestring
+	 * @param ref reference geometry, which might be a polygon or a linestring
+	 * @return minkowski sum of src and ref (or an empty geometry)
+	 */
+	public static Geometry minkSum(Geometry src, Geometry ref) {
+		return minkSum(src, ref, false, false);
+	}
+
 	/*************************************************************
 	 * 
 	 * Minkowski Sum of a Polygon/MultiPolygon/LineString/MultiLineString and a
@@ -88,7 +95,7 @@ public class Minkowski_Sum {
 	 *                     polygon (e.g. for collision detection purpose).
 	 * @return the sum or an empty polygon (for un-supported types)
 	 */
-	public static Geometry compMinkSum(Geometry src, Geometry ref, boolean doReflection, boolean isRefConvex) {
+	public static Geometry minkSum(Geometry src, Geometry ref, boolean doReflection, boolean isRefConvex) {
 		if (src == null || ref == null) {
 			return gf.createPolygon();
 		}
@@ -125,68 +132,6 @@ public class Minkowski_Sum {
 	}
 
 	//
-	// trying out simulated multi-dispatch
-	//
-	/**
-	 * Minkowski sum of two general geometries, using simulated multi-dispatch
-	 * 
-	 * @param src          source geometry which might be
-	 *                     polygon/multipolygon/linestring/multilinestring
-	 * @param ref          reference geometry, which might be a polygon or a
-	 *                     linestring
-	 * @param doReflection If reflection over origin is performed first on reference
-	 *                     polygon (e.g. for collision detection purpose).
-	 * @param isRefConvex  if reference geometry is known to be convex, a small bit
-	 *                     of exter performance improvement may be achieved
-	 * @return minkowski sum of src and ref (or an empty geometry)
-	 */
-	public static Geometry minkSum(Geometry src, Geometry ref, Boolean doReflection, Boolean isRefConvex) {
-		if (src == null || ref == null) {
-			return gf.createPolygon();
-		}
-		try {
-			Class[] clzs = new Class[] { src.getClass(), ref.getClass(), Boolean.class, Boolean.class };
-			Object[] objs = new Object[] { src, ref, doReflection, isRefConvex };
-			Class clz = Class.forName("uk.osgb.algorithm.minkowski_sum.Minkowski_Sum");
-			Method m = clz.getDeclaredMethod("minkSum", clzs);
-
-			return (Geometry) m.invoke(clz, objs);
-
-		} catch (IllegalAccessException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IllegalArgumentException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (InvocationTargetException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (NoSuchMethodException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (SecurityException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (ClassNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		return src.getFactory().createPolygon(); // return an empty geometry
-	}
-
-	/**
-	 * Minkowski sum of two general geometries, computed without any presumption
-	 * 
-	 * @param src source geometry which might be
-	 *            polygon/multipolygon/linestring/multilinestring
-	 * @param ref reference geometry, which might be a polygon or a linestring
-	 * @return minkowski sum of src and ref (or an empty geometry)
-	 */
-	public static Geometry minkSum(Geometry src, Geometry ref) {
-		return minkSum(src, ref, false, false);
-	}
-
-	//
 	/**
 	 * @param src
 	 * @param ref
@@ -194,7 +139,7 @@ public class Minkowski_Sum {
 	 * @param isRefConvex
 	 * @return
 	 */
-	public static Geometry compMinkSumPoint(Point src, Geometry ref, boolean doReflection, boolean isRefConvex) {
+	private static Geometry compMinkSumPoint(Point src, Geometry ref, boolean doReflection, boolean isRefConvex) {
 		if (src.isEmpty() || ref.isEmpty()) {
 			return src.getFactory().createPolygon();
 		}
@@ -211,31 +156,6 @@ public class Minkowski_Sum {
 		return af.transform(ref);
 	}
 
-	public static Geometry compMinkSumMultiPoint(MultiPoint src, Geometry ref, boolean doReflection,
-			boolean isRefConvex) {
-		if (src.isEmpty() || ref.isEmpty()) {
-			return src.getFactory().createPolygon();
-		}
-		if (doReflection) {// for geometry symmetric on coordinate origin, the reflected geometry is the
-							// same as original
-			if (ref instanceof Polygon) {
-				ref = reflectionOrgPlg((Polygon) ref);
-			} else if (ref instanceof LineString || ref instanceof LinearRing) {
-				ref = reflectionOrgLS((LineString) ref);
-			}
-		}
-		Geometry sum = src.getFactory().createPolygon();
-		int numPt = src.getNumGeometries();
-		for (int i = 0; i < numPt; ++i) {
-			Point pt = (Point) src.getGeometryN(i);
-			AffineTransformation af = new AffineTransformation();
-			af.translate(pt.getX(), pt.getY());
-			Geometry geom = af.transform(ref);
-			sum = sum.union(geom);
-		}
-		return sum;
-	}
-
 	/**
 	 * Minkowski sum of two polygons. Any holes in reference polygon are ignored
 	 * 
@@ -249,7 +169,7 @@ public class Minkowski_Sum {
 	 *                     please use false)
 	 * @return
 	 */
-	public static Geometry compMinkSumPlgPlg(Polygon src, Polygon ref, boolean doReflection, boolean isRefConvex) {
+	private static Geometry compMinkSumPlgPlg(Polygon src, Polygon ref, boolean doReflection, boolean isRefConvex) {
 		if (src.isEmpty() || ref.isEmpty()) {
 			return src.getFactory().createPolygon();
 		}
@@ -261,7 +181,6 @@ public class Minkowski_Sum {
 		return compMinkSumPlg(src, refCoords, isRefConvex);
 	}
 
-	//
 	/**
 	 * Minkowski sum of a multipolygon and a polygon
 	 * 
@@ -274,8 +193,7 @@ public class Minkowski_Sum {
 	 *                     please use false)
 	 * @return
 	 */
-	public static Geometry compMinkSumMultiPlgPlg(MultiPolygon src, Polygon ref, boolean doReflection,
-			boolean isRefConvex) {
+	private static Geometry compMinkSumMultiPlgPlg(MultiPolygon src, Polygon ref, boolean doReflection, boolean isRefConvex) {
 		if (src.isEmpty() || ref.isEmpty()) {
 			return src.getFactory().createPolygon();
 		}
@@ -308,7 +226,7 @@ public class Minkowski_Sum {
 	 *                     calling this method.
 	 * @return
 	 */
-	public static Geometry compMinkSumPlgLS(Polygon src, LineString ref, boolean doReflection) {
+	private static Geometry compMinkSumPlgLS(Polygon src, LineString ref, boolean doReflection) {
 		if (src.isEmpty() || ref.isEmpty()) {
 			return src.getFactory().createPolygon();
 		}
@@ -316,19 +234,18 @@ public class Minkowski_Sum {
 							// same as original
 			ref = reflectionOrgLS(ref);
 		}
-		//
+
 		Coordinate[] refCoords = ref.getCoordinates();
 		return compMinkSumPlg(src, refCoords, false); // always treat LS ref as non-convex
 	}
 
-	//
 	/**
 	 * @param src
 	 * @param ref
 	 * @param doReflection
 	 * @return
 	 */
-	public static Geometry compMinkSumMultiPlgLS(MultiPolygon src, LineString ref, boolean doReflection) {
+	private static Geometry compMinkSumMultiPlgLS(MultiPolygon src, LineString ref, boolean doReflection) {
 		if (src.isEmpty() || ref.isEmpty()) {
 			return src.getFactory().createPolygon();
 		}
@@ -357,7 +274,7 @@ public class Minkowski_Sum {
 	 * @param isRefConvex
 	 * @return
 	 */
-	public static Geometry compMinkSumLSPlg(LineString src, Polygon ref, boolean doReflection, boolean isRefConvex) {
+	private static Geometry compMinkSumLSPlg(LineString src, Polygon ref, boolean doReflection, boolean isRefConvex) {
 		if (src.isEmpty() || ref.isEmpty()) {
 			return src.getFactory().createPolygon();
 		}
@@ -375,7 +292,7 @@ public class Minkowski_Sum {
 	 * @param doReflection
 	 * @return
 	 */
-	public static Geometry compMinkSumLSLS(LineString src, LineString ref, boolean doReflection) {
+	private static Geometry compMinkSumLSLS(LineString src, LineString ref, boolean doReflection) {
 		if (src.isEmpty() || ref.isEmpty()) {
 			return src.getFactory().createPolygon();
 		}
@@ -386,7 +303,7 @@ public class Minkowski_Sum {
 		Coordinate[] refCoords = ref.getCoordinates();
 		return compMinkSumLS(src, refCoords, false);
 
-	}//
+	}
 
 	/**
 	 * @param src
@@ -394,7 +311,7 @@ public class Minkowski_Sum {
 	 * @param doReflection
 	 * @return
 	 */
-	public static Geometry compMinkSumMultiLSLS(MultiLineString src, LineString ref, boolean doReflection) {
+	private static Geometry compMinkSumMultiLSLS(MultiLineString src, LineString ref, boolean doReflection) {
 		if (src.isEmpty() || ref.isEmpty()) {
 			return src.getFactory().createPolygon();
 		}
@@ -424,8 +341,7 @@ public class Minkowski_Sum {
 	 * @param isRefConvex
 	 * @return
 	 */
-	public static Geometry compMinkSumMultiLSPlg(MultiLineString src, Polygon ref, boolean doReflection,
-			boolean isRefConvex) {
+	private static Geometry compMinkSumMultiLSPlg(MultiLineString src, Polygon ref, boolean doReflection, boolean isRefConvex) {
 		if (src.isEmpty() || ref.isEmpty()) {
 			return src.getFactory().createPolygon();
 		}
@@ -457,8 +373,7 @@ public class Minkowski_Sum {
 	 * @param isRefConvex
 	 * @return
 	 */
-	public static Geometry compMinkSumGeometryCollection(GeometryCollection src, Geometry ref, boolean doReflection,
-			boolean isRefConvex) {
+	private static Geometry compMinkSumGeometryCollection(GeometryCollection src, Geometry ref, boolean doReflection, boolean isRefConvex) {
 		if (src.isEmpty() || ref.isEmpty()) {
 			return src.getFactory().createPolygon();
 		}
@@ -475,9 +390,7 @@ public class Minkowski_Sum {
 		}
 		return rlt;
 	}
-	//
 
-	//
 	/**
 	 * Minkowski sum between a linestring and a reference array of coordinates,
 	 * assuming src is not null or emtpy (handled elsewehere)
@@ -514,7 +427,7 @@ public class Minkowski_Sum {
 		final Coordinate[] extCoords = extRing.getCoordinates();
 		Geometry extSum = expansionShell(gf.createPolygon(extCoords), refCoords, isRefConvex);
 		if (extSum == null) {
-			return getGeometryFactory().createEmpty(2); // rather than return null
+			return gf.createEmpty(2); // rather than return null
 		}
 		final int numHoles = src.getNumInteriorRing();
 		if (numHoles > 0) {
@@ -590,7 +503,7 @@ public class Minkowski_Sum {
 			return gf.createPolygon(shell.getCoordinates());
 		}
 	}
-	//
+
 	/******************************************************************
 	 * 
 	 * Minkowski Difference between Polygon/MultiPolygon and Polyon/LineString
@@ -598,41 +511,6 @@ public class Minkowski_Sum {
 	 * 
 	 *****************************************************************/
 
-	//
-	// trying out simulated multi-dispatch. Pity Java does not support it
-	// internally:( still has to support all subclasses manually
-	// if src is not empty and ref is emtpy, the difference is src; if src is empty
-	// and ref is not empty, the difference is an empty set
-	// Miknowski
-	/**
-	 * @param src
-	 * @param ref
-	 * @param isRefSymmetric if the reference geometry is symmetric over origin, it
-	 *                       is not necessary to do the reflection
-	 * @param isRefConvex
-	 * @return
-	 */
-	public static Geometry minkDiff(Geometry src, Geometry ref, Boolean isRefSymmetric, Boolean isRefConvex) {
-		if (src == null) {
-			return gf.createPolygon();
-		} else if (ref == null) {
-			return src;
-		}
-		try {
-			Class[] clzs = new Class[] { src.getClass(), ref.getClass(), Boolean.class, Boolean.class };
-			Object[] objs = new Object[] { src, ref, isRefSymmetric, isRefConvex };
-			Class clz = Class.forName("uk.osgb.algorithm.minkowski_sum.Minkowski_Sum");
-			Method m = clz.getDeclaredMethod("minkDiff", clzs);
-
-			return (Geometry) m.invoke(clz, objs);
-		} catch (Exception e) {
-
-		}
-		// return src.getFactory().createPolygon(null, null);
-		return src.getFactory().createPolygon();
-	}
-
-	//
 	public static Geometry minkDiff(Geometry src, Geometry ref) {
 		return minkDiff(src, ref, false, false);
 	}
@@ -647,7 +525,7 @@ public class Minkowski_Sum {
 	 * @param isRefConvex
 	 * @return null (not implemented yet)
 	 */
-	public static Geometry compMinkDiff(Geometry src, Geometry ref, boolean isRefSymmetric, boolean isRefConvex) {
+	public static Geometry minkDiff(Geometry src, Geometry ref, boolean isRefSymmetric, boolean isRefConvex) {
 		if (src == null) {
 			return gf.createPolygon();
 		} else if (ref == null) {
@@ -678,7 +556,6 @@ public class Minkowski_Sum {
 		}
 	}
 
-	//
 	/**
 	 * Minkowski difference of polygon (may contain holes) and reference geometry,
 	 * using difference between minkDiff(exterior ring) and minkSum(holes)
@@ -692,11 +569,7 @@ public class Minkowski_Sum {
 		if (src.isEmpty()) {
 			return src;
 		}
-		boolean isRefRing = false;
-		if (refCoords[0].equals2D(refCoords[refCoords.length - 1])) { // reference is a linear ring so isRefConvex is
-																		// considered
-			isRefRing = true;
-		}
+
 		// bufferring exterior ring of source geometry
 		LineString extRing = src.getExteriorRing();
 		Geometry extDiff = shrinkHole(gf.createPolygon(extRing.getCoordinates()), refCoords, isRefConvex);
@@ -800,7 +673,7 @@ public class Minkowski_Sum {
 	 *        will improve performance and robustness.
 	 * @return
 	 */
-	public static Geometry compMinkDiffPlgPlg(Polygon src, Polygon ref, boolean isRefSymmetric, boolean isRefConvex) {
+	private static Geometry compMinkDiffPlgPlg(Polygon src, Polygon ref, boolean isRefSymmetric, boolean isRefConvex) {
 		if (!isRefSymmetric) {// for geometry symmetric over coordinate origin, the reflected geometry is the
 								// same as original
 			ref = reflectionOrgPlg(ref);
@@ -815,7 +688,7 @@ public class Minkowski_Sum {
 	 * @param doReflection
 	 * @return
 	 */
-	public static Geometry compMinkDiffPlgLS(Polygon src, LineString ref, boolean isRefSymmetric) {
+	private static Geometry compMinkDiffPlgLS(Polygon src, LineString ref, boolean isRefSymmetric) {
 		if (!isRefSymmetric) {// for geometry symmetric over coordinate origin, the reflected geometry is the
 								// same as original
 			ref = reflectionOrgLS(ref);
@@ -831,8 +704,7 @@ public class Minkowski_Sum {
 	 * @param isRefConvex
 	 * @return
 	 */
-	public static Geometry compMinkDiffMultiPlgPlg(MultiPolygon src, Polygon ref, boolean isRefSymmetric,
-			boolean isRefConvex) {
+	private static Geometry compMinkDiffMultiPlgPlg(MultiPolygon src, Polygon ref, boolean isRefSymmetric, boolean isRefConvex) {
 		if (!isRefSymmetric) {// for geometry symmetric over coordinate origin, the reflected geometry is the
 								// same as original
 			ref = reflectionOrgPlg(ref);
@@ -855,14 +727,13 @@ public class Minkowski_Sum {
 		return rlt;
 	}
 
-	//
 	/**
 	 * @param src
 	 * @param ref
 	 * @param doReflection
 	 * @return
 	 */
-	public static Geometry compMinkDiffMultiPlgLS(MultiPolygon src, LineString ref, boolean isRefSymmetric) {
+	private static Geometry compMinkDiffMultiPlgLS(MultiPolygon src, LineString ref, boolean isRefSymmetric) {
 		if (!isRefSymmetric) {// for geometry symmetric over coordinate origin, the reflected geometry is the
 								// same as original
 			ref = reflectionOrgLS(ref);
@@ -886,8 +757,7 @@ public class Minkowski_Sum {
 	}
 
 	//
-	public static Geometry compMinkDiffGeometryCollection(GeometryCollection src, Geometry ref,
-			boolean isRefSymmetric) {
+	private static Geometry compMinkDiffGeometryCollection(GeometryCollection src, Geometry ref, boolean isRefSymmetric) {
 		Geometry rlt = null;
 		int numParts = src.getNumGeometries();
 		for (int i = 0; i < numParts; ++i) {
@@ -905,48 +775,20 @@ public class Minkowski_Sum {
 		}
 		return rlt;
 	}
-	//
-	/***************************************************************
-	 * 
-	 * auxiliary methods
-	 * 
-	 * 
-	 ***************************************************************/
 
-	//
-	/**
-	 * Get all holes in plg as LinearRing and put them into holeCol.
-	 * 
-	 * @param plg
-	 * @param holeCol
-	 * @return
-	 */
-	public static int getHoles(Polygon plg, Collection<LinearRing> holeCol) {
-		int numHoles = plg.getNumInteriorRing();
-		if (numHoles > 0) {
-			for (int i = 0; i < numHoles; ++i) {
-				LinearRing ring = plg.getFactory().createLinearRing(plg.getInteriorRingN(i).getCoordinates());
-				holeCol.add(ring);
-			}
-		}
-		return numHoles;
-	}
-
-	//
 	/**
 	 * @param plg
 	 * @return
 	 */
-	public static LinearRing getShellRing(Polygon plg) {
+	private static LinearRing getShellRing(Polygon plg) {
 		return plg.getFactory().createLinearRing(plg.getExteriorRing().getCoordinates());
 	}
 
-	//
 	/**
 	 * @param plg
 	 * @return
 	 */
-	public static LinearRing[] getHoles(Polygon plg) {
+	private static LinearRing[] getHoles(Polygon plg) {
 		int numHoles = plg.getNumInteriorRing();
 		if (numHoles > 0) {
 			LinearRing[] holes = new LinearRing[numHoles];
@@ -959,73 +801,13 @@ public class Minkowski_Sum {
 		}
 	}
 
-	//
-	/**
-	 * @param mulPlg
-	 * @return
-	 */
-	public static LinearRing[] getHoles(MultiPolygon mulPlg) {
-		int numPlg = mulPlg.getNumGeometries();
-		if (numPlg > 0) {
-			Vector<LinearRing> holes = new Vector<LinearRing>();
-			for (int i = 0; i < numPlg; ++i) {
-				Polygon plg = (Polygon) mulPlg.getGeometryN(i);
-				getHoles(plg, holes);
-			}
-			if (holes.size() > 0) {
-				LinearRing[] rlt = new LinearRing[holes.size()];
-				holes.toArray(rlt);
-				return rlt;
-			} else {
-				return null;
-			}
-		}
-		return null;
-	}
-
-	//
-	/**
-	 * @param mulPlg
-	 * @return
-	 */
-	public static LinearRing[] getShellRings(MultiPolygon mulPlg) {
-		int numPlg = mulPlg.getNumGeometries();
-		if (numPlg > 0) {
-			LinearRing[] shells = new LinearRing[numPlg];
-			for (int i = 0; i < numPlg; ++i) {
-				Polygon plg = (Polygon) mulPlg.getGeometryN(i);
-				shells[i] = mulPlg.getFactory().createLinearRing(plg.getExteriorRing().getCoordinates());
-			}
-			return shells;
-		} else {
-			return null;
-		}
-	}
-
-	/**
-	 * treat geom as a set of vectors P, generate -P and return the geometry
-	 * constructed from -P
-	 * 
-	 * @param geom the geometry (Polygon, LineString or LinearRing only at present)
-	 * @return reflected geometry (null if type is not supported yet)
-	 */
-	public static Geometry reflectionOrgGeom(Geometry geom) {
-		if (geom instanceof Polygon) {
-			return reflectionOrgPlg((Polygon) geom);
-		} else if (geom instanceof LineString || geom instanceof LinearRing) {
-			return reflectionOrgLS((LineString) geom);
-		}
-		return null;
-	}
-
-	//
 	/**
 	 * Symmetry of JTS polygon with respect to coordinate origin
 	 * 
 	 * @param plg
 	 * @return
 	 */
-	public static Polygon reflectionOrgPlg(Polygon plg) {
+	private static Polygon reflectionOrgPlg(Polygon plg) {
 		Coordinate[] extNeg = reflectionOrgCoordArray(plg.getExteriorRing().getCoordinates());
 		GeometryFactory gf = plg.getFactory();
 		int numHoles = plg.getNumInteriorRing();
@@ -1041,7 +823,7 @@ public class Minkowski_Sum {
 		}
 	}
 
-	public static LineString reflectionOrgLS(LineString ls) {
+	private static LineString reflectionOrgLS(LineString ls) {
 		Coordinate[] coordsNeg = reflectionOrgCoordArray(ls.getCoordinates());
 		return ls.getFactory().createLineString(coordsNeg);
 	}
@@ -1052,7 +834,7 @@ public class Minkowski_Sum {
 	 * @param coords
 	 * @return
 	 */
-	public static Coordinate[] reflectionOrgCoordArray(Coordinate[] coords) {
+	private static Coordinate[] reflectionOrgCoordArray(Coordinate[] coords) {
 		if (coords != null && coords.length > 0) {
 			Coordinate[] coordsNeg = new Coordinate[coords.length];
 			for (int i = 0; i < coords.length; ++i) {
@@ -1078,8 +860,8 @@ public class Minkowski_Sum {
 	 *                    polygon is convex, the computation is simplier and robust
 	 * @return
 	 */
-	public static Polygon segPlgAddition(Coordinate[] refCoords, Coordinate segSp, Coordinate segEp,
-			boolean isRefConvex, GeometryFactory gf) {
+	private static Polygon segPlgAddition(Coordinate[] refCoords, Coordinate segSp, Coordinate segEp, boolean isRefConvex,
+			GeometryFactory gf) {
 		if (isRefConvex) {
 			int numCoord = refCoords.length;
 			Coordinate[] coords = new Coordinate[numCoord * 2];
@@ -1124,8 +906,7 @@ public class Minkowski_Sum {
 	 * @param segEp
 	 * @return the sum (may be an emtpy polygon)
 	 */
-	public static Polygon segLSAddition(Coordinate segSp, Coordinate segEp, Coordinate[] refCoords,
-			GeometryFactory gf) {
+	private static Polygon segLSAddition(Coordinate segSp, Coordinate segEp, Coordinate[] refCoords, GeometryFactory gf) {
 		int numPts = refCoords.length;
 		List<Polygon> parts = new ArrayList<>();
 		for (int i = 0; i < numPts - 1; ++i) {
@@ -1151,8 +932,7 @@ public class Minkowski_Sum {
 	 * @param refEp
 	 * @return a polygon (empty polygon if the sum is 0D or 1D)
 	 */
-	private static Polygon segVectorAddition(Coordinate segSp, Coordinate segEp, Coordinate refSp, Coordinate refEp,
-			GeometryFactory gf) {
+	private static Polygon segVectorAddition(Coordinate segSp, Coordinate segEp, Coordinate refSp, Coordinate refEp, GeometryFactory gf) {
 		Coordinate[] coords = new Coordinate[4];
 		coords[0] = new Coordinate(refSp.x + segSp.x, refSp.y + segSp.y);
 		coords[1] = new Coordinate(refEp.x + segSp.x, refEp.y + segSp.y);
@@ -1177,8 +957,8 @@ public class Minkowski_Sum {
 	 * @param isRefConvex  whether the reference polygon is convex
 	 * @return
 	 */
-	private static Geometry coordArrayVectorAddition(Coordinate[] geomCoords, Coordinate[] refPlgCoords,
-			boolean isRefConvex, GeometryFactory gf) {
+	private static Geometry coordArrayVectorAddition(Coordinate[] geomCoords, Coordinate[] refPlgCoords, boolean isRefConvex,
+			GeometryFactory gf) {
 		List<Polygon> parts = new ArrayList<>();
 		for (int j = 0; j < geomCoords.length - 1; ++j) {
 			Coordinate segSp = geomCoords[j];
@@ -1203,8 +983,7 @@ public class Minkowski_Sum {
 	 *                   or a closed lienarring
 	 * @return
 	 */
-	public static Geometry coordArrayVectorAddition(Coordinate[] geomCoords, Coordinate[] refCoords,
-			GeometryFactory gf) {
+	private static Geometry coordArrayVectorAddition(Coordinate[] geomCoords, Coordinate[] refCoords, GeometryFactory gf) {
 		int numPts = refCoords.length;
 		if (refCoords[0].equals2D(refCoords[numPts - 1])) { // linear ring
 			return coordArrayVectorAddition(geomCoords, refCoords, false, gf);
@@ -1223,30 +1002,6 @@ public class Minkowski_Sum {
 		return CascadedPolygonUnion.union(parts);
 	}
 
-	/**
-	 * @param original
-	 * @return
-	 */
-	public static Coordinate[] deepCloneCoordArray(Coordinate[] original) {
-		if (original != null && original.length > 0) {
-			Coordinate[] dup = new Coordinate[original.length];
-			for (int i = 0; i < original.length; ++i) {
-				dup[i] = (Coordinate) original[i].clone();
-			}
-			return dup;
-		}
-		return null;
-	}
-
-	/**
-	 * @return the geometry factory used to build geometry object in Minkowski
-	 *         sum/difference computation.
-	 */
-	public static GeometryFactory getGeometryFactory() {
-		return gf;
-	}
-
-	//
 	public static void setGeometryFactory(GeometryFactory geomFactory) {
 		gf = geomFactory;
 	}

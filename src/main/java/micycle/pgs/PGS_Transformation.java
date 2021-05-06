@@ -40,9 +40,10 @@ public class PGS_Transformation {
 	 * @return
 	 */
 	public static PShape scale(PShape shape, double scale) {
-		Coordinate c = fromPShape(shape).getCentroid().getCoordinate();
+		Geometry g = fromPShape(shape);
+		Coordinate c = g.getCentroid().getCoordinate();
 		AffineTransformation t = AffineTransformation.scaleInstance(scale, scale, c.x, c.y);
-		return toPShape(t.transform(fromPShape(shape)));
+		return toPShape(t.transform(g));
 	}
 
 	/**
@@ -54,15 +55,18 @@ public class PGS_Transformation {
 	 * @return
 	 */
 	public static PShape scale(PShape shape, double scaleX, double scaleY) {
-		AffineTransformation t = AffineTransformation.scaleInstance(scaleX, scaleY);
-		return toPShape(t.transform(fromPShape(shape)));
+		Geometry g = fromPShape(shape);
+		Point c = g.getCentroid();
+		AffineTransformation t = AffineTransformation.scaleInstance(scaleX, scaleY, c.getX(), c.getY());
+		return toPShape(t.transform(g));
 	}
 
 	/**
-	 * Resizes a shape (based on its envelope) to the given dimensions. The output is repositioned to (0, 0).
+	 * Resizes a shape (based on its envelope) to the given dimensions. The output
+	 * is repositioned to (0, 0).
 	 * 
 	 * @param shape
-	 * @param targetWidth width of the output copy
+	 * @param targetWidth  width of the output copy
 	 * @param targetHeight height of the output copy
 	 * @return resized copy of input
 	 */
@@ -71,7 +75,7 @@ public class PGS_Transformation {
 		targetHeight = Math.max(targetHeight, 0.001);
 		Geometry geometry = fromPShape(shape);
 		Envelope e = geometry.getEnvelopeInternal();
-		
+
 		AffineTransformation t = AffineTransformation.scaleInstance(targetWidth / e.getWidth(), targetHeight / e.getHeight());
 		return translateToOrigin(toPShape(t.transform(geometry)));
 	}
@@ -162,8 +166,8 @@ public class PGS_Transformation {
 	}
 
 	/**
-	 * Translates a shape such that the top-left corner of its bounding box is at (0,
-	 * 0) (in Processing coordinates).
+	 * Translates a shape such that the top-left corner of its bounding box is at
+	 * (0, 0) (in Processing coordinates).
 	 * 
 	 * @param shape
 	 * @return translated copy of input

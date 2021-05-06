@@ -4,6 +4,7 @@ import static micycle.pgs.PGS.GEOM_FACTORY;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
@@ -43,21 +44,12 @@ public class PGS_Conversion implements PConstants {
 	 * @param source PShape to copy fill/stroke details from
 	 * @return
 	 */
-	public static PShape toPShape(final Geometry g) { // , final PShape source
-		// TODO use source fill, stroke etc, when creating new PShape
-
+	public static PShape toPShape(final Geometry g) {
 		if (g == null) {
 			return new PShape(PShape.GEOMETRY);
 		}
 
 		PShape shape = new PShape();
-
-//		if (!(shape.getFamily() == GROUP || shape.getFamily() == PShape.PRIMITIVE) && shape.getVertexCount() > 0) {
-//			// shape.setStrokeWeight(source.getStrokeWeight(0));
-//			// shape.setStroke(source.stroke);
-//			// shape.setFill(source.getFill(0));
-//		} else {
-//		}
 		shape.setFill(true);
 		shape.setFill(micycle.pgs.color.RGB.WHITE);
 		shape.setStroke(true);
@@ -123,6 +115,23 @@ public class PGS_Conversion implements PConstants {
 				break;
 		}
 
+		return shape;
+	}
+	
+	/**
+	 * Converts a collection of JTS Geometries to an equivalent GROUP PShape.
+	 */
+	public static PShape toPShape(Collection<Geometry> geometries) {
+		System.out.println(geometries.size());
+		PShape shape = new PShape(GROUP);
+		shape.setFill(true);
+		shape.setFill(micycle.pgs.color.RGB.WHITE);
+		shape.setStroke(true);
+		shape.setStroke(micycle.pgs.color.RGB.PINK);
+		shape.setStrokeWeight(4);
+		
+		geometries.forEach(g -> shape.addChild(toPShape(g)));
+		
 		return shape;
 	}
 

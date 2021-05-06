@@ -1,6 +1,6 @@
 package micycle.pgs;
 
-import static micycle.pgs.PGS.CURVE_SAMPLES;
+import static micycle.pgs.PGS.SHAPE_SAMPLES;
 import static micycle.pgs.PGS.GEOM_FACTORY;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
@@ -26,7 +26,8 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Solve geometric optimisation problems, such as bounding volumes, inscribed areas, optimal distances, etc.
+ * Solve geometric optimisation problems, such as bounding volumes, inscribed
+ * areas, optimal distances, etc.
  * 
  * @author Michael Carleton
  *
@@ -37,8 +38,7 @@ public class PGS_Optimisation {
 	}
 
 	/**
-	 * Computes the shape's envelope. The envelope represents the bounding box of
-	 * the shape.
+	 * Computes the shape's envelope (bounding box).
 	 * 
 	 * @param shape
 	 * @return
@@ -60,7 +60,7 @@ public class PGS_Optimisation {
 		MaximumInscribedCircle mic = new MaximumInscribedCircle(fromPShape(shape), tolerance);
 
 		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-		shapeFactory.setNumPoints(CURVE_SAMPLES * 4); // TODO magic constant
+		shapeFactory.setNumPoints(SHAPE_SAMPLES);
 		shapeFactory.setCentre(new Coordinate(mic.getCenter().getX(), mic.getCenter().getY()));
 		shapeFactory.setWidth(mic.getRadiusLine().getLength() * 2); // r*2 for total width & height
 		shapeFactory.setHeight(mic.getRadiusLine().getLength() * 2); // r*2 for total width & height
@@ -82,7 +82,7 @@ public class PGS_Optimisation {
 
 		double radius = PGS.distance(GEOM_FACTORY.createPoint(closestEdgePoint), p);
 		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-		shapeFactory.setNumPoints(CURVE_SAMPLES * 4); // TODO magic constant
+		shapeFactory.setNumPoints(SHAPE_SAMPLES);
 		shapeFactory.setCentre(p.getCoordinate());
 		shapeFactory.setWidth(radius * 2); // r*2 for total width & height
 		shapeFactory.setHeight(radius * 2); // r*2 for total width & height
@@ -124,7 +124,7 @@ public class PGS_Optimisation {
 	public static PShape minimumBoundingCircle(PShape shape) {
 		MinimumBoundingCircle mbc = new MinimumBoundingCircle(fromPShape(shape));
 		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-		shapeFactory.setNumPoints(CURVE_SAMPLES * 4); // TODO magic constant
+		shapeFactory.setNumPoints(SHAPE_SAMPLES);
 		shapeFactory.setCentre(new Coordinate(mbc.getCentre().getX(), mbc.getCentre().getY()));
 		shapeFactory.setWidth(mbc.getRadius() * 2); // r*2 for total width & height
 		shapeFactory.setHeight(mbc.getRadius() * 2); // r*2 for total width & height
@@ -148,13 +148,13 @@ public class PGS_Optimisation {
 	 * Computes the minimum bounding ellipse that encloses a shape.
 	 * 
 	 * @param shape
-	 * @param tolerance 0.001 to 0.01 recommended. Higher values are a looser (yet
-	 *                  quicker) fit.
+	 * @param errorTolerance Mean-squared error tolerance (this value does not
+	 *                       correspond to a pixel distance). 0.001 to 0.01
+	 *                       recommended. Higher values are a looser (yet quicker)
+	 *                       fit.
 	 * @return
 	 */
-	public static PShape minimumBoundingEllipse(PShape shape, double tolerance) {
-		// TODO investigate: calc mbc then squeeze until touches (squeeze perpendicular
-		// to span line?)
+	public static PShape minimumBoundingEllipse(PShape shape, double errorTolerance) {
 		final Geometry hull = fromPShape(shape).convexHull();
 		final Coordinate[] coords = hull.getCoordinates();
 
@@ -164,7 +164,7 @@ public class PGS_Optimisation {
 			points[i][1] = coords[i].y;
 		}
 
-		final MinimumBoundingEllipse e = new MinimumBoundingEllipse(points, Math.max(tolerance, 0.001));
+		final MinimumBoundingEllipse e = new MinimumBoundingEllipse(points, Math.max(errorTolerance, 0.001));
 		double[][] eEoords = e.getBoundingCoordinates(100);
 
 		final PShape ellipse = new PShape(PShape.PATH);
@@ -216,7 +216,8 @@ public class PGS_Optimisation {
 	 * @param shape
 	 * @param point
 	 * @return list of closest points for each child shape. Output is identical to
-	 *         {@link #closestPoint(PShape, PVector)} if the input shape
+	 *         {@link #closestPoint(PShape, PVector)} if the input shape is a single
+	 *         polygon
 	 * @see #closestPoint(PShape, PVector)
 	 */
 	public static List<PVector> closestPoints(PShape shape, PVector point) {

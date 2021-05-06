@@ -160,7 +160,6 @@ public class PGS_Triangulation {
 		final ArrayList<Vertex> vertices = new ArrayList<>();
 		Coordinate[] coords = g.getCoordinates();
 		for (int i = 0; i < coords.length; i++) {
-//			PVector v = shape.getVertex(i);
 			vertices.add(new Vertex(coords[i].x, coords[i].y, 0));
 		}
 
@@ -273,12 +272,12 @@ public class PGS_Triangulation {
 
 		PShape triangulation = new PShape();
 		triangulation.setFamily(PShape.GEOMETRY);
-		// triangulation.setStrokeCap(ROUND);
 		triangulation.setStroke(true);
 		triangulation.setStrokeWeight(2);
 		triangulation.setStroke(RGB.PINK);
 		triangulation.setFill(true);
 		triangulation.setFill(micycle.pgs.color.RGB.composeColor(255, 255, 255, 255));
+		
 		triangulation.beginShape(TRIANGLES);
 		for (int i = 0; i < triangles.size(); i += 3) {
 			final int v1 = 2 * triangles.get(i);
@@ -289,6 +288,7 @@ public class PGS_Triangulation {
 			triangulation.vertex((float) arrCoords[v3], (float) arrCoords[v3 + 1]);
 		}
 		triangulation.endShape();
+		
 		return triangulation;
 	}
 

@@ -7,7 +7,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-import org.geotools.geometry.jts.JTS;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -28,7 +27,8 @@ import processing.core.PVector;
  */
 class PGS {
 
-	protected static final int CURVE_SAMPLES = 20;
+	/** Defines number of vertices that comprise constructed geometries. */
+	protected static final int SHAPE_SAMPLES = 80;
 
 	public static final GeometryFactory GEOM_FACTORY = new GeometryFactory(new PrecisionModel(PrecisionModel.FLOATING_SINGLE));
 
@@ -140,10 +140,6 @@ class PGS {
 		}
 
 		return (area < 0);
-	}
-
-	private static void removeCollinearVertices(Geometry g) {
-		JTS.removeCollinearVertices(g);
 	}
 
 	/**

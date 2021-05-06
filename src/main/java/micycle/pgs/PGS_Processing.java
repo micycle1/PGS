@@ -5,6 +5,7 @@ import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -33,6 +34,7 @@ import org.locationtech.jts.noding.SegmentIntersector;
 import org.locationtech.jts.noding.SegmentString;
 import org.locationtech.jts.noding.SegmentStringUtil;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
+import org.locationtech.jts.operation.union.CascadedPolygonUnion;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.shape.random.RandomPointsBuilder;
 import org.locationtech.jts.shape.random.RandomPointsInGridBuilder;
@@ -91,7 +93,7 @@ public class PGS_Processing {
 	 */
 	public static PVector pointOnExterior(PShape shape, double distance, double offsetDistance) {
 		distance %= 1;
-		// TODO CHECK CAST (ITERATE OVER GROUP); apply to interior rings too?
+		// NOTE cast to polygon
 		LengthIndexedLine l = new LengthIndexedLine(((Polygon) fromPShape(shape)).getExteriorRing());
 		Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
 		return new PVector((float) coord.x, (float) coord.y);
@@ -283,12 +285,12 @@ public class PGS_Processing {
 	 * @param polygon
 	 * @return
 	 */
-	public static PShape removeSmallHoles(PShape shape, double area) {
+	public static PShape removeSmallHoles(PShape shape, double areaThreshold) {
 		Polygon polygon = (Polygon) fromPShape(shape);
 		Polygon noHolePol = PGS.GEOM_FACTORY.createPolygon(polygon.getExteriorRing());
 		for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
 			LinearRing hole = polygon.getInteriorRingN(i);
-			if (hole.getArea() < area) {
+			if (hole.getArea() < areaThreshold) {
 				continue;
 			}
 			noHolePol = (Polygon) noHolePol.difference(hole);
@@ -297,21 +299,31 @@ public class PGS_Processing {
 	}
 
 	/**
-	 * Computes the convex hull of multiple PShapes.
+	 * Computes the convex hull of multiple shapes.
 	 * 
 	 * @param shapes
 	 * @return
+	 * @see #convexHull(PShape...)
 	 */
-	public static PShape convexHull(PShape... shapes) {
-		Geometry g = fromPShape(shapes[0]);
-		for (int i = 1; i < shapes.length; i++) {
-			g = g.union(fromPShape(shapes[i])); // TODO slow for many
-		}
-		return toPShape(g.convexHull());
+	public static PShape convexHull(List<PShape> shapes) {
+		Collection<Polygon> polygons = new ArrayList<Polygon>();
+		shapes.forEach(s -> polygons.add((Polygon) fromPShape(s)));
+		return toPShape(CascadedPolygonUnion.union(polygons).convexHull());
 	}
 
 	/**
-	 * Uses Chi heurstic
+	 * Computes the convex hull of multiple shapes.
+	 * 
+	 * @param shapes varArgs
+	 * @return
+	 * @see #convexHull(List)
+	 */
+	public static PShape convexHull(PShape... shapes) {
+		return convexHull(Arrays.asList(shapes));
+	}
+
+	/**
+	 * Computes the concave hull of a point set.
 	 * 
 	 * @param points
 	 * @param threshold euclidean distance threshold
@@ -340,8 +352,8 @@ public class PGS_Processing {
 	}
 
 	/**
-	 * Computes the concave hull of a shape using a different algorithm. Has a more
-	 * "organic" structure compared to other concave method.
+	 * Computes the concave hull of a point set using a different algorithm. This
+	 * approach has a more "organic" structure compared to other concave method.
 	 * 
 	 * @param points
 	 * @param threshold 0...1 (Normalized length parameter). Setting λP = 1 means
@@ -385,7 +397,6 @@ public class PGS_Processing {
 
 		Geometry g = PGS.GEOM_FACTORY.createPolygon(coords);
 
-		// TODO test AVG threshold heuristic
 		org.geodelivery.jap.concavehull.ConcaveHull hull = new org.geodelivery.jap.concavehull.ConcaveHull(threshold);
 
 		return toPShape(hull.transform(g));

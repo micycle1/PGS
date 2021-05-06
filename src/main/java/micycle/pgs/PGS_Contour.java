@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.dissolve.LineDissolver;
 import org.locationtech.jts.geom.Coordinate;
@@ -21,7 +22,6 @@ import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.locationtech.jts.operation.buffer.BufferOp;
 import org.locationtech.jts.operation.buffer.BufferParameters;
-import org.locationtech.jts.operation.linemerge.LineMerger;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.tinfour.common.Vertex;
 import org.tinfour.contour.Contour;
@@ -46,13 +46,13 @@ import processing.core.PVector;
 /**
  * Methods that produce a variety of methods for producing different kinds of
  * shape contours.
- * 
+ *
  * <p>
  * A 2D contour is a closed sequence (a cycle) of 3 or more connected 2D
  * oriented straight line segments called contour edges. The endpoints of the
  * contour edges are called vertices. Each contour edge shares its endpoints
  * with at least two other contour edges.
- * 
+ *
  * @author Michael Carleton
  *
  */
@@ -69,7 +69,7 @@ public class PGS_Contour {
 	/**
 	 * Computes the medial axis of the given shape. The 3 parameters can be used to
 	 * prune the medial axis according to different features (at the same time).
-	 * 
+	 *
 	 * @param shape
 	 * @param axialThreshold    Prune edges based on their axial gradient. The axial
 	 *                          gradient measures the change in the width of the
@@ -102,7 +102,7 @@ public class PGS_Contour {
 	/**
 	 * Roughly, it is the geometric graph whose edges are the traces of vertices of
 	 * shrinking mitered offset curves of the polygon
-	 * 
+	 *
 	 * @param shape
 	 * @param p
 	 * @return shape with two children: one child contains bones; one contains
@@ -216,7 +216,7 @@ public class PGS_Contour {
 	/**
 	 * An alternative straight skeleton implementation. Not robust, but fast. Does
 	 * not support holes.
-	 * 
+	 *
 	 * @param shape a hull
 	 * @return shape with two children: one child contains bones; one contains
 	 *         branches
@@ -267,7 +267,7 @@ public class PGS_Contour {
 	 * <p>
 	 * Assigns each point feature a number equal to the distance between geometry's
 	 * centroid and the point.
-	 * 
+	 *
 	 * @param shape
 	 * @param highPoint       position of "high" point within the shape
 	 * @param intervalSpacing distance between successive isolines
@@ -290,7 +290,7 @@ public class PGS_Contour {
 		final int buffer = (int) Math.max(10, Math.round(intervalSpacing) + 1);
 		PreparedGeometry cache = PreparedGeometryFactory.prepare(g.buffer(10));
 
-		final List<Vertex> tinVertices = new ArrayList<Vertex>(200);
+		final List<Vertex> tinVertices = new ArrayList<>(200);
 		double maxDist = 0;
 
 		/**
@@ -337,7 +337,6 @@ public class PGS_Contour {
 		parent.setKind(PConstants.GROUP);
 
 		LineDissolver ld = new LineDissolver();
-		int q = 0;
 		for (org.tinfour.contour.Contour contour : contours) {
 			Coordinate[] coords = new Coordinate[contour.getCoordinates().length / 2];
 			for (int i = 0; i < contour.getCoordinates().length; i += 2) {
@@ -366,12 +365,13 @@ public class PGS_Contour {
 	 * Generates a topographic-like isoline contour map from the given points. This
 	 * method uses the Z value of each PVector point as the "elevation" of that
 	 * location in the map.
-	 * 
+	 *
 	 * @param points               List of PVectors: the z coordinate for each
 	 *                             PVector defines the contour height at that
 	 *                             location
 	 * @param intervalValueSpacing contour height distance represented by successive
-	 *                             isolines (e.g. a value of 1 will generate isolines at each 1 unit of height)
+	 *                             isolines (e.g. a value of 1 will generate
+	 *                             isolines at each 1 unit of height)
 	 * @param isolineMin           minimum value represented by isolines
 	 * @param isolineMax           maximum value represented by isolines
 	 * @return a map of {isoline -> height of the isoline}
@@ -379,16 +379,14 @@ public class PGS_Contour {
 	public static Map<PShape, Float> isolines(List<PVector> points, double intervalValueSpacing, double isolineMin, double isolineMax) {
 		// lines = max-min/spacing
 		final IncrementalTin tin = new IncrementalTin(10);
-		points.forEach(point -> {
-			tin.add(new Vertex(point.x, point.y, point.z));
-		});
+		points.forEach(point -> tin.add(new Vertex(point.x, point.y, point.z)));
 
 		double[] intervals = generateDoubleSequence(isolineMin, isolineMax, intervalValueSpacing);
 
 		final ContourBuilderForTin builder = new ContourBuilderForTin(tin, null, intervals, false);
 		List<Contour> contours = builder.getContours();
 
-		Map<PShape, Float> isolines = new HashMap<PShape, Float>(contours.size());
+		Map<PShape, Float> isolines = new HashMap<>(contours.size());
 
 		for (Contour contourLine : contours) {
 			final PShape isoline = new PShape();
@@ -413,27 +411,27 @@ public class PGS_Contour {
 	}
 
 	/**
-	 * Generates isolines from a grid of elevation values.
-	 * 
+	 * Generates isolines from a 2D regular grid of elevation values. This method
+	 * generates isolines having the exact "height" of the provided iso value,
+	 * unlike the other methods that generate isolines at each iso value step.
+	 *
 	 * @param values   z-coordinates for the grid points
 	 * @param isoValue the iso value for which the contour (iso) lines should be
 	 *                 computed
+	 * @param scaleX   factor to scale contour lines by in X direction. 1 returns
+	 *                 the lines up to the same dimensions of the underlying matrix.
+	 * @param scaleY   factor to scale contour lines by in Y direction. 1 returns
+	 *                 the lines up to the same dimensions of the underlying matrix.
 	 * @return
 	 */
-	public static PShape isolinesJP(double[][] values, double isoValue) {
+	public static PShape isolinesFromGrid(double[][] values, double isoValue, double scaleX, double scaleY) {
 		PShape lines = prepareLinesPShape(null, null, null);
-		LineMerger m = new LineMerger();
-		// TODO cleanup
 
-		List<SegmentDetails> segments = Contours.computeContourLines(values, isoValue, RGB.composeColor(0, 255, 0, 255));
+		List<SegmentDetails> segments = Contours.computeContourLines(values, isoValue, 0);
 		segments.forEach(s -> {
-			lines.vertex((float) s.p0.getX() * 2, (float) s.p0.getY() * 2);
-			lines.vertex((float) s.p1.getX() * 2, (float) s.p1.getY() * 2);
-//			m.add(GEOM_FACTORY.createLineString(new Coordinate[] { new Coordinate(s.p0.getX(), s.p0.getY()),
-//					new Coordinate(s.p1.getX(), s.p1.getY()) }));
+			lines.vertex((float) (s.p0.getX() * scaleX), (float) (s.p0.getY() * scaleY));
+			lines.vertex((float) (s.p1.getX() * scaleX), (float) (s.p1.getY() * scaleY));
 		});
-//		m.getMergedLineStrings();
-//		System.out.println(segments.size());
 		lines.endShape();
 		return lines;
 	}
@@ -454,7 +452,7 @@ public class PGS_Contour {
 
 	/**
 	 * Produces inwards offset curves from the shape.
-	 * 
+	 *
 	 * @param shape
 	 * @param spacing Spacing between successive offset curves. Should be >=1.
 	 * @return A GROUP PShape, where each child shape is one curve
@@ -521,7 +519,7 @@ public class PGS_Contour {
 
 	/**
 	 * Produces offset curves that emanate outwards from the shape.
-	 * 
+	 *
 	 * @param shape
 	 * @param spacing Spacing between successive offset curves. Should be >=1.
 	 * @param curves  number of offset curves (including the original shape outline)
@@ -548,8 +546,7 @@ public class PGS_Contour {
 		while (!geometries.isEmpty() && currentCurves < curves) {
 			g = geometries.poll();
 
-			// need to iterate over rings individually
-			for (LinearRing ring : new LinearRingIterator(g)) {
+			for (LinearRing ring : new LinearRingIterator(g)) { // iterate over rings individually
 				Coordinate[] coords = ring.getCoordinates();
 				if (coords.length > 1) {
 					PShape lines = new PShape(PShape.PATH);
@@ -573,7 +570,7 @@ public class PGS_Contour {
 				if (style == OffsetStyle.MITER) {
 					geometries.add(g.getGeometryN(i));
 				} else {
-					// because rounded miters produce LOADS of dense vertices
+					// simplify because rounded buffers produce LOADS of dense vertices
 					geometries.add(DouglasPeuckerSimplifier.simplify(g.getGeometryN(i), 0.5));
 				}
 			}
@@ -596,7 +593,7 @@ public class PGS_Contour {
 
 	/**
 	 * Generates a grid of points
-	 * 
+	 *
 	 * @param minX
 	 * @param minY
 	 * @param maxX

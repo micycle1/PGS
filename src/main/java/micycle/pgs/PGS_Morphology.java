@@ -110,7 +110,7 @@ public class PGS_Morphology {
 	public static PShape minkSum(PShape source, PShape addition) {
 		// produces handled errors with geometries that have straight lines (like a
 		// square)
-		Geometry sum = Minkowski_Sum.compMinkSum(fromPShape(source), fromPShape(addition), true, true);
+		Geometry sum = Minkowski_Sum.minkSum(fromPShape(source), fromPShape(addition), true, true);
 		return toPShape(sum);
 	}
 
@@ -122,7 +122,7 @@ public class PGS_Morphology {
 	 * @return
 	 */
 	public static PShape minkDifference(PShape source, PShape subtract) {
-		Geometry sum = Minkowski_Sum.compMinkDiff(fromPShape(source), fromPShape(subtract), true, true);
+		Geometry sum = Minkowski_Sum.minkDiff(fromPShape(source), fromPShape(subtract), true, true);
 		return toPShape(sum);
 	}
 

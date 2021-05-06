@@ -63,7 +63,7 @@ public class PGS_Construction {
 	 */
 	public static PShape createSupercircle(double x, double y, double width, double height, double power) {
 		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-		shapeFactory.setNumPoints(PGS.CURVE_SAMPLES * 4);
+		shapeFactory.setNumPoints(PGS.SHAPE_SAMPLES);
 		shapeFactory.setCentre(new Coordinate(x, y));
 		shapeFactory.setWidth(width);
 		shapeFactory.setHeight(height);
@@ -138,7 +138,7 @@ public class PGS_Construction {
 	 */
 	public static PShape createArc(double x, double y, double width, double height, double orientation, double angle) {
 		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-		shapeFactory.setNumPoints(PGS.CURVE_SAMPLES * 2);
+		shapeFactory.setNumPoints(PGS.SHAPE_SAMPLES);
 		shapeFactory.setCentre(new Coordinate(x, y));
 		shapeFactory.setWidth(width);
 		shapeFactory.setHeight(height);

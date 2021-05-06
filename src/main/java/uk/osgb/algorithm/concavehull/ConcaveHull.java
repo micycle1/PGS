@@ -85,16 +85,21 @@ import org.locationtech.jts.operation.union.UnaryUnionOp;
 
 public class ConcaveHull {
 
-	Coordinate hullCoord = null; // a coordinate on the convex hull of the dataset, used as a seed coordinate for
-									// various operations
-	LinkedList<Coordinate> hullDT = null; // initial hull of the dataset (closed, first==last), built from JTS DT. It is
-											// normally (but not always) the convex hull (due to JTS DT's use of a
-											// bounding super triangle)
+	/**
+	 * A coordinate on the convex hull of the dataset, used as a seed coordinate for
+	 * various operations
+	 */
+	Coordinate hullCoord = null;
+	/**
+	 * Initial hull of the dataset (closed, first==last), built from JTS DT. It is
+	 * normally (but not always) the convex hull (due to JTS DT's use of a bounding
+	 * super triangle)
+	 */
+	LinkedList<Coordinate> hullDT = null;
 	QuadEdgeSubdivision sd = null;
 	GeometryFactory gf = null;
 	Geometry convexHull = null;
 
-	//
 	/**
 	 * constructor that takes a JTS geometry as input
 	 * 
@@ -224,8 +229,7 @@ public class ConcaveHull {
 	 * @return a collection of geometry that form the concave hull of the input data
 	 *         (may contains linestring as degenerated segments)
 	 */
-	public ArrayList<Geometry> getConcaveHullBFS(TriangleChecker triChecker, boolean allowMultiParts,
-			boolean keepLineSeg) {
+	public ArrayList<Geometry> getConcaveHullBFS(TriangleChecker triChecker, boolean allowMultiParts, boolean keepLineSeg) {
 		if (triChecker != null) {
 			// TreeSet<Coordinate> nodeSet = new TreeSet<Coordinate>(hullDT);
 			LinkedList<DLCirList<Coordinate>> hulls = new LinkedList<>(); //
@@ -381,8 +385,8 @@ public class ConcaveHull {
 	 * @param keepLineSeg
 	 * @return
 	 */
-	public Collection<Geometry> getConcaveHullMetric(TriangleChecker triChecker, TriMetricLength m,
-			boolean allowMultiParts, boolean keepLineSeg) {
+	public Collection<Geometry> getConcaveHullMetric(TriangleChecker triChecker, TriMetricLength m, boolean allowMultiParts,
+			boolean keepLineSeg) {
 		if (triChecker != null) {
 			LinkedList<DLCirList<Coordinate>> hulls = new LinkedList<>(); //
 			ArrayList<DLCirList<Coordinate>> rltHulls = new ArrayList<>(); // finished hulls
@@ -627,44 +631,6 @@ public class ConcaveHull {
 		return coordCol;
 	}
 
-	private static Collection<Collection<Coordinate>> geomCol2CoordinatePartition(Collection<Geometry> geomCol,
-			int partitionSize) {
-		ArrayList<Collection<Coordinate>> coordCol = new ArrayList<Collection<Coordinate>>();
-		if (geomCol != null) {
-			ArrayList<Coordinate> partition = new ArrayList<Coordinate>();
-			for (Geometry geom : geomCol) {
-				Coordinate[] coords = geom.getCoordinates();
-				for (Coordinate coord : coords) {
-					partition.add(coord);
-					if (partition.size() == partitionSize) {
-						coordCol.add(partition);
-						partition = new ArrayList<Coordinate>();
-					}
-				}
-			}
-		}
-		return coordCol;
-	}
-
-	private static Collection<Collection<Coordinate>> coordinateColPartition(Collection<Coordinate> coords,
-			int partitionSize) {
-		ArrayList<Collection<Coordinate>> coordCol = new ArrayList<Collection<Coordinate>>();
-		if (coords != null) {
-			ArrayList<Coordinate> partition = new ArrayList<Coordinate>();
-			for (Coordinate coord : coords) {
-				partition.add(coord);
-				if (partition.size() == partitionSize) {
-					coordCol.add(partition);
-					partition = new ArrayList<Coordinate>();
-				}
-			}
-			if (partition.size() > 0) {
-				coordCol.add(partition);
-			}
-		}
-		return coordCol;
-	}
-
 	/**
 	 * knowing coord is in DT, locate the quad-edge whose origin is at coord
 	 * 
@@ -759,9 +725,8 @@ public class ConcaveHull {
 		} while (node != hullCL.getNode());
 	}
 
-	private void generateHullIndices(DLCirList<Coordinate> hullCL, TriMetricLength m,
-			Map<Coordinate, DLNode<Coordinate>> coordNodeMap, Set<HullEdgeCir> edgeIdx,
-			Map<DLNode<Coordinate>, HullEdgeCir> nodeEdgeMap) {
+	private void generateHullIndices(DLCirList<Coordinate> hullCL, TriMetricLength m, Map<Coordinate, DLNode<Coordinate>> coordNodeMap,
+			Set<HullEdgeCir> edgeIdx, Map<DLNode<Coordinate>, HullEdgeCir> nodeEdgeMap) {
 		DLNode<Coordinate> node = hullCL.getNode();
 		do {
 			Coordinate coord = node.getObj();
@@ -818,32 +783,15 @@ public class ConcaveHull {
 	}
 
 	private class DLNode<T> {
+
 		DLNode<T> prev, next;
 		T obj;
-
-		public DLNode() {
-			prev = next = null;
-			obj = null;
-		}
 
 		public DLNode(T o) {
 			prev = next = null;
 			obj = o;
 		}
 
-		public DLNode(DLNode<T> p, DLNode<T> n) {
-			prev = p;
-			next = n;
-			obj = null;
-		}
-
-		public DLNode(DLNode<T> p, DLNode<T> n, T o) {
-			prev = p;
-			next = n;
-			obj = o;
-		}
-
-		//
 		public DLNode<T> getPrev() {
 			return prev;
 		}
@@ -856,19 +804,10 @@ public class ConcaveHull {
 			return next;
 		}
 
-		public void setNext(DLNode<T> next) {
-			this.next = next;
-		}
-
 		public T getObj() {
 			return obj;
 		}
 
-		public void setObj(T obj) {
-			this.obj = obj;
-		}
-
-		//
 		/**
 		 * @param node
 		 */
@@ -883,33 +822,6 @@ public class ConcaveHull {
 			}
 		}
 
-		public DLNode<T> insertAfter(T o) {
-			DLNode<T> node = new DLNode<T>(o);
-			insertAfter(node);
-			return node;
-		}
-
-		/**
-		 * @param node
-		 */
-		public void insertBefore(DLNode<T> node) {
-			if (node != null) {
-				if (this.prev != null) {
-					this.prev.next = node;
-				}
-				node.prev = this.prev;
-				node.next = this;
-				this.prev = node;
-			}
-		}
-
-		public DLNode<T> insertBefore(T o) {
-			DLNode<T> node = new DLNode<T>(o);
-			insertBefore(node);
-			return node;
-		}
-
-		//
 		public DLNode<T> remove() {
 			if (this.prev != null) {
 				this.prev.next = this.next;
@@ -930,6 +842,7 @@ public class ConcaveHull {
 	}
 
 	private class DLCirList<T> {
+
 		DLNode<T> anchor = null;
 		int size = 0;
 
@@ -945,22 +858,16 @@ public class ConcaveHull {
 			calculateSize();
 		}
 
-		public DLCirList(T o) {
-			init(o);
-		}
-
 		public DLNode<T> getNode() {
 			return anchor;
 		}
 
-		//
 		private void init(T o) {
 			anchor = new DLNode<T>(o);
 			anchor.next = anchor.prev = anchor;
 			size++;
 		}
 
-		//
 		public void add(T o) {
 			if (anchor == null) {
 				init(o);

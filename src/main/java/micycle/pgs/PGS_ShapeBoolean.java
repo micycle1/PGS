@@ -5,6 +5,9 @@ import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
 
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
@@ -54,14 +57,24 @@ public class PGS_ShapeBoolean {
 	 * @param shapes
 	 * @return
 	 * @see #union(PShape, PShape)
+	 * @see #union(PShape...)
+	 */
+	public static PShape union(List<PShape> shapes) {
+		Collection<Geometry> polygons = new ArrayList<Geometry>();
+		shapes.forEach(s -> polygons.add(fromPShape(s)));
+		return toPShape(UnaryUnionOp.union(polygons));
+	}
+
+	/**
+	 * Unions any variable number of shapes.
+	 * 
+	 * @param shapes varArgs
+	 * @return
+	 * @see #union(PShape, PShape)
+	 * @see #union(List)
 	 */
 	public static PShape union(PShape... shapes) {
-		// same as flatten?
-		ArrayList<Geometry> geoms = new ArrayList<>();
-		for (int i = 0; i < shapes.length; i++) {
-			geoms.add(fromPShape(shapes[i]));
-		}
-		return toPShape(UnaryUnionOp.union(geoms));
+		return union(Arrays.asList(shapes));
 	}
 
 	/**
