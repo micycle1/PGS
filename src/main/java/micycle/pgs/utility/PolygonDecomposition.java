@@ -54,6 +54,9 @@ import org.locationtech.jts.geom.PrecisionModel;
 public class PolygonDecomposition {
 	
 	private static final GeometryFactory GEOM_FACTORY = new GeometryFactory(new PrecisionModel(PrecisionModel.FLOATING_SINGLE));
+	
+	private PolygonDecomposition() {
+	}
 
 	public static List<Polygon> decompose(Polygon polygon) {
 		Vector2[] points = new Vector2[polygon.getCoordinates().length];
@@ -122,8 +125,8 @@ public class PolygonDecomposition {
 		int lowerIndex = 0;
 		int closestIndex = 0;
 
-		List<Vector2> lower = new ArrayList<Vector2>();
-		List<Vector2> upper = new ArrayList<Vector2>();
+		List<Vector2> lower = new ArrayList<>();
+		List<Vector2> upper = new ArrayList<>();
 
 		// loop over all the vertices
 		for (int i = 0; i < size; i++) {

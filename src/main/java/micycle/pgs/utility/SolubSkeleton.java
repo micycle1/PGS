@@ -38,18 +38,18 @@ public class SolubSkeleton {
 
 	private final float tol;
 
-	public ArrayList<PVector> vertices;
-	public ArrayList<Ray> rays;
+	public List<PVector> vertices;
+	public List<Ray> rays;
 	/**
 	 * Branches connect the inner bones to the vertices of the polygon.
 	 */
-	public ArrayList<Bone> branches;
+	public List<Bone> branches;
 	/**
 	 * Bones are the inner straight skeleton.
 	 */
-	public ArrayList<Bone> bones;
+	public List<Bone> bones;
 
-	public ArrayList<Edge> edges;
+	public List<Edge> edges;
 
 	/**
 	 * 

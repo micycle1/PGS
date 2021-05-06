@@ -220,6 +220,7 @@ public class MaximumInscribedRectangle {
 	}
 
 	private class Edge {
+		
 		int xmin, xmax; /* horiz, +x is right */
 		int ymin, ymax; /* vertical, +y is down */
 		Double m, b; /* y = mx + b */

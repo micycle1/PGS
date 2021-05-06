@@ -15,6 +15,9 @@ import processing.core.PVector;
 public class RandomPolygon {
 
 	private static final Random RAND = ThreadLocalRandom.current();
+	
+	private RandomPolygon() {
+	}
 
 	/**
 	 * 
