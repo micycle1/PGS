@@ -29,7 +29,7 @@ void draw() {
 
   flock.run();
 
-  List<PVector> intersections = PGS_Processing.lineSegmentIntersections(segments); // compute line intersection points
+  List<PVector> intersections = PGS_Processing.lineSegmentsIntersection(segments); // compute line intersection points
 
   PShape t = PGS_Triangulation.delaunayTriangulation(new PShape(), intersections, false, 0, false); // triangulate intersection points
   PGS_Conversion.setAllFillColor(t, color(0, 50, 100, 50));
