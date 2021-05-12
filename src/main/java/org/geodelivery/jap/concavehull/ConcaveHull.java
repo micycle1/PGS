@@ -53,9 +53,9 @@ import org.locationtech.jts.planargraph.PlanarGraph;
  */
 public class ConcaveHull {
 
-	private final static double DEFAULT_ALPHA = 0.5;
-	private double _alpha;
-	private ThresholdHeuristic _thresholdHeuristic;
+	private static final double DEFAULT_ALPHA = 0.5;
+	private final double alpha;
+	private ThresholdHeuristic thresholdHeuristic;
 
 	public ConcaveHull(double alpha) {
 		this(ThresholdHeuristic.MED, alpha);
@@ -68,8 +68,8 @@ public class ConcaveHull {
 	 */
 	public ConcaveHull(ThresholdHeuristic thresholdHeuristic, double alpha) {
 		super();
-		this._thresholdHeuristic = thresholdHeuristic;
-		this._alpha = alpha;
+		this.thresholdHeuristic = thresholdHeuristic;
+		this.alpha = alpha;
 	}
 
 	public ConcaveHull() {
@@ -84,16 +84,10 @@ public class ConcaveHull {
 
 		// marked node means "exposed"
 		// marked edge means "deleted"
-		// System.out.println("Delaunay");
 		DelaunayGraph delaunay = new DelaunayGraph();
 		PlanarGraph graph = delaunay.transform(geom);
 
-		// Find threshold
-		// System.out.println("MST");
-		// double threshold = getThreshold(graph);
-
 		// Find perimeter
-		// System.out.println("Perimeter");
 		Perimeter perimeter = findPerimeter(graph);
 
 		// Find starting point
@@ -106,25 +100,20 @@ public class ConcaveHull {
 		Node from = start;
 		Node to = successorEdge.getToNode();
 
-		// System.out.println("Threshold fast");
 		double threshold;
-		switch (this._thresholdHeuristic) {
+		switch (this.thresholdHeuristic) {
 			case AVG:
 				threshold = getThresholdAvg(successorEdge);
 				break;
 			case MED:
 				threshold = getThresholdMed(successorEdge);
 				break;
-			// case MST:
-			// threshold = getThresholdMst( graph );
-			// break;
 			default:
 				threshold = getThresholdMed(successorEdge);
 				break;
 		}
 
 		// do a number of laps
-		// System.out.println("ConcaveHull");
 		while (true) {
 
 			boolean hasDeleted = false;
@@ -169,18 +158,9 @@ public class ConcaveHull {
 			}
 		}
 
-		Geometry result = toPolygon(start, numExposed);
-		return result;
+		return toPolygon(start, numExposed);
 	}
 
-	/*
-	 * private double getThresholdMst(PlanarGraph triangulationGraph) { // This
-	 * method is slow, but pretty good. Uses MST PlanarGraph mst = new
-	 * MinimumSpanningTree().computeGraph(triangulationGraph); double threshold =
-	 * Double.MIN_VALUE; for(Object obj : mst.getEdges()) { LineMergeEdge edge =
-	 * (LineMergeEdge) obj; threshold = Math.max(threshold,
-	 * edge.getLine().getLength()); } return _alpha * threshold; }
-	 */
 	private double getThresholdAvg(DirectedEdge successorEdge) {
 		// Faster threshold.
 		// - Only considers edges on perimeter
@@ -196,7 +176,7 @@ public class ConcaveHull {
 			dirEdge = (DirectedEdge) dirEdge.getToNode().getData();
 		} while (dirEdge.getFromNode() != start);
 
-		return _alpha * avg / count;
+		return alpha * avg / count;
 	}
 
 	/**
@@ -210,7 +190,7 @@ public class ConcaveHull {
 
 		Node start = successorEdge.getFromNode();
 		DirectedEdge dirEdge = successorEdge;
-		ArrayList<Double> edgeLengths = new ArrayList<Double>();
+		ArrayList<Double> edgeLengths = new ArrayList<>();
 
 		do {
 			double dist = dirEdge.getFromNode().getCoordinate().distance(dirEdge.getToNode().getCoordinate());
@@ -218,7 +198,7 @@ public class ConcaveHull {
 			dirEdge = (DirectedEdge) dirEdge.getToNode().getData();
 		} while (dirEdge.getFromNode() != start);
 		Collections.sort(edgeLengths);
-		int index = (int) Math.floor((edgeLengths.size() - 1) * _alpha);
+		int index = (int) Math.floor((edgeLengths.size() - 1) * alpha);
 		return edgeLengths.get(index);
 	}
 
@@ -365,8 +345,6 @@ public class ConcaveHull {
 	}
 
 	public enum ThresholdHeuristic {
-		// MST,
-
 		/**
 		 * Slower, but better
 		 */
@@ -378,21 +356,22 @@ public class ConcaveHull {
 	}
 
 	private class Perimeter {
-		int _numExposed;
-		DirectedEdge _startEdge;
+		
+		int numExposed;
+		DirectedEdge startEdge;
 
 		public Perimeter(int numExposed, DirectedEdge startEdge) {
 			super();
-			this._numExposed = numExposed;
-			this._startEdge = startEdge;
+			this.numExposed = numExposed;
+			this.startEdge = startEdge;
 		}
 
 		public int getNumExposed() {
-			return _numExposed;
+			return numExposed;
 		}
 
 		public DirectedEdge getStartEdge() {
-			return _startEdge;
+			return startEdge;
 		}
 
 	}

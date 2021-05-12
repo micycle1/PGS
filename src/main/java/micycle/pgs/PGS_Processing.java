@@ -306,7 +306,7 @@ public class PGS_Processing {
 	 * @see #convexHull(PShape...)
 	 */
 	public static PShape convexHull(List<PShape> shapes) {
-		Collection<Polygon> polygons = new ArrayList<Polygon>();
+		Collection<Polygon> polygons = new ArrayList<>();
 		shapes.forEach(s -> polygons.add((Polygon) fromPShape(s)));
 		return toPShape(CascadedPolygonUnion.union(polygons).convexHull());
 	}

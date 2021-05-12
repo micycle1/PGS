@@ -57,17 +57,17 @@ public class PGS_Conversion implements PConstants {
 		shape.setStrokeWeight(4);
 
 		switch (g.getGeometryType()) {
-			case Geometry.TYPENAME_GEOMETRYCOLLECTION:
-			case Geometry.TYPENAME_MULTIPOLYGON:
-			case Geometry.TYPENAME_MULTILINESTRING:
+			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
+			case Geometry.TYPENAME_MULTIPOLYGON :
+			case Geometry.TYPENAME_MULTILINESTRING :
 				shape.setFamily(GROUP);
 				for (int i = 0; i < g.getNumGeometries(); i++) {
 					shape.addChild(toPShape(g.getGeometryN(i)));
 				}
 				break;
 
-			case Geometry.TYPENAME_LINEARRING: // closed
-			case Geometry.TYPENAME_LINESTRING:
+			case Geometry.TYPENAME_LINEARRING : // closed
+			case Geometry.TYPENAME_LINESTRING :
 				final LineString l = (LineString) g;
 				final boolean closed = l.isClosed();
 				shape.setFamily(PShape.PATH);
@@ -84,7 +84,7 @@ public class PGS_Conversion implements PConstants {
 
 				break;
 
-			case Geometry.TYPENAME_POLYGON:
+			case Geometry.TYPENAME_POLYGON :
 				final Polygon polygon = (Polygon) g;
 				shape.setFamily(PShape.PATH);
 				shape.beginShape();
@@ -110,14 +110,14 @@ public class PGS_Conversion implements PConstants {
 				}
 				shape.endShape(CLOSE);
 				break;
-			default:
+			default :
 				System.err.println(g.getGeometryType() + " are unsupported.");
 				break;
 		}
 
 		return shape;
 	}
-	
+
 	/**
 	 * Converts a collection of JTS Geometries to an equivalent GROUP PShape.
 	 */
@@ -129,9 +129,9 @@ public class PGS_Conversion implements PConstants {
 		shape.setStroke(true);
 		shape.setStroke(micycle.pgs.color.RGB.PINK);
 		shape.setStrokeWeight(4);
-		
+
 		geometries.forEach(g -> shape.addChild(toPShape(g)));
-		
+
 		return shape;
 	}
 
@@ -152,21 +152,21 @@ public class PGS_Conversion implements PConstants {
 		Geometry g = null;
 
 		switch (shape.getFamily()) {
-			case PShape.GROUP:
+			case PConstants.GROUP :
 				final List<PShape> flatChildren = new ArrayList<>();
 				getChildren(shape, flatChildren);
-				flatChildren.removeIf(s -> s.getFamily() == PShape.GROUP);
+				flatChildren.removeIf(s -> s.getFamily() == PConstants.GROUP);
 				Polygon[] children = new Polygon[flatChildren.size()];
 				for (int i = 0; i < children.length; i++) {
 					children[i] = (Polygon) fromPShape(flatChildren.get(i));
 				}
 				// TODO for now, buffer/flatten polygons so that methods handle them properly
 				return (GEOM_FACTORY.createMultiPolygon(children).buffer(0));
-			case PShape.GEOMETRY:
-			case PShape.PATH:
+			case PShape.GEOMETRY :
+			case PShape.PATH :
 				g = fromVertices(shape);
 				break;
-			case PShape.PRIMITIVE:
+			case PShape.PRIMITIVE :
 				g = fromPrimitive(shape);
 				break;
 		}
@@ -203,17 +203,17 @@ public class PGS_Conversion implements PConstants {
 			 * Sample bezier curves at regular intervals to produce smooth Geometry
 			 */
 			switch (vertexCodes[i]) { // VERTEX, BEZIER_VERTEX, CURVE_VERTEX, or BREAK
-				case QUADRATIC_VERTEX:
+				case QUADRATIC_VERTEX :
 					coords.get(lastGroup).addAll(getQuadraticBezierPoints(shape.getVertex(i - 1), shape.getVertex(i),
 							shape.getVertex(i + 1), BEZIER_SAMPLE_DISTANCE));
 					i += 1;
 					continue;
-				case BEZIER_VERTEX: // aka cubic bezier
-					coords.get(lastGroup).addAll(getCubicBezierPoints(shape.getVertex(i - 1), shape.getVertex(i),
-							shape.getVertex(i + 1), shape.getVertex(i + 2), BEZIER_SAMPLE_DISTANCE));
+				case BEZIER_VERTEX : // aka cubic bezier
+					coords.get(lastGroup).addAll(getCubicBezierPoints(shape.getVertex(i - 1), shape.getVertex(i), shape.getVertex(i + 1),
+							shape.getVertex(i + 2), BEZIER_SAMPLE_DISTANCE));
 					i += 2;
 					continue;
-				default:
+				default :
 					coords.get(lastGroup).add(new Coordinate(shape.getVertexX(i), shape.getVertexY(i)));
 					break;
 			}
@@ -261,7 +261,7 @@ public class PGS_Conversion implements PConstants {
 	private static Polygon fromPrimitive(PShape shape) {
 		final GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
 		switch (shape.getKind()) {
-			case ELLIPSE:
+			case ELLIPSE :
 				final double a = shape.getParam(2) / 2d;
 				final double b = shape.getParam(3) / 2d;
 				final double perimeter = Math.PI * (3 * (a + b) - Math.sqrt((3 * a + b) * (a + 3 * b)));
@@ -270,7 +270,7 @@ public class PGS_Conversion implements PConstants {
 				shapeFactory.setHeight(b * 2);
 				shapeFactory.setNumPoints((int) (perimeter / BEZIER_SAMPLE_DISTANCE));
 				return shapeFactory.createEllipse();
-			case TRIANGLE:
+			case TRIANGLE :
 				Coordinate[] coords = new Coordinate[3 + 1];
 				Coordinate c1 = new Coordinate(shape.getParam(0), shape.getParam(1));
 				coords[0] = c1;
@@ -278,12 +278,12 @@ public class PGS_Conversion implements PConstants {
 				coords[2] = new Coordinate(shape.getParam(4), shape.getParam(5));
 				coords[3] = c1.copy(); // close loop
 				return GEOM_FACTORY.createPolygon(coords);
-			case RECT:
+			case RECT :
 				shapeFactory.setCentre(new Coordinate(shape.getParam(0), shape.getParam(1)));
 				shapeFactory.setWidth(shape.getParam(2));
 				shapeFactory.setHeight(shape.getParam(3));
 				return shapeFactory.createRectangle();
-			case QUAD:
+			case QUAD :
 				coords = new Coordinate[4 + 1];
 				c1 = new Coordinate(shape.getParam(0), shape.getParam(1));
 				coords[0] = c1;
@@ -292,7 +292,7 @@ public class PGS_Conversion implements PConstants {
 				coords[3] = new Coordinate(shape.getParam(6), shape.getParam(7));
 				coords[4] = c1.copy(); // close loop
 				return GEOM_FACTORY.createPolygon(coords);
-			case ARC:
+			case ARC :
 				shapeFactory.setCentre(new Coordinate(shape.getParam(0), shape.getParam(1)));
 				shapeFactory.setWidth(shape.getParam(2));
 				shapeFactory.setHeight(shape.getParam(3));
@@ -300,15 +300,15 @@ public class PGS_Conversion implements PConstants {
 				final double circumference = Math.PI * Math.max(shape.getParam(2), shape.getParam(3));
 				shapeFactory.setNumPoints((int) (circumference / BEZIER_SAMPLE_DISTANCE));
 				return shapeFactory.createArcPolygon(-Math.PI / 2 + shape.getParam(4), shape.getParam(5));
-			case LINE:
-			case POINT:
+			case LINE :
+			case POINT :
 				System.err.print("Non-polygon primitives are not supported.");
 				break;
-			case BOX:
-			case SPHERE:
+			case BOX :
+			case SPHERE :
 				System.err.print("3D primitives are not supported.");
 				break;
-			default:
+			default :
 				System.err.print(shape.getKind() + " primitives are not supported.");
 
 		}
@@ -342,11 +342,11 @@ public class PGS_Conversion implements PConstants {
 		shape.setFill(micycle.pgs.color.RGB.WHITE);
 		shape.setFill(true);
 		shape.beginShape();
-	
+
 		for (PVector v : coords) {
 			shape.vertex(v.x, v.y);
 		}
-	
+
 		shape.endShape(PConstants.CLOSE);
 		return shape;
 	}
@@ -407,27 +407,27 @@ public class PGS_Conversion implements PConstants {
 	}
 
 	/**
-	 * Calls setFill(false) on a PShape and all its children. This method mutates the input shape.
+	 * Calls setFill(false) on a PShape and all its children. This method mutates
+	 * the input shape.
+	 * 
 	 * @param shape
 	 */
 	public static void disableAllFill(PShape shape) {
 		ArrayList<PShape> all = new ArrayList<>();
 		getChildren(shape, all);
-		all.forEach(child -> {
-			child.setFill(false);
-		});
+		all.forEach(child -> child.setFill(false));
 	}
-	
+
 	/**
-	 * Calls setStrokefalse) on a PShape and all its children. This method mutates the input shape. 
+	 * Calls setStrokefalse) on a PShape and all its children. This method mutates
+	 * the input shape.
+	 * 
 	 * @param shape
 	 */
 	public static void disableAllStroke(PShape shape) {
 		ArrayList<PShape> all = new ArrayList<>();
 		getChildren(shape, all);
-		all.forEach(child -> {
-			child.setStroke(false);
-		});
+		all.forEach(child -> child.setStroke(false));
 	}
 
 	/**
@@ -445,32 +445,34 @@ public class PGS_Conversion implements PConstants {
 		for (int i = 0; i < vertexCodes.length; i++) {
 			final int vertexCode = vertexCodes[i];
 			switch (vertexCode) {
-				case VERTEX:
+				case VERTEX :
 					groups.add(group);
 					break;
 
-				case QUADRATIC_VERTEX:
-					groups.add(group);
-					groups.add(group);
-					break;
-
-				case BEZIER_VERTEX:
-					groups.add(group);
+				case QUADRATIC_VERTEX :
 					groups.add(group);
 					groups.add(group);
 					break;
 
-				case CURVE_VERTEX:
+				case BEZIER_VERTEX :
+					groups.add(group);
+					groups.add(group);
 					groups.add(group);
 					break;
 
-				case BREAK:
+				case CURVE_VERTEX :
+					groups.add(group);
+					break;
+
+				case BREAK :
 					// BREAK marks beginning/end of new contour, and should be proceeded by a VERTEX
 					if (i > 0) {
 						// In P2D, svg-loaded shapes begin with a break (so we don't want to increment)
 						group++;
 					}
 					break;
+				default :
+					System.err.println("Unrecognised vertex code: " + vertexCode);
 			}
 		}
 
@@ -492,26 +494,30 @@ public class PGS_Conversion implements PConstants {
 		for (int i = 0; i < shape.getVertexCodeCount(); i++) {
 			int vertexCode = shape.getVertexCode(i);
 			switch (vertexCode) {
-				case VERTEX:
+				case VERTEX :
 					codes.add(VERTEX);
 					break;
 
-				case QUADRATIC_VERTEX:
+				case QUADRATIC_VERTEX :
 					codes.add(QUADRATIC_VERTEX);
 					codes.add(QUADRATIC_VERTEX);
 					break;
 
-				case BEZIER_VERTEX:
+				case BEZIER_VERTEX :
 					codes.add(BEZIER_VERTEX);
 					codes.add(BEZIER_VERTEX);
 					codes.add(BEZIER_VERTEX);
 					break;
 
-				case CURVE_VERTEX:
+				case CURVE_VERTEX :
 					codes.add(CURVE_VERTEX);
 					break;
 
-				case BREAK:
+				case BREAK :
+					break;
+
+				default :
+					System.err.println("Unrecognised vertex code: " + vertexCode);
 			}
 		}
 
@@ -526,8 +532,7 @@ public class PGS_Conversion implements PConstants {
 	 * 
 	 * @return list of points along curve
 	 */
-	private static List<Coordinate> getQuadraticBezierPoints(PVector start, PVector controlPoint, PVector end,
-			float sampleDistance) {
+	private static List<Coordinate> getQuadraticBezierPoints(PVector start, PVector controlPoint, PVector end, float sampleDistance) {
 		List<Coordinate> coords = new ArrayList<>();
 
 		if (start.dist(end) <= sampleDistance) {
@@ -586,8 +591,8 @@ public class PGS_Conversion implements PConstants {
 	 * @param sampleDistance distance between successive samples on the curve
 	 * @return
 	 */
-	private static List<Coordinate> getCubicBezierPoints(PVector start, PVector controlPoint1, PVector controlPoint2,
-			PVector end, float sampleDistance) {
+	private static List<Coordinate> getCubicBezierPoints(PVector start, PVector controlPoint1, PVector controlPoint2, PVector end,
+			float sampleDistance) {
 		List<Coordinate> coords = new ArrayList<>();
 
 		if (start.dist(end) <= sampleDistance) {
@@ -601,21 +606,17 @@ public class PGS_Conversion implements PConstants {
 
 		coords.add(new Coordinate(start.x, start.y));
 		for (int j = 1; j < samples; j++) { // start at 1 -- don't sample at t=0
-			final PVector bezierPoint = getCubicBezierCoordinate(start, controlPoint1, controlPoint2, end,
-					j / (float) samples);
+			final PVector bezierPoint = getCubicBezierCoordinate(start, controlPoint1, controlPoint2, end, j / (float) samples);
 			coords.add(new Coordinate(bezierPoint.x, bezierPoint.y));
 		}
 		coords.add(new Coordinate(end.x, end.y));
 		return coords;
 	}
 
-	private static PVector getCubicBezierCoordinate(PVector start, PVector controlPoint1, PVector controlPoint2,
-			PVector end, float t) {
+	private static PVector getCubicBezierCoordinate(PVector start, PVector controlPoint1, PVector controlPoint2, PVector end, float t) {
 		final float t1 = 1.0f - t;
-		float x = start.x * t1 * t1 * t1 + 3 * controlPoint1.x * t * t1 * t1 + 3 * controlPoint2.x * t * t * t1
-				+ end.x * t * t * t;
-		float y = start.y * t1 * t1 * t1 + 3 * controlPoint1.y * t * t1 * t1 + 3 * controlPoint2.y * t * t * t1
-				+ end.y * t * t * t;
+		float x = start.x * t1 * t1 * t1 + 3 * controlPoint1.x * t * t1 * t1 + 3 * controlPoint2.x * t * t * t1 + end.x * t * t * t;
+		float y = start.y * t1 * t1 * t1 + 3 * controlPoint1.y * t * t1 * t1 + 3 * controlPoint2.y * t * t * t1 + end.y * t * t * t;
 		return new PVector(x, y);
 	}
 

@@ -14,12 +14,15 @@ import org.locationtech.jts.index.strtree.STRtree;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 
 /**
- * Java implementation of ST_ConcaveHull in PostGis 2.0
+ * Java implementation of ST_ConcaveHull from PostGis 2.0.
  * 
  * @author Pimin Konstantin Kefaloukos
  * 
  */
 public class SnapHull {
+	
+	private SnapHull() {
+	}
 
 	// default values
 	private static final double START_RANGE_RELATIVE = 0.03;
@@ -52,7 +55,7 @@ public class SnapHull {
 		Coordinate[] coordinates = src.getCoordinates();
 		ConvexHull ch = new ConvexHull(coordinates, gf);
 		Geometry geometry = ch.getConvexHull();
-		// return geometry;
+
 		if (geometry instanceof Polygon) {
 			// get the exterior ring
 			LineString vexring = ((Polygon) geometry).getExteriorRing();
@@ -61,7 +64,7 @@ public class SnapHull {
 			vexring = segmentize(vexring, seglength);
 			Coordinate[] result = new Coordinate[vexring.getNumPoints()]; // upperbound on verts on boundary
 			int bindex = 0;
-			// return vexring;
+
 			// build index of points
 			STRtree index = new STRtree();
 			for (Coordinate c : coordinates) {
@@ -80,13 +83,11 @@ public class SnapHull {
 			Coordinate[] shell = new Coordinate[bindex];
 			System.arraycopy(result, 0, shell, 0, bindex);
 			Geometry p = gf.createPolygon(gf.createLinearRing(shell), null);
-			// p.buffer(srcDim*BUFFER_PCT);
-			// p.buffer(-10);
+
 			if (!p.isValid()) {
 				DouglasPeuckerSimplifier simp = new DouglasPeuckerSimplifier(p);
 				p = simp.getResultGeometry();
 			}
-//			System.out.println("Valid: " + p.isValid());
 			return p;
 		} else {
 			return geometry; // linestring, point or empty, return convexhull
@@ -122,7 +123,7 @@ public class SnapHull {
 
 		Coordinate[] vcoords = vexring.getCoordinates();
 		GeometryFactory gf = new GeometryFactory();
-		ArrayList<Coordinate> ext = new ArrayList<Coordinate>();
+		ArrayList<Coordinate> ext = new ArrayList<>();
 		for (int i = 0; i < vcoords.length - 1; i++) {
 			ext.add(vcoords[i]);
 			// start debug

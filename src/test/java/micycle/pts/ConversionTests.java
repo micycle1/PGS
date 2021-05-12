@@ -16,13 +16,13 @@ import org.locationtech.jts.geom.PrecisionModel;
 import processing.core.PShape;
 import processing.core.PVector;
 
-public class ConversionTests {
+class ConversionTests {
 
 	private static final GeometryFactory GEOM_FACTORY = new GeometryFactory(
 			new PrecisionModel(PrecisionModel.FLOATING_SINGLE));
 
 	@Test
-	public void testFromPShapeSimple() {
+	void testFromPShapeSimple() {
 		final PShape shape = new PShape(PShape.GEOMETRY);
 		shape.beginShape();
 		shape.vertex(0, 0);
@@ -40,7 +40,7 @@ public class ConversionTests {
 	}
 
 	@Test
-	public void testFromPShapeHoles() {
+	void testFromPShapeHoles() {
 		final PShape shape = new PShape(PShape.GEOMETRY);
 		shape.beginShape();
 		shape.vertex(0, 0);
@@ -65,7 +65,7 @@ public class ConversionTests {
 	}
 
 	@Test
-	public void testToPShapeSimple() {
+	void testToPShapeSimple() {
 		Coordinate c1 = new Coordinate(0, 0);
 		Coordinate c2 = new Coordinate(10, 0);
 		Coordinate c3 = new Coordinate(0, 10);
@@ -84,7 +84,7 @@ public class ConversionTests {
 	}
 
 	@Test
-	public void testToPShapeHoles() {
+	void testToPShapeHoles() {
 		Coordinate c1 = new Coordinate(0, 0);
 		Coordinate c2 = new Coordinate(10, 0);
 		Coordinate c3 = new Coordinate(0, 10);

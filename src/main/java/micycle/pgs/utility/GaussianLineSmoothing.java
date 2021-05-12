@@ -55,13 +55,12 @@ public class GaussianLineSmoothing {
 				Coordinate c = line.getCentroid().getCoordinate();
 				length *= 0.01;
 				return line.getFactory()
-						.createLineString(new Coordinate[] { new Coordinate(c.x - length, c.y - length),
-								new Coordinate(c.x, c.y + length), new Coordinate(c.x + length, c.y - length),
-								new Coordinate(c.x - length, c.y - length) });
+						.createLineString(new Coordinate[] { new Coordinate(c.x - length, c.y - length), new Coordinate(c.x, c.y + length),
+								new Coordinate(c.x + length, c.y - length), new Coordinate(c.x - length, c.y - length) });
 			} else {
 				// return segment
-				return line.getFactory().createLineString(
-						new Coordinate[] { line.getCoordinateN(0), line.getCoordinateN(line.getNumPoints() - 1) });
+				return line.getFactory()
+						.createLineString(new Coordinate[] { line.getCoordinateN(0), line.getCoordinateN(line.getNumPoints() - 1) });
 			}
 		}
 
@@ -74,20 +73,20 @@ public class GaussianLineSmoothing {
 
 		// prepare gaussian coefficients
 		int n = 7 * 3; // it should be: E(7*sigma/densifiedResolution), which is 7*3;
-		double gcs[] = new double[n + 1];
-		{
-			double a = sigmaM * Math.sqrt(2 * Math.PI);
-			double b = sigmaM * sigmaM * 2;
-			double d = densifiedResolution * densifiedResolution;
-			for (int i = 0; i < n + 1; i++)
-				gcs[i] = Math.exp(-i * i * d / b) / a;
+		double[] gcs = new double[n + 1];
+		final double a = sigmaM * Math.sqrt(2 * Math.PI);
+		final double b = sigmaM * sigmaM * 2;
+		final double d = densifiedResolution * densifiedResolution;
+		for (int i = 0; i < n + 1; i++) {
+			gcs[i] = Math.exp(-i * i * d / b) / a;
 		}
 
-		Coordinate c0 = densifiedCoords[0];
-		Coordinate cN = densifiedCoords[nb];
+		final Coordinate c0 = densifiedCoords[0];
+		final Coordinate cN = densifiedCoords[nb];
 		for (int i = 0; i < nb; i++) {
-			if (!isClosed && i == 0)
+			if (!isClosed && i == 0) {
 				continue;
+			}
 
 			// compute coordinates of point i of the smoothed line (gauss mean)
 			double x = 0.0, y = 0.0;
@@ -100,16 +99,18 @@ public class GaussianLineSmoothing {
 					if (isClosed) {
 						// make loop to get the right point
 						q = q % nb;
-						if (q < 0)
+						if (q < 0) {
 							q += nb;
+						}
 						Coordinate c = densifiedCoords[q];
 						xq = c.x;
 						yq = c.y;
 					} else {
 						// get symetric point
 						q = (-q) % nb;
-						if (q == 0)
+						if (q == 0) {
 							q = nb;
+						}
 						Coordinate c = densifiedCoords[q];
 						xq = 2 * c0.x - c.x;
 						yq = 2 * c0.y - c.y;
@@ -118,16 +119,18 @@ public class GaussianLineSmoothing {
 					if (isClosed) {
 						// make loop to get the right point
 						q = q % nb;
-						if (q == 0)
+						if (q == 0) {
 							q = nb;
+						}
 						Coordinate c = densifiedCoords[q];
 						xq = c.x;
 						yq = c.y;
 					} else {
 						// get symetric point
 						q = nb - q % nb;
-						if (q == nb)
+						if (q == nb) {
 							q = 0;
+						}
 						Coordinate c = densifiedCoords[q];
 						xq = 2 * cN.x - c.x;
 						yq = 2 * cN.y - c.y;

@@ -208,7 +208,7 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Poisson Delaunay Triangulation</td>
     <td align="center" valign="center"><b>Straight Skeleton</td>
-    <td align="center" valign="center" colspan="2">Medial Axis</td>
+    <td align="center" valign="center" colspan="2"><b>Medial Axis</td>
   </tr>
   <tr>
     <td valign="top" ><img src="resources/contour/poissonTriangulation.gif"></td>
@@ -341,7 +341,7 @@ Much of the functionality (but by no means all) is demonstrated below:
 
   </tr>
     <tr>
-    <td align="center" valign="center">Find all points of intersection between a collection of line segments.</td>
+    <td align="center" valign="center">Find all points of intersection between two shapes.</td>
   </tr>
 </table>
 

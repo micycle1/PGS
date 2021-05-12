@@ -72,7 +72,7 @@ public class PGS_Voronoi {
 
 		final IIncrementalTinNavigator navigator = tin.getNavigator();
 
-		final PShape voronoi = new PShape(PShape.GROUP);
+		final PShape voronoi = new PShape(PConstants.GROUP);
 		final PShape axis = PGS.prepareLinesPShape(RGB.PINK, PConstants.ROUND, 4);
 		final PShape lines = PGS.prepareLinesPShape(RGB.PINK, PConstants.SQUARE, 2);
 

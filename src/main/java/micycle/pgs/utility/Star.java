@@ -109,10 +109,10 @@ public class Star {
 
 		// Create a path based on the inner and outer tip points,
 		// based on the roundness values
-		PVector prevCenter = new PVector();
-		PVector nextCenter = new PVector();
-		PVector step0 = new PVector();
-		PVector step1 = new PVector();
+		PVector prevCenter;
+		PVector nextCenter;
+		PVector step0;
+		PVector step1;
 
 		final PShape path2 = new PShape(PShape.PATH);
 		path2.beginShape();

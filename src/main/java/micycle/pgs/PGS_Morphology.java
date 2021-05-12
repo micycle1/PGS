@@ -13,6 +13,7 @@ import org.locationtech.jts.simplify.VWSimplifier;
 
 import micycle.pgs.utility.CornerRounding;
 import micycle.pgs.utility.GaussianLineSmoothing;
+import processing.core.PConstants;
 import processing.core.PShape;
 import uk.osgb.algorithm.minkowski_sum.Minkowski_Sum;
 
@@ -168,7 +169,7 @@ public class PGS_Morphology {
 			return toPShape(GaussianLineSmoothing.get(l, Math.max(sigma, 1)));
 		}
 		System.err.println(g.getGeometryType() + " are not supported for this method (yet).");
-		return new PShape(PShape.GROUP);
+		return new PShape(PConstants.GROUP);
 	}
 
 	/**

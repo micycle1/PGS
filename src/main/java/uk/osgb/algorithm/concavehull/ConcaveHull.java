@@ -176,8 +176,8 @@ public class ConcaveHull {
 	 */
 	public Geometry getConcaveHullDFS(TriangleChecker triChecker) {
 		if (triChecker != null) {
-			TreeSet<Coordinate> nodeSet = new TreeSet<Coordinate>(hullDT);
-			LinkedList<Coordinate> hullList = new LinkedList<Coordinate>(hullDT);
+			TreeSet<Coordinate> nodeSet = new TreeSet<>(hullDT);
+			LinkedList<Coordinate> hullList = new LinkedList<>(hullDT);
 			boolean modified = true;
 			while (modified) {
 				modified = false;
@@ -229,16 +229,15 @@ public class ConcaveHull {
 	 * @return a collection of geometry that form the concave hull of the input data
 	 *         (may contains linestring as degenerated segments)
 	 */
-	public ArrayList<Geometry> getConcaveHullBFS(TriangleChecker triChecker, boolean allowMultiParts, boolean keepLineSeg) {
+	public List<Geometry> getConcaveHullBFS(TriangleChecker triChecker, boolean allowMultiParts, boolean keepLineSeg) {
 		if (triChecker != null) {
-			// TreeSet<Coordinate> nodeSet = new TreeSet<Coordinate>(hullDT);
 			LinkedList<DLCirList<Coordinate>> hulls = new LinkedList<>(); //
 			ArrayList<DLCirList<Coordinate>> rltHulls = new ArrayList<>(); // finished hulls
 
-			ArrayList<LineString> rltLS = new ArrayList<LineString>();
-			ArrayList<Point> rltPt = new ArrayList<Point>();
+			ArrayList<LineString> rltLS = new ArrayList<>();
+			ArrayList<Point> rltPt = new ArrayList<>();
 
-			TreeSet<HullEdgeCir> edgeIdx = new TreeSet<HullEdgeCir>();
+			TreeSet<HullEdgeCir> edgeIdx = new TreeSet<>();
 
 			TreeMap<Coordinate, DLNode<Coordinate>> coordNodeMap = new TreeMap<>();
 			HashMap<DLNode<Coordinate>, HullEdgeCir> nodeEdgeMap = new HashMap<>();
@@ -260,7 +259,7 @@ public class ConcaveHull {
 					QuadEdge qe = sd.locate(nodeS, nodeE);
 					if (qe == null) {
 						System.out.println("fail to find edge: " + nodeS.toString() + " -" + nodeE.toString());
-						return null;
+						return new ArrayList<Geometry>();
 					}
 					QuadEdge lnext = qe.lNext();
 					Vertex verO = lnext.dest(); // "opposite" vertex
@@ -319,9 +318,7 @@ public class ConcaveHull {
 								} else {// multiparts not allowed
 										// don't do anything
 								}
-								//
 							} else { // normal digging
-								//
 								nodeEdgeMap.remove(sn);
 								DLNode<Coordinate> on = new DLNode<>(nodeO);
 								coordNodeMap.put(nodeO, on);
@@ -340,8 +337,8 @@ public class ConcaveHull {
 							break;
 						}
 					}
-				} // end while(!edgeIdx.isEmtpy())
-					//
+				}
+				
 				if (addHull) {
 					// add hull to result
 					rltHulls.add(hull);
@@ -367,12 +364,12 @@ public class ConcaveHull {
 			}
 			rtn.addAll(rltLS);
 			rtn.addAll(rltPt);
-			//
+
 			return rtn;
 		} else {
-			return null;
+			return new ArrayList<>();
 		}
-	} //
+	}
 
 	/**
 	 * Experimental Concave hull construction with an extra metric to control the
@@ -491,8 +488,7 @@ public class ConcaveHull {
 							break;
 						}
 					}
-				} // end while(!edgeIdx.isEmtpy())
-					//
+				}
 				if (addHull) {
 					// add hull to result
 					rltHulls.add(hull);
@@ -517,7 +513,6 @@ public class ConcaveHull {
 				rtn.add(geom);
 			}
 			rtn.addAll(rltLS);
-			//
 			return rtn;
 		} else {
 			return null;
@@ -617,15 +612,14 @@ public class ConcaveHull {
 		hullDT = getHull(sd, hullCoord);
 	}
 
-	//
+	/**
+	 * Flattens the coordinates of geometries in a geometry collection.
+	 */
 	private static Collection<Coordinate> geomCol2Coordinate(Collection<Geometry> geomCol) {
-		ArrayList<Coordinate> coordCol = new ArrayList<Coordinate>();
+		ArrayList<Coordinate> coordCol = new ArrayList<>();
 		if (geomCol != null) {
 			for (Geometry geom : geomCol) {
-				Coordinate[] coords = geom.getCoordinates();
-				for (Coordinate coord : coords) {
-					coordCol.add(coord);
-				}
+				coordCol.addAll(Arrays.asList(geom.getCoordinates()));
 			}
 		}
 		return coordCol;
@@ -663,7 +657,7 @@ public class ConcaveHull {
 	private static LinkedList<Coordinate> getHull(QuadEdgeSubdivision sd, Coordinate baseCoord) {
 		QuadEdge qe = locateVertexInDT(sd, baseCoord);
 		if (qe == null) {
-			return new LinkedList<Coordinate>();
+			return new LinkedList<>();
 		}
 		Vertex baseVer = qe.orig();
 		// find a frame vertex
@@ -674,7 +668,7 @@ public class ConcaveHull {
 		while (sd.isFrameVertex(qe.dest())) {
 			qe = qe.oNext();
 		}
-		LinkedList<Coordinate> hull = new LinkedList<Coordinate>();
+		LinkedList<Coordinate> hull = new LinkedList<>();
 		do {
 			Vertex ver = qe.orig();
 			hull.add(ver.getCoordinate());
@@ -696,7 +690,7 @@ public class ConcaveHull {
 	 * @return
 	 */
 	private DLCirList<Coordinate> generateHullEdgeRep(LinkedList<Coordinate> hullCoords) {
-		DLCirList<Coordinate> rtn = new DLCirList<Coordinate>();
+		DLCirList<Coordinate> rtn = new DLCirList<>();
 		ListIterator<Coordinate> iter = hullCoords.listIterator(1); // 2nd in list (should have at least 3 coords)
 		while (iter.hasNext()) {
 			Coordinate coord = iter.next();
@@ -863,7 +857,7 @@ public class ConcaveHull {
 		}
 
 		private void init(T o) {
-			anchor = new DLNode<T>(o);
+			anchor = new DLNode<>(o);
 			anchor.next = anchor.prev = anchor;
 			size++;
 		}
@@ -872,8 +866,7 @@ public class ConcaveHull {
 			if (anchor == null) {
 				init(o);
 			} else {
-
-				DLNode<T> newNode = new DLNode<T>(o);
+				DLNode<T> newNode = new DLNode<>(o);
 				anchor.insertAfter(newNode);
 				anchor = newNode;
 				size++;
@@ -895,7 +888,8 @@ public class ConcaveHull {
 
 		public int calculateSize() {
 			if (anchor == null) {
-				return size = 0;
+				size = 0;
+				return size;
 			}
 			DLNode<T> node = anchor;
 			int cnt = 1;
@@ -903,7 +897,8 @@ public class ConcaveHull {
 				node = node.next;
 				cnt++;
 			}
-			return size = cnt;
+			size = cnt;
+			return size;
 		}
 
 		public int size() {
@@ -930,7 +925,7 @@ public class ConcaveHull {
 				}
 			}
 			ns.next = no;
-			DLNode<T> no2 = new DLNode<T>(no.obj);
+			DLNode<T> no2 = new DLNode<>(no.obj);
 			no2.prev = no.prev;
 			no.prev.next = no2;
 			no2.next = ne;

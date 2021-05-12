@@ -60,7 +60,7 @@ public class PGS_ShapeBoolean {
 	 * @see #union(PShape...)
 	 */
 	public static PShape union(List<PShape> shapes) {
-		Collection<Geometry> polygons = new ArrayList<Geometry>();
+		Collection<Geometry> polygons = new ArrayList<>();
 		shapes.forEach(s -> polygons.add(fromPShape(s)));
 		return toPShape(UnaryUnionOp.union(polygons));
 	}

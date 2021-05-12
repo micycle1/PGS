@@ -28,7 +28,8 @@ public class MinimumBoundingEllipse {
 	 *                  coordinate. The points must form a closed loop. Consider
 	 *                  pre-processing a geometry to find its convex hull, and
 	 *                  supply thos coordinates to compute the MBE.
-	 * @param tolerance the error tolerance to use when terminating optimisation. 0.001 to 0.01 recommended.
+	 * @param tolerance the error tolerance to use when terminating optimisation.
+	 *                  0.001 to 0.01 recommended.
 	 */
 	public MinimumBoundingEllipse(double[][] points, double tolerance) {
 
@@ -71,7 +72,7 @@ public class MinimumBoundingEllipse {
 
 			// Find the value and location of the maximum element in the vector M
 			double maximum = max(M);
-			int j = find_maximum_value_location(M, maximum);
+			int j = findMaxValueIndex(M, maximum);
 
 			// Calculate the step size for the ascent
 			double step_size = (maximum - d - 1) / ((d + 1) * (maximum - 1));
@@ -118,7 +119,7 @@ public class MinimumBoundingEllipse {
 		double[] v = sqrt(diag(De));
 
 		l1 = max(v);
-		int Ie = find_maximum_value_location(v, l1); // off by one from MatLab but I think it's ok here
+		int Ie = findMaxValueIndex(v, l1); // off by one from MatLab but I think it's ok here
 
 		double[] veig = new double[Ve.length];
 		for (int i = 0; i < veig.length; i++) {
@@ -132,6 +133,7 @@ public class MinimumBoundingEllipse {
 
 	/**
 	 * Returns the center point of the ellipse
+	 * 
 	 * @return double[2] containing center x and y coordinates
 	 */
 	public double[] getCenter() {
@@ -163,9 +165,9 @@ public class MinimumBoundingEllipse {
 		double[] tq = linspace(-Math.PI, Math.PI, numPoints);
 
 		// U=[cos(thu) -sin(thu);sin(thu) cos(thu)]*[l1*cos(tq);l2*sin(tq)];
-		double[][] U = multiply(new double[][] { createVector(Math.cos(thu), -Math.sin(thu)), createVector(Math.sin(thu), Math.cos(thu)) },
+		double[][] U = multiply(
+				new double[][] { new double[] { Math.cos(thu), -Math.sin(thu) }, new double[] { Math.sin(thu), Math.cos(thu) } },
 				new double[][] { multiply(l1, cos(tq)), multiply(l2, sin(tq)) });
-		// System.out.println(toString(transpose(U)));
 
 		double[][] coords = transpose(U);
 		for (int i = 0; i < coords.length; i++) {
@@ -315,7 +317,7 @@ public class MinimumBoundingEllipse {
 		final int m1ColLength = m1[0].length; // m1 columns length
 		final int mRRowLength = m1.length; // m result rows length
 		final int mRColLength = m2[0].length; // m result columns length
-		
+
 		double[][] mResult = new double[mRRowLength][mRColLength];
 		for (int i = 0; i < mRRowLength; i++) { // rows from m1
 			for (int j = 0; j < mRColLength; j++) { // columns from m2
@@ -466,12 +468,12 @@ public class MinimumBoundingEllipse {
 	 * but does not pass the inverse check. Credit:
 	 * https://www.sanfoundry.com/java-program-find-inverse-matrix/
 	 */
-	private static double[][] inv2(double a[][]) {
+	private static double[][] inv2(double[][] a) {
 
 		int n = a.length;
-		double x[][] = new double[n][n];
-		double b[][] = new double[n][n];
-		int index[] = new int[n];
+		double[][] x = new double[n][n];
+		double[][] b = new double[n][n];
+		int[] index = new int[n];
 
 		for (int i = 0; i < n; ++i) {
 			b[i][i] = 1;
@@ -504,12 +506,14 @@ public class MinimumBoundingEllipse {
 		return x;
 	}
 
-	// Method to carry out the partial-pivoting Gaussian
-	// elimination. Here index[] stores pivoting order.
-	private static void gaussian(double a[][], int index[]) {
+	/**
+	 * Method to carry out the partial-pivoting Gaussian elimination. Here index[]
+	 * stores pivoting order.
+	 */
+	private static void gaussian(double[][] a, int[] index) {
 
 		int n = index.length;
-		double c[] = new double[n];
+		double[] c = new double[n];
 
 		// Initialize the index
 		for (int i = 0; i < n; ++i) {
@@ -571,9 +575,9 @@ public class MinimumBoundingEllipse {
 	}
 
 	/**
-	 * Returns the index of the max value in a vector
+	 * Returns the index of the max value in a vector.
 	 */
-	private static int find_maximum_value_location(double[] arr, double max) {
+	private static int findMaxValueIndex(double[] arr, double max) {
 		for (int i = 0; i < arr.length; i++) {
 			if (arr[i] == max) {
 				return i;
@@ -638,7 +642,7 @@ public class MinimumBoundingEllipse {
 		return 0; // ?
 	}
 
-	private static void rotateMatrix(double mat[][]) {
+	private static void rotateMatrix(double[][] mat) {
 		int N = mat[0].length;
 
 		// Consider all squares one by one
@@ -663,15 +667,5 @@ public class MinimumBoundingEllipse {
 			}
 		}
 	}
-
-	/**
-	 * Used to generate a vector for testing purposes
-	 */
-	private static double[] createVector(double... d) {
-		double[] arr = new double[d.length];
-		for (int i = 0; i < arr.length; i++) {
-			arr[i] = d[i];
-		}
-		return arr;
-	}
+	
 }

@@ -39,7 +39,7 @@ public class SolubSkeleton {
 	private final float tol;
 
 	public List<PVector> vertices;
-	public List<Ray> rays;
+	private List<Ray> rays;
 	/**
 	 * Branches connect the inner bones to the vertices of the polygon.
 	 */
@@ -251,8 +251,7 @@ public class SolubSkeleton {
 
 				}
 			} else {
-				System.err.println(
-						"Error: no rays have been found for reduction. A shared intersection point is probably missing.");
+				System.err.println("Error: no rays have been found for reduction. A shared intersection point is probably missing.");
 				break;
 			}
 		}
@@ -326,14 +325,14 @@ public class SolubSkeleton {
 	 * 
 	 * Rays originate from the corners of the polygon, moving inwards.
 	 */
-	public class Ray {
+	private class Ray {
 
-		public PVector startPoint; // the vertex ray originated from
-		public PVector endPoint; // live end point of ray
-		public Edge prevEdge; // edge from previous vertex to startpoint of this ray
-		public Edge nextEdge; // from to next vertex
+		PVector startPoint; // the vertex ray originated from
+		PVector endPoint; // live end point of ray
+		Edge prevEdge; // edge from previous vertex to startpoint of this ray
+		Edge nextEdge; // from to next vertex
 
-		public Ray(PVector startPoint, PVector endPoint, Edge e1, Edge e2) {
+		private Ray(PVector startPoint, PVector endPoint, Edge e1, Edge e2) {
 			this.startPoint = startPoint;
 			this.endPoint = endPoint;
 			this.prevEdge = e1;
@@ -356,10 +355,10 @@ public class SolubSkeleton {
 	}
 
 	public class Bone {
-	
+
 		public PVector sp1; // startPoint of ray 1
 		public PVector sp2; // startPoint of ray 2
-	
+
 		public Bone(PVector sp1, PVector sp2) {
 			this.sp1 = sp1;
 			this.sp2 = sp2;
@@ -411,6 +410,15 @@ public class SolubSkeleton {
 				return -1;
 			}
 			return 0; // equal
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (obj instanceof Candidate) {
+				Candidate other = (Candidate) obj;
+				return other.minD == minD && other.intersectionPoint.equals(intersectionPoint);
+			}
+			return false;
 		}
 	}
 

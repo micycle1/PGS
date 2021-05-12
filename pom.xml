@@ -151,8 +151,8 @@
 			<version>1.5.1</version>
 		</dependency>
 		<dependency>
-			<groupId>com.github.gwlucastrig</groupId>
-			<artifactId>Tinfour</artifactId>
+			<groupId>org.tinfour</groupId>
+			<artifactId>TinfourCore</artifactId>
 			<version>2.1.6</version>
 		</dependency>
 		<dependency>

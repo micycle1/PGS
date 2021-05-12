@@ -182,7 +182,7 @@ public class PGS_Contour {
 		}
 
 		PShape lines = new PShape();
-		lines.setFamily(PShape.GROUP);
+		lines.setFamily(PConstants.GROUP);
 		PShape bones = prepareLinesPShape(null, null, 4);
 		PShape branches = prepareLinesPShape(RGB.composeColor(40, 235, 180, 128), null, null);
 		try {
@@ -240,7 +240,7 @@ public class PGS_Contour {
 		skeleton.run();
 
 		PShape lines = new PShape();
-		lines.setFamily(PShape.GROUP);
+		lines.setFamily(PConstants.GROUP);
 		PShape branches = prepareLinesPShape(RGB.composeColor(40, 235, 180, 128), null, null);
 		PShape bones = prepareLinesPShape(null, null, 4);
 
