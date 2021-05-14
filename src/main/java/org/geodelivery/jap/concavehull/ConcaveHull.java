@@ -69,7 +69,7 @@ public class ConcaveHull {
 	public ConcaveHull(ThresholdHeuristic thresholdHeuristic, double alpha) {
 		super();
 		this.thresholdHeuristic = thresholdHeuristic;
-		this.alpha = alpha;
+		this.alpha = Math.min(alpha, 1);
 	}
 
 	public ConcaveHull() {

@@ -323,43 +323,43 @@ public class PGS_Processing {
 	}
 
 	/**
-	 * Computes the concave hull of a point set.
+	 * Computes the concave hull of a point set using a breadth-first method.
 	 * 
 	 * @param points
 	 * @param threshold euclidean distance threshold
 	 * @return
+	 * @see #concaveHullDFS(List, double)
 	 * @see #concaveHull2(List, double)
 	 */
-	public static PShape concaveHull(List<PVector> points, double threshold) {
-
-		// calls Ordnance Survey implementation
-
-		final Coordinate[] coords;
-		if (!points.get(0).equals(points.get(points.size() - 1))) {
-			coords = new Coordinate[points.size() + 1];
-			points.add(points.get(0)); // close geometry
-		} else { // already closed
-			coords = new Coordinate[points.size()];
-		}
-
-		for (int i = 0; i < coords.length; i++) {
-			coords[i] = new Coordinate(points.get(i).x, points.get(i).y);
-		}
-
-		Geometry g = PGS.GEOM_FACTORY.createPolygon(coords);
-		ConcaveHull hull = new ConcaveHull(g);
+	public static PShape concaveHullBFS(List<PVector> points, double threshold) {
+		ConcaveHull hull = new ConcaveHull(prepareConcaveGeometry(points));
 		return toPShape(hull.getConcaveHullBFS(new TriCheckerChi(threshold), false, false).get(0));
 	}
 
 	/**
-	 * Computes the concave hull of a point set using a different algorithm. This
-	 * approach has a more "organic" structure compared to other concave method.
+	 * Computes the concave hull of a point set using a depth-first method. In
+	 * contrast to the BFS method, the depth-first approach produces shapes
 	 * 
 	 * @param points
-	 * @param threshold 0...1 (Normalized length parameter). Setting λP = 1 means
-	 *                  that no edges will be removed from the Delaunay
+	 * @param threshold euclidean distance threshold
+	 * @return
+	 * @see #concaveHullBFS(List, double)
+	 * @see #concaveHull2(List, double)
+	 */
+	public static PShape concaveHullDFS(List<PVector> points, double threshold) {
+		ConcaveHull hull = new ConcaveHull(prepareConcaveGeometry(points));
+		return toPShape(hull.getConcaveHullDFS(new TriCheckerChi(threshold)));
+	}
+
+	/**
+	 * Computes the concave hull of a point set using a different algorithm. This
+	 * approach has a more "organic" structure compared to other concaveBFS method.
+	 * 
+	 * @param points
+	 * @param threshold 0...1 (Normalized length parameter). Setting threshold=1
+	 *                  means that no edges will be removed from the Delaunay
 	 *                  triangulation, so the resulting polygon will be the convex
-	 *                  hull. Setting λP = 0 means that all edges that can be
+	 *                  hull. Setting threshold=0 means that all edges that can be
 	 *                  removed subject to the regularity constraint will be removed
 	 *                  (however polygons that are eroded beyond the point where
 	 *                  they provide a desirable characterization of the shape).
@@ -368,7 +368,7 @@ public class PGS_Processing {
 	 *                  typically produce optimal or near-optimal shape
 	 *                  characterization across a wide range of point distributions.
 	 * @return
-	 * @see #concaveHull(List, double)
+	 * @see #concaveHullBFS(List, double)
 	 */
 	public static PShape concaveHull2(List<PVector> points, double threshold) {
 
@@ -383,6 +383,15 @@ public class PGS_Processing {
 		 * removed.
 		 */
 
+		org.geodelivery.jap.concavehull.ConcaveHull hull = new org.geodelivery.jap.concavehull.ConcaveHull(threshold);
+
+		return toPShape(hull.transform(prepareConcaveGeometry(points)));
+	}
+
+	/**
+	 * Prepares a multipoint geometry from a list of PVectors.
+	 */
+	private static Geometry prepareConcaveGeometry(List<PVector> points) {
 		final Coordinate[] coords;
 		if (!points.get(0).equals(points.get(points.size() - 1))) {
 			coords = new Coordinate[points.size() + 1];
@@ -395,11 +404,7 @@ public class PGS_Processing {
 			coords[i] = new Coordinate(points.get(i).x, points.get(i).y);
 		}
 
-		Geometry g = PGS.GEOM_FACTORY.createPolygon(coords);
-
-		org.geodelivery.jap.concavehull.ConcaveHull hull = new org.geodelivery.jap.concavehull.ConcaveHull(threshold);
-
-		return toPShape(hull.transform(g));
+		return PGS.GEOM_FACTORY.createMultiPointFromCoords(coords);
 	}
 
 	/**
