@@ -65,8 +65,7 @@ public class PGS_Conversion implements PConstants {
 					shape.addChild(toPShape(g.getGeometryN(i)));
 				}
 				break;
-
-			case Geometry.TYPENAME_LINEARRING : // closed
+			case Geometry.TYPENAME_LINEARRING : // linearrings are closed by definition
 			case Geometry.TYPENAME_LINESTRING :
 				final LineString l = (LineString) g;
 				final boolean closed = l.isClosed();
@@ -81,9 +80,7 @@ public class PGS_Conversion implements PConstants {
 				} else {
 					shape.endShape();
 				}
-
 				break;
-
 			case Geometry.TYPENAME_POLYGON :
 				final Polygon polygon = (Polygon) g;
 				shape.setFamily(PShape.PATH);
@@ -156,12 +153,30 @@ public class PGS_Conversion implements PConstants {
 				final List<PShape> flatChildren = new ArrayList<>();
 				getChildren(shape, flatChildren);
 				flatChildren.removeIf(s -> s.getFamily() == PConstants.GROUP);
-				Polygon[] children = new Polygon[flatChildren.size()];
-				for (int i = 0; i < children.length; i++) {
-					children[i] = (Polygon) fromPShape(flatChildren.get(i));
+				if (flatChildren.isEmpty()) {
+					return GEOM_FACTORY.createEmpty(2);
 				}
-				// TODO for now, buffer/flatten polygons so that methods handle them properly
-				return (GEOM_FACTORY.createMultiPolygon(children).buffer(0));
+
+				if (flatChildren.stream().allMatch(c -> c.getFamily() == PShape.PATH && c.isClosed() == false)) {
+					// NOTE special case (for now): preserve paths as MultiLineString
+					LineString[] children = new LineString[flatChildren.size()];
+					for (int i = 0; i < children.length; i++) {
+						children[i] = (LineString) fromPShape(flatChildren.get(i));
+					}
+					return GEOM_FACTORY.createMultiLineString(children);
+				} else {
+					List<Polygon> children = new ArrayList<>();
+					for (int i = 0; i < flatChildren.size(); i++) {
+						Geometry child = fromPShape(flatChildren.get(i));
+						if (child.getGeometryType() == Geometry.TYPENAME_POLYGON
+								|| child.getGeometryType() == Geometry.TYPENAME_LINEARRING) {
+							children.add((Polygon) child);
+						}
+					}
+					// NOTE for now, buffer/flatten multiple polygons into a single JTS polygon so
+					// that methods handle them properly
+					return (GEOM_FACTORY.createMultiPolygon(children.toArray(new Polygon[0])).buffer(0));
+				}
 			case PShape.GEOMETRY :
 			case PShape.PATH :
 				g = fromVertices(shape);
@@ -177,10 +192,10 @@ public class PGS_Conversion implements PConstants {
 	/**
 	 * Creates a JTS Polygon from a geometry or path PShape.
 	 */
-	private static Polygon fromVertices(PShape shape) {
+	private static Geometry fromVertices(PShape shape) {
 
-		if (shape.getVertexCount() < 3) {
-			System.err.println("Input PShape has less than 3 vertices (not polygonal).");
+		if (shape.getVertexCount() < 2) {
+			System.err.println("Conversion Error: Input PShape has less than 2 vertices (not polygonal/path).");
 			return GEOM_FACTORY.createPolygon();
 		}
 
@@ -234,29 +249,32 @@ public class PGS_Conversion implements PConstants {
 				}
 				contour.removeAll(duplicates); // remove adjacent matching coordinates
 
-				if (!contour.get(0).equals2D(contour.get(contour.size() - 1))) {
+				if (!contour.get(0).equals2D(contour.get(contour.size() - 1)) && shape.isClosed()) {
 					contour.add(contour.get(0)); // points of LinearRing must form a closed linestring
 				}
 			}
 		}
 
 		final Coordinate[] outerCoords = coords.get(0).toArray(new Coordinate[coords.get(0).size()]);
-		LinearRing outer = GEOM_FACTORY.createLinearRing(outerCoords); // should always be valid
+		if (shape.isClosed()) { // closed geometry or path
+			LinearRing outer = GEOM_FACTORY.createLinearRing(outerCoords); // should always be valid
 
-		LinearRing[] holes = new LinearRing[coords.size() - 1]; // Create linear ring for each hole in the shape
-		for (int j = 1; j < coords.size(); j++) {
-			final Coordinate[] innerCoords = coords.get(j).toArray(new Coordinate[coords.get(j).size()]);
-			holes[j - 1] = GEOM_FACTORY.createLinearRing(innerCoords);
+			LinearRing[] holes = new LinearRing[coords.size() - 1]; // Create linear ring for each hole in the shape
+			for (int j = 1; j < coords.size(); j++) {
+				final Coordinate[] innerCoords = coords.get(j).toArray(new Coordinate[coords.get(j).size()]);
+				holes[j - 1] = GEOM_FACTORY.createLinearRing(innerCoords);
+			}
+			return GEOM_FACTORY.createPolygon(outer, holes);
+		} else { // non-closed path (a string)
+			return GEOM_FACTORY.createLineString(outerCoords);
 		}
-
-		return GEOM_FACTORY.createPolygon(outer, holes);
 	}
 
 	/**
 	 * Creates a JTS Polygon from a primitive PShape. Primitive PShapes are those
 	 * where createShape() is used to create them, and can take any of these types:
 	 * POINT, LINE, TRIANGLE, QUAD, RECT, ELLIPSE, ARC, BOX, SPHERE. They do not
-	 * have direct vertex data.
+	 * have directly accessible vertex data.
 	 */
 	private static Polygon fromPrimitive(PShape shape) {
 		final GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
