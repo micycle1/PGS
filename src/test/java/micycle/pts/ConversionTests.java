@@ -199,9 +199,47 @@ class ConversionTests {
 
 		assertEquals(g.getCoordinates().length, shape.getChild(0).getVertexCount() + shape.getChild(1).getVertexCount());
 		for (int k = 0; k < g.getNumGeometries(); k++) {
-			for (int i = 0; i < shape.getVertexCount(); i++) {
+			for (int i = 0; i < g.getGeometryN(k).getNumPoints(); i++) {
 				assertTrue(pointsAreEqual(g.getGeometryN(k).getCoordinates()[i], shape.getChild(k).getVertex(i)));
 			}
+		}
+	}
+
+	@Test
+	void testPointsToMultipoint() {
+		final PShape points = new PShape(PShape.GEOMETRY);
+		points.beginShape(PShape.POINTS);
+		points.vertex(0, 0);
+		points.vertex(10, 0);
+		points.vertex(0, 10);
+		points.vertex(10, 10);
+		points.endShape();
+
+		Geometry g = fromPShape(points);
+		assertEquals(Geometry.TYPENAME_MULTIPOINT, g.getGeometryType());
+
+		assertEquals(points.getVertexCount(), g.getCoordinates().length); // geometry is closed so has one more point
+		for (int i = 0; i < g.getCoordinates().length; i++) {
+			assertTrue(pointsAreEqual(g.getCoordinates()[i], points.getVertex(i)));
+		}
+	}
+
+	@Test
+	void testMultipointToPoints() {
+		Coordinate c1 = new Coordinate(0, 0);
+		Coordinate c2 = new Coordinate(10, 0);
+		Coordinate c3 = new Coordinate(0, 10);
+		Coordinate c4 = new Coordinate(10, 10);
+
+		Coordinate[] coords = new Coordinate[] { c1, c2, c3, c4 };
+		final Geometry g = GEOM_FACTORY.createMultiPointFromCoords(coords);
+
+		final PShape shape = toPShape(g);
+		assertEquals(PShape.POINTS, shape.getKind());
+
+		assertEquals(g.getCoordinates().length, shape.getVertexCount());
+		for (int i = 0; i < g.getCoordinates().length; i++) {
+			assertTrue(pointsAreEqual(g.getCoordinates()[i], shape.getVertex(i)));
 		}
 	}
 

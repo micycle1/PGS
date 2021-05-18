@@ -92,7 +92,7 @@ public class PGS_Conversion implements PConstants {
 				 */
 				coords = polygon.getExteriorRing().getCoordinates();
 				for (int i = 0; i < coords.length - 1; i++) {
-					Coordinate coord = coords[i];
+					final Coordinate coord = coords[i];
 					shape.vertex((float) coord.x, (float) coord.y);
 				}
 
@@ -100,15 +100,27 @@ public class PGS_Conversion implements PConstants {
 					shape.beginContour();
 					coords = polygon.getInteriorRingN(j).getCoordinates();
 					for (int i = 0; i < coords.length - 1; i++) {
-						Coordinate coord = coords[i];
+						final Coordinate coord = coords[i];
 						shape.vertex((float) coord.x, (float) coord.y);
 					}
 					shape.endContour();
 				}
 				shape.endShape(CLOSE);
 				break;
+			case Geometry.TYPENAME_POINT :
+			case Geometry.TYPENAME_MULTIPOINT :
+				coords = g.getCoordinates();
+				shape.setFamily(PShape.GEOMETRY);
+				shape.setStrokeCap(PConstants.ROUND);
+				shape.beginShape(PShape.POINTS);
+				for (int i = 0; i < coords.length; i++) {
+					final Coordinate coord = coords[i];
+					shape.vertex((float) coord.x, (float) coord.y);
+				}
+				shape.endShape();
+				break;
 			default :
-				System.err.println(g.getGeometryType() + " are unsupported.");
+				System.err.println("PGS_Conversion Error: " + g.getGeometryType() + " geometry types are unsupported.");
 				break;
 		}
 
@@ -179,7 +191,11 @@ public class PGS_Conversion implements PConstants {
 				}
 			case PShape.GEOMETRY :
 			case PShape.PATH :
-				g = fromVertices(shape);
+				if (shape.getKind() == PConstants.POLYGON || shape.getKind() == PConstants.PATH || shape.getKind() == 0) {
+					g = fromVertices(shape);
+				} else {
+					g = fromCreateShape(shape); // special paths (e.g. POINTS, LINES, etc.)
+				}
 				break;
 			case PShape.PRIMITIVE :
 				g = fromPrimitive(shape);
@@ -190,14 +206,45 @@ public class PGS_Conversion implements PConstants {
 	}
 
 	/**
-	 * Creates a JTS Polygon from a geometry or path PShape.
+	 * Converts a PShape made via beginShape(KIND), where KIND is not POLYGON.
+	 * 
+	 * @param shape
+	 * @return
+	 */
+	private static Geometry fromCreateShape(PShape shape) {
+		switch (shape.getKind()) {
+			case PConstants.POINTS :
+				final Coordinate[] coords = new Coordinate[shape.getVertexCount()];
+				for (int i = 0; i < shape.getVertexCount(); i++) {
+					coords[i] = PGS.coordFromPVector(shape.getVertex(i));
+				}
+				return GEOM_FACTORY.createMultiPointFromCoords(coords);
+			case PConstants.LINES : // create multi line string consisting of each line
+				final LineString[] lines = new LineString[shape.getVertexCount() / 2];
+				for (int i = 0; i < lines.length; i++) {
+					final Coordinate c1 = PGS.coordFromPVector(shape.getVertex(2 * i));
+					final Coordinate c2 = PGS.coordFromPVector(shape.getVertex(2 * i + 1));
+					lines[i] = GEOM_FACTORY.createLineString(new Coordinate[] { c1, c2 });
+				}
+				return GEOM_FACTORY.createMultiLineString(lines);
+			default :
+				System.err.println("PGS_Conversion Error: Unsupported PShape kind: " + shape.getKind());
+				return GEOM_FACTORY.createEmpty(2);
+		}
+	}
+
+	/**
+	 * Creates a JTS Polygon from a geometry or path PShape, whose 'kind' is a
+	 * polygon or path.
 	 */
 	private static Geometry fromVertices(PShape shape) {
 
 		if (shape.getVertexCount() < 2) {
-			System.err.println("Conversion Error: Input PShape has less than 2 vertices (not polygonal/path).");
+			System.err.println("PGS_Conversion Error: Input PShape has less than 2 vertices (not polygonal/path).");
 			return GEOM_FACTORY.createPolygon();
 		}
+
+		// polygon:
 
 		final int[] contourGroups = getContourGroups(shape.getVertexCodes());
 		final int[] vertexCodes = getVertexTypes(shape);
@@ -370,23 +417,25 @@ public class PGS_Conversion implements PConstants {
 	}
 
 	/**
-	 * Kinda recursive, caller must provide fresh arraylist. Output includes the
-	 * parent-most (input) shape. Output is flattened, does not respect a hierarchy
-	 * of parent-child PShapes.
+	 * Finds and returns all the children PShapes of a given PShape. All children
+	 * (including the parent-most (input) shape) are put into the given list.
+	 * <p>
+	 * The output is flattened -- it does not respect a hierarchy of parent-child
+	 * PShapes.
 	 * 
 	 * @param shape
-	 * @param visited
+	 * @param childrenOut user-provided list into which all child PShapes are placed
 	 * @return
 	 */
-	public static PShape getChildren(PShape shape, List<PShape> visited) {
-		visited.add(shape);
+	public static PShape getChildren(PShape shape, List<PShape> childrenOut) {
+		childrenOut.add(shape);
 
 		if (shape.getChildCount() == 0 || shape.getKind() != GROUP) {
 			return shape;
 		}
 
 		for (PShape child : shape.getChildren()) {
-			getChildren(child, visited);
+			getChildren(child, childrenOut);
 		}
 		return null;
 	}
