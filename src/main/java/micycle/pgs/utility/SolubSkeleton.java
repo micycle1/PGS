@@ -420,6 +420,11 @@ public class SolubSkeleton {
 			}
 			return false;
 		}
+
+		@Override
+		public int hashCode() {
+			return 1327 * id + intersectionPoint.hashCode();
+		}
 	}
 
 }

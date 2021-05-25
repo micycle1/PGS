@@ -92,7 +92,7 @@ public class ClosestPointPair {
 	 */
 	public List<PVector> execute() {
 		PairStructure result = closestPair(0, pointsOrderedByXCoordinate.size(), pointsOrderedByYCoordinate);
-		List<PVector> out = new ArrayList<PVector>();
+		List<PVector> out = new ArrayList<>();
 		out.add(result.p1);
 		out.add(result.p2);
 		return out;

@@ -169,7 +169,7 @@ public class PGS_Conversion implements PConstants {
 					return GEOM_FACTORY.createEmpty(2);
 				}
 
-				if (flatChildren.stream().allMatch(c -> c.getFamily() == PShape.PATH && c.isClosed() == false)) {
+				if (flatChildren.stream().allMatch(c -> c.getFamily() == PShape.PATH && !c.isClosed())) {
 					// NOTE special case (for now): preserve paths as MultiLineString
 					LineString[] children = new LineString[flatChildren.size()];
 					for (int i = 0; i < children.length; i++) {
@@ -180,8 +180,8 @@ public class PGS_Conversion implements PConstants {
 					List<Polygon> children = new ArrayList<>();
 					for (int i = 0; i < flatChildren.size(); i++) {
 						Geometry child = fromPShape(flatChildren.get(i));
-						if (child.getGeometryType() == Geometry.TYPENAME_POLYGON
-								|| child.getGeometryType() == Geometry.TYPENAME_LINEARRING) {
+						if (child.getGeometryType().equals(Geometry.TYPENAME_POLYGON)
+								|| child.getGeometryType().equals(Geometry.TYPENAME_LINEARRING)) {
 							children.add((Polygon) child);
 						}
 					}
@@ -242,7 +242,7 @@ public class PGS_Conversion implements PConstants {
 		if (shape.getVertexCount() < 2) { // skip empty / point PShapes
 			return GEOM_FACTORY.createPolygon();
 		}
-		
+
 		final int[] contourGroups = getContourGroups(shape.getVertexCodes());
 		final int[] vertexCodes = getVertexTypes(shape);
 
@@ -300,11 +300,11 @@ public class PGS_Conversion implements PConstants {
 		}
 
 		final Coordinate[] outerCoords = coords.get(0).toArray(new Coordinate[coords.get(0).size()]);
-		
+
 		if (outerCoords.length < 2) {
 			return GEOM_FACTORY.createPolygon();
 		}
-		
+
 		if (shape.isClosed() && outerCoords.length > 3) { // closed geometry or path
 			LinearRing outer = GEOM_FACTORY.createLinearRing(outerCoords); // should always be valid
 

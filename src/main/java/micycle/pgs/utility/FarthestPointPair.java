@@ -39,7 +39,7 @@ public class FarthestPointPair {
 	public FarthestPointPair(List<PVector> points) {
 
 		final Geometry convexHull = PGS_Conversion.fromPShape(PGS_Conversion.fromPVector(points)).convexHull();
-		Coordinate coords[] = convexHull.getCoordinates();
+		Coordinate[] coords = convexHull.getCoordinates();
 		if (!Orientation.isCCW(coords)) {
 			coords = convexHull.reverse().getCoordinates();
 		}
@@ -82,7 +82,6 @@ public class FarthestPointPair {
 
 		int j = k;
 		for (int i = 1; i <= k && j <= m; i++) {
-			// StdOut.println("hull[i] + " and " + hull[j] + " are antipodal");
 			if (hull[i].dist(hull[j]) > bestDistanceSquared) {
 				best1 = hull[i];
 				best2 = hull[j];
@@ -90,7 +89,6 @@ public class FarthestPointPair {
 			}
 			while ((j < m) && area2(hull[i], hull[i + 1], hull[j + 1]) > area2(hull[i], hull[i + 1], hull[j])) {
 				j++;
-				// StdOut.println(hull[i] + " and " + hull[j] + " are antipodal");
 				double distanceSquared = hull[i].dist(hull[j]);
 				if (distanceSquared > bestDistanceSquared) {
 					best1 = hull[i];

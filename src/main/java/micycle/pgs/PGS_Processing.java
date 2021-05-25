@@ -338,7 +338,8 @@ public class PGS_Processing {
 
 	/**
 	 * Computes the concave hull of a point set using a depth-first method. In
-	 * contrast to the BFS method, the depth-first approach produces shapes
+	 * contrast to the BFS method, the depth-first approach produces shapes that are
+	 * more contiguous/less branching and spiral-like.
 	 * 
 	 * @param points
 	 * @param threshold euclidean distance threshold
@@ -395,13 +396,17 @@ public class PGS_Processing {
 		final Coordinate[] coords;
 		if (!points.get(0).equals(points.get(points.size() - 1))) {
 			coords = new Coordinate[points.size() + 1];
-			points.add(points.get(0)); // close geometry
 		} else { // already closed
 			coords = new Coordinate[points.size()];
 		}
 
 		for (int i = 0; i < coords.length; i++) {
-			coords[i] = new Coordinate(points.get(i).x, points.get(i).y);
+			if (i >= points.size()) {
+				coords[i] = new Coordinate(points.get(0).x, points.get(0).y); // close geometry
+			}
+			else {
+				coords[i] = new Coordinate(points.get(i).x, points.get(i).y);				
+			}
 		}
 
 		return PGS.GEOM_FACTORY.createMultiPointFromCoords(coords);
