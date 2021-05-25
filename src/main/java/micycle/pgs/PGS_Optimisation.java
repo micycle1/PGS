@@ -21,6 +21,7 @@ import org.locationtech.jts.util.GeometricShapeFactory;
 
 import micycle.pgs.color.RGB;
 import micycle.pgs.utility.ClosestPointPair;
+import micycle.pgs.utility.FarthestPointPair;
 import micycle.pgs.utility.MaximumInscribedRectangle;
 import micycle.pgs.utility.MinimumBoundingEllipse;
 import processing.core.PShape;
@@ -232,16 +233,34 @@ public class PGS_Optimisation {
 	}
 
 	/**
-	 * Computes the closest pair of points from a set of points. This method runs in
+	 * Computes the closest pair of points in a set of points. This method runs in
 	 * O(n*log(n)), rather than the naive O(n*n) brute-force approach.
 	 * 
 	 * @param points a set of 2D points, represented by PVectors
 	 * @return a List<PVector> containing exactly two elements which are the closest
-	 *         pair of points among those in the collection.
+	 *         pair of points among those in the set.
+	 * @see #farthestPointPair(List)
 	 */
 	public static List<PVector> closestPointPair(List<PVector> points) {
-		ClosestPointPair closestPointPair = new ClosestPointPair(points);
+		final ClosestPointPair closestPointPair = new ClosestPointPair(points);
 		return closestPointPair.execute();
+	}
+
+	/**
+	 * Computes the farthest pair of points in a set of n points. This method runs
+	 * in O(n*log(n)), rather than the naive O(n*n) brute-force approach.
+	 * 
+	 * @param points a set of 2D points, represented by PVectors
+	 * @return a List<PVector> containing exactly two elements which are the
+	 *         farthest pair of points among those in the set.
+	 * @see #closestPoints(PShape, PVector)
+	 */
+	public static List<PVector> farthestPointPair(List<PVector> points) {
+		final FarthestPointPair fpp = new FarthestPointPair(points);
+		final List<PVector> out = new ArrayList<>();
+		out.add(fpp.either());
+		out.add(fpp.other());
+		return out;
 	}
 
 	/**

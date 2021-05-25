@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 
-- `closestPointPair()` to `PGS_Optimisation`. The method efficiently computes the closest pair of points from a set of points.
+- `closestPointPair()` to `PGS_Optimisation`. The method efficiently computes the **closest** pair of points in a set of points.
+- `farthestPointPair()` to `PGS_Optimisation`. The method efficiently computes the **farthest** pair of points in a set of points.
 - Expand `PGS_Conversion` to support conversion between:
   - `PATH` PShape<->JTS `LineString`
   - `POINTS` PShape<->JTS `MultiPoint`
@@ -23,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Error when `concaveHull2()` was called with alpha > 1.
 - Concave hull methods no longer mutate the input point set.
-- PShapes marked as closed and having less than 3 vertices could cause an error during conversion (#22).
+- PShapes marked as closed and having less than 3 vertices could cause an error during conversion ([#22](https://github.com/micycle1/PGS/issues/22)).
 
 ### Removed
 - `PGS_Processing.concaveHull()` (see *Changed* above)
