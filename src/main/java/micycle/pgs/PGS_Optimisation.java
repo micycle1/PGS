@@ -20,6 +20,7 @@ import org.locationtech.jts.operation.distance.DistanceOp;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
 import micycle.pgs.color.RGB;
+import micycle.pgs.utility.ClosestPointPair;
 import micycle.pgs.utility.MaximumInscribedRectangle;
 import micycle.pgs.utility.MinimumBoundingEllipse;
 import processing.core.PShape;
@@ -228,6 +229,19 @@ public class PGS_Optimisation {
 			points.add(new PVector((float) coord.x, (float) coord.y));
 		}
 		return points;
+	}
+
+	/**
+	 * Computes the closest pair of points from a set of points. This method runs in
+	 * O(n*log(n)), rather than the naive O(n*n) brute-force approach.
+	 * 
+	 * @param points a set of 2D points, represented by PVectors
+	 * @return a List<PVector> containing exactly two elements which are the closest
+	 *         pair of points among those in the collection.
+	 */
+	public static List<PVector> closestPointPair(List<PVector> points) {
+		ClosestPointPair closestPointPair = new ClosestPointPair(points);
+		return closestPointPair.execute();
 	}
 
 	/**

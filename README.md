@@ -317,31 +317,32 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
-    <td align="center" valign="center" colspan="2"><b>Concave Hull</td>
+    <td align="center" valign="center" colspan="3"><b>Concave Hull</td>
     <td align="center" valign="center"><b>Convex Hull</td>
-    <td align="center" valign="center"><b>Snap Hull</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/morphology/concaveHull.gif"></td>
-    <td valign="top" width="25%"><img src="resources/morphology/concaveHull2.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/concaveHullBFS.png"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/concaveHullDFS.png"></td>
     <td valign="top" width="25%"><img src="resources/morphology/convexHull.png"></td>
-    <td valign="top" width="25%"><img src="resources/morphology/snapHull.gif"></td>
   </tr>
     <tr>
-    <td align="center" valign="center" colspan="2">Concave hull of point sets.</td>
+    <td align="center" valign="center" colspan="3">Concave hull of point sets via breadth-first or depth-first approaches.</td>
     <td align="center" valign="center"></td>
-    <td align="center" valign="center">A convex hull with some level of shape-feature snapping.</td>
   </tr>
 
   <tr>
+    <td align="center" valign="center"><b>Snap Hull</td>
     <td align="center" valign="center"><b>Shape Intersection</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/geometry_processing/shapeIntersection.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/snapHull.gif"></td>
 
   </tr>
     <tr>
-    <td align="center" valign="center">Find all points of intersection between two shapes.</td>
+      <td align="center" valign="center">A convex hull with some level of shape-feature snapping.</td>
+      <td align="center" valign="center">Find all points of intersection between two shapes.</td>
   </tr>
 </table>
 
@@ -382,6 +383,13 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top"><img src="resources/pgs/closestVertex.gif"></td>
     <td valign="top"><img src="resources/optimisation/apollonius1.gif"></td>
     <td valign="top"><img src="resources/optimisation/apollonius2.gif"></td>
+  </tr>
+
+  <tr>
+    <td align="center" valign="center"><b>Closest Point Pair</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/optimisation/closestPair.png"></td>
   </tr>
   
 </table>

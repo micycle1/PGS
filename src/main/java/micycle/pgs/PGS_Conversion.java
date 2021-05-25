@@ -239,13 +239,10 @@ public class PGS_Conversion implements PConstants {
 	 */
 	private static Geometry fromVertices(PShape shape) {
 
-		if (shape.getVertexCount() < 2) {
-			System.err.println("PGS_Conversion Error: Input PShape has less than 2 vertices (not polygonal/path).");
+		if (shape.getVertexCount() < 2) { // skip empty / point PShapes
 			return GEOM_FACTORY.createPolygon();
 		}
-
-		// polygon:
-
+		
 		final int[] contourGroups = getContourGroups(shape.getVertexCodes());
 		final int[] vertexCodes = getVertexTypes(shape);
 
@@ -303,7 +300,12 @@ public class PGS_Conversion implements PConstants {
 		}
 
 		final Coordinate[] outerCoords = coords.get(0).toArray(new Coordinate[coords.get(0).size()]);
-		if (shape.isClosed()) { // closed geometry or path
+		
+		if (outerCoords.length < 2) {
+			return GEOM_FACTORY.createPolygon();
+		}
+		
+		if (shape.isClosed() && outerCoords.length > 3) { // closed geometry or path
 			LinearRing outer = GEOM_FACTORY.createLinearRing(outerCoords); // should always be valid
 
 			LinearRing[] holes = new LinearRing[coords.size() - 1]; // Create linear ring for each hole in the shape

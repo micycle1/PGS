@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>micycle</groupId>
 	<artifactId>PGS</artifactId>
-	<version>1.0.0</version>
+	<version>1.1.0-SNAPSHOT</version>
 	<name>Processing Geometry Suite</name>
 	<description>Geometric algorithms for Processing</description>
 
@@ -43,7 +43,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>3.2.0</version>
+				<version>3.3.0</version>
 				<executions>
 					<execution>
 						<id>attach-javadocs</id>
@@ -168,7 +168,7 @@
 		<dependency>
 			<groupId>org.dyn4j</groupId>
 			<artifactId>dyn4j</artifactId>
-			<version>4.1.4</version>
+			<version>[4.0,)</version>
 		</dependency>
 		<dependency>
 			<groupId>org.tinspin</groupId>
@@ -178,13 +178,13 @@
 		<dependency> <!-- for test running -->
 			<groupId>org.junit.jupiter</groupId>
 			<artifactId>junit-jupiter-api</artifactId>
-			<version>5.7.1</version>
+			<version>[5.7,)</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency> <!-- for test running -->
 			<groupId>org.junit.jupiter</groupId>
 			<artifactId>junit-jupiter-engine</artifactId>
-			<version>5.7.1</version>
+			<version>[5.7,)</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
