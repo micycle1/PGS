@@ -258,9 +258,12 @@ Much of the functionality (but by no means all) is demonstrated below:
 
   <tr>
     <td align="center" valign="center"><b>Simplification</td>
+    <td align="center" valign="center" colspan="2"><b>Chaikin Cutting</td>
   </tr>
   <tr>
     <td valign="top"><img src="resources/morphology/simplifyVW.gif"></td>
+    <td valign="top"><img src="resources/morphology/chaikinCut1.gif"></td>
+    <td valign="top"><img src="resources/morphology/chaikinCut2.gif"></td>
   </tr>
 </table>
 

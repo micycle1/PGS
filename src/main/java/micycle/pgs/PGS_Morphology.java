@@ -11,6 +11,8 @@ import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.simplify.VWSimplifier;
 
+import micycle.pgs.color.RGB;
+import micycle.pgs.utility.ChaikinCut;
 import micycle.pgs.utility.CornerRounding;
 import micycle.pgs.utility.GaussianLineSmoothing;
 import processing.core.PConstants;
@@ -133,7 +135,8 @@ public class PGS_Morphology {
 	 * than the input.
 	 * 
 	 * @param shape
-	 * @param fit   tightness of fit from 0 (tight/no smooth) to 1 (loose/most smoothed)
+	 * @param fit   tightness of fit from 0 (tight/no smooth) to 1 (loose/most
+	 *              smoothed)
 	 * @return smoothed copy of the shape
 	 * @see #smoothGaussian(PShape, double)
 	 */
@@ -143,7 +146,7 @@ public class PGS_Morphology {
 		} catch (Exception e) {
 			return new PShape();
 		}
-		
+
 	}
 
 	/**
@@ -173,7 +176,7 @@ public class PGS_Morphology {
 	}
 
 	/**
-	 * Rounds the corners of a shape by substituting a circular arc for the corners.
+	 * Rounds the corners of a shape by substituting a circular arc for each corner.
 	 * Each corner is rounded in proportion to the smallest length of its 2
 	 * constituent lines.
 	 * 
@@ -185,6 +188,29 @@ public class PGS_Morphology {
 	 */
 	public static PShape round(PShape shape, double extent) {
 		return CornerRounding.round(shape, extent);
+	}
+
+	/**
+	 * Smoothes a shape via iterated corner cutting (chaikin cutting). More
+	 * iterations results in more smoothing.
+	 * 
+	 * @param shape
+	 * @param ratio      Between 0...1. Determines how far along each edge to
+	 *                   perform the cuts. 0 is no cutting; 1 is maximal cutting
+	 *                   (cut at the midpoint of each edge).
+	 * @param iterations number of cutting iterations/recursions to perform. A value
+	 *                   of 1 simply cuts the corners; higher values effectively
+	 *                   smooth the cut. Values greater than ~10 generally have no
+	 *                   additional effect.
+	 * @return
+	 */
+	public static PShape chaikinCut(PShape shape, double ratio, int iterations) {
+		ratio = Math.max(ratio, 0.0001);
+		ratio = Math.min(ratio, 0.9999);
+		ratio /= 2; // constrain to 0...0.5
+		PShape cut = ChaikinCut.chaikin(shape, (float) ratio, iterations);
+		PGS_Conversion.setAllFillColor(cut, RGB.WHITE);
+		return cut;
 	}
 
 }

@@ -280,7 +280,7 @@ public class PGS_Conversion implements PConstants {
 
 		for (ArrayList<Coordinate> contour : coords) {
 			final Iterator<Coordinate> iterator = contour.iterator();
-			if (iterator.hasNext()) { // at least one vertex
+			if (iterator.hasNext()) { // has at least one vertex
 				Coordinate previous = iterator.next();
 				final List<Coordinate> duplicates = new ArrayList<>();
 
@@ -291,10 +291,13 @@ public class PGS_Conversion implements PConstants {
 					}
 					previous = current;
 				}
-				contour.removeAll(duplicates); // remove adjacent matching coordinates
+
+				if (contour.removeAll(duplicates) && contour.size() == 0) { // remove adjacent matching coordinates
+					continue; // continue if contour coords are empty after removal
+				}
 
 				if (!contour.get(0).equals2D(contour.get(contour.size() - 1)) && shape.isClosed()) {
-					contour.add(contour.get(0)); // points of LinearRing must form a closed linestring
+					contour.add(contour.get(0)); // close LinearRing: "points of LinearRing must form a closed linestring"
 				}
 			}
 		}
