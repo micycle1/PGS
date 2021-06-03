@@ -339,8 +339,8 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center"><b>Shape Intersection</td>
   </tr>
   <tr>
-    <td valign="top" width="25%"><img src="resources/geometry_processing/shapeIntersection.gif"></td>
     <td valign="top" width="25%"><img src="resources/morphology/snapHull.gif"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/shapeIntersection.gif"></td>
 
   </tr>
     <tr>
@@ -416,8 +416,10 @@ Much of the functionality (but by no means all) is demonstrated below:
 
   <tr>
     <td align="center" valign="center"><b>Random Convex Polygon</td>
+    <td align="center" valign="center"><b>Heart</td>
   </tr>
   <tr>
     <td valign="top"><img src="resources/pgs/randomPolygon.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/heart.png"></td>
   </tr>
 </table>

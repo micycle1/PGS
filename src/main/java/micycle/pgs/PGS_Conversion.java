@@ -292,7 +292,7 @@ public class PGS_Conversion implements PConstants {
 					previous = current;
 				}
 
-				if (contour.removeAll(duplicates) && contour.size() == 0) { // remove adjacent matching coordinates
+				if (contour.removeAll(duplicates) && contour.isEmpty()) { // remove adjacent matching coordinates
 					continue; // continue if contour coords are empty after removal
 				}
 

@@ -150,7 +150,7 @@ public class PGS_ShapePredicates {
 	}
 
 	/**
-	 * Computes the centroid of a shape. A centoid is the center of mass of the
+	 * Computes the centroid of a shape. A centroid is the center of mass of the
 	 * shape.
 	 * 
 	 * @param shape

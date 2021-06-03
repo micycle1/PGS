@@ -5,7 +5,7 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
-## [1.1.0] – 2021-00-00
+## [1.1.0] – 2021-xx-xx
 
 ### Added
 
@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `closestPointPair()` to `PGS_Optimisation`. The method efficiently computes the **closest** pair of points in a set of points.
 - `farthestPointPair()` to `PGS_Optimisation`. The method efficiently computes the **farthest** pair of points in a set of points.
 - `chaikinCut()` to `PGS_Morphology`. The method smooths shapes via iterated corner cuts.
+- `createHeart()` to `PGS_Construction`. The method generates heart-shaped PShapes.
 - Expand `PGS_Conversion` to support conversion between:
   - `PATH` PShape<->JTS `LineString`
   - `POINTS` PShape<->JTS `MultiPoint`

@@ -4,6 +4,7 @@ import static micycle.pgs.PGS_Conversion.fromPShape;
 import static processing.core.PConstants.TRIANGLES;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.function.Consumer;
 import org.locationtech.jts.algorithm.Orientation;
@@ -152,7 +153,7 @@ public class PGS_Triangulation {
 	 * @see #delaunayTriangulation(PShape, List, boolean, int, boolean)
 	 * @see #delaunayTriangulationPoints(PShape, List, boolean, int, boolean)
 	 */
-	public static IncrementalTin delaunayTriangulationTin(PShape shape, List<PVector> steinerPoints, boolean constrain, int refinements,
+	public static IncrementalTin delaunayTriangulationTin(PShape shape, Collection<PVector> steinerPoints, boolean constrain, int refinements,
 			boolean pretty) {
 		final Geometry g = fromPShape(shape);
 		final IncrementalTin tin = new IncrementalTin(10);
@@ -174,7 +175,7 @@ public class PGS_Triangulation {
 			final IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(g);
 			final ArrayList<Vertex> refinementVertices = new ArrayList<>();
 			final Consumer<SimpleTriangle> triangleConsumer = t -> {
-				if (t.getArea() > 85) { // don't refine small triangles
+				if (t.getArea() > 50) { // don't refine small triangles
 					final Coordinate center = centroid(t); // use centroid rather than circumcircle center
 					if (pretty || pointLocator.locate(center) != Location.EXTERIOR) {
 						refinementVertices.add(new Vertex(center.x, center.y, 0));

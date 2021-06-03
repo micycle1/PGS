@@ -11,7 +11,7 @@ import micycle.pgs.utility.Star;
 import processing.core.PShape;
 
 /**
- * Construct uncommon 2D geometries.
+ * Construct uncommon/interesting 2D geometries.
  * 
  * @author Michael Carleton
  *
@@ -93,7 +93,7 @@ public class PGS_Construction {
 		shape.setFill(RGB.WHITE);
 		shape.beginShape();
 
-		int points = 180;
+		final int points = 180;
 		final double angleInc = Math.PI * 2 / points;
 		double angle = 0;
 		while (angle < Math.PI * 2) {
@@ -148,8 +148,8 @@ public class PGS_Construction {
 	/**
 	 * Creates a star shape.
 	 * 
-	 * @param centerX     The x coordinate of the center
-	 * @param centerY     The y coordinate of the center
+	 * @param x           The x coordinate of the center
+	 * @param y           The y coordinate of the center
 	 * @param numRays     The number of rays that the star should have
 	 * @param innerRadius The inner radius of the star
 	 * @param outerRadius The outer radius of the star
@@ -163,6 +163,37 @@ public class PGS_Construction {
 		shape.setFill(true);
 		shape.setFill(255);
 		return shape;
+	}
+
+	/**
+	 * Creates a heart shape.
+	 * 
+	 * @param x     The x coordinate of the center of the heart
+	 * @param y     The y coordinate of the center of the heart
+	 * @param width Maximum width of the widest part of the heart
+	 * @return
+	 */
+	public static PShape createHeart(final double x, final double y, final double width) {
+		// https://mathworld.wolfram.com/HeartCurve.html
+		PShape heart = new PShape(PShape.GEOMETRY);
+		heart.setFill(true);
+		heart.setFill(RGB.WHITE);
+		heart.beginShape();
+
+		final int points = 180;
+		final double angleInc = Math.PI * 2 / points;
+		double angle = 0;
+		while (angle < Math.PI * 2) {
+			final double s = Math.sin(angle);
+			double vx = s * s * s;
+			double vy = 13 * Math.cos(angle) - 5 * Math.cos(2 * angle) - 2 * Math.cos(3 * angle) - Math.cos(4 * angle);
+			vy /= 17; // normalise to 1
+			heart.vertex((float) (x + vx * width / 2), (float) (y - vy * width / 2));
+			angle += angleInc;
+		}
+
+		heart.endShape();
+		return heart;
 	}
 
 }

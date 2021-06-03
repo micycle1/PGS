@@ -70,7 +70,7 @@ public class ChaikinCut {
 			if (cut(a, b)) {
 
 				// Step 3: Break it using our chaikin_break() function
-				ArrayList<PVector> n = chaikin_cut(a, b, ratio);
+				ArrayList<PVector> n = chaikinCut(a, b, ratio);
 
 				/*
 				 * Now we have to deal with one corner case. In the case of open shapes, the
@@ -114,9 +114,9 @@ public class ChaikinCut {
 	 * @param ratio determines where along the edge to make the cut
 	 * @return
 	 */
-	private static ArrayList<PVector> chaikin_cut(PVector a, PVector b, float ratio) {
+	private static ArrayList<PVector> chaikinCut(PVector a, PVector b, float ratio) {
 		float x, y;
-		ArrayList<PVector> n = new ArrayList<PVector>();
+		ArrayList<PVector> n = new ArrayList<>();
 
 		/*
 		 * If ratio is greater than 0.5 flip it so we avoid cutting across the midpoint
