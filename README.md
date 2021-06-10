@@ -12,8 +12,10 @@ Docs are hosted via *GitHub Pages* [here](https://micycle1.github.io/PGS/).
 
 Library functionality is split over the following classes:
 
+* `PGS_CirclePacking`
+  * Circle packings of shapes, subject to varying constraints and patterns of tangencies
 * `PGS_Construction`
-  * Construct uncommon 2D primitives
+  * Construct uncommon/interesting 2D primitives
 * `PGS_Contour`
   * Methods that produce various contours from shapes: medial axes, straight skeletons, offset curves, etc.
 * `PGS_Conversion`
@@ -397,6 +399,43 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/optimisation/farthestPair.png"></td>
   </tr>
   
+</table>
+
+## *Circle Packing*
+
+<table>
+  <tr>
+    <td align="center" valign="center" colspan="2"><b>Front Chain</td>
+    <td align="center" valign="center" colspan="2"><b>Trinscribed</td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="resources/circle_packing/frontChain1.png"></td>
+    <td valign="top"><img src="resources/circle_packing/frontChain2.png"></td>
+    <td valign="top"><img src="resources/circle_packing/inscribed1.png"></td>
+    <td valign="top"><img src="resources/circle_packing/inscribed2.png"></td>
+  </tr>
+
+  <tr>
+    <td align="center" valign="center" colspan="2"><b>Maximum Inscribed</td>
+    <td align="center" valign="center" colspan="2"><b>Stochastic</td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="resources/circle_packing/maxInscribed2.png"></td>
+    <td valign="top"><img src="resources/circle_packing/maxInscribed1.png"></td>
+    <td valign="top"><img src="resources/circle_packing/pack1.png"></td>
+    <td valign="top"><img src="resources/circle_packing/pack2.png"></td>
+  </tr>
+
+  <tr>
+    <td align="center" valign="center" colspan="2"><b>Square Lattice</td>
+    <td align="center" valign="center" colspan="2"><b>Hex Lattice</td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="resources/circle_packing/squareLattice1.png"></td>
+    <td valign="top"><img src="resources/circle_packing/squareLattice2.png"></td>
+    <td valign="top"><img src="resources/circle_packing/hexLattice1.png"></td>
+    <td valign="top"><img src="resources/circle_packing/hexLattice2.png"></td>
+  </tr>
 </table>
 
 ## *Construction*
