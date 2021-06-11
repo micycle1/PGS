@@ -9,7 +9,7 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Chaikin’s corner-cutting algorithm. It's most __ use case is polygon
+ * Chaikin’s corner-cutting algorithm, which is used to perform polygon
  * smoothing. The algorithm involves repeatedly generating a new curve by
  * cutting corners off the original (based on some fixed ratio).
  * 
@@ -67,7 +67,7 @@ public class ChaikinCut {
 			PVector a = shape.getVertex(i);
 			PVector b = shape.getVertex((i + 1) % shape.getVertexCount());
 
-			if (cut(a, b)) {
+			if (cut(a, b)) { // don't cut small edges
 
 				// Step 3: Break it using our chaikin_break() function
 				ArrayList<PVector> n = chaikinCut(a, b, ratio);
@@ -141,7 +141,7 @@ public class ChaikinCut {
 
 	/**
 	 * Determines whether to cut an edge. Returns false for edges with a euclidean
-	 * distance less than 0.5.
+	 * distance less than 1.0.
 	 */
 	private static boolean cut(PVector a, PVector b) {
 		final float dx = b.x - a.x;

@@ -79,15 +79,15 @@ public class PGS_CirclePacking {
 	 */
 	public static List<PVector> trinscribedPack(PShape shape, int points, int refinements) {
 		final List<PVector> steinerPoints = PGS_Processing.generateRandomPoints(shape, points);
-		final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationTin(shape, steinerPoints, true, refinements, true);
+		final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, steinerPoints, true, refinements, true);
 		return StreamSupport.stream(tin.triangles().spliterator(), false).filter(filterBorderTriangles).map(t -> inCircle(t))
 				.collect(Collectors.toList());
 	}
 
 	/**
-	 * Generates a circle packing of the input shape by generating random points
-	 * one-by-one and calculating the maximum radius a circle at each point can have
-	 * (such that it's tangent to its nearest circle or a shape vertex).
+	 * Generates a random circle packing of the input shape by generating random
+	 * points one-by-one and calculating the maximum radius a circle at each point
+	 * can have (such that it's tangent to its nearest circle or a shape vertex).
 	 * 
 	 * <p>
 	 * Notably, the {@code points} argument defines the number of random point
@@ -122,7 +122,7 @@ public class PGS_CirclePacking {
 
 		List<PVector> steinerPoints = PGS_Processing.generateRandomPoints(shape, points);
 		if (triangulatePoints) {
-			final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationTin(shape, steinerPoints, true, 1, true);
+			final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, steinerPoints, true, 1, true);
 			steinerPoints = StreamSupport.stream(tin.triangles().spliterator(), false).filter(filterBorderTriangles).map(t -> centroid(t))
 					.collect(Collectors.toList());
 		}

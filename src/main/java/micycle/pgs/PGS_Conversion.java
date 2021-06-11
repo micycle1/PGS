@@ -392,6 +392,10 @@ public class PGS_Conversion implements PConstants {
 	 * @return
 	 */
 	public static List<PVector> toPVector(PShape shape) {
+		if (shape.getFamily() == PShape.PRIMITIVE) {
+			// getVertex() doesn't work on PShape primitives
+			shape = toPShape(fromPrimitive(shape));
+		}
 		final ArrayList<PVector> vertices = new ArrayList<>();
 		for (int i = 0; i < shape.getVertexCount(); i++) {
 			vertices.add(shape.getVertex(i));

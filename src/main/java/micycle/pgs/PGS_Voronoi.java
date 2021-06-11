@@ -2,6 +2,7 @@ package micycle.pgs;
 
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -23,6 +24,8 @@ import org.tinfour.voronoi.BoundedVoronoiBuildOptions;
 import org.tinfour.voronoi.BoundedVoronoiDiagram;
 import org.tinfour.voronoi.ThiessenPolygon;
 import org.tinspin.index.PointDistanceFunction;
+import org.tinspin.index.PointEntryDist;
+import org.tinspin.index.covertree.CoverTree;
 import org.tinspin.index.kdtree.KDEntryDist;
 import org.tinspin.index.kdtree.KDTree;
 import org.tinspin.index.rtree.Entry;
@@ -57,7 +60,7 @@ public class PGS_Voronoi {
 	 * @return shape containing voronoi lines
 	 */
 	public static PShape voronoiDiagram(PShape shape, boolean constrain) {
-		final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationTin(shape, null, constrain, 0, false);
+		final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, null, constrain, 0, false);
 		final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();
 		options.setBounds(new Rectangle2D.Double(-500, -500, 4000, 4000)); // should be enough
 
@@ -149,7 +152,7 @@ public class PGS_Voronoi {
 	}
 
 	/**
-	 * Generates a Voronoi diagram with circle sites.
+	 * Generates a Voronoi diagram from circle sites (rather than point sites).
 	 * <p>
 	 * Circle sites are modelled by PVectors, where x, y correspond to the center of
 	 * the site and z corresponds to the radius of the site.
@@ -172,10 +175,11 @@ public class PGS_Voronoi {
 		};
 
 		final KDTree<PVector> sites = KDTree.create(2, pdf2D); // TODO use vpTree?
+		final List<PVector> sitesList = new ArrayList<>();
 		final double angleInc = Math.PI * 2 / circleSamples;
 		circles.forEach(c -> {
-			if (c.z > 0) {
-				sites.insert(new double[] { c.x, c.y }, c);
+			if (c.z >= 0) {
+				sitesList.add(c);
 				double angle = 0;
 				while (angle < Math.PI * 2) {
 					tin.add(new Vertex(c.z * Math.cos(angle) + c.x, c.z * Math.sin(angle) + c.y, 0));
@@ -183,6 +187,8 @@ public class PGS_Voronoi {
 				}
 			}
 		});
+		Collections.shuffle(sitesList);
+		sitesList.forEach(c -> sites.insert(new double[] { c.x, c.y }, c));
 
 		final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();
 		options.setBounds(new Rectangle2D.Double(-500, -500, 3000, 3000)); // should be enough
@@ -200,7 +206,7 @@ public class PGS_Voronoi {
 					continue;
 				}
 
-				KDEntryDist<PVector> nearestSite = sites.nnQuery(new double[] { e.getA().x, e.getA().y });
+				PointEntryDist<PVector> nearestSite = sites.query1NN(new double[] { e.getA().x, e.getA().y });
 
 				if (nearestSite.dist() < nearestSite.value().z) {
 					if (drawBranches && distGreater(a, b, nearestSite.value().z)) {
@@ -211,7 +217,7 @@ public class PGS_Voronoi {
 					continue;
 				}
 
-				nearestSite = sites.nnQuery(new double[] { e.getB().x, e.getB().y });
+				nearestSite = sites.query1NN(new double[] { e.getB().x, e.getB().y });
 				if (nearestSite.dist() < nearestSite.value().z) {
 					if (drawBranches && distGreater(a, b, nearestSite.value().z)) {
 						PVector intersect = PVector.sub(a, b).normalize().mult(nearestSite.value().z).add(nearestSite.value());

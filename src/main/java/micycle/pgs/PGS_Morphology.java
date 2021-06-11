@@ -202,7 +202,8 @@ public class PGS_Morphology {
 	 *                   of 1 simply cuts the corners; higher values effectively
 	 *                   smooth the cut. Values greater than ~10 generally have no
 	 *                   additional effect.
-	 * @return
+	 * @return a cut copy of the input shape
+	 * @since 1.1.0
 	 */
 	public static PShape chaikinCut(PShape shape, double ratio, int iterations) {
 		ratio = Math.max(ratio, 0.0001);

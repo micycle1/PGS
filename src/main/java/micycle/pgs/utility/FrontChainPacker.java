@@ -71,7 +71,7 @@ public class FrontChainPacker {
 		this.offsetY = offsetY;
 		this.maxDistSq = this.width * this.height / 2 + this.radiusMax * this.radiusMax;
 
-		this.circles = pack(new ArrayList<PVector>());
+		this.circles = pack(new ArrayList<>());
 	}
 
 	public List<PVector> getCircles() {

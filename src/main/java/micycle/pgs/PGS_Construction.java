@@ -172,6 +172,7 @@ public class PGS_Construction {
 	 * @param y     The y coordinate of the center of the heart
 	 * @param width Maximum width of the widest part of the heart
 	 * @return
+	 * @since 1.1.0
 	 */
 	public static PShape createHeart(final double x, final double y, final double width) {
 		// https://mathworld.wolfram.com/HeartCurve.html

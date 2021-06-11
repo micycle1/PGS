@@ -239,6 +239,7 @@ public class PGS_Optimisation {
 	 * @param points a set of 2D points, represented by PVectors
 	 * @return a List<PVector> containing exactly two elements which are the closest
 	 *         pair of points among those in the set.
+	 * @since 1.1.0
 	 * @see #farthestPointPair(List)
 	 */
 	public static List<PVector> closestPointPair(List<PVector> points) {
@@ -253,6 +254,7 @@ public class PGS_Optimisation {
 	 * @param points a set of 2D points, represented by PVectors
 	 * @return a List<PVector> containing exactly two elements which are the
 	 *         farthest pair of points among those in the set.
+	 * @since 1.1.0
 	 * @see #closestPoints(PShape, PVector)
 	 */
 	public static List<PVector> farthestPointPair(List<PVector> points) {
