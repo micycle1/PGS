@@ -9,12 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- New Class: `PGS_CirclePacking` — circle packings of shapes, subject to varying constraints and patterns of tangencies
-- `closestPointPair()` to `PGS_Optimisation`. The method efficiently computes the **closest** pair of points in a set of points.
-- `farthestPointPair()` to `PGS_Optimisation`. The method efficiently computes the **farthest** pair of points in a set of points.
-- `chaikinCut()` to `PGS_Morphology`. The method smoothes shapes via iterated corner cuts.
-- `createHeart()` to `PGS_Construction`. The method generates heart-shaped PShapes.
-- A new `earCutTriangulation()` method signature that takes in a PShape argument (previously, it accepted a list of points only)
+- **`PGS_CirclePacking`** — a class for circle packings of shapes, subject to varying constraints and patterns of tangencies
+- `closestPointPair()` to `PGS_Optimisation`. Efficiently computes the **closest** pair of points in a set of points.
+- `farthestPointPair()` to `PGS_Optimisation`. Efficiently computes the **farthest** pair of points in a set of points.
+- `chaikinCut()` to `PGS_Morphology`. Smoothes shapes via iterated corner cuts.
+- `createHeart()` to `PGS_Construction`. Generates heart-shaped PShapes.
+- `urquhartFaces()` to `PGS_Triangulation`. Tesselates a triangulation into polygons corresponding to the faces of an _Urquhart graph_.
+- A new `earCutTriangulation()` method signature that takes in a PShape argument (previously it accepted a list of points only)
 - Expand `PGS_Conversion` to support conversion between:
   - `PATH` PShape<->JTS `LineString`
   - `POINTS` PShape<->JTS `MultiPoint`
@@ -24,7 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Split `PGS_Processing.concaveHull()` into `concaveHullDFS()` and `concaveHullBFS()` (the method previously used the BFS approach only).
 - Compute (rather than ignore) circle sites of radius 0 (these are effectively points) in `PGS_Voronoi.voronoiCirclesDiagram()`
-- Changed the algorithm used by `PGS_Processing.generateRandomPoints()`. The new approach is ~10x faster!
+- Replaced the algorithm used by `PGS_Processing.generateRandomPoints()` with a triangulation-based approach. The new approach is ~10x faster!
+- Renamed `delaunayTriangulationTin()` to `delaunayTriangulationMesh()`.
 
 ### Fixed
 - Error when `concaveHull2()` was called with alpha > 1.
@@ -34,6 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Constrained delaunay triangulations now respect shape holes
 
 ### Removed
-- `PGS_Processing.concaveHull()` (see *Changed* above)
+- `PGS_Processing.concaveHull()` (see *Changed*)
 
 ## [1.0.0] – 2021-05-06
