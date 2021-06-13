@@ -20,13 +20,13 @@ import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Polygon;
 import org.tinfour.common.IConstraint;
+import org.tinfour.common.IIncrementalTinNavigator;
 import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.PolygonConstraint;
 import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
 import org.tinfour.standard.IncrementalTin;
 import org.tinfour.utils.TriangleCollector;
-
 import earcut4j.Earcut;
 import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.color.RGB;
@@ -342,9 +342,9 @@ public class PGS_Triangulation {
 	}
 
 	/**
-	 * Generates a shape consisting of polygonal faces of an Urquhart graph. An
-	 * Urquhart graph is obtained by removing the longest edge from each triangle in
-	 * a triangulation.
+	 * Generates a shape consisting of polygonal faces of an <i>Urquhart graph</i>.
+	 * An Urquhart graph is obtained by removing the longest edge from each triangle
+	 * in a triangulation.
 	 * <p>
 	 * In practice this is a way to tessellate a shape into polygons (with the
 	 * resulting tessellation being in between a
@@ -365,7 +365,8 @@ public class PGS_Triangulation {
 	 *                             any larger face (which occurs if its longest edge
 	 *                             has no neighbouring triangle)
 	 * @return a GROUP PShape where each child shape is a single face
-	 * @Since 1.1.0
+	 * @since 1.1.0
+	 * @see #gabrielFaces(IncrementalTin)
 	 */
 	public static PShape urquhartFaces(final IncrementalTin triangulation, final boolean discardOpenTriangles) {
 		// TODO functionality to merge small groups (area < x) into a neighbouring group
@@ -382,11 +383,11 @@ public class PGS_Triangulation {
 		 */
 
 		/*
-		 * Build a map of edges-> triangles. In combination with use getDual(), this is
+		 * Build a map of edges->triangles. In combination with use getDual(), this is
 		 * used to find a triangle edge's neighbouring triangle.
 		 */
 		final HashMap<IQuadEdge, SimpleTriangle> map = new HashMap<>();
-		final HashSet<IQuadEdge> uniqueLongestEdges = new HashSet<IQuadEdge>();
+		final HashSet<IQuadEdge> uniqueLongestEdges = new HashSet<>();
 
 		TriangleCollector.visitSimpleTriangles(triangulation, t -> {
 			final IConstraint constraint = t.getContainingRegion();
@@ -394,62 +395,13 @@ public class PGS_Triangulation {
 				map.put(t.getEdgeA(), t);
 				map.put(t.getEdgeB(), t);
 				map.put(t.getEdgeC(), t);
-				uniqueLongestEdges.add(findLongestEdge(t));
-			}
-		});
-
-		final HashMap<SimpleTriangle, HashSet<SimpleTriangle>> triangleGroups = new HashMap<>(); // map of triangles->face group ID
-
-		uniqueLongestEdges.forEach(e -> {
-			final SimpleTriangle t = map.get(e);
-			final SimpleTriangle neighbour = map.get(e.getDual());
-
-			if (neighbour == null) {
-				// there is no neighbouring triangle which means this face is "open"
-				// TODO maybe: Merge the open triangle into neighbouring group
-				if (!discardOpenTriangles && !triangleGroups.containsKey(t)) {
-					final HashSet<SimpleTriangle> group = new HashSet<>(); // create a new group
-					group.add(t); // add this triangle to face group
-					triangleGroups.put(t, group); // create mapping for this triangle
-				}
-				return;
-			}
-
-			if (triangleGroups.containsKey(neighbour)) {
-				if (triangleGroups.containsKey(t)) {
-					// this edge will join two existing groups, so merge the groups (if different)
-					if (triangleGroups.get(t) != triangleGroups.get(neighbour)) {
-						final HashSet<SimpleTriangle> mergeGroup = triangleGroups.get(t); // merge this triangle into neighbour group
-						triangleGroups.get(neighbour).addAll(mergeGroup);
-						mergeGroup.forEach(member -> {
-							// repoint old group members to new group
-							triangleGroups.put(member, triangleGroups.get(neighbour)); // overwrite mapping for each old group member
-						});
-					}
-
-				} else {
-					triangleGroups.get(neighbour).add(t); // add this triangle to an existing face
-					triangleGroups.put(t, triangleGroups.get(neighbour));// create mapping for this triangle
-				}
-			} else {
-				if (triangleGroups.containsKey(t)) {
-					triangleGroups.get(t).add(neighbour);
-					triangleGroups.put(neighbour, triangleGroups.get(t)); // create mapping for neighbour
-				} else {
-					// neither this triangle or neighbour are part of a group, so create a new one
-					// containing both
-					final HashSet<SimpleTriangle> group = new HashSet<>(); // create a new group
-					group.add(t); // add this triangle to face group
-					group.add(neighbour); // add neighbouring triangle to face group too
-					triangleGroups.put(t, group); // create mapping for this triangle
-					triangleGroups.put(neighbour, group); // create mapping for neighbour
-				}
+				uniqueLongestEdges.add(findLongestEdge(t).getBaseReference());
 			}
 		});
 
 		final PShape out = new PShape(PShape.GROUP);
 
-		new HashSet<>(triangleGroups.values()).forEach(group -> { // intermediate hashset to remove duplicate values
+		collapseEdges(map, uniqueLongestEdges, discardOpenTriangles).forEach(group -> {
 
 			final ArrayList<Polygon> triangles = new ArrayList<>(group.size());
 
@@ -471,11 +423,191 @@ public class PGS_Triangulation {
 		return out;
 	}
 
-	private static PVector toPVector(Vertex v) {
+	/**
+	 * Generates a shape consisting of polygonal faces of a <i>Gabriel graph</i>. A
+	 * Gabriel graph is obtained by removing each edge E from a triangulation if a
+	 * vertex lies within a circle of diameter = length(E), centered on the midpoint
+	 * of E.
+	 * <p>
+	 * In practice this is a way to tessellate a shape into polygons (with the
+	 * resulting tessellation being reminiscent of shattering the shape as if it
+	 * were glass).
+	 * 
+	 * @param triangulation a triangulation mesh
+	 * @return a GROUP PShape where each child shape is a single face
+	 * @since 1.1.0
+	 * @see #urquhartFaces(IncrementalTin, boolean)
+	 */
+	public static PShape gabrielFaces(final IncrementalTin triangulation) {
+
+		final HashMap<IQuadEdge, SimpleTriangle> map = new HashMap<>();
+		final HashSet<IQuadEdge> nonGabrielEdges = new HashSet<IQuadEdge>(); // edges to collapse
+		final HashSet<IQuadEdge> edges = new HashSet<IQuadEdge>();
+		final HashSet<Vertex> vertices = new HashSet<Vertex>(); // constrained vertices
+		TriangleCollector.visitSimpleTriangles(triangulation, t -> {
+			final IConstraint constraint = t.getContainingRegion();
+			if (constraint != null && constraint.definesConstrainedRegion()) {
+				map.put(t.getEdgeA(), t);
+				map.put(t.getEdgeB(), t);
+				map.put(t.getEdgeC(), t);
+				/*
+				 * Add vertices and edges to sets here to get unique (in lieu of being able to
+				 * iterate them natively using TinFour).
+				 */
+				edges.add(t.getEdgeA().getBaseReference()); // add edge to set
+				edges.add(t.getEdgeB().getBaseReference()); // add edge to set
+				edges.add(t.getEdgeC().getBaseReference()); // add edge to set
+				vertices.add(t.getVertexA()); // add vertex to set
+				vertices.add(t.getVertexB()); // add vertex to set
+				vertices.add(t.getVertexC()); // add vertex to set
+			}
+		});
+
+		final IIncrementalTinNavigator navigator = triangulation.getNavigator();
+		// find edges that aren't part of Gabriel the graph (these require collapsing)
+		edges.forEach(edge -> {
+			final double[] midpoint = midpoint(edge);
+			final Vertex near = navigator.getNearestVertex(midpoint[0], midpoint[1]); // NOTE seemingly faster than kdtree
+			// if nearest point isn't the edge's vertices, it must lie within the circle
+			if (near != edge.getA() && near != edge.getB()) {
+				nonGabrielEdges.add(edge);
+			}
+		});
+
+		final PShape out = new PShape(PShape.GROUP);
+		final HashSet<SimpleTriangle> singleTriangles = new HashSet<>(map.values()); // set of triangles that aren't collapsed
+
+		collapseEdges(map, nonGabrielEdges, false).forEach(group -> {
+			singleTriangles.removeAll(group); // remove from pool of triangles
+			final ArrayList<Polygon> triangles = new ArrayList<>(group.size());
+			for (SimpleTriangle triangle : group) {
+				final Coordinate[] coords = new Coordinate[] { toCoord(triangle.getVertexA()), toCoord(triangle.getVertexB()),
+						toCoord(triangle.getVertexC()), toCoord(triangle.getVertexA()) };
+				triangles.add(PGS.GEOM_FACTORY.createPolygon(coords));
+			}
+
+			/*
+			 * Use .buffer(0) because it's faster than CascadedPolygonUnion. convexHull() is
+			 * much faster still but not it's deterministic (polygons wiggle around). TODO
+			 * turn triangle edges into connected graph and always take the "left" edge
+			 * moving clockwise.
+			 */
+			final PShape face = toPShape(PGS.GEOM_FACTORY.buildGeometry(triangles).buffer(0));
+			face.setStrokeWeight(3);
+			face.setFill(255);
+			out.addChild(face);
+		});
+
+		/*
+		 * Unlike Urquhart graph, some triangles may not have any edges to collapse
+		 * (according to the gabriel graph condition) and therefore aren't included as
+		 * faces by collapseEdges(). Must now include such triangles as single
+		 * trianglular faces.
+		 */
+		singleTriangles.forEach(t -> {
+			out.addChild(triangleToPShape(t));
+		});
+
+		return out;
+	}
+
+	/**
+	 * Groups triangles from a triangle mesh into polygonal faces by collapsing
+	 * edges. Used by Urquhart and Gabriel graph face methods (such methods first
+	 * compute which edges to collapse).
+	 * 
+	 * @param map                  map of edge->triangle
+	 * @param edges                collection containing edges to collapse
+	 * @param discardOpenTriangles whether to discard "open" triangles from the
+	 *                             output or include these individual triangles as
+	 *                             faces
+	 * 
+	 * @return a set of triangle groups (each group contains the of one face/region
+	 */
+	private static HashSet<HashSet<SimpleTriangle>> collapseEdges(HashMap<IQuadEdge, SimpleTriangle> map, Collection<IQuadEdge> edges,
+			boolean discardOpenTriangles) {
+		final HashMap<SimpleTriangle, HashSet<SimpleTriangle>> triangleGroups = new HashMap<>(); // map of triangles->face group ID
+
+		edges.forEach(e -> {
+			SimpleTriangle t = map.get(e);
+			if (t == null) {
+				t = map.get(e.getDual());
+				e = e.getDual(); // now neighbour will now be null
+			}
+			final SimpleTriangle neighbour = map.get(e.getDual());
+
+			if (neighbour == null) {
+				// there is no neighbouring triangle which means this face is "open"
+				// TODO (maybe): Merge the open triangle into a neighbouring group
+				if (!discardOpenTriangles && !triangleGroups.containsKey(t)) {
+					final HashSet<SimpleTriangle> group = new HashSet<>(); // create a new group
+					group.add(t); // add this triangle to face group
+					triangleGroups.put(t, group); // create mapping for this triangle
+				}
+				return;
+			}
+
+			if (triangleGroups.containsKey(neighbour)) {
+				if (triangleGroups.containsKey(t)) {
+					// this edge will join two existing groups, so merge the groups (if different)
+					if (triangleGroups.get(t) != triangleGroups.get(neighbour)) {
+						final HashSet<SimpleTriangle> mergeGroup = triangleGroups.get(t); // merge this triangle into neighbour group
+						triangleGroups.get(neighbour).addAll(mergeGroup);
+						// repoint old group members to new group
+						mergeGroup.forEach(member -> triangleGroups.put(member, triangleGroups.get(neighbour)));
+					}
+
+				} else {
+					triangleGroups.get(neighbour).add(t); // add this triangle to an existing face
+					triangleGroups.put(t, triangleGroups.get(neighbour));// create mapping for this triangle
+				}
+			} else {
+				if (triangleGroups.containsKey(t)) {
+					triangleGroups.get(t).add(neighbour);
+					triangleGroups.put(neighbour, triangleGroups.get(t)); // create mapping for neighbour
+				} else {
+					// neither this triangle or neighbour are part of a group, so create a new one
+					// containing both
+					final HashSet<SimpleTriangle> group = new HashSet<>(); // create a new group
+					group.add(t); // add this triangle to face group
+					group.add(neighbour); // add neighbouring triangle to face group too
+					triangleGroups.put(t, group); // create mapping for this triangle
+					triangleGroups.put(neighbour, group); // create mapping for neighbour
+				}
+			}
+		});
+		return new HashSet<>(triangleGroups.values()); // intermediate hashset to remove duplicate values
+	}
+
+	/**
+	 * Creates a PShape equivalent of a given SimpleTriangle.
+	 */
+	private static PShape triangleToPShape(final SimpleTriangle t) {
+		final PShape triangle = new PShape(PShape.GEOMETRY);
+		triangle.setStroke(RGB.PINK);
+		triangle.setStroke(true);
+		triangle.setStrokeWeight(3);
+		triangle.setFill(true);
+		triangle.setFill(255);
+		triangle.beginShape(TRIANGLES);
+		triangle.vertex((float) t.getVertexA().x, (float) t.getVertexA().y);
+		triangle.vertex((float) t.getVertexB().x, (float) t.getVertexB().y);
+		triangle.vertex((float) t.getVertexC().x, (float) t.getVertexC().y);
+		triangle.endShape();
+		return triangle;
+	}
+
+	private static double[] midpoint(final IQuadEdge edge) {
+		final Vertex a = edge.getA();
+		final Vertex b = edge.getB();
+		return new double[] { (a.x + b.x) / 2d, (a.y + b.y) / 2d };
+	}
+
+	private static PVector toPVector(final Vertex v) {
 		return new PVector((float) v.getX(), (float) v.getY());
 	}
 
-	private static Coordinate centroid(SimpleTriangle t) {
+	private static Coordinate centroid(final SimpleTriangle t) {
 		final Vertex a = t.getVertexA();
 		final Vertex b = t.getVertexB();
 		final Vertex c = t.getVertexC();
@@ -486,14 +618,14 @@ public class PGS_Triangulation {
 		return new Coordinate(x, y);
 	}
 
-	private static Coordinate toCoord(Vertex v) {
+	private static Coordinate toCoord(final Vertex v) {
 		return new Coordinate(v.x, v.y);
 	}
 
 	/**
 	 * Calculate the longest edge of a given triangle.
 	 */
-	private static IQuadEdge findLongestEdge(SimpleTriangle t) {
+	private static IQuadEdge findLongestEdge(final SimpleTriangle t) {
 		if (t.getEdgeA().getLength() > t.getEdgeB().getLength()) {
 			if (t.getEdgeC().getLength() > t.getEdgeA().getLength()) {
 				return t.getEdgeC();

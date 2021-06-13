@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `chaikinCut()` to `PGS_Morphology`. Smoothes shapes via iterated corner cuts.
 - `createHeart()` to `PGS_Construction`. Generates heart-shaped PShapes.
 - `urquhartFaces()` to `PGS_Triangulation`. Tesselates a triangulation into polygons corresponding to the faces of an _Urquhart graph_.
+- `gabrielFaces()` to `PGS_Triangulation`. Tesselates a triangulation into polygons corresponding to the faces of an _Gabriel graph_.
 - A new `earCutTriangulation()` method signature that takes in a PShape argument (previously it accepted a list of points only)
 - Expand `PGS_Conversion` to support conversion between:
   - `PATH` PShape<->JTS `LineString`
