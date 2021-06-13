@@ -77,15 +77,15 @@ public class PGS_Triangulation {
 	 */
 	public static PShape delaunayTriangulation(PShape shape, List<PVector> steinerPoints, boolean constrain, int refinements,
 			boolean pretty) {
-		IncrementalTin tin = delaunayTriangulationMesh(shape, steinerPoints, constrain, refinements, pretty);
+		final IncrementalTin tin = delaunayTriangulationMesh(shape, steinerPoints, constrain, refinements, pretty);
 
-		PShape triangulation = new PShape(PShape.GEOMETRY);
+		final PShape triangulation = new PShape(PShape.GEOMETRY);
 
 		PGS_Conversion.setAllFillColor(triangulation, RGB.WHITE);
 		PGS_Conversion.setAllStrokeColor(triangulation, RGB.PINK, 2);
 		triangulation.beginShape(TRIANGLES);
 
-		Consumer<Vertex[]> triangleVertexConsumer = t -> {
+		final Consumer<Vertex[]> triangleVertexConsumer = t -> {
 			triangulation.vertex((float) t[0].x, (float) t[0].y);
 			triangulation.vertex((float) t[1].x, (float) t[1].y);
 			triangulation.vertex((float) t[2].x, (float) t[2].y);
@@ -136,10 +136,10 @@ public class PGS_Triangulation {
 	 */
 	public static List<PVector> delaunayTriangulationPoints(PShape shape, List<PVector> steinerPoints, boolean constrain, int refinements,
 			boolean pretty) {
-		IncrementalTin tin = delaunayTriangulationMesh(shape, steinerPoints, constrain, refinements, pretty);
+		final IncrementalTin tin = delaunayTriangulationMesh(shape, steinerPoints, constrain, refinements, pretty);
 
-		ArrayList<PVector> triangles = new ArrayList<>();
-		Consumer<Vertex[]> triangleVertexConsumer = t -> {
+		final ArrayList<PVector> triangles = new ArrayList<>();
+		final Consumer<Vertex[]> triangleVertexConsumer = t -> {
 			triangles.add(toPVector(t[0]));
 			triangles.add(toPVector(t[1]));
 			triangles.add(toPVector(t[2]));
@@ -191,7 +191,7 @@ public class PGS_Triangulation {
 		final IncrementalTin tin = new IncrementalTin(10);
 
 		final ArrayList<Vertex> vertices = new ArrayList<>();
-		Coordinate[] coords = g.getCoordinates();
+		final Coordinate[] coords = g.getCoordinates();
 		for (int i = 0; i < coords.length; i++) {
 			vertices.add(new Vertex(coords[i].x, coords[i].y, 0));
 		}
@@ -261,31 +261,58 @@ public class PGS_Triangulation {
 	 * 
 	 * @param shape
 	 * @param spacing (Minimum) spacing between poisson points
+	 * @return a TRIANGLES PShape
+	 * @see #poissonTriangulationPoints(PShape, double)
+	 */
+	public static PShape poissonTriangulation(PShape shape, double spacing) {
+		final Envelope e = fromPShape(shape).getEnvelopeInternal();
+
+		final PoissonDistribution pd = new PoissonDistribution(0);
+		final List<PVector> poissonPoints = pd.generate(e.getMinX(), e.getMinY(), e.getMinX() + e.getWidth(), e.getMinY() + e.getHeight(),
+				spacing, 7);
+
+		final IncrementalTin tin = delaunayTriangulationMesh(shape, poissonPoints, true, 0, false);
+
+		final PShape triangulation = new PShape(PShape.GEOMETRY);
+		PGS_Conversion.setAllFillColor(triangulation, RGB.WHITE);
+		PGS_Conversion.setAllStrokeColor(triangulation, RGB.PINK, 2);
+
+		triangulation.beginShape(TRIANGLES);
+		TriangleCollector.visitTrianglesConstrained(tin, t -> {
+			triangulation.vertex((float) t[0].x, (float) t[0].y);
+			triangulation.vertex((float) t[1].x, (float) t[1].y);
+			triangulation.vertex((float) t[2].x, (float) t[2].y);
+		});
+		triangulation.endShape();
+
+		return triangulation;
+	}
+
+	/**
+	 * Creates a Delaunay triangulation of the shape where additional steiner
+	 * points, populated by poisson sampling, are included.
+	 * 
+	 * @param shape
+	 * @param spacing (Minimum) spacing between poisson points
 	 * @return list of PVectors, where each successive triplet of PVectors
 	 *         correspond to the 3 vertices of one triangle
+	 * @see #poissonTriangulation(PShape, double)
 	 */
-	public static List<PVector> poissonTriangulation(PShape shape, double spacing) {
+	public static List<PVector> poissonTriangulationPoints(PShape shape, double spacing) {
+		final Envelope e = fromPShape(shape).getEnvelopeInternal();
 
-		final Geometry g = fromPShape(shape).buffer(-spacing);
-		Envelope e = g.getEnvelopeInternal();
+		final PoissonDistribution pd = new PoissonDistribution(0);
+		final List<PVector> poissonPoints = pd.generate(e.getMinX(), e.getMinY(), e.getMinX() + e.getWidth(), e.getMinY() + e.getHeight(),
+				spacing, 7);
 
-		PoissonDistribution pd = new PoissonDistribution(0);
-		List<PVector> poissonPoints = pd.generate(e.getMinX(), e.getMinY(), e.getMinX() + e.getWidth(), e.getMinY() + e.getHeight(),
-				spacing, 8);
-//		final IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(g);
-//		List<PVector> pp = poissonPoints.parallelStream()
-//				.filter(p -> pointLocator.locate(PGS.coordFromPVector(p)) != Location.EXTERIOR)
-//				.collect(Collectors.toList());
+		final IncrementalTin tin = delaunayTriangulationMesh(shape, poissonPoints, true, 0, false);
 
-		IncrementalTin tin = delaunayTriangulationMesh(shape, poissonPoints, true, 0, true);
-
-		ArrayList<PVector> triangles = new ArrayList<>();
-		Consumer<Vertex[]> triangleVertexConsumer = t -> {
+		final ArrayList<PVector> triangles = new ArrayList<>();
+		TriangleCollector.visitTrianglesConstrained(tin, t -> {
 			triangles.add(toPVector(t[0]));
 			triangles.add(toPVector(t[1]));
 			triangles.add(toPVector(t[2]));
-		};
-		TriangleCollector.visitTrianglesConstrained(tin, triangleVertexConsumer);
+		});
 		return triangles;
 	}
 
