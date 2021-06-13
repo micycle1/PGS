@@ -9,6 +9,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.SplittableRandom;
+import java.util.stream.StreamSupport;
 
 import org.geodelivery.jap.concavehull.SnapHull;
 import org.geotools.geometry.jts.JTS;
@@ -36,8 +38,13 @@ import org.locationtech.jts.noding.SegmentStringUtil;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.operation.union.CascadedPolygonUnion;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
-import org.locationtech.jts.shape.random.RandomPointsBuilder;
 import org.locationtech.jts.shape.random.RandomPointsInGridBuilder;
+import org.tinfour.common.IConstraint;
+import org.tinfour.common.PolygonConstraint;
+import org.tinfour.common.SimpleTriangle;
+import org.tinfour.common.Vertex;
+import org.tinfour.standard.IncrementalTin;
+import org.tinfour.utils.TriangleCollector;
 
 import micycle.balaban.BalabanSolver;
 import micycle.balaban.Point;
@@ -218,36 +225,103 @@ public class PGS_Processing {
 	}
 
 	/**
-	 * Get N random points contained within the PShape region. Points are
-	 * distributed randomly.
+	 * Generates N random points that are contained within the shape region. Points
+	 * are distributed completely randomly.
 	 * 
-	 * @param shape
-	 * @param points number of points to generate
+	 * @param shape  defines the region in which random points are generated
+	 * @param points number of points to generate within the shape region
 	 * @return
+	 * @see #generateRandomPoints(PShape, int, long)
+	 * @see #generateRandomGridPoints(PShape, int, boolean, double)
 	 */
 	public static List<PVector> generateRandomPoints(PShape shape, int points) {
-		RandomPointsBuilder r = new RandomPointsBuilder();
-		r.setExtent(fromPShape(shape));
-		r.setNumPoints(points);
-
-		ArrayList<PVector> vertices = new ArrayList<>();
-
-		for (Coordinate coord : r.getGeometry().getCoordinates()) {
-			vertices.add(new PVector((float) coord.x, (float) coord.y));
-		}
-		return vertices;
+		return generateRandomPoints(shape, points, System.currentTimeMillis());
 	}
 
 	/**
-	 * Random points generated in a grid of cells (one point randomly located in
-	 * each cell) from the envelope of the shape
+	 * Generates N random points that are contained within the shape region. Points
+	 * are distributed completely randomly. This method accepts a seed for the RNG
+	 * when identical sequences of random points are required.
+	 * 
+	 * @param shape  defines the region in which random points are generated
+	 * @param points number of points to generate within the shape region
+	 * @param seed
+	 * @return
+	 * @since 1.1.0
+	 * @see #generateRandomPoints(PShape, int)
+	 * @see #generateRandomGridPoints(PShape, int, boolean, double)
+	 */
+	public static List<PVector> generateRandomPoints(PShape shape, int points, long seed) {
+		final ArrayList<PVector> randomPoints = new ArrayList<>(points); // random points out
+
+		final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, null, true, 0, false);
+		final double totalArea = StreamSupport.stream(tin.getConstraints().spliterator(), false)
+				.mapToDouble(c -> ((PolygonConstraint) c).getArea()).sum();
+
+		// use arrays to hold variables (to enable assignment during consumer)
+		final SimpleTriangle[] largestTriangle = new SimpleTriangle[1];
+		final double[] largestArea = new double[1];
+
+		final SplittableRandom r = new SplittableRandom(seed);
+
+		TriangleCollector.visitSimpleTriangles(tin, triangle -> {
+			final IConstraint constraint = triangle.getContainingRegion();
+			if (constraint != null && constraint.definesConstrainedRegion()) {
+				final Vertex a = triangle.getVertexA();
+				final Vertex b = triangle.getVertexB();
+				final Vertex c = triangle.getVertexC();
+
+				final double triangleArea = 0.5 * ((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y));
+				if (triangleArea > largestArea[0]) {
+					largestTriangle[0] = triangle;
+					largestArea[0] = triangleArea;
+				}
+
+				/*
+				 * Rather than choose a random triangle for each sample, choose the number of
+				 * samples from each triangle and sample points in groups successively.
+				 */
+				final int samples = (int) Math.round((triangleArea / totalArea) * points);
+				for (int i = 0; i < samples; i++) {
+					final double s = r.nextDouble();
+					final double t = Math.sqrt(r.nextDouble());
+					final double rX = (1 - t) * a.x + t * ((1 - s) * b.x + s * c.x);
+					final double rY = (1 - t) * a.y + t * ((1 - s) * b.y + s * c.y);
+					randomPoints.add(new PVector((float) rX, (float) rY));
+				}
+			}
+		});
+
+		final int remaining = points - randomPoints.size(); // due to rounding, may be a few above/below target number
+		if (remaining > 0) {
+			final Vertex a = largestTriangle[0].getVertexA();
+			final Vertex b = largestTriangle[0].getVertexB();
+			final Vertex c = largestTriangle[0].getVertexC();
+			for (int i = 0; i < remaining; i++) {
+				double s = r.nextDouble();
+				double t = Math.sqrt(r.nextDouble());
+				double rX = (1 - t) * a.x + t * ((1 - s) * b.x + s * c.x);
+				double rY = (1 - t) * a.y + t * ((1 - s) * b.y + s * c.y);
+				randomPoints.add(new PVector((float) rX, (float) rY));
+			}
+		} else if (remaining < 0) {
+			return randomPoints.subList(0, points);
+		}
+
+		return randomPoints;
+	}
+
+	/**
+	 * 
+	 * Generates up to <code>maxPoints</code> number of random points that are
+	 * contained within the shape region. Points are distributed according to a grid
+	 * of cells (one point randomly located in each cell), based on the envelope of
+	 * the shape.
 	 * 
 	 * @param shape
 	 * @param maxPoints           max number of points, if this shape was its own
 	 *                            envelope
-	 * @param constrainedToCircle
-	 * 
-	 *                            Sets whether generated points are constrained to
+	 * @param constrainedToCircle Sets whether generated points are constrained to
 	 *                            liewithin a circle contained within each grid
 	 *                            cell. This provides greater separation between
 	 *                            points in adjacent cells.
@@ -257,6 +331,7 @@ public class PGS_Processing {
 	 *                            range [0.0, 1.0].
 	 * 
 	 * @return
+	 * @see #generateRandomPoints(PShape, int)
 	 */
 	public static List<PVector> generateRandomGridPoints(PShape shape, int maxPoints, boolean constrainedToCircle, double gutterFraction) {
 		Geometry g = fromPShape(shape);
@@ -328,6 +403,7 @@ public class PGS_Processing {
 	 * @param points
 	 * @param threshold euclidean distance threshold
 	 * @return
+	 * @since 1.1.0
 	 * @see #concaveHullDFS(List, double)
 	 * @see #concaveHull2(List, double)
 	 */
@@ -344,6 +420,7 @@ public class PGS_Processing {
 	 * @param points
 	 * @param threshold euclidean distance threshold
 	 * @return
+	 * @since 1.1.0
 	 * @see #concaveHullBFS(List, double)
 	 * @see #concaveHull2(List, double)
 	 */
@@ -373,7 +450,7 @@ public class PGS_Processing {
 	 */
 	public static PShape concaveHull2(List<PVector> points, double threshold) {
 
-		/**
+		/*
 		 * (from https://doi.org/10.1016/j.patcog.2008.03.023) It is more convenient to
 		 * normalize the threshold parameter with respect to a particular set of points
 		 * P by using the maximum and minimum edge lengths of the Delaunay triangulation
@@ -403,9 +480,8 @@ public class PGS_Processing {
 		for (int i = 0; i < coords.length; i++) {
 			if (i >= points.size()) {
 				coords[i] = new Coordinate(points.get(0).x, points.get(0).y); // close geometry
-			}
-			else {
-				coords[i] = new Coordinate(points.get(i).x, points.get(i).y);				
+			} else {
+				coords[i] = new Coordinate(points.get(i).x, points.get(i).y);
 			}
 		}
 

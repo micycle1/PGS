@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `urquhartFaces()` to `PGS_Triangulation`. Tesselates a triangulation into polygons corresponding to the faces of an _Urquhart graph_.
 - `gabrielFaces()` to `PGS_Triangulation`. Tesselates a triangulation into polygons corresponding to the faces of an _Gabriel graph_.
 - A new `earCutTriangulation()` method signature that takes in a PShape argument (previously it accepted a list of points only)
+- Additional method signature for `generateRandomPoints()` that accepts a random seed.
 - Expand `PGS_Conversion` to support conversion between:
   - `PATH` PShape<->JTS `LineString`
   - `POINTS` PShape<->JTS `MultiPoint`
@@ -34,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Concave hull methods no longer mutate the input point set.
 - PShapes marked as closed and having less than 3 vertices could cause an error during conversion ([#22](https://github.com/micycle1/PGS/issues/22)).
 - `PGS_Conversion.toPVector()` now handles [primitive](https://processing.org/examples/shapeprimitives.html) PShapes
-- Constrained delaunay triangulations now respect shape holes
+- Constrained Delaunay triangulations now respect shape holes
 
 ### Removed
 - `PGS_Processing.concaveHull()` (see *Changed*)
