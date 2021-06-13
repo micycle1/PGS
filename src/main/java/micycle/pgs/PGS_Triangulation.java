@@ -31,6 +31,7 @@ import earcut4j.Earcut;
 import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.color.RGB;
 import micycle.pgs.utility.PoissonDistribution;
+import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -75,7 +76,7 @@ public class PGS_Triangulation {
 	 * @see #delaunayTriangulationPoints(PShape, List, boolean, int, boolean)
 	 * @see #delaunayTriangulationMesh(PShape, List, boolean, int, boolean)
 	 */
-	public static PShape delaunayTriangulation(PShape shape, List<PVector> steinerPoints, boolean constrain, int refinements,
+	public static PShape delaunayTriangulation(PShape shape, Collection<PVector> steinerPoints, boolean constrain, int refinements,
 			boolean pretty) {
 		final IncrementalTin tin = delaunayTriangulationMesh(shape, steinerPoints, constrain, refinements, pretty);
 
@@ -98,6 +99,18 @@ public class PGS_Triangulation {
 
 		triangulation.endShape();
 		return triangulation;
+	}
+
+	/**
+	 * Generates a Delaunay Triangulation from a collection of points.
+	 * 
+	 * @param points the point collection to triangulate
+	 * @return a TRIANGLES PShape
+	 * @see #delaunayTriangulation(PShape, Collection, boolean, int, boolean)
+	 * @since 1.1.0
+	 */
+	public static PShape delaunayTriangulation(Collection<PVector> points) {
+		return delaunayTriangulation(null, points, false, 0, false);
 	}
 
 	/**
@@ -134,8 +147,8 @@ public class PGS_Triangulation {
 	 * @see #delaunayTriangulationPoints(PShape, List, boolean, int, boolean)
 	 * @see #delaunayTriangulationMesh(PShape, List, boolean, int, boolean)
 	 */
-	public static List<PVector> delaunayTriangulationPoints(PShape shape, List<PVector> steinerPoints, boolean constrain, int refinements,
-			boolean pretty) {
+	public static List<PVector> delaunayTriangulationPoints(PShape shape, Collection<PVector> steinerPoints, boolean constrain,
+			int refinements, boolean pretty) {
 		final IncrementalTin tin = delaunayTriangulationMesh(shape, steinerPoints, constrain, refinements, pretty);
 
 		final ArrayList<PVector> triangles = new ArrayList<>();
@@ -150,6 +163,22 @@ public class PGS_Triangulation {
 			TriangleCollector.visitTriangles(tin, triangleVertexConsumer);
 		}
 		return triangles;
+	}
+
+	/**
+	 * Generates a Delaunay Triangulation from a collection of points.
+	 * <p>
+	 * This method returns the triangulation as a list of points, rather than a
+	 * PShape.
+	 * 
+	 * @param points the point collection to triangulate
+	 * @return List of PVector coordinates, where each consecutive triplet of
+	 *         coordinates are the 3 vertices belonging to one triangle
+	 * @see #delaunayTriangulationPoints(PShape, Collection, boolean, int, boolean)
+	 * @since 1.1.0
+	 */
+	public static List<PVector> delaunayTriangulationPoints(Collection<PVector> points) {
+		return delaunayTriangulationPoints(null, points, false, 0, false);
 	}
 
 	/**
@@ -187,7 +216,7 @@ public class PGS_Triangulation {
 	 */
 	public static IncrementalTin delaunayTriangulationMesh(PShape shape, Collection<PVector> steinerPoints, boolean constrain,
 			int refinements, boolean pretty) {
-		final Geometry g = fromPShape(shape);
+		final Geometry g = shape == null ? PGS.GEOM_FACTORY.createEmpty(2) : fromPShape(shape);
 		final IncrementalTin tin = new IncrementalTin(10);
 
 		final ArrayList<Vertex> vertices = new ArrayList<>();
@@ -253,6 +282,21 @@ public class PGS_Triangulation {
 		}
 
 		return tin;
+	}
+
+	/**
+	 * Generates a Delaunay Triangulation from a collection of points.
+	 * <p>
+	 * This method returns the triangulation in its raw form: a Triangulated
+	 * Irregular Network (mesh).
+	 * 
+	 * @param points the point collection to triangulate
+	 * @return Triangulated Irregular Network object (mesh)
+	 * @see #delaunayTriangulationMesh(PShape, Collection, boolean, int, boolean)
+	 * @since 1.1.0
+	 */
+	public static IncrementalTin delaunayTriangulationMesh(Collection<PVector> points) {
+		return delaunayTriangulationMesh(null, points, false, 0, false);
 	}
 
 	/**
@@ -409,6 +453,7 @@ public class PGS_Triangulation {
 		 * 3) Merge the triangles in each group into a polygon.
 		 */
 
+		final boolean notConstrained = triangulation.getConstraints().size() == 0;
 		/*
 		 * Build a map of edges->triangles. In combination with use getDual(), this is
 		 * used to find a triangle edge's neighbouring triangle.
@@ -418,7 +463,7 @@ public class PGS_Triangulation {
 
 		TriangleCollector.visitSimpleTriangles(triangulation, t -> {
 			final IConstraint constraint = t.getContainingRegion();
-			if (constraint != null && constraint.definesConstrainedRegion()) {
+			if (notConstrained || (constraint != null && constraint.definesConstrainedRegion())) {
 				map.put(t.getEdgeA(), t);
 				map.put(t.getEdgeB(), t);
 				map.put(t.getEdgeC(), t);
@@ -466,14 +511,15 @@ public class PGS_Triangulation {
 	 * @see #urquhartFaces(IncrementalTin, boolean)
 	 */
 	public static PShape gabrielFaces(final IncrementalTin triangulation) {
-
+		final boolean notConstrained = triangulation.getConstraints().size() == 0;
 		final HashMap<IQuadEdge, SimpleTriangle> map = new HashMap<>();
 		final HashSet<IQuadEdge> nonGabrielEdges = new HashSet<IQuadEdge>(); // edges to collapse
 		final HashSet<IQuadEdge> edges = new HashSet<IQuadEdge>();
 		final HashSet<Vertex> vertices = new HashSet<Vertex>(); // constrained vertices
+
 		TriangleCollector.visitSimpleTriangles(triangulation, t -> {
 			final IConstraint constraint = t.getContainingRegion();
-			if (constraint != null && constraint.definesConstrainedRegion()) {
+			if (notConstrained || (constraint != null && constraint.definesConstrainedRegion())) {
 				map.put(t.getEdgeA(), t);
 				map.put(t.getEdgeB(), t);
 				map.put(t.getEdgeC(), t);
@@ -616,11 +662,11 @@ public class PGS_Triangulation {
 		triangle.setStrokeWeight(3);
 		triangle.setFill(true);
 		triangle.setFill(255);
-		triangle.beginShape(TRIANGLES);
+		triangle.beginShape();
 		triangle.vertex((float) t.getVertexA().x, (float) t.getVertexA().y);
 		triangle.vertex((float) t.getVertexB().x, (float) t.getVertexB().y);
 		triangle.vertex((float) t.getVertexC().x, (float) t.getVertexC().y);
-		triangle.endShape();
+		triangle.endShape(PConstants.CLOSE);
 		return triangle;
 	}
 

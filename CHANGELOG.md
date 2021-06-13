@@ -5,7 +5,7 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
-## [1.1.0] – 2021-06-xx
+## [1.1.0] – 2021-06-13
 
 ### Added
 
@@ -16,8 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `createHeart()` to `PGS_Construction`. Generates heart-shaped PShapes.
 - `urquhartFaces()` to `PGS_Triangulation`. Tesselates a triangulation into polygons corresponding to the faces of an _Urquhart graph_.
 - `gabrielFaces()` to `PGS_Triangulation`. Tesselates a triangulation into polygons corresponding to the faces of an _Gabriel graph_.
-- A new `earCutTriangulation()` method signature that takes in a PShape argument (previously it accepted a list of points only)
+- Additional method signature for`earCutTriangulation()` accepts a PShape argument (previously it accepted a list of points only)
 - Additional method signature for `generateRandomPoints()` that accepts a random seed.
+- Additional method signature for each of the existing 3 *Delaunay Triangulation* methods, accepting a collection of points only.
 - Expand `PGS_Conversion` to support conversion between:
   - `PATH` PShape<->JTS `LineString`
   - `POINTS` PShape<->JTS `MultiPoint`
@@ -29,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Compute (rather than ignore) circle sites of radius 0 (these are effectively points) in `PGS_Voronoi.voronoiCirclesDiagram()`
 - Replaced the algorithm used by `PGS_Processing.generateRandomPoints()` with a triangulation-based approach. The new approach is ~10x faster!
 - Renamed `delaunayTriangulationTin()` to `delaunayTriangulationMesh()`.
+- Renamed `poissonTriangulation()` to `poissonTriangulationPoints()` (the method of the same original name now outputs a PShape). 
 
 ### Fixed
 - Error when `concaveHull2()` was called with alpha > 1.

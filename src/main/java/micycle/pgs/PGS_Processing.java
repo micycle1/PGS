@@ -100,8 +100,13 @@ public class PGS_Processing {
 	 */
 	public static PVector pointOnExterior(PShape shape, double distance, double offsetDistance) {
 		distance %= 1;
-		// NOTE cast to polygon
-		LengthIndexedLine l = new LengthIndexedLine(((Polygon) fromPShape(shape)).getExteriorRing());
+
+		Geometry g = fromPShape(shape);
+		if (!g.getGeometryType().equals(Geometry.TYPENAME_LINEARRING) && !g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
+			g = ((Polygon) g).getExteriorRing();
+		}
+		LengthIndexedLine l = new LengthIndexedLine(g);
+
 		Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
 		return new PVector((float) coord.x, (float) coord.y);
 	}
@@ -123,7 +128,13 @@ public class PGS_Processing {
 		// TODO another method that returns concave hull of returned points (when
 		// offset)
 		ArrayList<PVector> coords = new ArrayList<>(points);
-		LengthIndexedLine l = new LengthIndexedLine(((Polygon) fromPShape(shape)).getExteriorRing());
+
+		Geometry g = fromPShape(shape);
+		if (!g.getGeometryType().equals(Geometry.TYPENAME_LINEARRING) && !g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
+			g = ((Polygon) g).getExteriorRing();
+		}
+		LengthIndexedLine l = new LengthIndexedLine(g);
+
 		final double increment = 1d / points;
 		for (double distance = 0; distance < 1; distance += increment) {
 			Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
@@ -143,7 +154,12 @@ public class PGS_Processing {
 	 */
 	public static List<PVector> pointsOnExterior(PShape shape, double interPointDistance, double offsetDistance) {
 		// TODO points on holes
-		LengthIndexedLine l = new LengthIndexedLine(((Polygon) fromPShape(shape)).getExteriorRing());
+		Geometry g = fromPShape(shape);
+		if (!g.getGeometryType().equals(Geometry.TYPENAME_LINEARRING) && !g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
+			g = ((Polygon) g).getExteriorRing();
+		}
+		LengthIndexedLine l = new LengthIndexedLine(g);
+
 		if (interPointDistance > l.getEndIndex()) {
 			System.err.println("Interpoint length greater than shape length");
 			return new ArrayList<>();

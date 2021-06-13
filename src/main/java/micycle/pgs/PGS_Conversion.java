@@ -131,7 +131,6 @@ public class PGS_Conversion implements PConstants {
 	 * Converts a collection of JTS Geometries to an equivalent GROUP PShape.
 	 */
 	public static PShape toPShape(Collection<Geometry> geometries) {
-		System.out.println(geometries.size());
 		PShape shape = new PShape(GROUP);
 		shape.setFill(true);
 		shape.setFill(micycle.pgs.color.RGB.WHITE);

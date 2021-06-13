@@ -20,6 +20,10 @@ All examples are dynamic and/or interactive. Shown below are merely screenshots.
 
 <img src="../resources/examples/minkShearLetters.png" alt="" width="500"/>
 
+## mosaic
+
+<img src="../resources/examples/mosaic.png" alt="" width="500"/>
+
 ## partitionSmooth
 
 <img src="../resources/examples/partitionSmooth.png" alt="" width="500"/>

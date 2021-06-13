@@ -17,7 +17,7 @@ void draw() {
     polygon = PGS_Construction.createRandomPolygonExact((int) random(3, 7), width, height);
   }
 
-  List<PVector> trianglePoints = PGS_Triangulation.poissonTriangulation(polygon, 40);
+  List<PVector> trianglePoints = PGS_Triangulation.poissonTriangulationPoints(polygon, 40);
 
   beginShape(TRIANGLES);
   strokeWeight(2);

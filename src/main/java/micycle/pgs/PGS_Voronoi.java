@@ -25,8 +25,6 @@ import org.tinfour.voronoi.BoundedVoronoiDiagram;
 import org.tinfour.voronoi.ThiessenPolygon;
 import org.tinspin.index.PointDistanceFunction;
 import org.tinspin.index.PointEntryDist;
-import org.tinspin.index.covertree.CoverTree;
-import org.tinspin.index.kdtree.KDEntryDist;
 import org.tinspin.index.kdtree.KDTree;
 import org.tinspin.index.rtree.Entry;
 import org.tinspin.index.rtree.RTree;

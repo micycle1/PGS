@@ -123,8 +123,8 @@ public class PGS_CirclePacking {
 		List<PVector> steinerPoints = PGS_Processing.generateRandomPoints(shape, points);
 		if (triangulatePoints) {
 			final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, steinerPoints, true, 1, true);
-			steinerPoints = StreamSupport.stream(tin.triangles().spliterator(), false).filter(filterBorderTriangles).map(t -> centroid(t))
-					.collect(Collectors.toList());
+			steinerPoints = StreamSupport.stream(tin.triangles().spliterator(), false).filter(filterBorderTriangles)
+					.map(PGS_CirclePacking::centroid).collect(Collectors.toList());
 		}
 
 		// Model shape vertices as circles of radius 0, to constrain packed circles

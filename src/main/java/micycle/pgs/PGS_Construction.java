@@ -8,6 +8,7 @@ import org.locationtech.jts.util.GeometricShapeFactory;
 import micycle.pgs.color.RGB;
 import micycle.pgs.utility.RandomPolygon;
 import micycle.pgs.utility.Star;
+import processing.core.PConstants;
 import processing.core.PShape;
 
 /**
@@ -193,7 +194,7 @@ public class PGS_Construction {
 			angle += angleInc;
 		}
 
-		heart.endShape();
+		heart.endShape(PConstants.CLOSE);
 		return heart;
 	}
 

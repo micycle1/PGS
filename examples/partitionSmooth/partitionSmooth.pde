@@ -10,7 +10,7 @@ void setup() {
   smooth();
 
   List<PVector> randomPoints = new PoissonDistribution().generate(30, 30, width - 30, height - 30, 35, 7);
-  polygon = PGS_Processing.concaveHull(randomPoints, 25);
+  polygon = PGS_Processing.concaveHullBFS(randomPoints, 25);
 
   List<PShape> partitions = PGS_Processing.partition(polygon);
   subPartitions = new ArrayList<PShape>();

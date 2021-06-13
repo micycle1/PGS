@@ -30,6 +30,7 @@ package micycle.pgs.utility;
 import java.util.ArrayList;
 import java.util.List;
 
+import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -167,7 +168,7 @@ public class Star {
 				path2.vertex(nextCenter.x, nextCenter.y);
 			}
 		}
-		path2.endShape();
+		path2.endShape(PConstants.CLOSE);
 
 		return path2;
 	}
