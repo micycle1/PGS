@@ -112,10 +112,10 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center"><b>Touch Scale</td>
   </tr>
   <tr>
-    <td valign="top"><img src="resources/transform/rotateCenter.gif"></td>
-    <td valign="top"><img src="resources/transform/rotate.gif"></td>
-    <td valign="top"><img src="resources/transform/translateTo.gif"></td>
-    <td valign="top" ><img src="resources/transform/touchScale.gif"></td>
+    <td valign="top" width="25%"><img src="resources/transform/rotateCenter.gif"></td>
+    <td valign="top" width="25%"><img src="resources/transform/rotate.gif"></td>
+    <td valign="top" width="25%"><img src="resources/transform/translateTo.gif"></td>
+    <td valign="top" width="25%"><img src="resources/transform/touchScale.gif"></td>
   </tr>
     <tr>
     <td align="center" valign="center" colspan="2">Rotate a shape around its centroid or an arbitrary point.</td>
@@ -129,9 +129,9 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center"><b>Shear</td>
   </tr>
   <tr>
-    <td valign="top"><img src="resources/transform/resize.gif"></td>
-    <td valign="top"><img src="resources/transform/homothetic.gif"></td>
-    <td valign="top"><img src="resources/transform/shear.gif"></td>
+    <td valign="top" width="25%"><img src="resources/transform/resize.gif"></td>
+    <td valign="top" width="25%"><img src="resources/transform/homothetic.gif"></td>
+    <td valign="top" width="25%"><img src="resources/transform/shear.gif"></td>
   </tr>
     <tr>
     <td align="center" valign="center"></td>
@@ -221,10 +221,10 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center" colspan="2"><b>Minkowski Addition</td>
   </tr>
   <tr>
-    <td valign="top"><img src="resources/morphology/buffer.gif"></td>
-    <td valign="top"><img src="resources/morphology/erosionDilation.gif"></td>
-    <td valign="top"><img src="resources/morphology/minkSum.gif"></td>
-    <td valign="top" ><img src="resources/morphology/minkDiff.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/buffer.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/erosionDilation.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/minkSum.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/minkDiff.gif"></td>
   </tr>
     <tr>
     <td align="center" valign="center"></td>
@@ -249,9 +249,9 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center" colspan="2"><b>Chaikin Cutting</td>
   </tr>
   <tr>
-    <td valign="top"><img src="resources/morphology/simplifyVW.gif"></td>
-    <td valign="top"><img src="resources/morphology/chaikinCut1.gif"></td>
-    <td valign="top"><img src="resources/morphology/chaikinCut2.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/simplifyVW.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/chaikinCut1.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/chaikinCut2.gif"></td>
   </tr>
 </table>
 
@@ -357,10 +357,10 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center"><b>Gabriel Faces</td>
   </tr>
   <tr>
-    <td valign="top"><img src="resources/contour/poissonTriangulation.gif"></td>
-    <td valign="top"><img src="resources/triangulation/urquhart1.png"></td>
-    <td valign="top"><img src="resources/triangulation/urquhart2.png"></td>
-    <td valign="top"><img src="resources/triangulation/gabriel1.png"></td>
+    <td valign="top" width="25%"><img src="resources/contour/poissonTriangulation.gif"></td>
+    <td valign="top" width="25%"><img src="resources/triangulation/urquhart1.png"></td>
+    <td valign="top" width="25%"><img src="resources/triangulation/urquhart2.png"></td>
+    <td valign="top" width="25%"><img src="resources/triangulation/gabriel1.png"></td>
   </tr>
 
   <tr>
@@ -476,7 +476,7 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center"><b>Heart</td>
   </tr>
   <tr>
-    <td valign="top"><img src="resources/pgs/randomPolygon.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/randomPolygon.gif"></td>
     <td valign="top" width="25%"><img src="resources/pgs/heart.png"></td>
   </tr>
 </table>
