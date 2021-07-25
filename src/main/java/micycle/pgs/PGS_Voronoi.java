@@ -1,5 +1,7 @@
 package micycle.pgs;
 
+import static micycle.pgs.PGS_Conversion.fromPShape;
+
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -10,6 +12,7 @@ import java.util.List;
 
 import org.locationtech.jts.algorithm.RobustLineIntersector;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geomgraph.Edge;
 import org.locationtech.jts.geomgraph.EdgeIntersection;
 import org.locationtech.jts.geomgraph.index.EdgeSetIntersector;
@@ -48,28 +51,24 @@ public class PGS_Voronoi {
 	}
 
 	/**
-	 * Produces a voronoi diagram from a shape, where shape vertices are voronoi
-	 * point sites.
+	 * Generates a Voronoi diagram from a shape, where shape vertices are Voronoi
+	 * point sites. This method outputs the Voronoi diagram as lines.
 	 * 
-	 * @param shape     the shape whose vertices to use as vornoi sites
+	 * @param shape     the shape whose vertices to use as Voronoi sites
 	 * @param constrain whether to constrain the diagram lines to the shape. When
 	 *                  true, the output includes only voronoi line segments within
 	 *                  the shape.
-	 * @return shape containing voronoi lines
+	 * @return a PShape consisting of voronoi lines
 	 */
 	public static PShape voronoiDiagram(PShape shape, boolean constrain) {
 		final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, null, constrain, 0, false);
+
+		final Envelope envelope = fromPShape(shape).getEnvelopeInternal();
 		final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();
-		options.setBounds(new Rectangle2D.Double(-500, -500, 4000, 4000)); // should be enough
+		options.setBounds(new Rectangle2D.Double(envelope.getMinX(), envelope.getMinY(), envelope.getMaxX() - envelope.getMinX(),
+				envelope.getMaxY() - envelope.getMinY()));
 
 		final BoundedVoronoiDiagram v = new BoundedVoronoiDiagram(tin.getVertices(), options);
-
-		final Coordinate[] coords = new Coordinate[shape.getVertexCount()];
-
-		for (int i = 0; i < shape.getVertexCount(); i++) {
-			final PVector a = shape.getVertex(i);
-			coords[i] = new Coordinate(a.x, a.y);
-		}
 
 		final IIncrementalTinNavigator navigator = tin.getNavigator();
 
@@ -78,6 +77,12 @@ public class PGS_Voronoi {
 		final PShape lines = PGS.prepareLinesPShape(RGB.PINK, PConstants.SQUARE, 2);
 
 		if (constrain) { // constrain: include only inner voronoi line segments
+
+			final Coordinate[] coords = new Coordinate[shape.getVertexCount()];
+			for (int i = 0; i < shape.getVertexCount(); i++) {
+				final PVector a = shape.getVertex(i);
+				coords[i] = new Coordinate(a.x, a.y);
+			}
 
 			final SweepLineSegmentIntersection intersection = new SweepLineSegmentIntersection(coords);
 			final HashSet<Integer> seen = new HashSet<>();
@@ -150,6 +155,69 @@ public class PGS_Voronoi {
 	}
 
 	/**
+	 * Generates a Voronoi diagram from a set of points. This method outputs the
+	 * Voronoi diagram as lines.
+	 * 
+	 * @param points    the set of points to use as Voronoi sites
+	 * @param constrain whether to constrain the diagram's lines to the concave hull
+	 *                  of the point set
+	 * @return
+	 */
+	public static PShape voronoiDiagram(List<PVector> points, boolean constrain) {
+		return voronoiDiagram(PGS.toPointsPShape(points), constrain);
+	}
+
+	/**
+	 * Generates a Voronoi diagram from a shape, where shape vertices are Voronoi
+	 * point sites. This method outputs the Voronoi diagram as polygonal cells.
+	 * 
+	 * @param shape the shape whose vertices to use as Voronoi sites
+	 * @return a GROUP PShape, where each child shape is a Voronoi cell
+	 * @see #voronoiCells(List)
+	 */
+	public static PShape voronoiCells(PShape shape) {
+		final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, null, true, 0, false);
+
+		final Envelope envelope = fromPShape(shape).getEnvelopeInternal();
+		final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();
+		options.setBounds(new Rectangle2D.Double(envelope.getMinX(), envelope.getMinY(), envelope.getMaxX() - envelope.getMinX(),
+				envelope.getMaxY() - envelope.getMinY()));
+
+		final BoundedVoronoiDiagram v = new BoundedVoronoiDiagram(tin.getVertices(), options);
+
+		final PShape voronoi = new PShape(PConstants.GROUP);
+
+		for (ThiessenPolygon poly : v.getPolygons()) {
+			final PShape cell = new PShape(PShape.GEOMETRY);
+			cell.setFill(true);
+			cell.setFill(RGB.WHITE);
+			cell.setStroke(true);
+			cell.setStroke(RGB.PINK);
+			cell.setStrokeWeight(3);
+			cell.beginShape();
+			for (IQuadEdge e : poly.getEdges()) {
+				cell.vertex((float) e.getA().x, (float) e.getA().y);
+			}
+			cell.endShape(PShape.CLOSE);
+			voronoi.addChild(cell);
+		}
+
+		return voronoi;
+	}
+
+	/**
+	 * Generates a Voronoi diagram from a set of points. This method outputs the
+	 * Voronoi diagram as polygonal cells.
+	 * 
+	 * @param points the set of points to use as Voronoi sites
+	 * @return a GROUP PShape, where each child shape is a Voronoi cell
+	 * @see #voronoiCells(PShape)
+	 */
+	public static PShape voronoiCells(List<PVector> points) {
+		return voronoiCells(PGS.toPointsPShape(points));
+	}
+
+	/**
 	 * Generates a Voronoi diagram from circle sites (rather than point sites).
 	 * <p>
 	 * Circle sites are modelled by PVectors, where x, y correspond to the center of
@@ -160,7 +228,7 @@ public class PGS_Voronoi {
 	 *                      circumference should be used to compute the voronoi
 	 *                      diagram. 50 is a suitable value
 	 * @param drawBranches  whether to the draw/output branches from the coming from
-	 *                      the sites
+	 *                      the center of each circle
 	 * @return
 	 */
 	public static PShape voronoiCirclesDiagram(Iterable<PVector> circles, int circleSamples, boolean drawBranches) {
