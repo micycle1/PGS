@@ -216,7 +216,7 @@ public class PGS_Triangulation {
 	 */
 	public static IncrementalTin delaunayTriangulationMesh(PShape shape, Collection<PVector> steinerPoints, boolean constrain,
 			int refinements, boolean pretty) {
-		final Geometry g = shape == null ? PGS.GEOM_FACTORY.createEmpty(2) : fromPShape(shape);
+		Geometry g = shape == null ? PGS.GEOM_FACTORY.createEmpty(2) : fromPShape(shape);
 		final IncrementalTin tin = new IncrementalTin(10);
 
 		final ArrayList<Vertex> vertices = new ArrayList<>();
@@ -256,6 +256,10 @@ public class PGS_Triangulation {
 		}
 
 		if (constrain) {
+			// If geom is a point set, constrain tin using its concave hull.
+			if (g.getGeometryType().equals(Geometry.TYPENAME_MULTIPOINT)) {
+				g = fromPShape(PGS_Processing.concaveHull2(PGS_Conversion.toPVector(shape), 0.3));
+			}
 			List<IConstraint> constraints = new ArrayList<>();
 			for (int n = 0; n < g.getNumGeometries(); n++) {
 				boolean hole = false;
@@ -264,6 +268,9 @@ public class PGS_Triangulation {
 				for (LinearRing ring : lri) {
 					ArrayList<Vertex> points = new ArrayList<>();
 					Coordinate[] c = ring.getCoordinates();
+					if (c.length == 0) {
+						continue;
+					}
 					if (Orientation.isCCW(c) && !hole) {
 						for (int i = 0; i < c.length; i++) {
 							points.add(new Vertex(c[i].x, c[i].y, 0));
@@ -278,7 +285,9 @@ public class PGS_Triangulation {
 					hole = true; // all rings except the first are holes
 				}
 			}
-			tin.addConstraints(constraints, pretty); // true/false is negligible?
+			if (constraints.size() > 0) {
+				tin.addConstraints(constraints, pretty); // true/false is negligible?
+			}
 		}
 
 		return tin;

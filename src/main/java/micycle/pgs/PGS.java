@@ -102,6 +102,19 @@ class PGS {
 	}
 
 	/**
+	 * Transforms a list of points into a POINTS PShape.
+	 */
+	protected static PShape toPointsPShape(Iterable<PVector> points) {
+		PShape shape = new PShape();
+		shape.setFamily(PShape.GEOMETRY);
+		shape.setStrokeCap(PConstants.ROUND);
+		shape.beginShape(PShape.POINTS);
+		points.forEach(p -> shape.vertex(p.x, p.y));
+		shape.endShape();
+		return shape;
+	}
+
+	/**
 	 * Reflection-based workaround to get the fill color of a PShape (this field is
 	 * usually private).
 	 */
