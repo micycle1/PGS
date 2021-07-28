@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed 
 - Constrained Voronoi diagrams are now constrained to envelope of input shape, rather than a arbitrarily large area.
+- Refactored `List<PVector>` method arguments to `Collection<PVector>` where possible.
 
 ### Fixed
 - `generateRandomPoints()` no longer skips over small subsections of shapes when generating random points.

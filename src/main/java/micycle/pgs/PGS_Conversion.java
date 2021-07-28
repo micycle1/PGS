@@ -408,7 +408,7 @@ public class PGS_Conversion implements PConstants {
 	/**
 	 * Generates a simple polygon (no holes) from the given coordinate list.
 	 */
-	public static PShape fromPVector(List<PVector> coords) {
+	public static PShape fromPVector(Collection<PVector> coords) {
 		PShape shape = new PShape();
 		shape.setFamily(PShape.GEOMETRY);
 		shape.setFill(micycle.pgs.color.RGB.WHITE);

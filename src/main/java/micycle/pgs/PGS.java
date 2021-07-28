@@ -149,7 +149,7 @@ class PGS {
 		}
 
 		if (!closed) {
-			points.remove(points.size() - 1); // undo mutation
+			points.remove(points.size() - 1); // revert mutation
 		}
 
 		return (area < 0);

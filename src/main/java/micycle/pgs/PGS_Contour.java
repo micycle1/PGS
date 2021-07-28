@@ -7,6 +7,7 @@ import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -376,7 +377,7 @@ public class PGS_Contour {
 	 * @param isolineMax           maximum value represented by isolines
 	 * @return a map of {isoline -> height of the isoline}
 	 */
-	public static Map<PShape, Float> isolines(List<PVector> points, double intervalValueSpacing, double isolineMin, double isolineMax) {
+	public static Map<PShape, Float> isolines(Collection<PVector> points, double intervalValueSpacing, double isolineMin, double isolineMax) {
 		// lines = max-min/spacing
 		final IncrementalTin tin = new IncrementalTin(10);
 		points.forEach(point -> tin.add(new Vertex(point.x, point.y, point.z)));
