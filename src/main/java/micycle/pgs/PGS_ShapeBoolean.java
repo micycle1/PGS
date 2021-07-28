@@ -1,6 +1,5 @@
 package micycle.pgs;
 
-import static micycle.pgs.PGS.getPShapeFillColor;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
 
@@ -14,7 +13,6 @@ import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
-import micycle.pgs.color.Blending;
 import processing.core.PShape;
 
 /**
@@ -36,7 +34,7 @@ public class PGS_ShapeBoolean {
 	 */
 	public static PShape intersect(PShape a, PShape b) {
 		PShape out = toPShape(OverlayNG.overlay(fromPShape(a), fromPShape(b), OverlayNG.INTERSECTION));
-		PGS_Conversion.setAllFillColor(out, Blending.add(getPShapeFillColor(a), getPShapeFillColor(b)));
+//		PGS_Conversion.setAllFillColor(out, Blending.add(getPShapeFillColor(a), getPShapeFillColor(b)));
 		return out;
 	}
 

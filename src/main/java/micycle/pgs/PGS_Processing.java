@@ -7,8 +7,10 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.SplittableRandom;
 import java.util.stream.StreamSupport;
 
@@ -241,8 +243,14 @@ public class PGS_Processing {
 	}
 
 	/**
-	 * Generates N random points that are contained within the shape region. Points
-	 * are distributed completely randomly.
+	 * Generates N random points that lie within the shape region.
+	 * <p>
+	 * This is a fast method but note that the underlying algorithm makes a minor
+	 * trade-off for its speed: the resulting point set is slightly more uniformly
+	 * distributed over the input shape compared to a purely random approach (this
+	 * arises because the shape is first divided into triangles; each triangle is
+	 * then sampled a fixed number of times according to its area relative to the
+	 * whole).
 	 * 
 	 * @param shape  defines the region in which random points are generated
 	 * @param points number of points to generate within the shape region
@@ -258,6 +266,13 @@ public class PGS_Processing {
 	 * Generates N random points that are contained within the shape region. Points
 	 * are distributed completely randomly. This method accepts a seed for the RNG
 	 * when identical sequences of random points are required.
+	 * <p>
+	 * This is a fast method but note that the underlying algorithm makes a minor
+	 * trade-off for its speed: the resulting point set is slightly more uniformly
+	 * distributed over the input shape compared to a purely random approach (this
+	 * arises because the shape is first divided into triangles; each triangle is
+	 * then sampled a fixed number of times according to its area relative to the
+	 * whole).
 	 * 
 	 * @param shape  defines the region in which random points are generated
 	 * @param points number of points to generate within the shape region
@@ -294,10 +309,17 @@ public class PGS_Processing {
 				}
 
 				/*
-				 * Rather than choose a random triangle for each sample, choose the number of
-				 * samples from each triangle and sample points in groups successively.
+				 * Rather than choose a random triangle for each sample, pre-determine the
+				 * number of samples per triangle and sample this number of points in each
+				 * triangle successively. I conjecture that this results in a slightly more
+				 * uniform random distribution, the downside of which is the resulting
+				 * distribution has less entropy.
 				 */
-				final int samples = (int) Math.round((triangleArea / totalArea) * points);
+				double areaWeight = (triangleArea / totalArea) * points;
+				int samples = (int) Math.round(areaWeight);
+				if (r.nextDouble() <= (areaWeight - samples)) {
+					samples += 1;
+				}
 				for (int i = 0; i < samples; i++) {
 					final double s = r.nextDouble();
 					final double t = Math.sqrt(r.nextDouble());
@@ -321,6 +343,7 @@ public class PGS_Processing {
 				randomPoints.add(new PVector((float) rX, (float) rY));
 			}
 		} else if (remaining < 0) {
+			Collections.shuffle(randomPoints, new Random(seed)); // shuffle so that points are removed from regions randomly
 			return randomPoints.subList(0, points);
 		}
 
