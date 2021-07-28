@@ -133,7 +133,7 @@
 		<dependency> <!-- for JTS.utils -->
 			<groupId>org.geotools</groupId>
 			<artifactId>gt-geometry</artifactId>
-			<version>24.3</version>
+			<version>24.4</version>
 		</dependency>
 		<dependency>
 			<groupId>org.locationtech.jts</groupId>
