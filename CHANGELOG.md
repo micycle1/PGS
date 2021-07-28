@@ -5,7 +5,7 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
-## **1.1.1** (2021-07-xx)
+## **1.1.1** (2021-07-28)
 ### Added
 - `voronoiCells()` to `PGS_Voronoi`. Generates Voronoi diagrams from shapes or point sets, outputting the diagram as polygonal cells (rather than lines only, as before).
 - Additional method signature for `voronoiDiagram()` that accepts a list of points (rather than PShapes only, as before).
