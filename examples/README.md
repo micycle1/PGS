@@ -12,6 +12,10 @@ All examples are dynamic and/or interactive. Shown below are merely screenshots.
 
 <img src="../resources/examples/drawOffsetCurves.png" alt="" width="500"/>
 
+## dysonHatching
+
+<img src="../resources/examples/dysonHatching.png" alt="" width="500"/>
+
 ## intersectionBoids
 
 <img src="../resources/examples/intersectionBoids.png" alt="" width="500"/>

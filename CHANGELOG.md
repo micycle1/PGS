@@ -26,8 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `farthestPointPair()` to `PGS_Optimisation`. Efficiently computes the **farthest** pair of points in a set of points.
 - `chaikinCut()` to `PGS_Morphology`. Smoothes shapes via iterated corner cuts.
 - `createHeart()` to `PGS_Construction`. Generates heart-shaped PShapes.
-- `urquhartFaces()` to `PGS_Triangulation`. Tesselates a triangulation into polygons corresponding to the faces of an _Urquhart graph_.
-- `gabrielFaces()` to `PGS_Triangulation`. Tesselates a triangulation into polygons corresponding to the faces of an _Gabriel graph_.
+- `urquhartFaces()` to `PGS_Triangulation`. Tessellates a triangulation into polygons corresponding to the faces of an _Urquhart graph_.
+- `gabrielFaces()` to `PGS_Triangulation`. Tessellates a triangulation into polygons corresponding to the faces of an _Gabriel graph_. 
 - Additional method signature for`earCutTriangulation()` accepts a PShape argument (previously it accepted a list of points only)
 - Additional method signature for `generateRandomPoints()` that accepts a random seed.
 - Additional method signature for each of the existing 3 *Delaunay Triangulation* methods, accepting a collection of points only.
