@@ -38,10 +38,10 @@ public class PGS_Conversion implements PConstants {
 
 	/**
 	 * Converts a JTS Geometry to an equivalent PShape. MultiGeometries (collections
-	 * of geometries) become GROUP PShapes with children shapes.
+	 * of geometries) become GROUP PShapes containing the appropriate children
+	 * PShapes.
 	 * 
-	 * @param g
-	 * @param source PShape to copy fill/stroke details from
+	 * @param g JTS geometry to convert
 	 * @return
 	 */
 	public static PShape toPShape(final Geometry g) {
@@ -147,13 +147,13 @@ public class PGS_Conversion implements PConstants {
 	 * Converts a PShape to an equivalent JTS Geometry.
 	 * <p>
 	 * PShapes with bezier curves are sampled at regular intervals (in which case
-	 * the resulting geometry will have more vertices than the input)
+	 * the resulting geometry will have more vertices than the input PShape).
 	 * <p>
 	 * For now, a PShape with multiple children is flattened/unioned since most
 	 * library methods are not (yet) programmed to handle multi/disjoint geometries.
 	 * 
 	 * @param shape
-	 * @return a JTS Polygon or MultiPolygon
+	 * @return a JTS Geometry equivalent to the input PShape
 	 */
 	public static Geometry fromPShape(PShape shape) {
 
@@ -406,8 +406,7 @@ public class PGS_Conversion implements PConstants {
 	}
 
 	/**
-	 * Generate a simple polygon (no holes) from the given coordinate list. Used by
-	 * randomPolygon().
+	 * Generates a simple polygon (no holes) from the given coordinate list.
 	 */
 	public static PShape fromPVector(List<PVector> coords) {
 		PShape shape = new PShape();
@@ -432,7 +431,8 @@ public class PGS_Conversion implements PConstants {
 	 * PShapes.
 	 * 
 	 * @param shape
-	 * @param childrenOut user-provided list into which all child PShapes are placed
+	 * @param childrenOut a user-provided list into which all child PShapes are
+	 *                    placed
 	 * @return
 	 */
 	public static PShape getChildren(PShape shape, List<PShape> childrenOut) {

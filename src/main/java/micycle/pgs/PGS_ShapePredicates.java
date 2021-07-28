@@ -3,6 +3,7 @@ package micycle.pgs;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
@@ -29,7 +30,9 @@ public class PGS_ShapePredicates {
 	}
 
 	/**
-	 * Does the outer shape contain the inner shape? Note: a shape contains itself.
+	 * Determines whether the outer shape contains the inner shape (meaning every
+	 * point of the inner shape is a point of the outer shape). A shape is
+	 * considered to contain itself. itself.
 	 * 
 	 * @param outer
 	 * @param inner
@@ -40,7 +43,8 @@ public class PGS_ShapePredicates {
 	}
 
 	/**
-	 * Points that lie on the boundary of the shape considered to be contained.
+	 * Determines whether a shape contains a point. Points that lie on the boundary
+	 * of the shape are considered to be contained.
 	 * 
 	 * @param shape
 	 * @param point
@@ -53,16 +57,16 @@ public class PGS_ShapePredicates {
 	}
 
 	/**
-	 * Determines whether a shape contains all of the given points. It is faster to
-	 * use method rather than than calling {@link #containsPoint(PShape, PVector)}
-	 * repeatedly. Points that lie on the boundary of the shape considered to be
-	 * contained.
+	 * Determines whether a shape contains every point from a list of points. It is
+	 * faster to use method rather than than calling
+	 * {@link #containsPoint(PShape, PVector)} repeatedly. Points that lie on the
+	 * boundary of the shape are considered to be contained.
 	 * 
 	 * @param shape
-	 * @param points list of PVectors to check
+	 * @param points list of points to check
 	 * @return true if every point is contained within the shape
 	 */
-	public static boolean containsAllPoints(PShape shape, List<PVector> points) {
+	public static boolean containsAllPoints(PShape shape, Collection<PVector> points) {
 		final IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(fromPShape(shape));
 		for (PVector p : points) {
 			if (pointLocator.locate(new Coordinate(p.x, p.y)) == Location.EXTERIOR) {
@@ -73,23 +77,45 @@ public class PGS_ShapePredicates {
 	}
 
 	/**
-	 * This method checks every point individually, returning a boolean for each
-	 * point. Faster than calling {@link #containsPoint(PShape, PVector)}
-	 * repeatedly. Points that lie on the boundary of the shape considered to be
-	 * contained.
+	 * Measures for each point in the input whether it is contained in the given
+	 * shape. This method checks every point individually, returning a boolean for
+	 * each point. Using this method is faster than calling
+	 * {@link #containsPoint(PShape, PVector)} repeatedly. Points that lie on the
+	 * boundary of the shape are considered to be contained.
 	 * 
 	 * @param shape
-	 * @param points list of PVectors to check
+	 * @param points list of points to check
 	 * @return a list of booleans corresponding to whether the shape contains the
 	 *         point at same index
 	 */
-	public static List<Boolean> containsPoints(PShape shape, List<PVector> points) {
+	public static List<Boolean> containsPoints(PShape shape, Collection<PVector> points) {
 		final IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(fromPShape(shape));
 		ArrayList<Boolean> bools = new ArrayList<>(points.size());
 		for (PVector p : points) {
 			bools.add(pointLocator.locate(new Coordinate(p.x, p.y)) != Location.EXTERIOR);
 		}
 		return bools;
+	}
+
+	/**
+	 * Tests for each point in the input whether it is contained in/inside the given
+	 * shape; if it is, then the point is included in the output list. This method
+	 * does not mutate the input; it returns a filtered copy. Points that lie on the
+	 * boundary of the shape are considered to be contained.
+	 * 
+	 * @param shape
+	 * @param points list of points to check
+	 * @return a filtered view of the input points
+	 */
+	public static List<PVector> findContainedPoints(PShape shape, Collection<PVector> points) {
+		final IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(fromPShape(shape));
+		List<PVector> contained = new ArrayList<>();
+		for (PVector p : points) {
+			if (pointLocator.locate(new Coordinate(p.x, p.y)) != Location.EXTERIOR) {
+				contained.add(p);
+			}
+		}
+		return contained;
 	}
 
 	/**
@@ -186,7 +212,7 @@ public class PGS_ShapePredicates {
 	}
 
 	/**
-	 * Measures the degree of similarity between two Geometry susing the Hausdorff
+	 * Measures the degree of similarity between two shapes using the Hausdorff
 	 * distance metric. The measure is normalized to lie in the range [0, 1]. Higher
 	 * measures indicate a great degree of similarity.
 	 * 
@@ -200,7 +226,7 @@ public class PGS_ShapePredicates {
 	}
 
 	/**
-	 * Compute the number of holes a shape has.
+	 * Computes the number of holes in a shape.
 	 * 
 	 * @return
 	 */

@@ -183,8 +183,7 @@ public class PGS_Transformation {
 	 * Calculate a Homothetic Transformation of the shape.
 	 * 
 	 * @param shape  shape input
-	 * @param x0     X position of the center of the operation
-	 * @param y0     Y position of the center of the operation
+	 * @param center coordinate of the center/origin position of the operation
 	 * @param scaleX X scale factor
 	 * @param scaleY Y scale factor
 	 */

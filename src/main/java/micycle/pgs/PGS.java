@@ -107,7 +107,7 @@ class PGS {
 	protected static PShape toPointsPShape(Iterable<PVector> points) {
 		PShape shape = new PShape();
 		shape.setFamily(PShape.GEOMETRY);
-		shape.setStrokeCap(PConstants.ROUND);
+		shape.setStrokeCap(ROUND);
 		shape.beginShape(PShape.POINTS);
 		points.forEach(p -> shape.vertex(p.x, p.y));
 		shape.endShape();

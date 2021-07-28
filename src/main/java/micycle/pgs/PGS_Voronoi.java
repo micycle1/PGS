@@ -176,7 +176,7 @@ public class PGS_Voronoi {
 	 * @see #voronoiCells(List)
 	 */
 	public static PShape voronoiCells(PShape shape) {
-		final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, null, true, 0, false);
+		final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, null, false, 0, false);
 
 		final Envelope envelope = fromPShape(shape).getEnvelopeInternal();
 		final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();
