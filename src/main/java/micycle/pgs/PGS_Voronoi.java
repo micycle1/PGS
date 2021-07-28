@@ -4,6 +4,7 @@ import static micycle.pgs.PGS_Conversion.fromPShape;
 
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -163,7 +164,7 @@ public class PGS_Voronoi {
 	 *                  of the point set
 	 * @return
 	 */
-	public static PShape voronoiDiagram(List<PVector> points, boolean constrain) {
+	public static PShape voronoiDiagram(Collection<PVector> points, boolean constrain) {
 		return voronoiDiagram(PGS.toPointsPShape(points), constrain);
 	}
 
@@ -213,7 +214,7 @@ public class PGS_Voronoi {
 	 * @return a GROUP PShape, where each child shape is a Voronoi cell
 	 * @see #voronoiCells(PShape)
 	 */
-	public static PShape voronoiCells(List<PVector> points) {
+	public static PShape voronoiCells(Collection<PVector> points) {
 		return voronoiCells(PGS.toPointsPShape(points));
 	}
 
@@ -231,7 +232,7 @@ public class PGS_Voronoi {
 	 *                      the center of each circle
 	 * @return
 	 */
-	public static PShape voronoiCirclesDiagram(Iterable<PVector> circles, int circleSamples, boolean drawBranches) {
+	public static PShape voronoiCirclesDiagram(Collection<PVector> circles, int circleSamples, boolean drawBranches) {
 		final IncrementalTin tin = new IncrementalTin(5);
 
 		final PointDistanceFunction pdf2D = (p1, p2) -> {

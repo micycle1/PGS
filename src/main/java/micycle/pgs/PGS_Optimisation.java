@@ -6,6 +6,7 @@ import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import org.locationtech.jts.algorithm.MinimumBoundingCircle;
@@ -242,7 +243,7 @@ public class PGS_Optimisation {
 	 * @since 1.1.0
 	 * @see #farthestPointPair(List)
 	 */
-	public static List<PVector> closestPointPair(List<PVector> points) {
+	public static List<PVector> closestPointPair(Collection<PVector> points) {
 		final ClosestPointPair closestPointPair = new ClosestPointPair(points);
 		return closestPointPair.execute();
 	}
@@ -257,7 +258,7 @@ public class PGS_Optimisation {
 	 * @since 1.1.0
 	 * @see #closestPoints(PShape, PVector)
 	 */
-	public static List<PVector> farthestPointPair(List<PVector> points) {
+	public static List<PVector> farthestPointPair(Collection<PVector> points) {
 		final FarthestPointPair fpp = new FarthestPointPair(points);
 		final List<PVector> out = new ArrayList<>();
 		out.add(fpp.either());

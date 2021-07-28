@@ -1,5 +1,6 @@
 package micycle.pgs.utility;
 
+import java.util.Collection;
 import java.util.List;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.geom.Coordinate;
@@ -36,7 +37,7 @@ public class FarthestPointPair {
 	 *
 	 * @param points an array of points
 	 */
-	public FarthestPointPair(List<PVector> points) {
+	public FarthestPointPair(Collection<PVector> points) {
 
 		final Geometry convexHull = PGS_Conversion.fromPShape(PGS_Conversion.fromPVector(points)).convexHull();
 		Coordinate[] coords = convexHull.getCoordinates();
