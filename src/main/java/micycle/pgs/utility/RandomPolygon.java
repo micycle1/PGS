@@ -22,7 +22,6 @@ public class RandomPolygon {
 	/**
 	 * 
 	 * @param n number of vertices
-	 * @param
 	 * @return
 	 */
 	public static List<PVector> generateRandomConvexPolygon(int n, double xMax, double yMax) {
