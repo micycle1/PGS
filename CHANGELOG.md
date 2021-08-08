@@ -5,7 +5,11 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
-## **1.1.1** (2021-07-28)
+## **1.1.2** *(2021-xx-xx)*
+### Added
+- `polygonizeLines()` to `PGS_Processing`. Computes the polygonal faces formed by a set of intersecting line segments.
+
+## **1.1.1** *(2021-07-28)*
 ### Added
 - `voronoiCells()` to `PGS_Voronoi`. Generates Voronoi diagrams from shapes or point sets, outputting the diagram as polygonal cells (rather than lines only, as before).
 - Additional method signature for `voronoiDiagram()` that accepts a list of points (rather than PShapes only, as before).
@@ -18,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - `generateRandomPoints()` no longer skips over small subsections of shapes when generating random points.
 
-## **1.1.0** (2021-06-13)
+## **1.1.0** *(2021-06-13)*
 
 ### Added
 - **`PGS_CirclePacking`** — a class for circle packings of shapes, subject to varying constraints and patterns of tangencies
@@ -53,4 +57,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - `PGS_Processing.concaveHull()` (see *Changed*)
 
-## **1.0.0** (2021-05-06)
+## **1.0.0** *(2021-05-06)*

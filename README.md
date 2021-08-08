@@ -325,15 +325,19 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Snap Hull</td>
     <td align="center" valign="center"><b>Shape Intersection</td>
+    <td align="center" valign="center" colspan="2"><b>Polygonize Lines</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/morphology/snapHull.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/shapeIntersection.gif"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/polygonizeLines2.png"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/polygonizeLines.png"></td>
 
   </tr>
     <tr>
       <td align="center" valign="center">A convex hull with some level of shape-feature snapping.</td>
       <td align="center" valign="center">Find all points of intersection between two shapes.</td>
+      <td align="center" valign="center" colspan="2">Find the polygonal faces formed by a set of intersecting line segments.</td>
   </tr>
 </table>
 

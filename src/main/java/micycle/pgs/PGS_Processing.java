@@ -28,11 +28,15 @@ import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.PrecisionModel;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.locationtech.jts.geom.util.LineStringExtracter;
 import org.locationtech.jts.linearref.LengthIndexedLine;
+import org.locationtech.jts.noding.IteratedNoder;
 import org.locationtech.jts.noding.MCIndexSegmentSetMutualIntersector;
+import org.locationtech.jts.noding.NodedSegmentString;
+import org.locationtech.jts.noding.Noder;
 import org.locationtech.jts.noding.SegmentIntersectionDetector;
 import org.locationtech.jts.noding.SegmentIntersector;
 import org.locationtech.jts.noding.SegmentString;
@@ -179,7 +183,7 @@ public class PGS_Processing {
 	}
 
 	/**
-	 * Computes all points of intersection between two shapes.
+	 * Computes all points of intersection between the edges of two shapes.
 	 * 
 	 * @param a one shape
 	 * @param b another shape
@@ -209,19 +213,20 @@ public class PGS_Processing {
 	}
 
 	/**
-	 * Computes all points of intersection between segment pairs from a set of
+	 * Computes all points of intersection between segments in a set of line
 	 * segments. The input set is first processed to remove degenerate segments
 	 * (does not mutate the input).
 	 * 
 	 * @param lineSegments a list of PVectors where each pair (couplet) of PVectors
-	 *                     represent the start and end point of one segment
+	 *                     represent the start and end point of one line segment
 	 * @return A list of PVectors each representing the intersection point of a
 	 *         segment pair
 	 */
 	public static List<PVector> lineSegmentsIntersection(List<PVector> lineSegments) {
 		final List<PVector> intersections = new ArrayList<>();
 		if (lineSegments.size() % 2 != 0) {
-			System.err.println("Error: detected an odd number of line segment vertices.");
+			System.err.println(
+					"The input to lineSegmentsIntersection() contained an odd number of line segment vertices. The method expects successive pairs of vertices");
 			return intersections;
 		}
 
@@ -410,6 +415,45 @@ public class PGS_Processing {
 			noHolePol = (Polygon) noHolePol.difference(hole);
 		}
 		return toPShape(noHolePol);
+	}
+
+	/**
+	 * Computes the polygonal faces formed by a set of intersecting line segments.
+	 * 
+	 * @param lineSegmentVertices a list of PVectors where each pair (couplet) of
+	 *                            PVectors represent the start and end point of one
+	 *                            line segment
+	 * @return a list of polygonal PShapes each representing a face / enclosed area
+	 *         formed between intersecting lines
+	 */
+	@SuppressWarnings("unchecked")
+	public static List<PShape> polygonizeLines(List<PVector> lineSegmentVertices) {
+		if (lineSegmentVertices.size() % 2 != 0) {
+			System.err.println(
+					"The input to polygonizeLines() contained an odd number of vertices. The method expects successive pairs of vertices.");
+			return new ArrayList<>();
+		}
+
+		List<SegmentString> segmentStrings = new ArrayList<>(lineSegmentVertices.size() / 2);
+		for (int i = 0; i < lineSegmentVertices.size(); i += 2) {
+			final PVector v1 = lineSegmentVertices.get(i);
+			final PVector v2 = lineSegmentVertices.get(i + 1);
+			segmentStrings.add(new NodedSegmentString(new Coordinate[] { PGS.coordFromPVector(v1), PGS.coordFromPVector(v2) }, null));
+		}
+
+		final Polygonizer polygonizer = new Polygonizer();
+		final Noder noder = new IteratedNoder(new PrecisionModel(PrecisionModel.FLOATING_SINGLE));
+		noder.computeNodes(segmentStrings);
+		noder.getNodedSubstrings().forEach(s -> {
+			SegmentString ss = (SegmentString) s;
+			polygonizer.add(PGS.GEOM_FACTORY.createLineString(new Coordinate[] { ss.getCoordinate(0), ss.getCoordinate(1) }));
+		});
+		Collection<Geometry> polygons = polygonizer.getPolygons();
+		polygons = polygonizer.getDangles();
+		System.out.println(polygons.size());
+		List<PShape> out = new ArrayList<>(polygons.size());
+		polygons.forEach(p -> out.add(toPShape(p)));
+		return out;
 	}
 
 	/**
