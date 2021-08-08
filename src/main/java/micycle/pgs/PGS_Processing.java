@@ -425,6 +425,7 @@ public class PGS_Processing {
 	 *                            line segment
 	 * @return a list of polygonal PShapes each representing a face / enclosed area
 	 *         formed between intersecting lines
+	 * @since 1.1.2
 	 */
 	@SuppressWarnings("unchecked")
 	public static List<PShape> polygonizeLines(List<PVector> lineSegmentVertices) {
@@ -449,9 +450,7 @@ public class PGS_Processing {
 			polygonizer.add(PGS.GEOM_FACTORY.createLineString(new Coordinate[] { ss.getCoordinate(0), ss.getCoordinate(1) }));
 		});
 		Collection<Geometry> polygons = polygonizer.getPolygons();
-		polygons = polygonizer.getDangles();
-		System.out.println(polygons.size());
-		List<PShape> out = new ArrayList<>(polygons.size());
+		final List<PShape> out = new ArrayList<>(polygons.size());
 		polygons.forEach(p -> out.add(toPShape(p)));
 		return out;
 	}

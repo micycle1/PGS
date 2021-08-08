@@ -41,9 +41,11 @@ public class PGS_Optimisation {
 	}
 
 	/**
-	 * Computes the shape's envelope (bounding box).
+	 * Computes the shape's envelope (bounding box). The vertices of the output
+	 * PShape begin at the top-left corner of the envelope and are arranged
+	 * counter-clockwise.
 	 * 
-	 * @param shape
+	 * @param shape a rectangular shape that covers/bounds the input
 	 * @return
 	 */
 	public static PShape envelope(PShape shape) {
