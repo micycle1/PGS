@@ -5,9 +5,16 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
-## **1.1.2** *(2021-xx-xx)*
+## **1.1.2** *(2021-08-xx)*
 ### Added
 - `polygonizeLines()` to `PGS_Processing`. Computes the polygonal faces formed by a set of intersecting line segments.
+- Additional method signature for `PGS_Processing.generateRandomGridPoints()` that accepts a random seed.
+- Expand PGS_Conversion to support conversion between:
+  - `TRIANGLES` PShape➜JTS `MultiPolygon`
+  - `QUADS` PShape➜JTS `MultiPolygon`
+
+### Fixed
+- Issue with negative rotation values in `PGS_Transformation.rotateAroundCenter()`.
 
 ## **1.1.1** *(2021-07-28)*
 ### Added
@@ -32,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `createHeart()` to `PGS_Construction`. Generates heart-shaped PShapes.
 - `urquhartFaces()` to `PGS_Triangulation`. Tessellates a triangulation into polygons corresponding to the faces of an _Urquhart graph_.
 - `gabrielFaces()` to `PGS_Triangulation`. Tessellates a triangulation into polygons corresponding to the faces of an _Gabriel graph_. 
-- Additional method signature for`earCutTriangulation()` accepts a PShape argument (previously it accepted a list of points only)
+- Additional method signature for `earCutTriangulation()` accepts a PShape argument (previously it accepted a list of points only)
 - Additional method signature for `generateRandomPoints()` that accepts a random seed.
 - Additional method signature for each of the existing 3 *Delaunay Triangulation* methods, accepting a collection of points only.
 - Expand `PGS_Conversion` to support conversion between:
