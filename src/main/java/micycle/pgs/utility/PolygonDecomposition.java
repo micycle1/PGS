@@ -52,9 +52,9 @@ import org.locationtech.jts.geom.PrecisionModel;
  * @see <a href="http://mnbayazit.com/406/bayazit" target="_blank">Bayazit</a>
  */
 public class PolygonDecomposition {
-	
+
 	private static final GeometryFactory GEOM_FACTORY = new GeometryFactory(new PrecisionModel(PrecisionModel.FLOATING_SINGLE));
-	
+
 	private PolygonDecomposition() {
 	}
 

@@ -43,31 +43,29 @@ public class SeededRandomPointsInGridBuilder extends RandomPointsInGridBuilder {
 		r = new SplittableRandom(seed);
 	}
 
-	  /**
-	   * Sets whether generated points are constrained to lie
-	   * within a circle contained within each grid cell.
-	   * This provides greater separation between points
-	   * in adjacent cells.
-	   * <p>
-	   * The default is to not be constrained to a circle.
-	   * @param isConstrainedToCircle
-	   */
-	  public void setConstrainedToCircle(boolean isConstrainedToCircle)
-	  {
-	  	this.isConstrainedToCircle = isConstrainedToCircle;
-	  }
+	/**
+	 * Sets whether generated points are constrained to lie within a circle
+	 * contained within each grid cell. This provides greater separation between
+	 * points in adjacent cells.
+	 * <p>
+	 * The default is to not be constrained to a circle.
+	 * 
+	 * @param isConstrainedToCircle
+	 */
+	public void setConstrainedToCircle(boolean isConstrainedToCircle) {
+		this.isConstrainedToCircle = isConstrainedToCircle;
+	}
 
-	  /**
-	   * Sets the fraction of the grid cell side which will be treated as
-	   * a gutter, in which no points will be created.
-	   * The provided value is clamped to the range [0.0, 1.0].
-	   * 
-	   * @param gutterFraction
-	   */
-	  public void setGutterFraction(double gutterFraction)
-	  {
-	  	this.gutterFraction = gutterFraction;
-	  }
+	/**
+	 * Sets the fraction of the grid cell side which will be treated as a gutter, in
+	 * which no points will be created. The provided value is clamped to the range
+	 * [0.0, 1.0].
+	 * 
+	 * @param gutterFraction
+	 */
+	public void setGutterFraction(double gutterFraction) {
+		this.gutterFraction = gutterFraction;
+	}
 
 	@Override
 	public Geometry getGeometry() {

@@ -285,7 +285,7 @@ public class PGS_Triangulation {
 					hole = true; // all rings except the first are holes
 				}
 			}
-			if (constraints.size() > 0) {
+			if (!constraints.isEmpty()) {
 				tin.addConstraints(constraints, pretty); // true/false is negligible?
 			}
 		}
@@ -435,7 +435,7 @@ public class PGS_Triangulation {
 	 * Note that this method processes a Delaunay triangulation. Process a shape
 	 * using
 	 * {@link #delaunayTriangulationMesh(PShape, Collection, boolean, int, boolean)
-	 * delaunayTriangulationTin()} first and then feed it to this method.
+	 * delaunayTriangulationMesh()} first and then feed it to this method.
 	 * 
 	 * @param triangulation        a triangulation mesh
 	 * @param discardOpenTriangles whether to discard "open" triangles from the
@@ -462,7 +462,7 @@ public class PGS_Triangulation {
 		 * 3) Merge the triangles in each group into a polygon.
 		 */
 
-		final boolean notConstrained = triangulation.getConstraints().size() == 0;
+		final boolean notConstrained = triangulation.getConstraints().isEmpty();
 		/*
 		 * Build a map of edges->triangles. In combination with use getDual(), this is
 		 * used to find a triangle edge's neighbouring triangle.
@@ -513,6 +513,11 @@ public class PGS_Triangulation {
 	 * In practice this is a way to tessellate a shape into polygons (with the
 	 * resulting tessellation being reminiscent of shattering the shape as if it
 	 * were glass).
+	 * <p>
+	 * Note that this method processes a Delaunay triangulation. Process a shape
+	 * using
+	 * {@link #delaunayTriangulationMesh(PShape, Collection, boolean, int, boolean)
+	 * delaunayTriangulationMesh()} first and then feed it to this method.
 	 * 
 	 * @param triangulation a triangulation mesh
 	 * @return a GROUP PShape where each child shape is a single face
@@ -522,9 +527,9 @@ public class PGS_Triangulation {
 	public static PShape gabrielFaces(final IncrementalTin triangulation) {
 		final boolean notConstrained = triangulation.getConstraints().size() == 0;
 		final HashMap<IQuadEdge, SimpleTriangle> map = new HashMap<>();
-		final HashSet<IQuadEdge> nonGabrielEdges = new HashSet<IQuadEdge>(); // edges to collapse
-		final HashSet<IQuadEdge> edges = new HashSet<IQuadEdge>();
-		final HashSet<Vertex> vertices = new HashSet<Vertex>(); // constrained vertices
+		final HashSet<IQuadEdge> nonGabrielEdges = new HashSet<>(); // edges to collapse
+		final HashSet<IQuadEdge> edges = new HashSet<>();
+		final HashSet<Vertex> vertices = new HashSet<>(); // constrained vertices
 
 		TriangleCollector.visitSimpleTriangles(triangulation, t -> {
 			final IConstraint constraint = t.getContainingRegion();
@@ -586,9 +591,7 @@ public class PGS_Triangulation {
 		 * faces by collapseEdges(). Must now include such triangles as single
 		 * trianglular faces.
 		 */
-		singleTriangles.forEach(t -> {
-			out.addChild(triangleToPShape(t));
-		});
+		singleTriangles.forEach(t -> out.addChild(triangleToPShape(t)));
 
 		return out;
 	}
