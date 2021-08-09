@@ -1,7 +1,6 @@
 package micycle.pgs.utility;
 
 import java.util.Collection;
-import java.util.List;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
