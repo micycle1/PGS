@@ -236,7 +236,6 @@ public class PGS_Transformation {
 	public static PShape rotateAroundCenter(PShape shape, double angle) {
 		Geometry g = fromPShape(shape);
 		Point center = g.getCentroid();
-		angle %= (Math.PI * 2);
 		AffineTransformation t = AffineTransformation.rotationInstance(angle, center.getX(), center.getY());
 		return toPShape(t.transform(g));
 	}

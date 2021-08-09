@@ -226,6 +226,25 @@ public class PGS_Conversion implements PConstants {
 					lines[i] = GEOM_FACTORY.createLineString(new Coordinate[] { c1, c2 });
 				}
 				return GEOM_FACTORY.createMultiLineString(lines);
+			case PConstants.TRIANGLES :
+				final Polygon[] triangles = new Polygon[shape.getVertexCount() / 3];
+				for (int i = 0; i < triangles.length; i++) {
+					final Coordinate c1 = PGS.coordFromPVector(shape.getVertex(3 * i));
+					final Coordinate c2 = PGS.coordFromPVector(shape.getVertex(3 * i + 1));
+					final Coordinate c3 = PGS.coordFromPVector(shape.getVertex(3 * i + 2));
+					triangles[i] = GEOM_FACTORY.createPolygon(new Coordinate[] { c1, c2, c3, c1 });
+				}
+				return GEOM_FACTORY.createMultiPolygon(triangles);
+			case PConstants.QUADS :
+				final Polygon[] quads = new Polygon[shape.getVertexCount() / 4];
+				for (int i = 0; i < quads.length; i++) {
+					final Coordinate c1 = PGS.coordFromPVector(shape.getVertex(4 * i));
+					final Coordinate c2 = PGS.coordFromPVector(shape.getVertex(4 * i + 1));
+					final Coordinate c3 = PGS.coordFromPVector(shape.getVertex(4 * i + 2));
+					final Coordinate c4 = PGS.coordFromPVector(shape.getVertex(4 * i + 3));
+					quads[i] = GEOM_FACTORY.createPolygon(new Coordinate[] { c1, c2, c3, c4, c1 });
+				}
+				return GEOM_FACTORY.createMultiPolygon(quads);
 			default :
 				System.err.println("PGS_Conversion Error: Unsupported PShape kind: " + shape.getKind());
 				return GEOM_FACTORY.createEmpty(2);
