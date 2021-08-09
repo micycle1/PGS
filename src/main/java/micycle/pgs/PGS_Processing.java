@@ -56,6 +56,7 @@ import micycle.balaban.BalabanSolver;
 import micycle.balaban.Point;
 import micycle.balaban.Segment;
 import micycle.pgs.utility.PolygonDecomposition;
+import micycle.pgs.utility.SeededRandomPointsInGridBuilder;
 import processing.core.PShape;
 import processing.core.PVector;
 import uk.osgb.algorithm.concavehull.ConcaveHull;
@@ -254,8 +255,8 @@ public class PGS_Processing {
 	 * trade-off for its speed: the resulting point set is slightly more uniformly
 	 * distributed over the input shape compared to a purely random approach (this
 	 * arises because the shape is first divided into triangles; each triangle is
-	 * then sampled a fixed number of times according to its area relative to the
-	 * whole).
+	 * then sampled a <b>fixed</b> number of times according to its area relative to
+	 * the whole).
 	 * 
 	 * @param shape  defines the region in which random points are generated
 	 * @param points number of points to generate within the shape region
@@ -276,8 +277,8 @@ public class PGS_Processing {
 	 * trade-off for its speed: the resulting point set is slightly more uniformly
 	 * distributed over the input shape compared to a purely random approach (this
 	 * arises because the shape is first divided into triangles; each triangle is
-	 * then sampled a fixed number of times according to its area relative to the
-	 * whole).
+	 * then sampled a <b>fixed</b> number of times according to its area relative to
+	 * the whole).
 	 * 
 	 * @param shape  defines the region in which random points are generated
 	 * @param points number of points to generate within the shape region
@@ -356,32 +357,67 @@ public class PGS_Processing {
 	}
 
 	/**
-	 * 
 	 * Generates up to <code>maxPoints</code> number of random points that are
 	 * contained within the shape region. Points are distributed according to a grid
 	 * of cells (one point randomly located in each cell), based on the envelope of
 	 * the shape.
 	 * 
-	 * @param shape
-	 * @param maxPoints           max number of points, if this shape was its own
-	 *                            envelope
+	 * @param shape               defines the region in which random points are
+	 *                            generated
+	 * @param maxPoints           maximum number of points, if this shape was its
+	 *                            own envelope
 	 * @param constrainedToCircle Sets whether generated points are constrained to
-	 *                            liewithin a circle contained within each grid
+	 *                            lie within a circle contained within each grid
 	 *                            cell. This provides greater separation between
 	 *                            points in adjacent cells.
 	 * @param gutterFraction      Sets the fraction of the grid cell side which will
 	 *                            be treated as a gutter, in which no points will be
 	 *                            created. The provided value is clamped to the
-	 *                            range [0.0, 1.0].
+	 *                            range [0.0, 1.0]. Higher values increase how
+	 *                            "grid-like" the point distribution is.
 	 * 
-	 * @return
+	 * @return a list of random points, distributed according to a grid, contained
+	 *         within the given shape
 	 * @see #generateRandomPoints(PShape, int)
+	 * @see #generateRandomGridPoints(PShape, int, boolean, double, long)
 	 */
 	public static List<PVector> generateRandomGridPoints(PShape shape, int maxPoints, boolean constrainedToCircle, double gutterFraction) {
+		return generateRandomGridPoints(shape, maxPoints, constrainedToCircle, gutterFraction, System.currentTimeMillis());
+	}
+
+	/**
+	 * Generates up to <code>maxPoints</code> number of random points that are
+	 * contained within the shape region. Points are distributed according to a grid
+	 * of cells (one point randomly located in each cell), based on the envelope of
+	 * the shape.
+	 * <p>
+	 * This method accepts a seed for the RNG when identical sequences of random
+	 * points are required.
+	 * 
+	 * @param shape               defines the region in which random points are
+	 *                            generated
+	 * @param maxPoints           maximum number of points, if this shape was its
+	 *                            own envelope
+	 * @param constrainedToCircle Sets whether generated points are constrained to
+	 *                            lie within a circle contained within each grid
+	 *                            cell. This provides greater separation between
+	 *                            points in adjacent cells.
+	 * @param gutterFraction      Sets the fraction of the grid cell side which will
+	 *                            be treated as a gutter, in which no points will be
+	 *                            created. The provided value is clamped to the
+	 *                            range [0.0, 1.0]. Higher values increase how
+	 *                            "grid-like" the point distribution is.
+	 * @param randomSeed
+	 * @return a list of random points, distributed according to a grid, contained
+	 *         within the given shape
+	 * @see #generateRandomGridPoints(PShape, int, boolean, double)
+	 */
+	public static List<PVector> generateRandomGridPoints(PShape shape, int maxPoints, boolean constrainedToCircle, double gutterFraction,
+			long randomSeed) {
 		Geometry g = fromPShape(shape);
 		IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(g);
 
-		RandomPointsInGridBuilder r = new RandomPointsInGridBuilder();
+		RandomPointsInGridBuilder r = new SeededRandomPointsInGridBuilder(randomSeed);
 		r.setConstrainedToCircle(constrainedToCircle);
 		r.setExtent(g.getEnvelopeInternal());
 		r.setNumPoints(maxPoints);
@@ -429,6 +465,7 @@ public class PGS_Processing {
 	 */
 	@SuppressWarnings("unchecked")
 	public static List<PShape> polygonizeLines(List<PVector> lineSegmentVertices) {
+		// TODO constructor for LINES PShape
 		if (lineSegmentVertices.size() % 2 != 0) {
 			System.err.println(
 					"The input to polygonizeLines() contained an odd number of vertices. The method expects successive pairs of vertices.");
