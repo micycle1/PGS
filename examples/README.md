@@ -32,6 +32,10 @@ All examples are dynamic and/or interactive. Shown below are merely screenshots.
 
 <img src="../resources/examples/partitionSmooth.png" alt="" width="500"/>
 
+## ripplingTriangles
+
+<img src="../resources/examples/ripplingTriangles.png" alt="" width="500"/>
+
 ## slice
 
 <img src="../resources/examples/slice.png" alt="" width="500"/>
