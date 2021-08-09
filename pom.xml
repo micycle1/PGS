@@ -136,9 +136,9 @@
 			<version>24.4</version>
 		</dependency>
 		<dependency>
-			<groupId>org.locationtech.jts</groupId>
-			<artifactId>jts-core</artifactId>
-			<version>1.18.1</version>
+			<groupId>com.github.locationtech</groupId>
+			<artifactId>jts</artifactId>
+			<version>6cf20ff392</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.twak</groupId>
@@ -153,7 +153,7 @@
 		<dependency>
 			<groupId>org.tinfour</groupId>
 			<artifactId>TinfourCore</artifactId>
-			<version>2.1.6</version>
+			<version>2.1.7</version>
 		</dependency>
 		<dependency>
 			<groupId>io.github.earcut4j</groupId>
@@ -196,6 +196,11 @@
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>balaban-intersection</artifactId>
 			<version>1.0.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.github.micycle1</groupId>
+			<artifactId>UniformNoise</artifactId>
+			<version>1.1</version>
 		</dependency>
 	</dependencies>
 

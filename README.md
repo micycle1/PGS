@@ -245,6 +245,17 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
+    <td align="center" valign="center" colspan="2"><b>Radial Warp</td>
+    <td align="center" valign="center" colspan="2"><b>Field Warp</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/morphology/radialWarp1.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/radialWarp2.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/fieldWarp.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/fieldWarp2.gif"></td>
+  </tr>
+
+  <tr>
     <td align="center" valign="center"><b>Simplification</td>
     <td align="center" valign="center" colspan="2"><b>Chaikin Cutting</td>
   </tr>

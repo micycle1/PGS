@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `polygonizeLines()` to `PGS_Processing`. Computes the polygonal faces formed by a set of intersecting line segments.
 - Additional method signature for `PGS_Processing.generateRandomGridPoints()` that accepts a random seed.
+- `fieldWarp()` to `PGS_Morphology`. Warps a shape by displacing vertices according to a 2D noise vector field.
+- `radialWarp()` to `PGS_Morphology`. Warps a shape by displacing vertices along a line between each vertex and the shape centroid.
 - Expand PGS_Conversion to support conversion between:
   - `TRIANGLES` PShape➜JTS `MultiPolygon`
   - `QUADS` PShape➜JTS `MultiPolygon`
