@@ -3,10 +3,15 @@ package micycle.pgs;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
 
+import java.util.List;
+
 import org.geotools.geometry.jts.JTS;
+import org.locationtech.jts.densify.Densifier;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.util.GeometryFixer;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.simplify.VWSimplifier;
@@ -17,7 +22,9 @@ import micycle.pgs.utility.CornerRounding;
 import micycle.pgs.utility.GaussianLineSmoothing;
 import processing.core.PConstants;
 import processing.core.PShape;
+import processing.core.PVector;
 import uk.osgb.algorithm.minkowski_sum.Minkowski_Sum;
+import micycle.uniformnoise.UniformNoise;
 
 /**
  * Methods that affect the geometry or topology of shapes.
@@ -212,6 +219,135 @@ public class PGS_Morphology {
 		PShape cut = ChaikinCut.chaikin(shape, (float) ratio, iterations);
 		PGS_Conversion.setAllFillColor(cut, RGB.WHITE);
 		return cut;
+	}
+
+	/**
+	 * Warps/perturbs a shape by displacing vertices along a line between each
+	 * vertex and the shape centroid.
+	 * 
+	 * <p>
+	 * Inputs may be densified before warping.
+	 * 
+	 * @param shape      a polygonal shape
+	 * @param magnitude  magnitude of the displacement. The value defines the
+	 *                   maximum euclidean displacement of a vertex compared to the
+	 *                   shape centroid
+	 * @param warpOffset offset angle that determines at which angle to begin the
+	 *                   displacement.
+	 * @param densify    whether to densify the shape (using distance=1) before
+	 *                   warping. When true, shapes with long edges will undergo
+	 *                   warping along the whole edge (rather than only at the
+	 *                   original vertices).
+	 * @return
+	 */
+	public static PShape radialWarp(PShape shape, double magnitude, double warpOffset, boolean densify) {
+		Geometry g = fromPShape(shape);
+		if (!g.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
+			System.err.println("radialWarp() expects (single) polygon input. The geometry resolved to a " + g.getGeometryType());
+			return shape;
+		}
+
+		final Point point = g.getCentroid();
+		final PVector c = new PVector((float) point.getX(), (float) point.getY());
+
+		final List<PVector> coords;
+
+		if (densify) {
+			final Densifier d = new Densifier(fromPShape(shape));
+			d.setDistanceTolerance(1);
+			d.setValidate(false);
+			coords = PGS_Conversion.toPVector(toPShape(d.getResultGeometry()));
+		} else {
+			coords = PGS_Conversion.toPVector(shape);
+		}
+
+		final UniformNoise noise = new UniformNoise(1337);
+		coords.forEach(coord -> {
+			PVector heading = PVector.sub(coord, c); // vector from center to each vertex
+			final double angle = heading.heading() + warpOffset;
+			float perturbation = noise.uniformNoise(Math.cos(angle), Math.sin(angle));
+			perturbation -= 0.5f; // [0...1] -> [-0.5...0.5]
+			perturbation *= magnitude * 2;
+			coord.add(heading.normalize().mult(perturbation)); // add perturbation to vertex
+		});
+		return PGS_Conversion.fromPVector(coords);
+	}
+
+	/**
+	 * Warps/perturbs a shape by displacing vertices according to a 2D noise vector
+	 * field.
+	 * 
+	 * <p>
+	 * Inputs may be densified before warping.
+	 * 
+	 * @param shape      a polygonal shape
+	 * @param magnitude  magnitude of the displacement (acting as noise value
+	 *                   multiplier). The value defines the maximum displacement of
+	 *                   a vertex in the both x and y axes.
+	 * @param noiseScale the scale of the 2D noise vector field. This affects how of
+	 *                   the coarseness of warping. Smaller values (~0.2) lead to
+	 *                   more fine warping (at edges), whereas larger values (~2)
+	 *                   affect the shape geometry at a larger scale.
+	 * @param densify    whether to densify the shape (using distance=1) before
+	 *                   warping. When true, shapes with long edges will undergo
+	 *                   warping along the whole edge (rather than only at the
+	 *                   original vertices).
+	 * @return
+	 * @see #fieldWarp(PShape, double, double, double, boolean, int)
+	 */
+	public static PShape fieldWarp(PShape shape, double magnitude, double noiseScale, boolean densify) {
+		return fieldWarp(shape, magnitude, noiseScale, 0, densify, 1337);
+	}
+
+	/**
+	 * Warps/perturbs a shape by displacing vertices according to a 2D noise vector
+	 * field.
+	 * 
+	 * <p>
+	 * Inputs may be densified before warping.
+	 * 
+	 * @param shape      a polygonal shape
+	 * @param magnitude  magnitude of the displacement (acting as noise value
+	 *                   multiplier). The value defines the maximum displacement of
+	 *                   a vertex in the both x and y axes.
+	 * @param noiseScale the scale of the 2D noise vector field. This affects how of
+	 *                   the coarseness of warping. Smaller values (~0.2) lead to
+	 *                   more fine warping (at edges), whereas larger values (~2)
+	 *                   affect the shape geometry at a larger scale.
+	 * @param time       used to offset the underlying noise field and hence animate
+	 *                   the warping over time
+	 * @param densify    whether to densify the shape (using distance=1) before
+	 *                   warping. When true, shapes with long edges will undergo
+	 *                   warping along the whole edge (rather than only at the
+	 *                   original vertices).
+	 * @param noiseSeed  a seed to pass to the underlying noise generator
+	 * 
+	 * @see #fieldWarp(PShape, double, double, boolean)
+	 * @return
+	 */
+	public static PShape fieldWarp(PShape shape, double magnitude, double noiseScale, double time, boolean densify, int noiseSeed) {
+		float scale = (float) noiseScale * 500f;
+		final List<PVector> coords;
+
+		if (densify) {
+			final Densifier d = new Densifier(fromPShape(shape));
+			d.setDistanceTolerance(1);
+			d.setValidate(false);
+			coords = PGS_Conversion.toPVector(toPShape(d.getResultGeometry()));
+		} else {
+			coords = PGS_Conversion.toPVector(shape);
+		}
+
+		final UniformNoise noise = new UniformNoise(noiseSeed);
+
+		coords.forEach(coord -> {
+//			float dx = noise.uniformNoise(coord.x / scale, coord.y / scale, time) - 0.5f;
+			float dx = noise.uniformNoise(coord.x / scale, coord.y / scale + time) - 0.5f;
+//			float dy = noise.uniformNoise(coord.x / scale, coord.y / scale, 100 + time) - 0.5f;
+			float dy = noise.uniformNoise(coord.x / scale + (101 + time), coord.y / scale + (101 + time)) - 0.5f;
+			coord.add(dx * (float) magnitude * 2, dy * (float) magnitude * 2);
+		});
+		return toPShape(GeometryFixer.fix(fromPShape(PGS_Conversion.fromPVector(coords))));
 	}
 
 }
