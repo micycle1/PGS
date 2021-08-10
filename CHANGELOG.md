@@ -5,7 +5,7 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
-## **1.1.2** *(2021-08-xx)*
+## **1.1.2** *(2021-08-10)*
 ### Added
 - `polygonizeLines()` to `PGS_Processing`. Computes the polygonal faces formed by a set of intersecting line segments.
 - Additional method signature for `PGS_Processing.generateRandomGridPoints()` that accepts a random seed.
