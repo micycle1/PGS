@@ -52,6 +52,7 @@ public class SeededRandomPointsInGridBuilder extends RandomPointsInGridBuilder {
 	 * 
 	 * @param isConstrainedToCircle
 	 */
+	@Override
 	public void setConstrainedToCircle(boolean isConstrainedToCircle) {
 		this.isConstrainedToCircle = isConstrainedToCircle;
 	}
@@ -63,6 +64,7 @@ public class SeededRandomPointsInGridBuilder extends RandomPointsInGridBuilder {
 	 * 
 	 * @param gutterFraction
 	 */
+	@Override
 	public void setGutterFraction(double gutterFraction) {
 		this.gutterFraction = gutterFraction;
 	}
@@ -71,8 +73,9 @@ public class SeededRandomPointsInGridBuilder extends RandomPointsInGridBuilder {
 	public Geometry getGeometry() {
 		int nCells = (int) Math.sqrt(numPts);
 		// ensure that at least numPts points are generated
-		if (nCells * nCells < numPts)
+		if (nCells * nCells < numPts) {
 			nCells += 1;
+		}
 
 		double gridDX = getExtent().getWidth() / nCells;
 		double gridDY = getExtent().getHeight() / nCells;
@@ -90,26 +93,26 @@ public class SeededRandomPointsInGridBuilder extends RandomPointsInGridBuilder {
 			for (int j = 0; j < nCells; j++) {
 				double orgX = getExtent().getMinX() + i * gridDX + gutterOffsetX;
 				double orgY = getExtent().getMinY() + j * gridDY + gutterOffsetY;
-				pts[index++] = randomPointInCell(orgX, orgY, cellDX, cellDY);
+				pts[index++] = randomPointCell(orgX, orgY, cellDX, cellDY);
 			}
 		}
 		return geomFactory.createMultiPointFromCoords(pts);
 	}
 
-	private Coordinate randomPointInCell(double orgX, double orgY, double xLen, double yLen) {
+	private Coordinate randomPointCell(double orgX, double orgY, double xLen, double yLen) {
 		if (this.isConstrainedToCircle) {
-			return randomPointInCircle(orgX, orgY, xLen, yLen);
+			return randomPointCircle(orgX, orgY, xLen, yLen);
 		}
-		return randomPointInGridCell(orgX, orgY, xLen, yLen);
+		return randomPointGridCell(orgX, orgY, xLen, yLen);
 	}
 
-	private Coordinate randomPointInGridCell(double orgX, double orgY, double xLen, double yLen) {
+	private Coordinate randomPointGridCell(double orgX, double orgY, double xLen, double yLen) {
 		double x = orgX + xLen * r.nextDouble();
 		double y = orgY + yLen * r.nextDouble();
 		return createCoord(x, y);
 	}
 
-	private Coordinate randomPointInCircle(double orgX, double orgY, double width, double height) {
+	private Coordinate randomPointCircle(double orgX, double orgY, double width, double height) {
 		double centreX = orgX + width / 2;
 		double centreY = orgY + height / 2;
 
