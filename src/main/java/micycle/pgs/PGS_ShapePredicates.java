@@ -199,6 +199,19 @@ public class PGS_ShapePredicates {
 	}
 
 	/**
+	 * Returns the diameter of a shape. Diameter is the maximum distance between any
+	 * 2 coordinates on the shape perimeter; this is equal to the diameter of the
+	 * circumscribed circle.
+	 * 
+	 * @param shape
+	 * @return
+	 */
+	public static float diameter(PShape shape) {
+		List<PVector> farPoints = PGS_Optimisation.farthestPointPair(PGS_Conversion.toPVector(shape));
+		return farPoints.get(0).dist(farPoints.get(1));
+	}
+
+	/**
 	 * Calculates the Miller circularity index for a shape. This index, between 0
 	 * and 1, is equal to 1 if the polygon is perfectly circular and tends towards 0
 	 * for a segment.

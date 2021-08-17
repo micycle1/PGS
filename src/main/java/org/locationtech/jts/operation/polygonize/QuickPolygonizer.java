@@ -46,8 +46,7 @@ public class QuickPolygonizer extends Polygonizer {
 	 */
 
 	private void quickPolygonize() {
-		// check if already computed
-		if (polyList != null) {
+		if (polyList != null) { // check if already computed
 			return;
 		}
 		polyList = new ArrayList<Geometry>();
@@ -60,25 +59,19 @@ public class QuickPolygonizer extends Polygonizer {
 		dangles = graph.deleteDangles();
 		cutEdges = graph.deleteCutEdges();
 		List<EdgeRing> edgeRingList = graph.getEdgeRings();
-
-		// Debug.printTime("Build Edge Rings");
-
-		List<EdgeRing> validEdgeRingList = new ArrayList<EdgeRing>();
+		List<EdgeRing> validEdgeRingList = new ArrayList<>();
 		invalidRingLines = new ArrayList<LineString>();
 		if (isCheckingRingsValid) {
-			findValidRings(edgeRingList, validEdgeRingList, invalidRingLines);
+			findValidRingz(edgeRingList, validEdgeRingList, invalidRingLines);
 		} else {
 			validEdgeRingList = edgeRingList;
 		}
-		// Debug.printTime("Validate Rings");
 
-		findShellsAndHoles(validEdgeRingList);
+		findShellsAndHolez(validEdgeRingList);
 		HoleAssigner.assignHolesToShells(holeList, shellList);
 
 		// order the shells to make any subsequent processing deterministic
 //		Collections.sort(shellList, new EdgeRing.EnvelopeComparator()); // NOTE skip sort
-
-		// Debug.printTime("Assign Holes");
 
 		boolean includeAll = true;
 		if (extractOnlyPolygonal) {
@@ -88,7 +81,7 @@ public class QuickPolygonizer extends Polygonizer {
 		polyList = extractPolygons(shellList, includeAll);
 	}
 
-	private void findValidRings(List<EdgeRing> edgeRingList, List<EdgeRing> validEdgeRingList, List<LineString> invalidRingList) {
+	private void findValidRingz(List<EdgeRing> edgeRingList, List<EdgeRing> validEdgeRingList, List<LineString> invalidRingList) {
 		for (Iterator<EdgeRing> i = edgeRingList.iterator(); i.hasNext();) {
 			EdgeRing er = i.next();
 			if (er.isValid()) {
@@ -99,9 +92,9 @@ public class QuickPolygonizer extends Polygonizer {
 		}
 	}
 
-	private void findShellsAndHoles(List<EdgeRing> edgeRingList) {
-		holeList = new ArrayList<EdgeRing>();
-		shellList = new ArrayList<EdgeRing>();
+	private void findShellsAndHolez(List<EdgeRing> edgeRingList) {
+		holeList = new ArrayList<>();
+		shellList = new ArrayList<>();
 		for (Iterator<EdgeRing> i = edgeRingList.iterator(); i.hasNext();) {
 			EdgeRing er = i.next();
 			er.computeHole();
@@ -139,25 +132,22 @@ public class QuickPolygonizer extends Polygonizer {
 	 * @param shellList the list of shell EdgeRings
 	 */
 	private static void findOuterShells(List<EdgeRing> shellList) {
-
-		for (Iterator<EdgeRing> i = shellList.iterator(); i.hasNext();) {
-			EdgeRing er = i.next();
+		shellList.forEach(er -> {
 			EdgeRing outerHoleER = er.getOuterHole();
 			if (outerHoleER != null && !outerHoleER.isProcessed()) {
 				er.setIncluded(true);
 				outerHoleER.setProcessed(true);
 			}
-		}
+		});
 	}
 
 	private static List<Geometry> extractPolygons(List<EdgeRing> shellList, boolean includeAll) {
-		List<Geometry> polyList = new ArrayList<Geometry>();
-		for (Iterator<EdgeRing> i = shellList.iterator(); i.hasNext();) {
-			EdgeRing er = i.next();
-			if (includeAll || er.isIncluded()) {
-				polyList.add(er.getPolygon());
+		List<Geometry> polyList = new ArrayList<>();
+		shellList.forEach(ring -> {
+			if (includeAll || ring.isIncluded()) {
+				polyList.add(ring.getPolygon());
 			}
-		}
+		});
 		return polyList;
 	}
 

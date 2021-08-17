@@ -6,7 +6,6 @@ import static processing.core.PConstants.TRIANGLES;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.function.Consumer;
@@ -22,26 +21,18 @@ import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.operation.polygonize.QuickPolygonizer;
 import org.tinfour.common.IConstraint;
-import org.tinfour.common.IIncrementalTinNavigator;
 import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.PolygonConstraint;
 import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
 import org.tinfour.standard.IncrementalTin;
 import org.tinfour.utils.TriangleCollector;
-import org.tinspin.index.PointDistanceFunction;
 import org.tinspin.index.PointIndex;
-import org.tinspin.index.covertree.CoverTree;
 import org.tinspin.index.kdtree.KDTree;
-import org.tinspin.index.phtree.PHTreeP;
-import org.tinspin.index.phtree.PHTreeR;
-
-import ch.ethz.globis.phtree.v16hd.PhTree16HD;
 import earcut4j.Earcut;
 import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.color.RGB;
 import micycle.pgs.utility.PoissonDistribution;
-import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 

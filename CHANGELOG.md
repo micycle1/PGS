@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## **1.1.3** *(2021-08-xx)*
 ### Changed 
 - The approach used by `PGS_Triangulation.urquhartFaces()`. The new approach is typically ~3.5x faster!
+- `diameter()` to `PGS_ShapePredicates`. Computes the diameter of a shape.
 
 ### Fixed
 - `PGS_Triangulation.gabrielFaces()` no longer retains some edges that should have been removed according to the Gabriel graph condition.
