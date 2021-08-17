@@ -5,6 +5,13 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
+## **1.1.3** *(2021-08-xx)*
+### Changed 
+- The approach used by `PGS_Triangulation.urquhartFaces()`. The new approach is typically ~3.5x faster!
+
+### Fixed
+- `PGS_Triangulation.gabrielFaces()` no longer retains some edges that should have been removed according to the Gabriel graph condition.
+
 ## **1.1.2** *(2021-08-10)*
 ### Added
 - `polygonizeLines()` to `PGS_Processing`. Computes the polygonal faces formed by a set of intersecting line segments.
@@ -41,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `createHeart()` to `PGS_Construction`. Generates heart-shaped PShapes.
 - `urquhartFaces()` to `PGS_Triangulation`. Tessellates a triangulation into polygons corresponding to the faces of an _Urquhart graph_.
 - `gabrielFaces()` to `PGS_Triangulation`. Tessellates a triangulation into polygons corresponding to the faces of an _Gabriel graph_. 
-- Additional method signature for `earCutTriangulation()` accepts a PShape argument (previously it accepted a list of points only)
+- Additional method signature for `earCutTriangulation()` accepts a PShape argument (previously it accepted a list of points only).
 - Additional method signature for `generateRandomPoints()` that accepts a random seed.
 - Additional method signature for each of the existing 3 *Delaunay Triangulation* methods, accepting a collection of points only.
 - Expand `PGS_Conversion` to support conversion between:
@@ -51,7 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed 
 - Split `PGS_Processing.concaveHull()` into `concaveHullDFS()` and `concaveHullBFS()` (the method previously used the BFS approach only).
-- Compute (rather than ignore) circle sites of radius 0 (these are effectively points) in `PGS_Voronoi.voronoiCirclesDiagram()`
+- Compute (rather than ignore) circle sites of radius 0 (these are effectively points) in `PGS_Voronoi.voronoiCirclesDiagram()`.
 - Replaced the algorithm used by `PGS_Processing.generateRandomPoints()` with a triangulation-based approach. The new approach is ~10x faster!
 - Renamed `delaunayTriangulationTin()` to `delaunayTriangulationMesh()`.
 - Renamed `poissonTriangulation()` to `poissonTriangulationPoints()` (the method of the same original name now outputs a PShape). 
@@ -60,8 +67,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Error when `concaveHull2()` was called with alpha > 1.
 - Concave hull methods no longer mutate the input point set.
 - PShapes marked as closed and having less than 3 vertices could cause an error during conversion ([#22](https://github.com/micycle1/PGS/issues/22)).
-- `PGS_Conversion.toPVector()` now handles [primitive](https://processing.org/examples/shapeprimitives.html) PShapes
-- Constrained Delaunay triangulations now respect shape holes
+- `PGS_Conversion.toPVector()` now handles [primitive](https://processing.org/examples/shapeprimitives.html) PShapes.
+- Constrained Delaunay triangulations now respect shape holes.
 
 ### Removed
 - `PGS_Processing.concaveHull()` (see *Changed*)
