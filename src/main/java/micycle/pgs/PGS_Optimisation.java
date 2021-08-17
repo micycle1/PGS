@@ -70,7 +70,6 @@ public class PGS_Optimisation {
 		shapeFactory.setWidth(mic.getRadiusLine().getLength() * 2); // r*2 for total width & height
 		shapeFactory.setHeight(mic.getRadiusLine().getLength() * 2); // r*2 for total width & height
 		return toPShape(shapeFactory.createEllipse());
-
 	}
 
 	/**

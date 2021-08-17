@@ -368,6 +368,7 @@ public class PGS_Conversion implements PConstants {
 				return GEOM_FACTORY.createPolygon(coords);
 			case RECT :
 				shapeFactory.setCentre(new Coordinate(shape.getParam(0), shape.getParam(1)));
+				shapeFactory.setNumPoints(4);
 				shapeFactory.setWidth(shape.getParam(2));
 				shapeFactory.setHeight(shape.getParam(3));
 				return shapeFactory.createRectangle();
