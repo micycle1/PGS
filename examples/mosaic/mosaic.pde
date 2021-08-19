@@ -1,14 +1,18 @@
+import processing.javafx.*;
 import micycle.pgs.*;
 import micycle.pgs.utility.PoissonDistribution;
+import micycle.uniformnoise.UniformNoise;
 import java.util.List;
 import org.tinfour.standard.IncrementalTin;
 
 ArrayList<PShape> shapes;
+UniformNoise noise;
 
 void setup() {
   size(800, 800, FX2D);
   smooth();
   colorMode(HSB, 1, 1, 1);
+  noise = new UniformNoise();
   run();
 }
 
@@ -48,7 +52,7 @@ PShape prepareFaces(ArrayList<PVector> points) {
   if (random(1) > 0.2) {
     faces = PGS_Triangulation.urquhartFaces(mesh, true);
   } else {
-    faces = PGS_Triangulation.gabrielFaces(mesh);
+    faces = PGS_Triangulation.gabrielFaces(mesh, true);
   }
 
 
@@ -57,7 +61,7 @@ PShape prepareFaces(ArrayList<PVector> points) {
   for (int i = 0; i < faces.getChildCount(); i++) {
     PShape face = faces.getChild(i);
     PVector centroid = PGS_ShapePredicates.centroid(face);
-    int fill = color((noise(centroid.x*0.1, centroid.y*0.1)+hueOffset)%1, random(0.75, 1), random(0.9, 1));
+    int fill = color((noise.uniformNoise(centroid.x*0.015, centroid.y*0.015)+hueOffset)%1, random(0.75, 1), random(0.9, 1));
     face.setStroke(outline ? 0 : fill);
     face.setFill(fill);
     face.setStrokeWeight(2);

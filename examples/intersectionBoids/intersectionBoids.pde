@@ -1,5 +1,6 @@
 // Boids example adapted from https://processing.org/examples/flocking.html
 // This sketch computes a triangulation from points of intersection of a segment set, where segments are formed between pairs of boids
+import processing.javafx.*;
 import micycle.pgs.*;
 import java.util.List;
 

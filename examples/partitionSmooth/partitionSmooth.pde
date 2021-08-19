@@ -1,3 +1,4 @@
+import processing.javafx.*;
 import micycle.pgs.*;
 import micycle.pgs.utility.PoissonDistribution;
 import java.util.List;
