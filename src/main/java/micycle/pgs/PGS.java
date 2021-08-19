@@ -156,15 +156,14 @@ class PGS {
 	}
 
 	/**
-	 * Provides convenient iteration of exterior and linear rings (if any) of a JTS
-	 * geometry.
+	 * Provides convenient iteration of exterior and linear rings (if any) of a
+	 * polygonal JTS geometry. Supports MultiGeometries.
 	 * 
 	 * @author Michael Carleton
 	 */
 	protected static class LinearRingIterator implements Iterable<LinearRing> {
 
 		private LinearRing[] array;
-		private int size;
 
 		/**
 		 * Constructs the iterator for the given geometry. The first ring returned by
@@ -174,13 +173,15 @@ class PGS {
 		 * @param g input geometry
 		 */
 		public LinearRingIterator(Geometry g) {
-			Polygon poly = (Polygon) g;
-			this.size = 1 + poly.getNumInteriorRing();
-			this.array = new LinearRing[size];
-			array[0] = poly.getExteriorRing();
-			for (int i = 0; i < poly.getNumInteriorRing(); i++) {
-				array[i + 1] = poly.getInteriorRingN(i);
+			ArrayList<LinearRing> rings = new ArrayList<>(g.getNumGeometries());
+			for (int i = 0; i < g.getNumGeometries(); i++) {
+				Polygon poly = (Polygon) g.getGeometryN(i);
+				rings.add(poly.getExteriorRing());
+				for (int j = 0; j < poly.getNumInteriorRing(); j++) {
+					rings.add(poly.getInteriorRingN(j));
+				}
 			}
+			array = rings.toArray(new LinearRing[rings.size()]);
 		}
 
 		@Override
@@ -191,7 +192,7 @@ class PGS {
 
 				@Override
 				public boolean hasNext() {
-					return currentIndex < size;
+					return currentIndex < array.length;
 				}
 
 				@Override
