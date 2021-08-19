@@ -57,6 +57,7 @@ import micycle.balaban.Point;
 import micycle.balaban.Segment;
 import micycle.pgs.utility.PolygonDecomposition;
 import micycle.pgs.utility.SeededRandomPointsInGridBuilder;
+import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 import uk.osgb.algorithm.concavehull.ConcaveHull;
@@ -464,12 +465,12 @@ public class PGS_Processing {
 	 * @since 1.1.2
 	 */
 	@SuppressWarnings("unchecked")
-	public static List<PShape> polygonizeLines(List<PVector> lineSegmentVertices) {
+	public static PShape polygonizeLines(List<PVector> lineSegmentVertices) {
 		// TODO constructor for LINES PShape
 		if (lineSegmentVertices.size() % 2 != 0) {
 			System.err.println(
 					"The input to polygonizeLines() contained an odd number of vertices. The method expects successive pairs of vertices.");
-			return new ArrayList<>();
+			return new PShape();
 		}
 
 		List<SegmentString> segmentStrings = new ArrayList<>(lineSegmentVertices.size() / 2);
@@ -487,8 +488,9 @@ public class PGS_Processing {
 			polygonizer.add(PGS.GEOM_FACTORY.createLineString(new Coordinate[] { ss.getCoordinate(0), ss.getCoordinate(1) }));
 		});
 		Collection<Geometry> polygons = polygonizer.getPolygons();
-		final List<PShape> out = new ArrayList<>(polygons.size());
-		polygons.forEach(p -> out.add(toPShape(p)));
+		
+		final PShape out = new PShape(PConstants.GROUP);
+		polygons.forEach(p -> out.addChild(toPShape(p)));
 		return out;
 	}
 
