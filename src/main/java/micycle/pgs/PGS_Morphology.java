@@ -347,6 +347,7 @@ public class PGS_Morphology {
 			float dy = noise.uniformNoise(coord.x / scale + (101 + time), coord.y / scale + (101 + time)) - 0.5f;
 			coord.add(dx * (float) magnitude * 2, dy * (float) magnitude * 2);
 		});
+		
 		return toPShape(GeometryFixer.fix(fromPShape(PGS_Conversion.fromPVector(coords))));
 	}
 

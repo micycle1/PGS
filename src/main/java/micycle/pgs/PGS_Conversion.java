@@ -161,20 +161,43 @@ public class PGS_Conversion implements PConstants {
 
 		switch (shape.getFamily()) {
 			case PConstants.GROUP :
-				final List<PShape> flatChildren = new ArrayList<>();
+				final List<PShape> flatChildren = new ArrayList<>(shape.getChildCount());
 				getChildren(shape, flatChildren);
 				flatChildren.removeIf(s -> s.getFamily() == PConstants.GROUP);
 				if (flatChildren.isEmpty()) {
 					return GEOM_FACTORY.createEmpty(2);
 				}
 
-				if (flatChildren.stream().allMatch(c -> c.getFamily() == PShape.PATH && !c.isClosed())) {
-					// NOTE special case (for now): preserve paths as MultiLineString
-					LineString[] children = new LineString[flatChildren.size()];
-					for (int i = 0; i < children.length; i++) {
-						children[i] = (LineString) fromPShape(flatChildren.get(i));
+				// Mostly likely a lines-only children, but not necessarily.
+				if (flatChildren.stream().allMatch(c -> c.getFamily() == PShape.PATH && !c.isClosed() && c.getVertexCount() > 1)) {
+					/*
+					 * GROUP PShape may contain multiple shape types. If so, return a Multi___
+					 * collection of the most numerous shape type and discard the rest.
+					 */
+					final List<Polygon> polys = new ArrayList<>();
+					final List<LineString> strings = new ArrayList<>();
+					for (int i = 0; i < flatChildren.size(); i++) {
+						final Geometry child = fromPShape(flatChildren.get(i));
+
+						if (child.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
+							polys.add((Polygon) child);
+						} else if (child.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
+							strings.add((LineString) child);
+						}
 					}
-					return GEOM_FACTORY.createMultiLineString(children);
+
+					if (strings.size() > polys.size()) {
+						if (!polys.isEmpty()) {
+							System.err.println("GROUP PShape contains both polygons and strings. Ignoring " + polys.size() + " polygons.");
+						}
+						return GEOM_FACTORY.createMultiLineString(strings.toArray(new LineString[strings.size()]));
+					} else {
+						if (!strings.isEmpty()) {
+							System.err.println(
+									"GROUP PShape contains both polygons and strings. Ignoring " + strings.size() + " linestrings.");
+						}
+						return GEOM_FACTORY.createMultiPolygon(polys.toArray(new Polygon[polys.size()]));
+					}
 				} else {
 					List<Polygon> children = new ArrayList<>();
 					for (int i = 0; i < flatChildren.size(); i++) {
@@ -322,20 +345,21 @@ public class PGS_Conversion implements PConstants {
 
 		final Coordinate[] outerCoords = coords.get(0).toArray(new Coordinate[coords.get(0).size()]);
 
-		if (outerCoords.length < 2) {
-			return GEOM_FACTORY.createPolygon();
-		}
-
-		if (shape.isClosed() && outerCoords.length > 3) { // closed geometry or path
+		if (outerCoords.length == 0) {
+			return GEOM_FACTORY.createPolygon(); // empty polygon
+		} else if (outerCoords.length == 1) {
+			return GEOM_FACTORY.createPoint(outerCoords[0]);
+		} else if (outerCoords.length == 2) {
+			return GEOM_FACTORY.createLineString(outerCoords);
+		} else if (shape.isClosed()) { // closed geometry or path
 			LinearRing outer = GEOM_FACTORY.createLinearRing(outerCoords); // should always be valid
-
 			LinearRing[] holes = new LinearRing[coords.size() - 1]; // Create linear ring for each hole in the shape
 			for (int j = 1; j < coords.size(); j++) {
 				final Coordinate[] innerCoords = coords.get(j).toArray(new Coordinate[coords.get(j).size()]);
 				holes[j - 1] = GEOM_FACTORY.createLinearRing(innerCoords);
 			}
 			return GEOM_FACTORY.createPolygon(outer, holes);
-		} else { // non-closed path (a string)
+		} else { // not closed
 			return GEOM_FACTORY.createLineString(outerCoords);
 		}
 	}
@@ -353,10 +377,13 @@ public class PGS_Conversion implements PConstants {
 				final double a = shape.getParam(2) / 2d;
 				final double b = shape.getParam(3) / 2d;
 				final double perimeter = Math.PI * (3 * (a + b) - Math.sqrt((3 * a + b) * (a + 3 * b)));
+				if ((int) (perimeter / BEZIER_SAMPLE_DISTANCE) < 4) {
+					return GEOM_FACTORY.createPolygon();
+				}
+				shapeFactory.setNumPoints((int) (perimeter / BEZIER_SAMPLE_DISTANCE));
 				shapeFactory.setCentre(new Coordinate(shape.getParam(0), shape.getParam(1)));
 				shapeFactory.setWidth(a * 2);
 				shapeFactory.setHeight(b * 2);
-				shapeFactory.setNumPoints((int) (perimeter / BEZIER_SAMPLE_DISTANCE));
 				return shapeFactory.createEllipse();
 			case TRIANGLE :
 				Coordinate[] coords = new Coordinate[3 + 1];
