@@ -71,7 +71,7 @@ A number of example Processing sketches are provided in [examples](https://githu
 <p float="middle">
   <a href="examples/partitionSmooth"><img src="resources/examples/partitionSmooth.png" alt="" width="24%"/></a>
   <a href="examples/drawOffsetCurves"><img src="resources/examples/drawOffsetCurves.png" alt="" width="24%"/></a>
-  <a href="examples/triangulate"><img src="resources/examples/triangulate.png" alt="" width="24%"/></a>
+  <a href="examples/ripplingTriangles"><img src="resources/examples/ripplingTriangles.png" alt="" width="24%"/></a>
   <a href="examples/contourMap"><img src="resources/examples/contourMap.png" alt="" width="24%"/></a>
 </p>
 

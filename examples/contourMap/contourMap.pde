@@ -1,16 +1,20 @@
+import processing.javafx.*;
 import micycle.pgs.*;
+import micycle.uniformnoise.UniformNoise;
 import java.util.List;
 import java.util.Map;
 
 PShape polygon;
-
 List<PVector> heights;
-
 float max = -1, min = 9999;
+UniformNoise noise;
+
+final int RESOLUTION = 16; // lower is more resolution
 
 void setup() {
   size(800, 800, FX2D);
   smooth();
+  noise = new UniformNoise();
 }
 
 void draw() {
@@ -32,13 +36,12 @@ void draw() {
 
 void populateHeightMap() {
   heights = new ArrayList<PVector>();
-
-  final int resolution = 15;
+  
   final float animSpeed = 0.005;
 
-  for (int x = 0; x <= width; x+=resolution) {
-    for (int y = 0; y <= height; y+=resolution) {
-      float z = noise(x*0.01 + frameCount*animSpeed, y*0.01 + frameCount*animSpeed);
+  for (int x = 0; x <= width; x+=RESOLUTION) {
+    for (int y = 0; y <= height; y+=RESOLUTION) {
+      float z = noise.uniformNoise(x*0.0055 + frameCount*animSpeed, y*0.0055 + frameCount*animSpeed, 2, 0.5);
       PVector h = new PVector(x, y, 0);
       
       z+=h.dist(new PVector(mouseX, mouseY))*0.005;
