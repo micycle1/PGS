@@ -5,7 +5,6 @@ import static micycle.pgs.PGS.prepareLinesPShape;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -377,7 +376,8 @@ public class PGS_Contour {
 	 * @param isolineMax           maximum value represented by isolines
 	 * @return a map of {isoline -> height of the isoline}
 	 */
-	public static Map<PShape, Float> isolines(Collection<PVector> points, double intervalValueSpacing, double isolineMin, double isolineMax) {
+	public static Map<PShape, Float> isolines(Collection<PVector> points, double intervalValueSpacing, double isolineMin,
+			double isolineMax) {
 		// lines = max-min/spacing
 		final IncrementalTin tin = new IncrementalTin(10);
 		points.forEach(point -> tin.add(new Vertex(point.x, point.y, point.z)));
@@ -452,128 +452,73 @@ public class PGS_Contour {
 	}
 
 	/**
-	 * Produces inwards offset curves from the shape.
+	 * Produces inwards offset curves from the shape. Curves will be generated until
+	 * they collapse.
 	 *
-	 * @param shape
+	 * @param shape   a single polygon or multipolygon (GROUP PShape)
 	 * @param spacing Spacing between successive offset curves. Should be >=1.
 	 * @return A GROUP PShape, where each child shape is one curve
 	 * @see #offsetCurvesOutward(PShape, double, int)
 	 */
 	public static PShape offsetCurvesInward(PShape shape, OffsetStyle style, double spacing) {
-		Geometry g = fromPShape(shape);
-
-		if (g.getCoordinates().length > 2000) {
-			g = DouglasPeuckerSimplifier.simplify(g, 0.5);
-		}
-
-		final BufferParameters bufParams = new BufferParameters(8, BufferParameters.CAP_FLAT, style.style,
-				BufferParameters.DEFAULT_MITRE_LIMIT);
-
-//		bufParams.setSimplifyFactor(5); // can produce "poor" yet interesting results
-
-		spacing = -Math.max(1, Math.abs(spacing)); // ensure negative and >=1
-
-		/*
-		 * Is is faster to buffer the shape inwards than to use the straight skeleton as
-		 * the basis for mitered offsets. To this end a stack is used to handle times
-		 * where the geometry breaks into multiple sub-geometries. The buffer is
-		 * effectively applied in a recursive manner until all geometries are empty (in
-		 * which case they are ignored for the next iteration).
-		 */
-		final ArrayDeque<Geometry> geometries = new ArrayDeque<>();
-		geometries.push(g);
-
-		PShape parent = new PShape(PConstants.GROUP);
-		while (!geometries.isEmpty()) {
-			g = geometries.pop();
-			Coordinate[] coords = g.getCoordinates();
-			if (coords.length > 1) {
-				PShape lines = new PShape();
-				lines.setFamily(PShape.PATH);
-				lines.setStroke(true);
-				lines.setStrokeWeight(2);
-				lines.setStroke(RGB.PINK);
-				lines.beginShape();
-				for (int i = 0; i < coords.length; i++) {
-					final Coordinate coord = coords[i];
-					lines.vertex((float) coord.x, (float) coord.y);
-				}
-				lines.endShape();
-				parent.addChild(lines);
-
-				BufferOp b = new BufferOp(g, bufParams);
-				g = b.getResultGeometry(spacing);
-
-				for (int i = 0; i < g.getNumGeometries(); i++) {
-					if (style == OffsetStyle.MITER || coords.length < 20) {
-						geometries.add(g.getGeometryN(i));
-					} else {
-						// because rounded miters produce LOADS of dense vertices
-						geometries.add(DouglasPeuckerSimplifier.simplify(g.getGeometryN(i), 0.5));
-					}
-				}
-			}
-		}
-
-		return parent;
+		return offsetCurves(shape, style, spacing, 0, false);
 	}
 
 	/**
 	 * Produces offset curves that emanate outwards from the shape.
 	 *
-	 * @param shape
+	 * @param shape   a single polygon or multipolygon (GROUP PShape)
 	 * @param spacing Spacing between successive offset curves. Should be >=1.
 	 * @param curves  number of offset curves (including the original shape outline)
 	 * @return A GROUP PShape, where each child shape is one curve
 	 * @see #offsetCurvesInward(PShape, double)
 	 */
 	public static PShape offsetCurvesOutward(PShape shape, OffsetStyle style, double spacing, final int curves) {
+		return offsetCurves(shape, style, spacing, curves, true);
+	}
+
+	/**
+	 * Generic method for offset curves.
+	 */
+	private static PShape offsetCurves(PShape shape, OffsetStyle style, double spacing, final int curves, boolean outwards) {
 		Geometry g = fromPShape(shape);
 
 		if (g.getCoordinates().length > 2000) {
-			g = DouglasPeuckerSimplifier.simplify(g, 0.5);
+			g = DouglasPeuckerSimplifier.simplify(g, 1);
 		}
 
 		final BufferParameters bufParams = new BufferParameters(8, BufferParameters.CAP_FLAT, style.style,
 				BufferParameters.DEFAULT_MITRE_LIMIT);
+//		bufParams.setSimplifyFactor(5); // can produce "poor" yet interesting results
 
 		spacing = Math.max(1, Math.abs(spacing)); // ensure positive and >=1
+		spacing = outwards ? spacing : -spacing;
 
-		final ArrayDeque<Geometry> geometries = new ArrayDeque<>();
-		geometries.push(g);
-
-		PShape parent = new PShape(PConstants.GROUP);
+		final PShape parent = new PShape(PConstants.GROUP);
 		int currentCurves = 0;
-		while (!geometries.isEmpty() && currentCurves < curves) {
-			g = geometries.poll();
-
+		while ((outwards && currentCurves < curves) || (!outwards && !g.isEmpty())) {
+			// current geometry's ring(s) to PATH PShape(s)
 			for (LinearRing ring : new LinearRingIterator(g)) { // iterate over rings individually
-				Coordinate[] coords = ring.getCoordinates();
-				if (coords.length > 1) {
-					PShape lines = new PShape(PShape.PATH);
-					lines.setStroke(true);
-					lines.setStrokeWeight(2);
-					lines.setStroke(RGB.PINK);
-					lines.beginShape();
+				final Coordinate[] coords = ring.getCoordinates();
+				PShape lines = new PShape(PShape.PATH);
+				lines.setStroke(true);
+				lines.setStrokeWeight(2);
+				lines.setStroke(RGB.PINK);
+				lines.beginShape();
 
-					for (int i = 0; i < coords.length; i++) {
-						Coordinate coord = coords[i];
-						lines.vertex((float) coord.x, (float) coord.y);
-					}
-					lines.endShape();
-					parent.addChild(lines);
+				for (int i = 0; i < coords.length; i++) {
+					Coordinate coord = coords[i];
+					lines.vertex((float) coord.x, (float) coord.y);
 				}
+				lines.endShape();
+				parent.addChild(lines);
 			}
 
 			BufferOp b = new BufferOp(g, bufParams);
 			g = b.getResultGeometry(spacing);
-			for (int i = 0; i < g.getNumGeometries(); i++) {
-				if (style == OffsetStyle.MITER) {
-					geometries.add(g.getGeometryN(i));
-				} else {
-					// simplify because rounded buffers produce LOADS of dense vertices
-					geometries.add(DouglasPeuckerSimplifier.simplify(g.getGeometryN(i), 0.5));
-				}
+			if (style != OffsetStyle.MITER) {
+				// simplify because rounded buffers produce LOADS of dense vertices
+				g = DouglasPeuckerSimplifier.simplify(g, outwards ? 0.1 : 0.5);
 			}
 			currentCurves++;
 		}
