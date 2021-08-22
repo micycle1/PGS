@@ -6,12 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
 ## **1.1.3** *(2021-08-xx)*
+### Added
+- `diameter()` to `PGS_ShapePredicates`. Computes the diameter of a shape.
+- `createRing()` to `PGS_Construction`. Generates ring-shaped PShapes.
 ### Changed 
 - The approach used by `PGS_Triangulation.urquhartFaces()`. The new approach is typically ~3.5x faster!
-- `diameter()` to `PGS_ShapePredicates`. Computes the diameter of a shape.
+- `polygonizeLines()` now returns a GROUP PShape (where each face is a child shape), rather than `List<PShape>` (to be more similar to other methods output elsewhere, like PGS_Triangulation)
+- Reduce outward buffer line simplification (outer-most lines now more smooth)
+- `offsetCurvesOutward()` now supports multi polgons (GROUP PShapes).
+- Algorithm used by PoissonDistribution; new is more densely packed (more regularly spaced) (slight visual change) + more efficient (requires less sample )
 
 ### Fixed
 - `PGS_Triangulation.gabrielFaces()` no longer retains some edges that should have been removed according to the Gabriel graph condition.
+- Error during  small ELLIPSE primitive pshape conversion
+- Handle GROUP PShapes containing multiple shape types (during conversion)
+- `offsetCurvesInward()` on group shapes no longer has a single line joining islands
 
 ## **1.1.2** *(2021-08-10)*
 ### Added
