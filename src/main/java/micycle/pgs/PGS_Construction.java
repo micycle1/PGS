@@ -3,6 +3,7 @@ package micycle.pgs;
 import static micycle.pgs.PGS_Conversion.toPShape;
 
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
 import micycle.pgs.color.RGB;
@@ -196,6 +197,53 @@ public class PGS_Construction {
 
 		heart.endShape(PConstants.CLOSE);
 		return heart;
+	}
+
+	/**
+	 * Creates a joined ring (a "donut") shape.
+	 * 
+	 * @param x           the x coordinate of the center
+	 * @param y           the y coordinate of the center
+	 * @param outerRadius radius of ring exterior
+	 * @param innerRadius radius of ring hole
+	 * @return the ring shape
+	 */
+	public static PShape createRing(double x, double y, double outerRadius, double innerRadius) {
+		return createRing(x, y, outerRadius, innerRadius, 0, PConstants.TWO_PI);
+	}
+
+	/**
+	 * Creates an (un)joined ring shape.
+	 * 
+	 * @param x           the x coordinate of the center
+	 * @param y           the y coordinate of the center
+	 * @param outerRadius radius of ring exterior
+	 * @param innerRadius radius of ring hole
+	 * @param orientation start angle/orientation in radians (where 0 is 12 o'clock)
+	 * @param angle       size of the ring arc angle in radians
+	 * @return the ring shape
+	 */
+	public static PShape createRing(double x, double y, double outerRadius, double innerRadius, double orientation, double angle) {
+		final double outerR = Math.max(outerRadius, innerRadius);
+		final double innerR = Math.min(outerRadius, innerRadius);
+		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
+		shapeFactory.setNumPoints(PGS.SHAPE_SAMPLES);
+		shapeFactory.setCentre(new Coordinate(x, y));
+
+		shapeFactory.setWidth(outerR * 2);
+		shapeFactory.setHeight(outerR * 2);
+		Geometry outer;
+		if (angle > PConstants.TWO_PI - 0.001) {
+			outer = shapeFactory.createCircle();
+		} else {
+			outer = shapeFactory.createArcPolygon(-Math.PI / 2 + orientation, angle);
+		}
+
+		shapeFactory.setWidth(innerR * 2);
+		shapeFactory.setHeight(innerR * 2);
+		Geometry inner = shapeFactory.createCircle();
+
+		return toPShape(outer.difference(inner));
 	}
 
 }
