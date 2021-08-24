@@ -207,6 +207,7 @@ public class PGS_Construction {
 	 * @param outerRadius radius of ring exterior
 	 * @param innerRadius radius of ring hole
 	 * @return the ring shape
+	 * @since 1.1.3
 	 */
 	public static PShape createRing(double x, double y, double outerRadius, double innerRadius) {
 		return createRing(x, y, outerRadius, innerRadius, 0, PConstants.TWO_PI);
@@ -222,17 +223,19 @@ public class PGS_Construction {
 	 * @param orientation start angle/orientation in radians (where 0 is 12 o'clock)
 	 * @param angle       size of the ring arc angle in radians
 	 * @return the ring shape
+	 * @since 1.1.3
 	 */
 	public static PShape createRing(double x, double y, double outerRadius, double innerRadius, double orientation, double angle) {
 		final double outerR = Math.max(outerRadius, innerRadius);
 		final double innerR = Math.min(outerRadius, innerRadius);
-		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
+		
+		final GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
 		shapeFactory.setNumPoints(PGS.SHAPE_SAMPLES);
 		shapeFactory.setCentre(new Coordinate(x, y));
-
 		shapeFactory.setWidth(outerR * 2);
 		shapeFactory.setHeight(outerR * 2);
-		Geometry outer;
+		
+		final Geometry outer;
 		if (angle > PConstants.TWO_PI - 0.001) {
 			outer = shapeFactory.createCircle();
 		} else {
@@ -241,7 +244,7 @@ public class PGS_Construction {
 
 		shapeFactory.setWidth(innerR * 2);
 		shapeFactory.setHeight(innerR * 2);
-		Geometry inner = shapeFactory.createCircle();
+		final Geometry inner = shapeFactory.createCircle();
 
 		return toPShape(outer.difference(inner));
 	}

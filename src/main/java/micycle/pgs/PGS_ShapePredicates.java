@@ -24,7 +24,7 @@ import processing.core.PVector;
  * @author Michael Carleton
  *
  */
-public class PGS_ShapePredicates {
+public final class PGS_ShapePredicates {
 
 	private PGS_ShapePredicates() {
 	}
@@ -205,6 +205,7 @@ public class PGS_ShapePredicates {
 	 * 
 	 * @param shape
 	 * @return
+	 * @since 1.1.3
 	 */
 	public static float diameter(PShape shape) {
 		List<PVector> farPoints = PGS_Optimisation.farthestPointPair(PGS_Conversion.toPVector(shape));

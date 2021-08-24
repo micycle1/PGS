@@ -35,7 +35,7 @@ import processing.core.PVector;
  * @author Michael Carleton
  *
  */
-public class PGS_Optimisation {
+public final class PGS_Optimisation {
 
 	private PGS_Optimisation() {
 	}

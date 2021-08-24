@@ -26,7 +26,7 @@ import processing.core.PVector;
  * @author Michael Carleton
  *
  */
-public class PGS_Transformation {
+public final class PGS_Transformation {
 
 	private PGS_Transformation() {
 
