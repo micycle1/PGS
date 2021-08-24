@@ -1,6 +1,7 @@
 package micycle.pgs;
 
 import static micycle.pgs.PGS.GEOM_FACTORY;
+import static micycle.pgs.PGS.coordFromPVector;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -24,6 +25,9 @@ import processing.core.PVector;
  * <p>
  * Methods in this class are used by the library but are kept accessible for
  * more advanced user use cases.
+ * <p>
+ * Notably, JTS geometries do not support bezier curves so any bezier curves are
+ * subdivided into straight linestrings during PShape -> JTS conversion.
  * 
  * @author Michael Carleton
  *
@@ -314,7 +318,7 @@ public class PGS_Conversion implements PConstants {
 					i += 2;
 					continue;
 				default :
-					coords.get(lastGroup).add(new Coordinate(shape.getVertexX(i), shape.getVertexY(i)));
+					coords.get(lastGroup).add(coordFromPVector(shape.getVertex(i)));
 					break;
 			}
 		}
@@ -553,6 +557,24 @@ public class PGS_Conversion implements PConstants {
 	}
 
 	/**
+	 * Rounds the x and y coordinates (the closest int) of all vertices belonging to
+	 * the shape, mutating the shape. This can sometimes fix a visual problem in
+	 * Processing where narrow gaps can appear between otherwise flush shapes.
+	 * 
+	 * @since 1.1.3
+	 */
+	public static void roundVertexCoords(PShape shape) {
+		final List<PShape> children = new ArrayList<>();
+		getChildren(shape, children);
+		children.forEach(c -> {
+			for (int i = 0; i < c.getVertexCount(); i++) {
+				final PVector v = c.getVertex(i);
+				c.setVertex(i, Math.round(v.x), Math.round(v.y));
+			}
+		});
+	}
+
+	/**
 	 * For every vertexcode, store the group (i.e. hole) it belongs to.
 	 * 
 	 * @param vertexCodes
@@ -658,20 +680,20 @@ public class PGS_Conversion implements PConstants {
 		List<Coordinate> coords = new ArrayList<>();
 
 		if (start.dist(end) <= sampleDistance) {
-			coords.add(new Coordinate(start.x, start.y));
-			coords.add(new Coordinate(end.x, end.y));
+			coords.add(coordFromPVector(start));
+			coords.add(coordFromPVector(end));
 			return coords;
 		}
 
 		final float length = bezierLengthQuadratic(start, controlPoint, end);
 		final int samples = (int) Math.ceil(length / sampleDistance); // sample every x unit length (approximately)
 
-		coords.add(new Coordinate(start.x, start.y));
+		coords.add(coordFromPVector(start));
 		for (int j = 1; j < samples; j++) { // start at 1 -- don't sample at t=0
 			final PVector bezierPoint = getQuadraticBezierCoordinate(start, controlPoint, end, j / (float) samples);
-			coords.add(new Coordinate(bezierPoint.x, bezierPoint.y));
+			coords.add(coordFromPVector(bezierPoint));
 		}
-		coords.add(new Coordinate(end.x, end.y));
+		coords.add(coordFromPVector(end));
 
 		return coords;
 	}
@@ -718,20 +740,20 @@ public class PGS_Conversion implements PConstants {
 		List<Coordinate> coords = new ArrayList<>();
 
 		if (start.dist(end) <= sampleDistance) {
-			coords.add(new Coordinate(start.x, start.y));
-			coords.add(new Coordinate(end.x, end.y));
+			coords.add(coordFromPVector(start));
+			coords.add(coordFromPVector(end));
 			return coords;
 		}
 
 		final float length = bezierLengthCubic(start, controlPoint1, controlPoint2, end);
 		final int samples = (int) Math.ceil(length / sampleDistance); // sample every x unit length (approximately)
 
-		coords.add(new Coordinate(start.x, start.y));
+		coords.add(coordFromPVector(start));
 		for (int j = 1; j < samples; j++) { // start at 1 -- don't sample at t=0
 			final PVector bezierPoint = getCubicBezierCoordinate(start, controlPoint1, controlPoint2, end, j / (float) samples);
-			coords.add(new Coordinate(bezierPoint.x, bezierPoint.y));
+			coords.add(coordFromPVector(bezierPoint));
 		}
-		coords.add(new Coordinate(end.x, end.y));
+		coords.add(coordFromPVector(end));
 		return coords;
 	}
 
