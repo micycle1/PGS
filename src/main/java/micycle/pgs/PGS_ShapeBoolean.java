@@ -21,7 +21,7 @@ import processing.core.PShape;
  * @author Michael Carleton
  *
  */
-public class PGS_ShapeBoolean {
+public final class PGS_ShapeBoolean {
 
 	private PGS_ShapeBoolean() {
 	}

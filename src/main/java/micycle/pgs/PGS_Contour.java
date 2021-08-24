@@ -56,7 +56,7 @@ import processing.core.PVector;
  * @author Michael Carleton
  *
  */
-public class PGS_Contour {
+public final class PGS_Contour {
 
 	/**
 	 * TODO implement 'Base Point Split Algorithm for Generating Polygon Skeleton

@@ -47,7 +47,7 @@ import processing.core.PVector;
  * @since 1.1.0
  *
  */
-public class PGS_CirclePacking {
+public final class PGS_CirclePacking {
 
 	/*
 	 * Roadmap (see/implement): 'A LINEARIZED CIRCLE PACKING ALGORITHM'? Integrate

@@ -32,7 +32,7 @@ import micycle.uniformnoise.UniformNoise;
  * @author Michael Carleton
  *
  */
-public class PGS_Morphology {
+public final class PGS_Morphology {
 
 	static {
 		Minkowski_Sum.setGeometryFactory(PGS.GEOM_FACTORY);

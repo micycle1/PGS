@@ -70,7 +70,7 @@ import uk.osgb.algorithm.concavehull.TriCheckerChi;
  * @author Michael Carleton
  *
  */
-public class PGS_Processing {
+public final class PGS_Processing {
 
 	private PGS_Processing() {
 	}
@@ -481,6 +481,7 @@ public class PGS_Processing {
 		}
 
 		final Polygonizer polygonizer = new Polygonizer();
+		polygonizer.setCheckRingsValid(false);
 		final Noder noder = new IteratedNoder(new PrecisionModel(PrecisionModel.FLOATING_SINGLE));
 		noder.computeNodes(segmentStrings);
 		noder.getNodedSubstrings().forEach(s -> {

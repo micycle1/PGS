@@ -3,6 +3,7 @@ package micycle.pgs;
 import static processing.core.PConstants.LINES;
 import static processing.core.PConstants.ROUND;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -25,7 +26,7 @@ import processing.core.PVector;
  * 
  * @author Michael Carleton
  */
-class PGS {
+final class PGS {
 
 	/** Defines number of vertices that comprise constructed geometries. */
 	protected static final int SHAPE_SAMPLES = 80;
@@ -43,7 +44,7 @@ class PGS {
 	 * @param strokeWeight nullable. default = 2
 	 * @return
 	 */
-	protected static PShape prepareLinesPShape(Integer strokeColor, Integer strokeCap, Integer strokeWeight) {
+	static final PShape prepareLinesPShape(Integer strokeColor, Integer strokeCap, Integer strokeWeight) {
 		if (strokeColor == null) {
 			strokeColor = RGB.PINK;
 		}
@@ -66,7 +67,7 @@ class PGS {
 	/**
 	 * Euclidean distance between two coordinates
 	 */
-	protected static double distance(Coordinate a, Coordinate b) {
+	static final double distance(Coordinate a, Coordinate b) {
 		double deltaX = a.y - b.y;
 		double deltaY = a.x - b.x;
 		return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
@@ -75,36 +76,36 @@ class PGS {
 	/**
 	 * Euclidean distance between two points
 	 */
-	protected static double distance(Point a, Point b) {
+	static final double distance(Point a, Point b) {
 		double deltaX = a.getY() - b.getY();
 		double deltaY = a.getX() - b.getX();
 		return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 	}
 
-	protected static LineString createLineString(PVector a, PVector b) {
+	static final LineString createLineString(PVector a, PVector b) {
 		return GEOM_FACTORY.createLineString(new Coordinate[] { coordFromPVector(a), coordFromPVector(b) });
 	}
 
-	protected static Point createPoint(double x, double y) {
+	static final Point createPoint(double x, double y) {
 		return GEOM_FACTORY.createPoint(new Coordinate(x, y));
 	}
 
-	protected static Point pointFromPVector(PVector p) {
+	static final Point pointFromPVector(PVector p) {
 		return GEOM_FACTORY.createPoint(new Coordinate(p.x, p.y));
 	}
 
-	protected static Coordinate coordFromPoint(Point p) {
+	static final Coordinate coordFromPoint(Point p) {
 		return new Coordinate(p.getX(), p.getY());
 	}
 
-	protected static Coordinate coordFromPVector(PVector p) {
+	static final Coordinate coordFromPVector(PVector p) {
 		return new Coordinate(p.x, p.y);
 	}
 
 	/**
 	 * Transforms a list of points into a POINTS PShape.
 	 */
-	protected static PShape toPointsPShape(Iterable<PVector> points) {
+	static final PShape toPointsPShape(Iterable<PVector> points) {
 		PShape shape = new PShape();
 		shape.setFamily(PShape.GEOMETRY);
 		shape.setStrokeCap(ROUND);
@@ -118,7 +119,7 @@ class PGS {
 	 * Reflection-based workaround to get the fill color of a PShape (this field is
 	 * usually private).
 	 */
-	protected static final int getPShapeFillColor(final PShape sh) {
+	static final int getPShapeFillColor(final PShape sh) {
 		try {
 			final java.lang.reflect.Field f = PShape.class.getDeclaredField("fillColor");
 			f.setAccessible(true);
@@ -134,7 +135,7 @@ class PGS {
 	 * @param points
 	 * @return
 	 */
-	protected static boolean isClockwise(List<PVector> points) {
+	static final boolean isClockwise(List<PVector> points) {
 		boolean closed = true;
 		if (points.get(0).equals(points.get(points.size() - 1))) {
 			closed = false;
@@ -156,12 +157,23 @@ class PGS {
 	}
 
 	/**
+	 * Produces a direction-agnostic hash for a PVector pair (an edge).
+	 */
+	static final int hash(PVector a, PVector b) {
+		int bits0 = Float.floatToIntBits(a.x);
+		bits0 ^= Float.floatToIntBits(a.y) * 31; // hash a
+		int bits1 = Float.floatToIntBits(b.x);
+		bits1 ^= Float.floatToIntBits(b.y) * 31; // hash b
+		return bits0 ^ bits1; // xor hashes
+	}
+
+	/**
 	 * Provides convenient iteration of exterior and linear rings (if any) of a
 	 * polygonal JTS geometry. Supports MultiGeometries.
 	 * 
 	 * @author Michael Carleton
 	 */
-	protected static class LinearRingIterator implements Iterable<LinearRing> {
+	static final class LinearRingIterator implements Iterable<LinearRing> {
 
 		private LinearRing[] array;
 

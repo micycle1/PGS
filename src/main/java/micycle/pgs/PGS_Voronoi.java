@@ -46,7 +46,7 @@ import processing.core.PVector;
  * @author Michael Carleton
  *
  */
-public class PGS_Voronoi {
+public final class PGS_Voronoi {
 
 	private PGS_Voronoi() {
 	}
@@ -95,7 +95,7 @@ public class PGS_Voronoi {
 					final Coordinate c2 = new Coordinate(e.getB().x, e.getB().y);
 					final int hash = c1.hashCode() + c2.hashCode(); // order-invariant hash
 					if (seen.add(hash)) { // only process unique edges
-						/**
+						/*
 						 * It's a little faster to filter edges to intersection-check here by first
 						 * checking if one if its vertices is inside and the other outside the shape.
 						 * The tradeoff is that we miss segments that cross outside the shape yet both
@@ -115,7 +115,7 @@ public class PGS_Voronoi {
 
 			final HashMap<Edge, Coordinate> intersections = intersection.compute(edges);
 			intersections.forEach((e, c) -> {
-				/**
+				/*
 				 * When segments intersects >1 time, if it crosses a convex part, then ideally
 				 * one segment needs output -- the segment within the part; if the segment
 				 * crosses a concave part then two segments need output, where each exist inside
@@ -254,7 +254,7 @@ public class PGS_Voronoi {
 				}
 			}
 		});
-		Collections.shuffle(sitesList);
+		Collections.shuffle(sitesList); // shuffle vertices for more balanced KDTree
 		sitesList.forEach(c -> sites.insert(new double[] { c.x, c.y }, c));
 
 		final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();
@@ -267,7 +267,7 @@ public class PGS_Voronoi {
 			for (IQuadEdge e : poly.getEdges()) {
 				final PVector a = new PVector((float) e.getA().x, (float) e.getA().y);
 				final PVector b = new PVector((float) e.getB().x, (float) e.getB().y);
-				final int hash = a.hashCode() + b.hashCode();
+				final int hash = PGS.hash(a, b);
 
 				if (!seen.add(hash)) { // reduces edges to check by ~2/3rds
 					continue;

@@ -42,7 +42,7 @@ import processing.core.PVector;
  * @author Michael Carleton
  *
  */
-public class PGS_Triangulation {
+public final class PGS_Triangulation {
 
 	private PGS_Triangulation() {
 	}

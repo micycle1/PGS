@@ -32,7 +32,7 @@ import processing.core.PVector;
  * @author Michael Carleton
  *
  */
-public class PGS_Conversion implements PConstants {
+public final class PGS_Conversion implements PConstants {
 
 	/** Approximate distance between successive sample points on bezier curves */
 	private static final float BEZIER_SAMPLE_DISTANCE = 2;
