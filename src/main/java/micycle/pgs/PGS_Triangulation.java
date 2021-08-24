@@ -2,7 +2,6 @@ package micycle.pgs;
 
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
-import static processing.core.PConstants.TRIANGLES;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -33,6 +32,7 @@ import earcut4j.Earcut;
 import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.color.RGB;
 import micycle.pgs.utility.PoissonDistribution;
+import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -73,7 +73,7 @@ public class PGS_Triangulation {
 	 *                      becomes more considerable at higher refinement levels.
 	 *                      When constrain=false and refinements=0, this argument
 	 *                      has no effect.
-	 * @return a TRIANGLES PShape
+	 * @return a GROUP PShape, where each child shape is one triangle
 	 * @see #delaunayTriangulationPoints(PShape, List, boolean, int, boolean)
 	 * @see #delaunayTriangulationMesh(PShape, List, boolean, int, boolean)
 	 */
@@ -81,24 +81,27 @@ public class PGS_Triangulation {
 			boolean pretty) {
 		final IncrementalTin tin = delaunayTriangulationMesh(shape, steinerPoints, constrain, refinements, pretty);
 
-		final PShape triangulation = new PShape(PShape.GEOMETRY);
-
-		PGS_Conversion.setAllFillColor(triangulation, RGB.WHITE);
-		PGS_Conversion.setAllStrokeColor(triangulation, RGB.PINK, 2);
-		triangulation.beginShape(TRIANGLES);
+		final PShape triangulation = new PShape(PConstants.GROUP);
 
 		final Consumer<Vertex[]> triangleVertexConsumer = t -> {
-			triangulation.vertex((float) t[0].x, (float) t[0].y);
-			triangulation.vertex((float) t[1].x, (float) t[1].y);
-			triangulation.vertex((float) t[2].x, (float) t[2].y);
+			final PShape triangle = new PShape(PShape.PATH);
+			triangle.beginShape();
+			triangle.vertex((float) t[0].x, (float) t[0].y);
+			triangle.vertex((float) t[1].x, (float) t[1].y);
+			triangle.vertex((float) t[2].x, (float) t[2].y);
+			triangle.endShape(PConstants.CLOSE);
+			triangulation.addChild(triangle);
 		};
+
 		if (constrain) {
 			TriangleCollector.visitTrianglesConstrained(tin, triangleVertexConsumer);
 		} else {
 			TriangleCollector.visitTriangles(tin, triangleVertexConsumer);
 		}
 
-		triangulation.endShape();
+		PGS_Conversion.setAllFillColor(triangulation, RGB.WHITE);
+		PGS_Conversion.setAllStrokeColor(triangulation, RGB.PINK, 2);
+
 		return triangulation;
 	}
 
@@ -315,7 +318,7 @@ public class PGS_Triangulation {
 	 * 
 	 * @param shape
 	 * @param spacing (Minimum) spacing between poisson points
-	 * @return a TRIANGLES PShape
+	 * @return a GROUP PShape, where each child shape is one triangle
 	 * @see #poissonTriangulationPoints(PShape, double)
 	 */
 	public static PShape poissonTriangulation(PShape shape, double spacing) {
@@ -323,21 +326,24 @@ public class PGS_Triangulation {
 
 		final PoissonDistribution pd = new PoissonDistribution(0);
 		final List<PVector> poissonPoints = pd.generate(e.getMinX(), e.getMinY(), e.getMinX() + e.getWidth(), e.getMinY() + e.getHeight(),
-				spacing, 7);
+				spacing, 4);
 
 		final IncrementalTin tin = delaunayTriangulationMesh(shape, poissonPoints, true, 0, false);
 
-		final PShape triangulation = new PShape(PShape.GEOMETRY);
+		final PShape triangulation = new PShape(PConstants.GROUP);
+
+		TriangleCollector.visitTrianglesConstrained(tin, t -> {
+			final PShape triangle = new PShape(PShape.PATH);
+			triangle.beginShape();
+			triangle.vertex((float) t[0].x, (float) t[0].y);
+			triangle.vertex((float) t[1].x, (float) t[1].y);
+			triangle.vertex((float) t[2].x, (float) t[2].y);
+			triangle.endShape(PConstants.CLOSE);
+			triangulation.addChild(triangle);
+		});
+
 		PGS_Conversion.setAllFillColor(triangulation, RGB.WHITE);
 		PGS_Conversion.setAllStrokeColor(triangulation, RGB.PINK, 2);
-
-		triangulation.beginShape(TRIANGLES);
-		TriangleCollector.visitTrianglesConstrained(tin, t -> {
-			triangulation.vertex((float) t[0].x, (float) t[0].y);
-			triangulation.vertex((float) t[1].x, (float) t[1].y);
-			triangulation.vertex((float) t[2].x, (float) t[2].y);
-		});
-		triangulation.endShape();
 
 		return triangulation;
 	}
@@ -357,7 +363,7 @@ public class PGS_Triangulation {
 
 		final PoissonDistribution pd = new PoissonDistribution(0);
 		final List<PVector> poissonPoints = pd.generate(e.getMinX(), e.getMinY(), e.getMinX() + e.getWidth(), e.getMinY() + e.getHeight(),
-				spacing, 7);
+				spacing, 4);
 
 		final IncrementalTin tin = delaunayTriangulationMesh(shape, poissonPoints, true, 0, false);
 
@@ -375,8 +381,8 @@ public class PGS_Triangulation {
 	 * ("earcut") method. The triangulation is constrained to the shape by default.
 	 * Does not support holes (for now...).
 	 * 
-	 * @param shape
-	 * @return a TRIANGLES PShape
+	 * @param shape shape whose vertices to triangulate
+	 * @return a GROUP PShape, where each child shape is one triangle
 	 * @since 1.1.0
 	 */
 	public static PShape earCutTriangulation(PShape shape) {
@@ -388,36 +394,36 @@ public class PGS_Triangulation {
 	 * ("earcut") method.
 	 * 
 	 * @param points
-	 * @return a TRIANGLES PShape
+	 * @return a GROUP PShape, where each child shape is one triangle
 	 */
 	public static PShape earCutTriangulation(List<PVector> points) {
-		double[] arrCoords = new double[points.size() * 2];
+		final double[] arrCoords = new double[points.size() * 2];
 
 		for (int i = 0; i < points.size(); i++) {
 			arrCoords[2 * i] = points.get(i).x;
 			arrCoords[2 * i + 1] = points.get(i).y;
 		}
 
-		List<Integer> triangles = Earcut.earcut(arrCoords, null, 2);
+		final List<Integer> triangles = Earcut.earcut(arrCoords, null, 2);
 
-		PShape triangulation = new PShape();
-		triangulation.setFamily(PShape.GEOMETRY);
-		triangulation.setStroke(true);
-		triangulation.setStrokeWeight(2);
-		triangulation.setStroke(RGB.PINK);
-		triangulation.setFill(true);
-		triangulation.setFill(micycle.pgs.color.RGB.composeColor(255, 255, 255, 255));
+		final PShape triangulation = new PShape(PConstants.GROUP);
 
-		triangulation.beginShape(TRIANGLES);
 		for (int i = 0; i < triangles.size(); i += 3) {
 			final int v1 = 2 * triangles.get(i);
 			final int v2 = 2 * triangles.get(i + 1);
 			final int v3 = 2 * triangles.get(i + 2);
-			triangulation.vertex((float) arrCoords[v1], (float) arrCoords[v1 + 1]);
-			triangulation.vertex((float) arrCoords[v2], (float) arrCoords[v2 + 1]);
-			triangulation.vertex((float) arrCoords[v3], (float) arrCoords[v3 + 1]);
+
+			final PShape triangle = new PShape(PShape.PATH);
+			triangle.beginShape();
+			triangle.vertex((float) arrCoords[v1], (float) arrCoords[v1 + 1]);
+			triangle.vertex((float) arrCoords[v2], (float) arrCoords[v2 + 1]);
+			triangle.vertex((float) arrCoords[v3], (float) arrCoords[v3 + 1]);
+			triangle.endShape(PConstants.CLOSE);
+			triangulation.addChild(triangle);
 		}
-		triangulation.endShape();
+
+		PGS_Conversion.setAllFillColor(triangulation, RGB.WHITE);
+		PGS_Conversion.setAllStrokeColor(triangulation, RGB.PINK, 2);
 
 		return triangulation;
 	}
@@ -468,13 +474,13 @@ public class PGS_Triangulation {
 			}
 		});
 
-		final Polygonizer polygonizer = new Polygonizer();
+		final Polygonizer polygonizer = new QuickPolygonizer(false);
 		polygonizer.setCheckRingsValid(false);
 		edges.removeAll(uniqueLongestEdges);
 		edges.forEach(edge -> polygonizer
 				.add(PGS.GEOM_FACTORY.createLineString(new Coordinate[] { toCoord(edge.getA()), toCoord(edge.getB()) })));
 
-		final PShape out = new PShape(PShape.GROUP);
+		final PShape out = new PShape(PConstants.GROUP);
 		polygonizer.getPolygons().forEach(p -> {
 			final PShape face = toPShape((Polygon) p);
 			face.setStrokeWeight(3);
@@ -551,7 +557,7 @@ public class PGS_Triangulation {
 		edges.forEach(edge -> polygonizer
 				.add(PGS.GEOM_FACTORY.createLineString(new Coordinate[] { toCoord(edge.getA()), toCoord(edge.getB()) })));
 
-		final PShape out = new PShape(PShape.GROUP);
+		final PShape out = new PShape(PConstants.GROUP);
 		polygonizer.getPolygons().forEach(p -> {
 			final PShape face = toPShape((Polygon) p);
 			face.setStrokeWeight(3);
