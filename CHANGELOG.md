@@ -8,19 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## **1.1.3** *(2021-08-xx)*
 ### Added
 - `diameter()` to `PGS_ShapePredicates`. Computes the diameter of a shape.
+- `width()` and `height()` to `PGS_ShapePredicates`.
 - `createRing()` to `PGS_Construction`. Generates ring-shaped PShapes.
+- `roundVertexCoords()` to PGS_Conversion. Rounds the x and y coordinates of all vertices belonging to a shape.
 ### Changed 
 - The approach used by `PGS_Triangulation.urquhartFaces()`. The new approach is typically ~3.5x faster!
-- `polygonizeLines()` now returns a GROUP PShape (where each face is a child shape), rather than `List<PShape>` (to be more similar to other methods output elsewhere, like PGS_Triangulation)
-- Reduce outward buffer line simplification (outer-most lines now more smooth)
-- `offsetCurvesOutward()` now supports multi polgons (GROUP PShapes).
-- Algorithm used by PoissonDistribution; new is more densely packed (more regularly spaced) (slight visual change) + more efficient (requires less sample )
+- `polygonizeLines()` now returns a `GROUP` PShape (where each face is a child shape), rather than `List<PShape>`.
+- Reduced buffer line simplification applied during `offsetCurvesOutwards()`  (outer-most lines are now noticeably more smooth).
+- `offsetCurvesOutward()` now supports multi polygons (GROUP PShapes).
+- Algorithm used by `PoissonDistribution`; poisson point outputs are now more densely packed and more regularly spaced.
+- Triangulation methods now output `GROUP` PShapes, so individual triangles are more easily accessible.
 
 ### Fixed
 - `PGS_Triangulation.gabrielFaces()` no longer retains some edges that should have been removed according to the Gabriel graph condition.
-- Error during  small ELLIPSE primitive pshape conversion
-- Handle GROUP PShapes containing multiple shape types (during conversion)
-- `offsetCurvesInward()` on group shapes no longer has a single line joining islands
+- Error that occurred during PShape conversion from very small `ELLIPSE` primitives. 
+- Conversion now supports `GROUP` PShapes containing multiple shape types (such as line and polygon).
+- `offsetCurvesInward()` applied to `GROUP` PShapes no longer has a line joining shape islands.
 
 ## **1.1.2** *(2021-08-10)*
 ### Added

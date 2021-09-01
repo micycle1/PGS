@@ -20,6 +20,7 @@ import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.operation.polygonize.QuickPolygonizer;
 import org.tinfour.common.IConstraint;
+import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.PolygonConstraint;
 import org.tinfour.common.SimpleTriangle;
@@ -455,7 +456,7 @@ public final class PGS_Triangulation {
 	 * @see #gabrielFaces(IncrementalTin)
 	 */
 	@SuppressWarnings("unchecked")
-	public static PShape urquhartFaces(final IncrementalTin triangulation, final boolean preservePerimeter) {
+	public static PShape urquhartFaces(final IIncrementalTin triangulation, final boolean preservePerimeter) {
 		final HashSet<IQuadEdge> edges = new HashSet<>();
 		final HashSet<IQuadEdge> uniqueLongestEdges = new HashSet<>();
 
@@ -516,7 +517,7 @@ public final class PGS_Triangulation {
 	 * @see #urquhartFaces(IncrementalTin, boolean)
 	 */
 	@SuppressWarnings("unchecked")
-	public static PShape gabrielFaces(final IncrementalTin triangulation, final boolean preservePerimeter) {
+	public static PShape gabrielFaces(final IIncrementalTin triangulation, final boolean preservePerimeter) {
 		final HashSet<IQuadEdge> edges = new HashSet<>();
 		final HashSet<Vertex> vertices = new HashSet<>();
 

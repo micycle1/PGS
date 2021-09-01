@@ -34,6 +34,7 @@ import org.tinspin.index.rtree.Entry;
 import org.tinspin.index.rtree.RTree;
 import org.tinspin.index.rtree.RTreeIterator;
 
+import micycle.pgs.PGS.PEdge;
 import micycle.pgs.color.RGB;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -262,14 +263,14 @@ public final class PGS_Voronoi {
 		final BoundedVoronoiDiagram v = new BoundedVoronoiDiagram(tin.getVertices(), options);
 
 		final PShape lines = PGS.prepareLinesPShape(RGB.PINK, PConstants.SQUARE, 3);
-		final HashSet<Integer> seen = new HashSet<>();
+		final HashSet<PEdge> seen = new HashSet<>();
 		for (ThiessenPolygon poly : v.getPolygons()) {
 			for (IQuadEdge e : poly.getEdges()) {
 				final PVector a = new PVector((float) e.getA().x, (float) e.getA().y);
 				final PVector b = new PVector((float) e.getB().x, (float) e.getB().y);
-				final int hash = PGS.hash(a, b);
+				final PEdge edge = new PEdge(a, b);
 
-				if (!seen.add(hash)) { // reduces edges to check by ~2/3rds
+				if (!seen.add(edge)) { // reduces edges to check by ~2/3rds
 					continue;
 				}
 
