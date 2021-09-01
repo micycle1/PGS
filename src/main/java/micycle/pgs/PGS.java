@@ -29,8 +29,11 @@ import processing.core.PVector;
 final class PGS {
 
 	/** Defines number of vertices that comprise constructed geometries. */
-	protected static final int SHAPE_SAMPLES = 80;
+	static final int SHAPE_SAMPLES = 80;
 
+	/**
+	 * PGS global geometry factory (uses 32 bit float precision).
+	 */
 	public static final GeometryFactory GEOM_FACTORY = new GeometryFactory(new PrecisionModel(PrecisionModel.FLOATING_SINGLE));
 
 	private PGS() {
@@ -157,17 +160,6 @@ final class PGS {
 	}
 
 	/**
-	 * Produces a direction-agnostic hash for a PVector pair (an edge).
-	 */
-	static final int hash(PVector a, PVector b) {
-		int bits0 = Float.floatToIntBits(a.x);
-		bits0 ^= Float.floatToIntBits(a.y) * 31; // hash a
-		int bits1 = Float.floatToIntBits(b.x);
-		bits1 ^= Float.floatToIntBits(b.y) * 31; // hash b
-		return bits0 ^ bits1; // xor hashes
-	}
-
-	/**
 	 * Provides convenient iteration of exterior and linear rings (if any) of a
 	 * polygonal JTS geometry. Supports MultiGeometries.
 	 * 
@@ -220,6 +212,41 @@ final class PGS {
 					throw new UnsupportedOperationException();
 				}
 			};
+		}
+	}
+
+	/**
+	 * Represents an edge between 2 PVectors.
+	 * 
+	 * @author Michael Carleton
+	 *
+	 */
+	static final class PEdge {
+
+		final PVector a, b;
+
+		public PEdge(PVector a, PVector b) {
+			this.a = a;
+			this.b = b;
+		}
+
+		@Override
+		public int hashCode() {
+//		int x = Float.floatToIntBits(Math.min(a.x, b.x)); 
+//	    x = ((x >> 16) ^ Float.floatToIntBits(Math.max(a.x, b.x))) * 0x45d9f3b;
+//	    x = ((x >> 16) ^ Float.floatToIntBits(Math.min(a.y, b.y))) * 0x45d9f3b;
+//	    x = (x >> 16) ^ Float.floatToIntBits(Math.max(a.y, b.y));
+//	    return x;
+			return Float.floatToIntBits(b.y + a.y) ^ Float.floatToIntBits(b.x + a.x - 1);
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (obj instanceof PEdge) {
+				PEdge other = (PEdge) obj;
+				return (other.a.equals(a) && other.b.equals(b)) || (other.a.equals(b) && other.b.equals(a));
+			}
+			return false;
 		}
 	}
 

@@ -13,7 +13,6 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
-
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -188,6 +187,20 @@ public final class PGS_ShapePredicates {
 			return new PVector((float) point.getX(), (float) point.getY());
 		}
 		return null;
+	}
+
+	/**
+	 * Computes the horizontal width of a shape (the width of its bounding-box).
+	 */
+	public static float width(PShape shape) {
+		return (float) fromPShape(shape).getEnvelopeInternal().getWidth();
+	}
+
+	/**
+	 * Computes the vertical height of a shape (the height of its bounding-box).
+	 */
+	public static float height(PShape shape) {
+		return (float) fromPShape(shape).getEnvelopeInternal().getHeight();
 	}
 
 	/**

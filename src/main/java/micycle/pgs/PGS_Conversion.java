@@ -475,6 +475,20 @@ public final class PGS_Conversion implements PConstants {
 	}
 
 	/**
+	 * Generates a simple polygon (no holes) from the given coordinates (PVector
+	 * varargs).
+	 */
+	public static PShape fromPVector(PVector... coordinates) {
+		final PShape polygon = new PShape(PShape.PATH);
+		polygon.beginShape();
+		for (PVector v : coordinates) {
+			polygon.vertex(v.x, v.y);
+		}
+		polygon.endShape(PConstants.CLOSE);
+		return polygon;
+	}
+
+	/**
 	 * Finds and returns all the children PShapes of a given PShape. All children
 	 * (including the parent-most (input) shape) are put into the given list.
 	 * <p>
@@ -567,9 +581,11 @@ public final class PGS_Conversion implements PConstants {
 		final List<PShape> children = new ArrayList<>();
 		getChildren(shape, children);
 		children.forEach(c -> {
-			for (int i = 0; i < c.getVertexCount(); i++) {
-				final PVector v = c.getVertex(i);
-				c.setVertex(i, Math.round(v.x), Math.round(v.y));
+			if (c.getKind() != GROUP) {
+				for (int i = 0; i < c.getVertexCount(); i++) {
+					final PVector v = c.getVertex(i);
+					c.setVertex(i, Math.round(v.x), Math.round(v.y));
+				}
 			}
 		});
 	}
