@@ -91,7 +91,7 @@ public final class PoissonDistribution {
 		addToGrid(p);
 
 		while (!processList.isEmpty()) {
-			final int i = floor(random(0, processList.size())); // Choose a point randomly from the active list, x
+			final int i = random.nextInt(processList.size()); // Choose a point randomly from the active list, x
 			p = processList.remove(i); // parent
 
 			/*

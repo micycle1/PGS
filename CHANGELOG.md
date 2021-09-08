@@ -5,6 +5,17 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
+## **1.x.x** *(2021-xx-xx)*
+
+### Added
+* `toPointsPShape()` to `PGS_Conversion`. Transforms a list of points into a `POINTS` type PShape.
+
+### Changed
+* `fieldWarp()` now supports `POINTS` and `GROUP` PShapes.
+
+### Fixed
+Occasional out of bounds error with Poisson Distribution.
+
 ## **1.1.3** *(2021-09-01)*
 ### Added
 - `diameter()` to `PGS_ShapePredicates`. Computes the diameter of a shape.

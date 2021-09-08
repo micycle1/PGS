@@ -106,19 +106,6 @@ final class PGS {
 	}
 
 	/**
-	 * Transforms a list of points into a POINTS PShape.
-	 */
-	static final PShape toPointsPShape(Iterable<PVector> points) {
-		PShape shape = new PShape();
-		shape.setFamily(PShape.GEOMETRY);
-		shape.setStrokeCap(ROUND);
-		shape.beginShape(PShape.POINTS);
-		points.forEach(p -> shape.vertex(p.x, p.y));
-		shape.endShape();
-		return shape;
-	}
-
-	/**
 	 * Reflection-based workaround to get the fill color of a PShape (this field is
 	 * usually private).
 	 */
@@ -231,12 +218,15 @@ final class PGS {
 		}
 
 		@Override
+		/**
+		 * Direction-agnostic hash
+		 */
 		public int hashCode() {
-//		int x = Float.floatToIntBits(Math.min(a.x, b.x)); 
-//	    x = ((x >> 16) ^ Float.floatToIntBits(Math.max(a.x, b.x))) * 0x45d9f3b;
-//	    x = ((x >> 16) ^ Float.floatToIntBits(Math.min(a.y, b.y))) * 0x45d9f3b;
-//	    x = (x >> 16) ^ Float.floatToIntBits(Math.max(a.y, b.y));
-//	    return x;
+//			int x = Float.floatToIntBits(Math.min(a.x, b.x));
+//			x = ((x >> 16) ^ Float.floatToIntBits(Math.max(a.x, b.x))) * 0x45d9f3b;
+//			x = ((x >> 16) ^ Float.floatToIntBits(Math.min(a.y, b.y))) * 0x45d9f3b;
+//			x = (x >> 16) ^ Float.floatToIntBits(Math.max(a.y, b.y));
+//			return x;
 			return Float.floatToIntBits(b.y + a.y) ^ Float.floatToIntBits(b.x + a.x - 1);
 		}
 

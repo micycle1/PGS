@@ -211,9 +211,9 @@ public final class PGS_Conversion implements PConstants {
 							children.add((Polygon) child);
 						}
 					}
-					// NOTE for now, buffer/flatten multiple polygons into a single JTS polygon so
-					// that methods handle them properly
-					return (GEOM_FACTORY.createMultiPolygon(children.toArray(new Polygon[0])).buffer(0));
+					// NOTE since 1.2.0 Multi Polygons are no longer flattened -- methods have
+					// varying support for multipolygons
+					return (GEOM_FACTORY.createMultiPolygon(children.toArray(new Polygon[children.size()])));
 				}
 			case PShape.GEOMETRY :
 			case PShape.PATH :
@@ -436,6 +436,21 @@ public final class PGS_Conversion implements PConstants {
 	}
 
 	/**
+	 * Transforms a list of points into a POINTS PShape.
+	 * 
+	 * @since 1.2.0
+	 */
+	public static final PShape toPointsPShape(Collection<PVector> points) {
+		PShape shape = new PShape();
+		shape.setFamily(PShape.GEOMETRY);
+		shape.setStrokeCap(ROUND);
+		shape.beginShape(PShape.POINTS);
+		points.forEach(p -> shape.vertex(p.x, p.y));
+		shape.endShape();
+		return shape;
+	}
+
+	/**
 	 * Returns the vertices of a PShape as an unclosed list of PVector coordinates.
 	 * 
 	 * @param shape
@@ -477,6 +492,8 @@ public final class PGS_Conversion implements PConstants {
 	/**
 	 * Generates a simple polygon (no holes) from the given coordinates (PVector
 	 * varargs).
+	 * 
+	 * @param coordinates unclosed list of shape coordinates
 	 */
 	public static PShape fromPVector(PVector... coordinates) {
 		final PShape polygon = new PShape(PShape.PATH);

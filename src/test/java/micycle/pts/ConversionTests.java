@@ -14,6 +14,7 @@ import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.PrecisionModel;
 
+import micycle.pgs.PGS_Conversion;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -241,6 +242,25 @@ class ConversionTests {
 		for (int i = 0; i < g.getCoordinates().length; i++) {
 			assertTrue(pointsAreEqual(g.getCoordinates()[i], shape.getVertex(i)));
 		}
+	}
+
+	@Test
+	void testVertexRounding() {
+		final PShape shape = new PShape(PShape.GEOMETRY);
+		shape.beginShape();
+		shape.vertex(12.4985f, -97.234f);
+		shape.vertex(10, -10);
+		shape.vertex(999.99f, 0.0001f);
+		shape.endShape(PShape.CLOSE); // close affects rendering only -- does not append another vertex
+
+		PGS_Conversion.roundVertexCoords(shape);
+		
+		assertEquals(12, shape.getVertex(0).x);
+		assertEquals(-97, shape.getVertex(0).y);
+		assertEquals(10, shape.getVertex(1).x);
+		assertEquals(-10, shape.getVertex(1).y);
+		assertEquals(1000, shape.getVertex(2).x);
+		assertEquals(0, shape.getVertex(2).y);
 	}
 
 	private static boolean pointsAreEqual(Coordinate c, PVector p) {

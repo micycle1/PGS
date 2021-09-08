@@ -230,7 +230,7 @@ public class PGS_Construction {
 		final double innerR = Math.min(outerRadius, innerRadius);
 		
 		final GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-		shapeFactory.setNumPoints(PGS.SHAPE_SAMPLES);
+		shapeFactory.setNumPoints(48);
 		shapeFactory.setCentre(new Coordinate(x, y));
 		shapeFactory.setWidth(outerR * 2);
 		shapeFactory.setHeight(outerR * 2);

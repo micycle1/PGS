@@ -166,7 +166,7 @@ public final class PGS_Voronoi {
 	 * @return
 	 */
 	public static PShape voronoiDiagram(Collection<PVector> points, boolean constrain) {
-		return voronoiDiagram(PGS.toPointsPShape(points), constrain);
+		return voronoiDiagram(PGS_Conversion.toPointsPShape(points), constrain);
 	}
 
 	/**
@@ -216,7 +216,7 @@ public final class PGS_Voronoi {
 	 * @see #voronoiCells(PShape)
 	 */
 	public static PShape voronoiCells(Collection<PVector> points) {
-		return voronoiCells(PGS.toPointsPShape(points));
+		return voronoiCells(PGS_Conversion.toPointsPShape(points));
 	}
 
 	/**
@@ -228,7 +228,7 @@ public final class PGS_Voronoi {
 	 * @param circles       list of PVectors to use as circle sites
 	 * @param circleSamples defines how many samples from each circle's
 	 *                      circumference should be used to compute the voronoi
-	 *                      diagram. 50 is a suitable value
+	 *                      diagram. 25-50 is a suitable range
 	 * @param drawBranches  whether to the draw/output branches from the coming from
 	 *                      the center of each circle
 	 * @return
@@ -259,7 +259,7 @@ public final class PGS_Voronoi {
 		sitesList.forEach(c -> sites.insert(new double[] { c.x, c.y }, c));
 
 		final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();
-		options.setBounds(new Rectangle2D.Double(-500, -500, 3000, 3000)); // should be enough
+		options.setBounds(new Rectangle2D.Double(-1000, -1000, 3000, 3000)); // should be enough
 		final BoundedVoronoiDiagram v = new BoundedVoronoiDiagram(tin.getVertices(), options);
 
 		final PShape lines = PGS.prepareLinesPShape(RGB.PINK, PConstants.SQUARE, 3);
