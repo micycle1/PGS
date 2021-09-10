@@ -32,6 +32,7 @@ import org.tinspin.index.kdtree.KDTree;
 import earcut4j.Earcut;
 import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.color.RGB;
+import micycle.pgs.utility.IncrementalTinDual;
 import micycle.pgs.utility.PoissonDistribution;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -565,6 +566,28 @@ public final class PGS_Triangulation {
 			out.addChild(face);
 		});
 		return out;
+	}
+
+	/**
+	 * Generates a shape consisting of polygonal faces of the dual graph of the
+	 * given triangulation.
+	 * <p>
+	 * In practice, the resulting dual mesh has hexagonal-like cells.
+	 * 
+	 * <p>
+	 * If the input has been generated from a PShape, consider generating the
+	 * triangulation with refinements > 1 for better dual mesh results.
+	 * 
+	 * @param triangulation a triangulation mesh
+	 * @return a GROUP PShape where each child shape is a single face
+	 * @since 1.2.0
+	 */
+	public static PShape dualFaces(final IIncrementalTin triangulation) {
+		final IncrementalTinDual dual = new IncrementalTinDual(triangulation);
+		final PShape dualMesh = dual.getMesh();
+		PGS_Conversion.setAllFillColor(dualMesh, RGB.WHITE);
+		PGS_Conversion.setAllStrokeColor(dualMesh, RGB.PINK, 2);
+		return dualMesh;
 	}
 
 	private static double[] midpoint(final IQuadEdge edge) {
