@@ -492,10 +492,12 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center"><b>Random Convex Polygon</td>
     <td align="center" valign="center"><b>Heart</td>
     <td align="center" valign="center"><b>Ring</td>
+    <td align="center" valign="center"><b>Sierpinski Curve</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/pgs/randomPolygon.gif"></td>
     <td valign="top" width="25%"><img src="resources/pgs/heart.png"></td>
     <td valign="top" width="25%"><img src="resources/pgs/ring.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/sierpinskiCurve.gif"></td>
   </tr>
 </table>

@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 * `toPointsPShape()` to `PGS_Conversion`. Transforms a list of points into a `POINTS` type PShape.
+* `dualFaces()` to `PGS_Triangulation`.
+* `createSerpinskiCurve()` to `PGS_Construction`.
+* 3 additional method signatures (one for each return type) for `delaunayTriangulation()` that accept a PShape only, returning a constrained triangulation.
 
 ### Changed
 * `fieldWarp()` now supports `POINTS` and `GROUP` PShapes.

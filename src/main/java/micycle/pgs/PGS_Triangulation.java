@@ -50,12 +50,24 @@ public final class PGS_Triangulation {
 	}
 
 	/**
+	 * Generates a constrained Delaunay Triangulation from the given shape.
+	 * 
+	 * @param shape the shape whose vertices to generate a triangulation from
+	 * @return a GROUP PShape, where each child shape is one triangle
+	 * @see #delaunayTriangulation(PShape, Collection, boolean, int, boolean)
+	 */
+	public static PShape delaunayTriangulation(PShape shape) {
+		return delaunayTriangulation(shape, null, true, 0, true);
+	}
+
+	/**
 	 * Generates a Delaunay Triangulation from the given shape. The triangulation
 	 * can be both constrained (meaning the triangulation is masked by the original
 	 * shape) and refined (meaning additional points are inserted, usually leading
 	 * to more uniform triangle shapes and sizes).
 	 * 
-	 * @param shape         the shape whose vertices to generate a triangulation of
+	 * @param shape         the shape whose vertices to generate a triangulation
+	 *                      from
 	 * @param steinerPoints A list of additional points to insert into the
 	 *                      triangulation in addition to the vertices of the input
 	 *                      shape. <b>Can be null</b>.
@@ -117,6 +129,20 @@ public final class PGS_Triangulation {
 	 */
 	public static PShape delaunayTriangulation(Collection<PVector> points) {
 		return delaunayTriangulation(null, points, false, 0, false);
+	}
+
+	/**
+	 * Generates a constrained Delaunay Triangulation from a collection of points.
+	 * <p>
+	 * This method returns the triangulation as a list of points, rather than a
+	 * PShape.
+	 * 
+	 * @param shape the shape whose vertices to generate a triangulation from
+	 * @return List of PVector coordinates, where each consecutive triplet of
+	 *         coordinates are the 3 vertices belonging to one triangle
+	 */
+	public static List<PVector> delaunayTriangulationPoints(PShape shape) {
+		return delaunayTriangulationPoints(shape, null, true, 0, true);
 	}
 
 	/**
@@ -188,6 +214,20 @@ public final class PGS_Triangulation {
 	}
 
 	/**
+	 * Generates a constrained Delaunay Triangulation from the given shape.
+	 * <p>
+	 * This method returns the triangulation in its raw form: a Triangulated
+	 * Irregular Network (mesh).
+	 * 
+	 * @param shape the shape whose vertices to generate a triangulation from
+	 * @return Triangulated Irregular Network object (mesh)
+	 * @see #delaunayTriangulationMesh(PShape, Collection, boolean, int, boolean)
+	 */
+	public static IncrementalTin delaunayTriangulationMesh(PShape shape) {
+		return delaunayTriangulationMesh(shape, null, true, 0, true);
+	}
+
+	/**
 	 * Generates a Delaunay Triangulation from the given shape. The triangulation
 	 * can be both constrained (meaning the triangulation is masked by the original
 	 * shape) and refined (meaning additional points are inserted, usually leading
@@ -196,7 +236,8 @@ public final class PGS_Triangulation {
 	 * This method returns the triangulation in its raw form: a Triangulated
 	 * Irregular Network (mesh).
 	 * 
-	 * @param shape         the shape whose vertices to generate a triangulation of
+	 * @param shape         the shape whose vertices to generate a triangulation
+	 *                      from
 	 * @param steinerPoints A list of additional points to insert into the
 	 *                      triangulation in addition to the vertices of the input
 	 *                      shape. <b>Can be null</b>.

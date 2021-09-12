@@ -2,6 +2,9 @@ package micycle.pgs;
 
 import static micycle.pgs.PGS_Conversion.toPShape;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.util.GeometricShapeFactory;
@@ -228,13 +231,13 @@ public class PGS_Construction {
 	public static PShape createRing(double x, double y, double outerRadius, double innerRadius, double orientation, double angle) {
 		final double outerR = Math.max(outerRadius, innerRadius);
 		final double innerR = Math.min(outerRadius, innerRadius);
-		
+
 		final GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
 		shapeFactory.setNumPoints(48);
 		shapeFactory.setCentre(new Coordinate(x, y));
 		shapeFactory.setWidth(outerR * 2);
 		shapeFactory.setHeight(outerR * 2);
-		
+
 		final Geometry outer;
 		if (angle > PConstants.TWO_PI - 0.001) {
 			outer = shapeFactory.createCircle();
@@ -247,6 +250,79 @@ public class PGS_Construction {
 		final Geometry inner = shapeFactory.createCircle();
 
 		return toPShape(outer.difference(inner));
+	}
+
+	/**
+	 * Creates a closed Sierpiński curve (a recursive space-filling curve).
+	 * 
+	 * @param centerX    the x coordinate of the curve center point
+	 * @param centerY    the y coordinate of the curve center point
+	 * @param width      length (the maximum width and height) of the curve (the
+	 *                   curve will approach this width as the curve order is
+	 *                   increased and more space is filled)
+	 * @param curveOrder the order of the curve (the number of recursive
+	 *                   subdivisions). Must be 1 or greater.
+	 * @return a Sierpiński curve of the specified order
+	 * @since 1.2.0
+	 */
+	public static PShape createSierpinskiCurve(double centerX, double centerY, double width, int curveOrder) {
+		// https://piratefsh.github.io/2020/08/08/sierpinski-curve.html
+		// when centerX/Y = 0, the actual center of the curve is width/2 (in both
+		// dimensions).
+		curveOrder = Math.max(1, curveOrder);
+		centerX -= width / 2;
+		centerY -= width / 2;
+		// create the two triangles from the first subdivision
+		final double[][] tri1 = new double[][] { { 0 + centerX, width + centerY }, { centerX, centerY }, { width + centerX, centerY } };
+		final double[][] tri2 = new double[][] { { width + centerX, centerY }, { width + centerX, width + centerY },
+				{ centerX, width + centerY } };
+
+		// get points for each half of square recursively
+		final List<double[]> half1 = subdivide(tri1, curveOrder);
+		final List<double[]> half2 = subdivide(tri2, curveOrder);
+
+		half1.addAll(half2); // combine points
+
+		final PShape curve = new PShape(PShape.GEOMETRY);
+		curve.setFill(true);
+		curve.setFill(RGB.WHITE);
+		curve.beginShape();
+		half1.forEach(p -> curve.vertex((float) p[0], (float) p[1]));
+		curve.endShape(PConstants.CLOSE);
+
+		return curve;
+	}
+
+	/**
+	 * Sierpinski curve subdivide.
+	 */
+	private static List<double[]> subdivide(double[][] triangle, int iters) {
+		final List<double[]> points = new ArrayList<>();
+		final double[] centroid = centroid(triangle); // find center of current triangle
+
+		if (iters == 0) {
+			// if recursed all the way down, add point
+			points.add(centroid);
+		} else {
+			// else, subdivide triangle into two right angle triangle
+			// and add the points for each
+			double[][] sub1 = new double[][] { triangle[0], midpoint(triangle[0], triangle[2]), triangle[1] };
+			double[][] sub2 = new double[][] { triangle[1], midpoint(triangle[0], triangle[2]), triangle[2] };
+			points.addAll(subdivide(sub1, iters - 1));
+			points.addAll(subdivide(sub2, iters - 1));
+		}
+
+		return points;
+	}
+
+	private static double[] midpoint(double[] p1, double[] p2) {
+		return new double[] { (p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2 };
+	}
+
+	private static double[] centroid(double[][] triangle) {
+		double x = triangle[0][0] + triangle[1][0] + triangle[2][0];
+		double y = triangle[0][1] + triangle[1][1] + triangle[2][1];
+		return new double[] { x / 3, y / 3 };
 	}
 
 }
