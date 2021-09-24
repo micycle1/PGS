@@ -283,7 +283,8 @@ public final class PGS_Processing {
 	 * 
 	 * @param shape  defines the region in which random points are generated
 	 * @param points number of points to generate within the shape region
-	 * @param seed
+	 * @param seed   number used to initialize the underlying pseudorandom number
+	 *               generator
 	 * @return
 	 * @since 1.1.0
 	 * @see #generateRandomPoints(PShape, int)
@@ -489,7 +490,7 @@ public final class PGS_Processing {
 			polygonizer.add(PGS.GEOM_FACTORY.createLineString(new Coordinate[] { ss.getCoordinate(0), ss.getCoordinate(1) }));
 		});
 		Collection<Geometry> polygons = polygonizer.getPolygons();
-		
+
 		final PShape out = new PShape(PConstants.GROUP);
 		polygons.forEach(p -> out.addChild(toPShape(p)));
 		return out;
@@ -626,12 +627,13 @@ public final class PGS_Processing {
 	 * Splits a shape into 4 equal quadrants
 	 * 
 	 * @param shape
-	 * @return list containing the 4 split quadrants of the input shape
+	 * @return a GROUP PShape, where each child shape is some quadrant partition of
+	 *         the original shape
+	 * @see #split(PShape, int)
 	 */
-	public static List<PShape> split(PShape shape) {
+	public static PShape split(PShape shape) {
 		// https://stackoverflow.com/questions/64252638/how-to-split-a-jts-polygon
 		Geometry p = fromPShape(shape);
-		ArrayList<PShape> ret = new ArrayList<>();
 
 		final Envelope envelope = p.getEnvelopeInternal();
 		double minX = envelope.getMinX();
@@ -649,12 +651,14 @@ public final class PGS_Processing {
 		Geometry UR = JTS.toGeometry(lrEnv).intersection(p);
 		Geometry LL = JTS.toGeometry(ulEnv).intersection(p);
 		Geometry LR = JTS.toGeometry(urEnv).intersection(p);
-		ret.add(toPShape(UL));
-		ret.add(toPShape(UR));
-		ret.add(toPShape(LL));
-		ret.add(toPShape(LR));
 
-		return ret;
+		final PShape partitions = new PShape(PConstants.GROUP);
+		partitions.addChild(toPShape(UL));
+		partitions.addChild(toPShape(UR));
+		partitions.addChild(toPShape(LL));
+		partitions.addChild(toPShape(LR));
+
+		return partitions;
 	}
 
 	/**
@@ -662,13 +666,15 @@ public final class PGS_Processing {
 	 * 
 	 * @param shape
 	 * @param splitDepth
+	 * @return a GROUP PShape, where each child shape is some quadrant partition of
+	 *         the original shape
+	 * @see #split(PShape)
 	 */
-	public static List<PShape> split(final PShape shape, int splitDepth) {
+	public static PShape split(final PShape shape, int splitDepth) {
 		splitDepth = Math.max(0, splitDepth);
 		ArrayDeque<Geometry> stack = new ArrayDeque<>();
 		stack.add(fromPShape(shape));
 
-		ArrayList<PShape> ret = new ArrayList<>(); // add to when recursion depth reached
 		ArrayList<Geometry> next = new ArrayList<>(); // add to when recursion depth reached
 
 		int depth = 0;
@@ -701,46 +707,46 @@ public final class PGS_Processing {
 			next.clear();
 		}
 
-		stack.forEach(g -> ret.add(toPShape(g)));
-		return ret;
+		final PShape partitions = new PShape(PConstants.GROUP);
+		stack.forEach(g -> partitions.addChild(toPShape(g)));
+		return partitions;
 	}
 
 	/**
 	 * Partitions a shape into simple polygons using Mark Bayazit's algorithm.
 	 * 
 	 * @param shape
-	 * @return list of convex (simple) polygons comprising the original shape
+	 * @return a GROUP PShape, where each child shape is some convex partition of
+	 *         the original shape
 	 */
-	public static List<PShape> partition(PShape shape) {
+	public static PShape partition(PShape shape) {
 		// https://mpen.ca/406/bayazit
-		// retry GreedyPolygonSplitter()?
+		final Geometry g = fromPShape(shape);
 
-		Geometry g = fromPShape(shape);
-
-		ArrayList<PShape> out = new ArrayList<>();
-
+		final PShape partitions = new PShape(PConstants.GROUP);
 		for (int i = 0; i < g.getNumGeometries(); i++) {
 			Geometry child = g.getGeometryN(i);
 			if (child.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) { // skip any linestrings etc
 				List<Polygon> decomposed = PolygonDecomposition.decompose((Polygon) child);
 				for (Polygon polygon : decomposed) {
-					out.add(toPShape(polygon));
+					partitions.addChild(toPShape(polygon));
 				}
 			}
 		}
 
-		return out;
+		return partitions;
 	}
 
 	/**
-	 * Slice a shape using a line given by its start and endpoints.
+	 * Slices a shape using a line given by its start and endpoints.
 	 * 
-	 * @param shape
+	 * @param shape PShape to slice into two shapes
 	 * @param p1    must be outside shape
 	 * @param p2    must be outside shape
-	 * @return a list containg two PShapes
+	 * @return a GROUP PShape with two children, where each child shape one of the
+	 *         slices
 	 */
-	public static List<PShape> slice(PShape shape, PVector p1, PVector p2) {
+	public static PShape slice(PShape shape, PVector p1, PVector p2) {
 		// adapted from https://gis.stackexchange.com/questions/189976/
 		final Geometry poly = fromPShape(shape);
 		final PreparedGeometry cache = PreparedGeometryFactory.prepare(poly);
@@ -763,10 +769,10 @@ public final class PGS_Processing {
 			}
 		}
 
-		ArrayList<PShape> output = new ArrayList<>();
-		output.add(toPShape(UnaryUnionOp.union(leftSlices)));
-		output.add(toPShape(UnaryUnionOp.union(rightSlices)));
-		return output;
+		final PShape slices = new PShape(PConstants.GROUP);
+		slices.addChild(toPShape(UnaryUnionOp.union(leftSlices)));
+		slices.addChild(toPShape(UnaryUnionOp.union(rightSlices)));
+		return slices;
 	}
 
 	/**
