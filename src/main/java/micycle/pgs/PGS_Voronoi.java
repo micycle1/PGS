@@ -14,12 +14,12 @@ import java.util.List;
 import org.locationtech.jts.algorithm.RobustLineIntersector;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
+import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geomgraph.Edge;
 import org.locationtech.jts.geomgraph.EdgeIntersection;
 import org.locationtech.jts.geomgraph.index.EdgeSetIntersector;
 import org.locationtech.jts.geomgraph.index.SegmentIntersector;
 import org.locationtech.jts.geomgraph.index.SimpleMCSweepLineIntersector;
-
 import org.tinfour.common.IIncrementalTinNavigator;
 import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.Vertex;
@@ -65,7 +65,8 @@ public final class PGS_Voronoi {
 	public static PShape voronoiDiagram(PShape shape, boolean constrain) {
 		final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, null, constrain, 0, false);
 
-		final Envelope envelope = fromPShape(shape).getEnvelopeInternal();
+		final Geometry g = fromPShape(shape);
+		final Envelope envelope = g.getEnvelopeInternal();
 		final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();
 		options.setBounds(new Rectangle2D.Double(envelope.getMinX(), envelope.getMinY(), envelope.getMaxX() - envelope.getMinX(),
 				envelope.getMaxY() - envelope.getMinY()));
@@ -79,12 +80,7 @@ public final class PGS_Voronoi {
 		final PShape lines = PGS.prepareLinesPShape(RGB.PINK, PConstants.SQUARE, 2);
 
 		if (constrain) { // constrain: include only inner voronoi line segments
-
-			final Coordinate[] coords = new Coordinate[shape.getVertexCount()];
-			for (int i = 0; i < shape.getVertexCount(); i++) {
-				final PVector a = shape.getVertex(i);
-				coords[i] = new Coordinate(a.x, a.y);
-			}
+			final Coordinate[] coords = g.getCoordinates();
 
 			final SweepLineSegmentIntersection intersection = new SweepLineSegmentIntersection(coords);
 			final HashSet<Integer> seen = new HashSet<>();
@@ -94,7 +90,7 @@ public final class PGS_Voronoi {
 				for (IQuadEdge e : poly.getEdges()) {
 					final Coordinate c1 = new Coordinate(e.getA().x, e.getA().y);
 					final Coordinate c2 = new Coordinate(e.getB().x, e.getB().y);
-					final int hash = c1.hashCode() + c2.hashCode(); // order-invariant hash
+					final int hash = c1.hashCode() ^ c2.hashCode(); // order-invariant hash
 					if (seen.add(hash)) { // only process unique edges
 						/*
 						 * It's a little faster to filter edges to intersection-check here by first

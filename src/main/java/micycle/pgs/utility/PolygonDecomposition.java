@@ -48,7 +48,6 @@ import org.locationtech.jts.geom.PrecisionModel;
  * 
  * @author William Bittle
  * @version 3.1.10
- * @since 2.2.0
  * @see <a href="http://mnbayazit.com/406/bayazit" target="_blank">Bayazit</a>
  */
 public class PolygonDecomposition {
