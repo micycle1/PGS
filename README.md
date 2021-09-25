@@ -24,6 +24,8 @@ Library functionality is split over the following classes:
   * Methods that affect the geometry or topology of shapes (buffering, simplification, smoothing, etc.)
 * `PGS_Optimsation`
   * Solve geometric optimisation problems, such as finding the maximum inscribed circle, or the closest vertex to a coordinate
+* `PGS_PointSet`
+  * Generates sets of 2D points having a variety of different distributions and constraints
 * `PGS_Processing`
   * Methods that process a shape in some way: compute hulls, partition, slice, etc. 
 * `PGS_ShapeBoolean`
@@ -385,6 +387,13 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center" colspan="2">Polygon faces of an <i>Urquhart Graph</i> (derived from a triangulation).</td>
     <td align="center" valign="center">Polygon faces of a <i>Gabriel Graph</i> (derived from a triangulation).</td>
   </tr>
+
+  <tr>
+    <td align="center" valign="center"><b>Triangulation Dual</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/triangulation/triangulationDual.png"></td>
+  </tr>
 </table>
 
 ## *Geometric Optimisation*
@@ -499,5 +508,55 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/pgs/heart.png"></td>
     <td valign="top" width="25%"><img src="resources/pgs/ring.gif"></td>
     <td valign="top" width="25%"><img src="resources/pgs/sierpinskiCurve.gif"></td>
+  </tr>
+</table>
+
+## *Point Sets*
+
+<table>
+  <tr>
+    <td align="center" valign="center"><b>Random</td>
+    <td align="center" valign="center"><b>Gaussian</td>
+    <td align="center" valign="center"><b>Square Grid</td>
+    <td align="center" valign="center"><b>Hex Grid</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/point_set/random.png"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/gaussian.png"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/squareGrid.png"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/hexGrid.png"></td>
+  </tr>
+
+  <tr>
+    <td align="center" valign="center"><b>Phyllotaxis</td>
+    <td align="center" valign="center"><b>Poisson</td>
+    <td align="center" valign="center"><b>Hexagon</td>
+    <td align="center" valign="center"><b>Ring</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/point_set/phyllotaxis.gif"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/poisson.png"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/hexaPoints.gif"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/ring.gif"></td>
+  </tr>
+
+  <tr>
+    <td align="center" valign="center"><b>Halton LDS</td>
+    <td align="center" valign="center"><b>Hammersley LDS</td>
+    <td align="center" valign="center"><b>Plastic LDS</td>
+    <td align="center" valign="center"><b>Jittered Plastic LDS</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/point_set/haltonLDS.gif"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/hammersleyLDS.gif"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/plasticLDS.gif"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/plasticJitteredLDS.gif"></td>
+  </tr>
+
+  <tr>
+    <td align="center" valign="center"><b>N-Rooks LDS</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/point_set/nRooksLDS.png"></td>
   </tr>
 </table>
