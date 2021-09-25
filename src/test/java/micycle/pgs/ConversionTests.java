@@ -1,4 +1,4 @@
-package micycle.pts;
+package micycle.pgs;
 
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
@@ -14,7 +14,6 @@ import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.PrecisionModel;
 
-import micycle.pgs.PGS_Conversion;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -254,13 +253,37 @@ class ConversionTests {
 		shape.endShape(PShape.CLOSE); // close affects rendering only -- does not append another vertex
 
 		PGS_Conversion.roundVertexCoords(shape);
-		
+
 		assertEquals(12, shape.getVertex(0).x);
 		assertEquals(-97, shape.getVertex(0).y);
 		assertEquals(10, shape.getVertex(1).x);
 		assertEquals(-10, shape.getVertex(1).y);
 		assertEquals(1000, shape.getVertex(2).x);
 		assertEquals(0, shape.getVertex(2).y);
+	}
+
+	@Test
+	void testDuplicateVertices() {
+		final PShape shape = new PShape(PShape.GEOMETRY);
+		shape.beginShape();
+		shape.vertex(12.4985f, -97.234f);
+		shape.vertex(12.4985f, -97.234f);
+		shape.vertex(12.4985f, -97.234f);
+		shape.vertex(10, -10);
+		shape.vertex(10, -10);
+		shape.vertex(12.4985f, -97.234f);
+		shape.vertex(999.99f, 0.0001f);
+		shape.vertex(999.99f, 0.0001f);
+		shape.vertex(.99f, 0.0001f);
+		shape.endShape(PShape.CLOSE); // close affects rendering only -- does not append another vertex
+
+		final PShape processed = toPShape(fromPShape(shape));
+		assertEquals(shape.getVertex(0), processed.getVertex(0));
+		assertEquals(shape.getVertex(3), processed.getVertex(1));
+		assertEquals(shape.getVertex(5), processed.getVertex(2));
+		assertEquals(shape.getVertex(6), processed.getVertex(3));
+		assertEquals(shape.getVertex(8), processed.getVertex(4));
+		assertEquals(5, processed.getVertexCount());
 	}
 
 	private static boolean pointsAreEqual(Coordinate c, PVector p) {

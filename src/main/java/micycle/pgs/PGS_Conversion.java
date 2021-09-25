@@ -15,7 +15,6 @@ import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.util.GeometricShapeFactory;
-
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -317,7 +316,7 @@ public final class PGS_Conversion implements PConstants {
 							shape.getVertex(i + 2), BEZIER_SAMPLE_DISTANCE));
 					i += 2;
 					continue;
-				default :
+				default : // VERTEX
 					coords.get(lastGroup).add(coordFromPVector(shape.getVertex(i)));
 					break;
 			}
@@ -326,20 +325,24 @@ public final class PGS_Conversion implements PConstants {
 		for (ArrayList<Coordinate> contour : coords) {
 			final Iterator<Coordinate> iterator = contour.iterator();
 			if (iterator.hasNext()) { // has at least one vertex
+				final List<Coordinate> contourNoDupes = new ArrayList<>(contour.size());
 				Coordinate previous = iterator.next();
-				final List<Coordinate> duplicates = new ArrayList<>();
+				contourNoDupes.add(previous);
 
-				while (iterator.hasNext()) { // find adjacent matching coordinates
+				/*
+				 * Remove consecutive duplicate coordinates
+				 */
+				while (iterator.hasNext()) {
 					Coordinate current = iterator.next();
-					if (current.equals2D(previous)) {
-						duplicates.add(current);
+					if (!current.equals2D(previous)) {
+						contourNoDupes.add(current);
 					}
 					previous = current;
 				}
-
-				if (contour.removeAll(duplicates) && contour.isEmpty()) { // remove adjacent matching coordinates
-					continue; // continue if contour coords are empty after removal
-				}
+				
+				// mutate contour list
+				contour.clear();
+				contour.addAll(contourNoDupes);
 
 				if (!contour.get(0).equals2D(contour.get(contour.size() - 1)) && shape.isClosed()) {
 					contour.add(contour.get(0)); // close LinearRing: "points of LinearRing must form a closed linestring"
