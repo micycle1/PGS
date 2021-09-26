@@ -1,6 +1,5 @@
 import processing.javafx.*;
 import micycle.pgs.*;
-import micycle.pgs.utility.PoissonDistribution;
 import micycle.uniformnoise.UniformNoise;
 import java.util.List;
 import org.tinfour.standard.IncrementalTin;
