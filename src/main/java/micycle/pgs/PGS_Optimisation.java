@@ -25,6 +25,7 @@ import micycle.pgs.utility.ClosestPointPair;
 import micycle.pgs.utility.FarthestPointPair;
 import micycle.pgs.utility.MaximumInscribedRectangle;
 import micycle.pgs.utility.MinimumBoundingEllipse;
+import micycle.pgs.utility.MinimumBoundingTriangle;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -100,11 +101,12 @@ public final class PGS_Optimisation {
 	 * 
 	 * <p>
 	 * This method uses a brute force algorithm to perform an exhaustive search for
-	 * a solution (therefore it is slow relative to other optimisation methods).
+	 * a solution (therefore it is slow relative to other
+	 * {@link micycle.pgs.PGS_Optimisation PGS_Optimisation} methods).
 	 * 
 	 * @param shape
 	 * @param fast  whether to compute MIR based on a lower resolution input. When
-	 *              true processing is ~6 times faster but potentially a little
+	 *              true, processing is ~6 times faster but potentially a little
 	 *              inaccurate
 	 */
 	public static PShape maximumInscribedRectangle(PShape shape, boolean fast) {
@@ -181,6 +183,17 @@ public final class PGS_Optimisation {
 		ellipse.endShape();
 
 		return ellipse;
+	}
+
+	/**
+	 * Computes the minimum-area bounding triangle that encloses a shape.
+	 * 
+	 * @param shape
+	 * @return
+	 */
+	public static PShape minimumBoundingTriangle(PShape shape) {
+		MinimumBoundingTriangle mbt = new MinimumBoundingTriangle(fromPShape(shape));
+		return toPShape(mbt.getTriangle());
 	}
 
 	/**
