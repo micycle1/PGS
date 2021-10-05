@@ -206,23 +206,26 @@ public class MinimumBoundingTriangle {
 		 */
 		private Coordinate gamma(Coordinate point, Side on, Side base) {
 			Coordinate intersection = on.intersection(base);
-			double dist = 2 * dist(point, base);
-			// Calculate differential change in distance
-			if (on.vertical) {
-				double ddist = dist(new Coordinate(intersection.x, intersection.y + 1), base);
-				Coordinate guess = new Coordinate(intersection.x, intersection.y + dist / ddist);
-				if (ccw(base.p1, base.p2, guess) != ccw(base.p1, base.p2, point)) {
-					guess = new Coordinate(intersection.x, intersection.y - dist / ddist);
+			if (intersection != null) {
+				double dist = 2 * dist(point, base);
+				// Calculate differential change in distance
+				if (on.vertical) {
+					double ddist = dist(new Coordinate(intersection.x, intersection.y + 1), base);
+					Coordinate guess = new Coordinate(intersection.x, intersection.y + dist / ddist);
+					if (ccw(base.p1, base.p2, guess) != ccw(base.p1, base.p2, point)) {
+						guess = new Coordinate(intersection.x, intersection.y - dist / ddist);
+					}
+					return guess;
+				} else {
+					double ddist = dist(on.atX(intersection.x + 1), base);
+					Coordinate guess = on.atX(intersection.x + dist / ddist);
+					if (ccw(base.p1, base.p2, guess) != ccw(base.p1, base.p2, point)) {
+						guess = on.atX(intersection.x - dist / ddist);
+					}
+					return guess;
 				}
-				return guess;
-			} else {
-				double ddist = dist(on.atX(intersection.x + 1), base);
-				Coordinate guess = on.atX(intersection.x + dist / ddist);
-				if (ccw(base.p1, base.p2, guess) != ccw(base.p1, base.p2, point)) {
-					guess = on.atX(intersection.x - dist / ddist);
-				}
-				return guess;
 			}
+			return intersection;
 		}
 
 		private boolean high(int a, int b, int c, Coordinate gammaB) {
@@ -281,8 +284,8 @@ public class MinimumBoundingTriangle {
 		/**
 		 * Tests whether the line formed by A, B, and C is ccw.
 		 */
-		private boolean ccw(Coordinate A, Coordinate B, Coordinate C) {
-			return (B.x - A.x) * (C.y - A.y) > (B.y - A.y) * (C.x - A.x);
+		private boolean ccw(Coordinate a, Coordinate b, Coordinate c) {
+			return (b.x - a.x) * (c.y - a.y) > (b.y - a.y) * (c.x - a.x);
 		}
 
 		/**
@@ -331,7 +334,7 @@ public class MinimumBoundingTriangle {
 
 		private Coordinate atX(double x) {
 			if (vertical) {
-				return null;
+				return p1; // NOTE rather return null
 			}
 			return new Coordinate(x, slope * x + intercept);
 		}

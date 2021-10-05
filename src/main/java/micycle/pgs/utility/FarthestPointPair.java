@@ -1,5 +1,6 @@
 package micycle.pgs.utility;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.geom.Coordinate;
@@ -38,23 +39,23 @@ public class FarthestPointPair {
 	 */
 	public FarthestPointPair(Collection<PVector> points) {
 
-		final Geometry convexHull = PGS_Conversion.fromPShape(PGS_Conversion.fromPVector(points)).convexHull();
+		final Geometry convexHull = PGS_Conversion.fromPShape(PGS_Conversion.fromPVector(new ArrayList<>(points))).convexHull();
 		Coordinate[] coords = convexHull.getCoordinates();
 		if (!Orientation.isCCW(coords)) {
 			coords = convexHull.reverse().getCoordinates();
 		}
-		
+
 		// number of points on the hull
 		int m = coords.length;
-		
+
 		// single point
 		if (m <= 1) {
 			return;
 		}
-		
+
 		// the hull, in counterclockwise order hull[1] to hull[m]
 		PVector[] hull = new PVector[m + 1];
-		
+
 		m = 1;
 		for (int i = m; i < coords.length; i++) {
 			hull[m++] = new PVector((float) coords[i].x, (float) coords[i].y);

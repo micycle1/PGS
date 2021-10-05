@@ -428,6 +428,7 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center" colspan="2"><b>Problem of Apollonius</td>
   </tr>
   <tr>
+    <td valign="top" width="25%"><img src="resources/optimisation/mbt.png"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/envelope.png"></td>
     <td valign="top"><img src="resources/optimisation/apollonius1.gif"></td>
     <td valign="top"><img src="resources/optimisation/apollonius2.gif"></td>

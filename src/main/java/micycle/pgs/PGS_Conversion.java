@@ -49,7 +49,7 @@ public final class PGS_Conversion implements PConstants {
 	 */
 	public static PShape toPShape(final Geometry g) {
 		if (g == null) {
-			return new PShape(PShape.GEOMETRY);
+			return new PShape();
 		}
 
 		PShape shape = new PShape();
@@ -131,7 +131,9 @@ public final class PGS_Conversion implements PConstants {
 	}
 
 	/**
-	 * Converts a collection of JTS Geometries to an equivalent GROUP PShape.
+	 * Converts a collection of JTS Geometries to an equivalent GROUP PShape. If the
+	 * collection contains only one geometry, an equivalent PShape will be output
+	 * directly (not a GROUP shape).
 	 */
 	public static PShape toPShape(Collection<Geometry> geometries) {
 		PShape shape = new PShape(GROUP);
@@ -142,6 +144,9 @@ public final class PGS_Conversion implements PConstants {
 		shape.setStrokeWeight(4);
 
 		geometries.forEach(g -> shape.addChild(toPShape(g)));
+		if (shape.getChildCount() == 1) {
+			return shape.getChild(0);
+		}
 
 		return shape;
 	}
@@ -151,9 +156,6 @@ public final class PGS_Conversion implements PConstants {
 	 * <p>
 	 * PShapes with bezier curves are sampled at regular intervals (in which case
 	 * the resulting geometry will have more vertices than the input PShape).
-	 * <p>
-	 * For now, a PShape with multiple children is flattened/unioned since most
-	 * library methods are not (yet) programmed to handle multi/disjoint geometries.
 	 * 
 	 * @param shape
 	 * @return a JTS Geometry equivalent to the input PShape
@@ -339,7 +341,7 @@ public final class PGS_Conversion implements PConstants {
 					}
 					previous = current;
 				}
-				
+
 				// mutate contour list
 				contour.clear();
 				contour.addAll(contourNoDupes);
@@ -447,6 +449,9 @@ public final class PGS_Conversion implements PConstants {
 		PShape shape = new PShape();
 		shape.setFamily(PShape.GEOMETRY);
 		shape.setStrokeCap(ROUND);
+		shape.setStroke(true);
+		shape.setStroke(micycle.pgs.color.RGB.WHITE);
+		shape.setStrokeWeight(2);
 		shape.beginShape(PShape.POINTS);
 		points.forEach(p -> shape.vertex(p.x, p.y));
 		shape.endShape();
@@ -475,16 +480,24 @@ public final class PGS_Conversion implements PConstants {
 	}
 
 	/**
-	 * Generates a simple polygon (no holes) from the given coordinate list.
+	 * Generates a simple closed polygon (assumes no holes) from the list of
+	 * vertices.
+	 * 
+	 * @param vertices list of (un)closed shape vertices
+	 * @see #fromPVector(PVector...)
 	 */
-	public static PShape fromPVector(Collection<PVector> coords) {
+	public static PShape fromPVector(List<PVector> vertices) {
 		PShape shape = new PShape();
-		shape.setFamily(PShape.GEOMETRY);
+		shape.setFamily(PShape.PATH);
 		shape.setFill(micycle.pgs.color.RGB.WHITE);
 		shape.setFill(true);
 		shape.beginShape();
 
-		for (PVector v : coords) {
+		if (!vertices.isEmpty() && vertices.get(0).equals(vertices.get(vertices.size() - 1))) {
+			vertices.remove(vertices.size() - 1);
+		}
+
+		for (PVector v : vertices) {
 			shape.vertex(v.x, v.y);
 		}
 
@@ -493,19 +506,14 @@ public final class PGS_Conversion implements PConstants {
 	}
 
 	/**
-	 * Generates a simple polygon (no holes) from the given coordinates (PVector
-	 * varargs).
+	 * Generates a simple closed polygon (assumes no holes) from the list of
+	 * vertices (varargs).
 	 * 
-	 * @param coordinates unclosed list of shape coordinates
+	 * @param vertices list of (un)closed shape vertices
+	 * @see #fromPVector(List)
 	 */
-	public static PShape fromPVector(PVector... coordinates) {
-		final PShape polygon = new PShape(PShape.PATH);
-		polygon.beginShape();
-		for (PVector v : coordinates) {
-			polygon.vertex(v.x, v.y);
-		}
-		polygon.endShape(PConstants.CLOSE);
-		return polygon;
+	public static PShape fromPVector(PVector... vertices) {
+		return fromPVector(Arrays.asList(vertices));
 	}
 
 	/**
@@ -591,8 +599,8 @@ public final class PGS_Conversion implements PConstants {
 	}
 
 	/**
-	 * Rounds the x and y coordinates (the closest int) of all vertices belonging to
-	 * the shape, mutating the shape. This can sometimes fix a visual problem in
+	 * Rounds the x and y coordinates (to the closest int) of all vertices belonging
+	 * to the shape, mutating the shape. This can sometimes fix a visual problem in
 	 * Processing where narrow gaps can appear between otherwise flush shapes.
 	 * 
 	 * @since 1.1.3
