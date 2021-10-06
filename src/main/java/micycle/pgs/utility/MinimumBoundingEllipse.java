@@ -7,12 +7,11 @@ import org.apache.commons.math3.linear.RealMatrix;
 /**
  * Minimum Volume Enclosing Ellipsoid
  *
- * @author Peter (pborissow)
+ * @author <a href= "https://stackoverflow.com/a/56228043/9808792">Peter
+ *         Borissow</a>
  *
  */
 public class MinimumBoundingEllipse {
-
-	// https://stackoverflow.com/questions/1768197/bounding-ellipse
 
 	private double[] center;
 	private double[][] A;
@@ -667,5 +666,5 @@ public class MinimumBoundingEllipse {
 			}
 		}
 	}
-	
+
 }

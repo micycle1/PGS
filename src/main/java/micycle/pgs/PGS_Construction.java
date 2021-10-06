@@ -93,7 +93,7 @@ public class PGS_Construction {
 	 */
 	public static PShape createSuperShape(double centerX, double centerY, double radius, double m, double n1, double n2, double n3) {
 		// http://paulbourke.net/geometry/supershape/
-		PShape shape = new PShape(PShape.GEOMETRY);
+		PShape shape = new PShape(PShape.PATH);
 		shape.setFill(true);
 		shape.setFill(RGB.WHITE);
 		shape.beginShape();
@@ -181,7 +181,7 @@ public class PGS_Construction {
 	 */
 	public static PShape createHeart(final double x, final double y, final double width) {
 		// https://mathworld.wolfram.com/HeartCurve.html
-		PShape heart = new PShape(PShape.GEOMETRY);
+		PShape heart = new PShape(PShape.PATH);
 		heart.setFill(true);
 		heart.setFill(RGB.WHITE);
 		heart.beginShape();
@@ -283,7 +283,7 @@ public class PGS_Construction {
 
 		half1.addAll(half2); // combine points
 
-		final PShape curve = new PShape(PShape.GEOMETRY);
+		final PShape curve = new PShape(PShape.PATH);
 		curve.setFill(true);
 		curve.setFill(RGB.WHITE);
 		curve.beginShape();

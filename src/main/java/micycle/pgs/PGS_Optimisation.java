@@ -263,8 +263,12 @@ public final class PGS_Optimisation {
 	}
 
 	/**
-	 * Computes the farthest pair of points in a set of n points. This method runs
-	 * in O(n*log(n)), rather than the naive O(n*n) brute-force approach.
+	 * Computes the farthest pair of points in a set of n points.
+	 * <p>
+	 * This method runs in O(n*log(n)), rather than the naive O(n*n) brute-force
+	 * approach. However, it must first compute the convex hull of the point set, so
+	 * there is more overhead; on small datasets, the brute-force approach is likely
+	 * faster).
 	 * 
 	 * @param points a set of 2D points, represented by PVectors
 	 * @return a List<PVector> containing exactly two elements which are the

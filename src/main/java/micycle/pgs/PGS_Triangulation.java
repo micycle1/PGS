@@ -244,10 +244,10 @@ public final class PGS_Triangulation {
 	 * @param constrain     Constrain the triangulation output using the shape
 	 *                      boundary (from point set). With shapes, you'll probably
 	 *                      want to this to be true.
-	 * @param refinements   The number of triangulation refinement passes to
-	 *                      perform. Each pass inserts the centroids of every
-	 *                      existing triangle into the triangulation. Should be 0 or
-	 *                      greater (probably no more than 5).
+	 * @param refinements   The number of triangulation refinement/subdivision
+	 *                      passes to perform. Each pass inserts the centroids of
+	 *                      every existing triangle into the triangulation. Should
+	 *                      be 0 or greater (probably no more than 5).
 	 * @param pretty        Whether to maintain the Delaunay nature when
 	 *                      constraining the triangulation, and whether to check
 	 *                      that centroid locations lie within the shape during
@@ -283,10 +283,11 @@ public final class PGS_Triangulation {
 			final IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(g);
 			final ArrayList<Vertex> refinementVertices = new ArrayList<>();
 
-			/**
+			/*
 			 * A possible optimisation is to recursely split within each triangle upto the
 			 * refinement depth (in one pass), so perform many less location checks. Another
-			 * is to rasterise the PShape and check pixel[] array.
+			 * is to rasterise the PShape and check pixel[] array. TODO See 'sqrt(3)
+			 * Subdivision' by Leif Kobbelt
 			 */
 			for (int i = 0; i < refinements; i++) {
 				refinementVertices.clear();
@@ -367,9 +368,8 @@ public final class PGS_Triangulation {
 	public static PShape poissonTriangulation(PShape shape, double spacing) {
 		final Envelope e = fromPShape(shape).getEnvelopeInternal();
 
-		final PoissonDistribution pd = new PoissonDistribution(0);
-		final List<PVector> poissonPoints = pd.generate(e.getMinX(), e.getMinY(), e.getMinX() + e.getWidth(), e.getMinY() + e.getHeight(),
-				spacing, 4);
+		final List<PVector> poissonPoints = PGS_PointSet.poisson(e.getMinX(), e.getMinY(), e.getMinX() + e.getWidth(),
+				e.getMinY() + e.getHeight(), spacing, 0);
 
 		final IncrementalTin tin = delaunayTriangulationMesh(shape, poissonPoints, true, 0, false);
 
@@ -404,9 +404,8 @@ public final class PGS_Triangulation {
 	public static List<PVector> poissonTriangulationPoints(PShape shape, double spacing) {
 		final Envelope e = fromPShape(shape).getEnvelopeInternal();
 
-		final PoissonDistribution pd = new PoissonDistribution(0);
-		final List<PVector> poissonPoints = pd.generate(e.getMinX(), e.getMinY(), e.getMinX() + e.getWidth(), e.getMinY() + e.getHeight(),
-				spacing, 4);
+		final List<PVector> poissonPoints = PGS_PointSet.poisson(e.getMinX(), e.getMinY(), e.getMinX() + e.getWidth(),
+				e.getMinY() + e.getHeight(), spacing, 0);
 
 		final IncrementalTin tin = delaunayTriangulationMesh(shape, poissonPoints, true, 0, false);
 
@@ -641,6 +640,9 @@ public final class PGS_Triangulation {
 		return new PVector((float) v.getX(), (float) v.getY());
 	}
 
+	/**
+	 * Computes the centroid/barycentre of a triangle.
+	 */
 	private static Coordinate centroid(final SimpleTriangle t) {
 		final Vertex a = t.getVertexA();
 		final Vertex b = t.getVertexB();

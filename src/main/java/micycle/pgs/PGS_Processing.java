@@ -436,10 +436,11 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Returns a copy of the shape with small holes (i.e. inner rings with area <
+	 * Returns a copy of the shape where small holes (i.e. inner rings with area <
 	 * given threshold) are removed.
 	 * 
-	 * @param polygon
+	 * @param shape
+	 * @param areaThreshold
 	 * @return
 	 */
 	public static PShape removeSmallHoles(PShape shape, double areaThreshold) {

@@ -15,25 +15,38 @@ import org.locationtech.jts.geom.PrecisionModel;
  * The MBT is the smallest triangle which covers all the input points (this is
  * also known as the Smallest Enclosing Triangle).
  * <p>
- * The implementation of the algorithm is based on O'Rourke's 'An optimal
- * algorithm for finding minimal enclosing triangles' and Klee & Laskowski's
- * 'Finding the smallest triangles containing a given convex polygon'. O'Rourke
- * provides a θ(n) algorithm for finding the minimal enclosing triangle of a 2D
- * convex polygon with n vertices. However, the overall complexity for the
- * computation is O(nlog(n)) because a convex hull must first be computed for
- * the input geometry.
+ * The algorithm for finding minimum area enclosing triangles is based on an
+ * elegant geometric characterisation initially introduced in Klee & Laskowski.
+ * The algorithm iterates over each edge of the convex polygon setting side C of
+ * the enclosing triangle to be flush with this edge. A side <i>S</i> is said to
+ * be flush with edge <i>E</i> if <i>S⊇E</i>. The authors of O’Rourke et al.
+ * prove that for each fixed flush side C a local minimum enclosing triangle
+ * exists. Moreover, the authors have shown that:
+ * <ul>
+ * <li>The midpoints of the enclosing triangle’s sides must touch the
+ * polygon.</li>
+ * <li>There exists a local minimum enclosing triangle with at least two sides
+ * flush with edges of the polygon. The third side of the triangle can be either
+ * flush with an edge or tangent to the polygon.</li>
+ * </ul>
+ * Thus, for each flush side C the algorithm will find the second flush side and
+ * set the third side either flush/tangent to the polygon.
+ * <p>
+ * O'Rourke provides a θ(n) algorithm for finding the minimal enclosing triangle
+ * of a 2D <b>convex</b> polygon with n vertices. However, the overall
+ * complexity for the convex computation is O(nlog(n)) because a convex hull
+ * must first be computed for the input geometry.
  * 
- * @author Python implementation by Charlie Marsh
+ * @author Python <a href=
+ *         "https://web.archive.org/web/20211006220154/https://github.com/crm416/point-location/blob/master/min_triangle.py">implementation</a>
+ *         by Charlie Marsh
  * @author Java port by Michael Carleton
  *
  */
 public class MinimumBoundingTriangle {
 
-	// TODO copy docs from openCV implementation
-	// port of https://github.com/crm416/point-location/blob/master/min_triangle.py
-
 	private static final GeometryFactory GEOM_FACTORY = new GeometryFactory(new PrecisionModel(PrecisionModel.FLOATING_SINGLE));
-	private static final double EPSILON = 0.01; // Account for floating-point errors
+	private static final double EPSILON = 0.01; // account for floating-point errors / within-distance thresold
 
 	private final int n;
 	private final Coordinate[] points;
@@ -59,63 +72,28 @@ public class MinimumBoundingTriangle {
 		int b = 2;
 
 		double minArea = Double.MAX_VALUE;
-		Polygon minAreaTriangle = null;
+		Polygon optimalTriangle = null;
 
 		for (int i = 0; i < n; i++) {
-			triangleForIndex tForIndex = new triangleForIndex(i, a, b);
+			TriangleForIndex tForIndex = new TriangleForIndex(i, a, b);
 			Polygon triangle = tForIndex.triangle;
 			a = tForIndex.aOut;
 			b = tForIndex.bOut;
 			if (triangle != null) {
 				double area = triangle.getArea();
-				if (minAreaTriangle == null || area < minArea) {
+				/*
+				 * If the found enclosing triangle is valid/minimal and its area is less than
+				 * the area of the optimal enclosing triangle found so far, then the optimal
+				 * enclosing triangle is updated.
+				 */
+				if (optimalTriangle == null || area < minArea) {
+					optimalTriangle = triangle;
 					minArea = area;
-					minAreaTriangle = triangle;
 				}
 			}
 		}
 
-		return minAreaTriangle;
-	}
-
-	private Side side(final int i) {
-		return new Side(points[floorMod(i - 1, n)], points[i % n]);
-	}
-
-	/**
-	 * Checks that a midpoint touches the polygon on the appropriate side.
-	 */
-	private boolean validateMidpoint(Coordinate midpoint, int index) {
-		Side s = side(index);
-
-		if (s.vertical) {
-			if (midpoint.x != s.p1.x) {
-				return false;
-			}
-			double maxY = Math.max(s.p1.y, s.p2.y) + EPSILON;
-			double minY = Math.min(s.p1.y, s.p2.y) - EPSILON;
-			if (!(midpoint.y <= maxY && midpoint.y >= minY)) {
-				return false;
-			}
-			return true;
-		} else {
-			double maxX = Math.max(s.p1.x, s.p2.x) + EPSILON;
-			double minX = Math.min(s.p1.x, s.p2.x) - EPSILON;
-			// Must touch polygon
-			if (!(midpoint.x <= maxX && midpoint.x >= minX)) {
-				return false;
-			}
-
-			if ((s.atX(midpoint.x).distance(midpoint) > 0.01)) {
-				return false;
-			}
-
-			return true;
-		}
-	}
-
-	private static Coordinate midpoint(Coordinate a, Coordinate b) {
-		return new Coordinate((a.x + b.x) / 2, (a.y + b.y) / 2);
+		return optimalTriangle;
 	}
 
 	/**
@@ -124,39 +102,51 @@ public class MinimumBoundingTriangle {
 	 * Abstracted into class (during Java port) to better structure the many
 	 * methods.
 	 */
-	private class triangleForIndex {
+	private class TriangleForIndex {
 
 		// return values
 		final int aOut, bOut;
 		final Polygon triangle;
 
 		private final Side sideC;
-		private final int c;
 		private Side sideA, sideB;
 
-		triangleForIndex(int c, int a, int b) {
+		TriangleForIndex(int c, int a, int b) {
 			a = Math.max(a, c + 1) % n;
 			b = Math.max(b, c + 2) % n;
 			sideC = side(c);
-			this.c = c;
 
-			while (onLeftChain(b)) { // Increment b while low
+			/*
+			 * A necessary condition for finding a minimum enclosing triangle is that b is
+			 * on the right chain and a on the left. The first step inside the loop is
+			 * therefore to move the index b on the right chain using the onLeftChain()
+			 * subalgorithm.
+			 */
+			while (onLeftChain(b)) {
 				b = (b + 1) % n;
 			}
 
+			/*
+			 * The next condition which must be fulfilled is that a and b must be critical,
+			 * or high. The incrementLowHigh() subalgorithm advances a and b until this
+			 * condition is fulfilled.
+			 */
 			while (dist(b, sideC) > dist(a, sideC)) { // Increment a if low, b if high
-				int[] ab = incrementLowHigh(a, b, c);
+				int[] ab = incrementLowHigh(a, b);
 				a = ab[0];
 				b = ab[1];
 			}
 
+			/*
+			 * Next, b will be advanced until [gamma(a) b] is tangent to the convex polygon
+			 * via the tangency() subalgorithm.
+			 */
 			while (tangency(a, b)) { // Search for b tangency
 				b = (b + 1) % n;
 			}
 
 			Coordinate gammaB = gamma(points[b], side(a), sideC);
-			// Adjust if necessary
-			if (low(a, b, c, gammaB) || dist(b, sideC) < dist((a - 1) % n, sideC)) {
+			if (low(b, gammaB) || dist(b, sideC) < dist((a - 1) % n, sideC)) {
 				sideB = side(b);
 				sideA = side(a);
 				sideB = new Side(sideC.intersection(sideB), sideA.intersection(sideB));
@@ -202,7 +192,10 @@ public class MinimumBoundingTriangle {
 		}
 
 		/**
-		 * Calculate the point on 'on' that is twice as far from 'base' as 'point'.
+		 * Calculate the point on the side 'on' that is twice as far from 'base' as
+		 * 'point'. More formally, point γ(p) (Gamma) is the point on the line [a, a−1]
+		 * such that h(γ(p))=2 × h(p), where h(p) is the distance of p from line
+		 * determined by side C.
 		 */
 		private Coordinate gamma(Coordinate point, Side on, Side base) {
 			Coordinate intersection = on.intersection(base);
@@ -228,36 +221,6 @@ public class MinimumBoundingTriangle {
 			return intersection;
 		}
 
-		private boolean high(int a, int b, int c, Coordinate gammaB) {
-			// Test if two adjacent vertices are on same side of line (implies tangency)
-			if (ccw(gammaB, points[b], points[floorMod(b - 1, n)]) == ccw(gammaB, points[b], points[(b + 1) % n])) {
-				return false;
-			}
-
-			// Test if Gamma and B are on same side of line from adjacent vertices
-			if (ccw(points[floorMod(b - 1, n)], points[(b + 1) % n], gammaB) == ccw(points[floorMod(b - 1, n)], points[(b + 1) % n],
-					points[b])) {
-				return dist(gammaB, sideC) > dist(b, sideC);
-			} else {
-				return false;
-			}
-		}
-
-		private boolean low(int a, int b, int c, Coordinate gammaB) {
-			// Test if two adjacent vertices are on same side of line (implies tangency)
-			if (ccw(gammaB, points[b], points[floorMod(b - 1, n)]) == ccw(gammaB, points[b], points[(b + 1) % n])) {
-				return false;
-			}
-
-			// Test if Gamma and B are on same side of line from adjacent vertices
-			if (ccw(points[floorMod(b - 1, n)], points[(b + 1) % n], gammaB) == ccw(points[floorMod(b - 1, n)], points[(b + 1) % n],
-					points[b])) {
-				return false;
-			} else {
-				return dist(gammaB, sideC) > dist(b, sideC);
-			}
-		}
-
 		private boolean onLeftChain(int b) {
 			return dist((b + 1) % n, sideC) >= dist(b, sideC);
 		}
@@ -265,10 +228,10 @@ public class MinimumBoundingTriangle {
 		/**
 		 * @return [a, b] tuple
 		 */
-		private int[] incrementLowHigh(int a, int b, int c) {
+		private int[] incrementLowHigh(int a, int b) {
 			Coordinate gammaA = gamma(points[a], side(a), sideC);
 
-			if (high(a, b, c, gammaA)) {
+			if (high(b, gammaA)) {
 				b = (b + 1) % n;
 			} else {
 				a = (a + 1) % n;
@@ -278,11 +241,41 @@ public class MinimumBoundingTriangle {
 
 		private boolean tangency(int a, int b) {
 			Coordinate gammaB = gamma(points[b], side(a), sideC);
-			return dist(b, sideC) >= dist((a - 1) % n, sideC) && high(a, b, c, gammaB);
+			return dist(b, sideC) >= dist((a - 1) % n, sideC) && high(b, gammaB);
+		}
+
+		private boolean high(int b, Coordinate gammaB) {
+			// Test if two adjacent vertices are on same side of line (implies tangency)
+			if (ccw(gammaB, points[b], points[floorMod(b - 1, n)]) == ccw(gammaB, points[b], points[(b + 1) % n])) {
+				return false;
+			}
+
+			// Test if Gamma and B are on same side of line from adjacent vertices
+			if (ccw(points[floorMod(b - 1, n)], points[(b + 1) % n], gammaB) == ccw(points[floorMod(b - 1, n)], points[(b + 1) % n],
+					points[b])) {
+				return dist(gammaB, sideC) > dist(b, sideC);
+			} else {
+				return false;
+			}
+		}
+
+		private boolean low(int b, Coordinate gammaB) {
+			// Test if two adjacent vertices are on same side of line (implies tangency)
+			if (ccw(gammaB, points[b], points[floorMod(b - 1, n)]) == ccw(gammaB, points[b], points[(b + 1) % n])) {
+				return false;
+			}
+
+			// Test if Gamma and B are on same side of line from adjacent vertices
+			if (ccw(points[floorMod(b - 1, n)], points[(b + 1) % n], gammaB) == ccw(points[floorMod(b - 1, n)], points[(b + 1) % n],
+					points[b])) {
+				return false;
+			} else {
+				return dist(gammaB, sideC) > dist(b, sideC);
+			}
 		}
 
 		/**
-		 * Tests whether the line formed by A, B, and C is ccw.
+		 * Tests whether the chain formed by A, B, and C is counter-clockwise.
 		 */
 		private boolean ccw(Coordinate a, Coordinate b, Coordinate c) {
 			return (b.x - a.x) * (c.y - a.y) > (b.y - a.y) * (c.x - a.x);
@@ -292,6 +285,10 @@ public class MinimumBoundingTriangle {
 		 * Checks that a triangle composed of the given vertices is a valid local
 		 * minimum (entails that all midpoints of the triangle should touch the
 		 * polygon).
+		 * 
+		 * @param vertexA Vertex A of the enclosing triangle
+		 * @param vertexB Vertex B of the enclosing triangle
+		 * @param vertexC Vertex C of the enclosing triangle
 		 */
 		private boolean isValidTriangle(Coordinate vertexA, Coordinate vertexB, Coordinate vertexC, int a, int b, int c) {
 			if (vertexA == null || vertexB == null || vertexC == null) {
@@ -302,8 +299,44 @@ public class MinimumBoundingTriangle {
 			Coordinate midpointC = midpoint(vertexA, vertexB);
 			return (validateMidpoint(midpointA, a) && validateMidpoint(midpointB, b) && validateMidpoint(midpointC, c));
 		}
+
+		/**
+		 * Checks that a midpoint touches the polygon on the appropriate side.
+		 */
+		private boolean validateMidpoint(Coordinate midpoint, int index) {
+			Side s = side(index);
+
+			if (s.vertical) {
+				if (midpoint.x != s.p1.x) {
+					return false;
+				}
+				double maxY = Math.max(s.p1.y, s.p2.y) + EPSILON;
+				double minY = Math.min(s.p1.y, s.p2.y) - EPSILON;
+				return (midpoint.y <= maxY && midpoint.y >= minY);
+			} else {
+				double maxX = Math.max(s.p1.x, s.p2.x) + EPSILON;
+				double minX = Math.min(s.p1.x, s.p2.x) - EPSILON;
+				// Must touch polygon
+				if (!(midpoint.x <= maxX && midpoint.x >= minX)) {
+					return false;
+				}
+
+				return (s.atX(midpoint.x).distance(midpoint) < EPSILON);
+			}
+		}
+
+		private Side side(final int i) {
+			return new Side(points[floorMod(i - 1, n)], points[i]);
+		}
+
+		private Coordinate midpoint(Coordinate a, Coordinate b) {
+			return new Coordinate((a.x + b.x) / 2, (a.y + b.y) / 2);
+		}
 	}
 
+	/**
+	 * Helper class representing a side, or edge.
+	 */
 	private class Side {
 
 		final Coordinate p1, p2;
@@ -334,7 +367,7 @@ public class MinimumBoundingTriangle {
 
 		private Coordinate atX(double x) {
 			if (vertical) {
-				return p1; // NOTE rather return null
+				return p1; // NOTE return p1 (though incorrect) rather than null
 			}
 			return new Coordinate(x, slope * x + intercept);
 		}

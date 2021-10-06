@@ -63,9 +63,13 @@ public final class PGS_Conversion implements PConstants {
 			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
 			case Geometry.TYPENAME_MULTIPOLYGON :
 			case Geometry.TYPENAME_MULTILINESTRING :
-				shape.setFamily(GROUP);
-				for (int i = 0; i < g.getNumGeometries(); i++) {
-					shape.addChild(toPShape(g.getGeometryN(i)));
+				if (g.getNumGeometries() == 1) {
+					shape = toPShape(g.getGeometryN(0));
+				} else {
+					shape.setFamily(GROUP);
+					for (int i = 0; i < g.getNumGeometries(); i++) {
+						shape.addChild(toPShape(g.getGeometryN(i)));
+					}
 				}
 				break;
 			case Geometry.TYPENAME_LINEARRING : // linearrings are closed by definition
@@ -487,21 +491,21 @@ public final class PGS_Conversion implements PConstants {
 	 * @see #fromPVector(PVector...)
 	 */
 	public static PShape fromPVector(List<PVector> vertices) {
-		PShape shape = new PShape();
-		shape.setFamily(PShape.PATH);
-		shape.setFill(micycle.pgs.color.RGB.WHITE);
-		shape.setFill(true);
-		shape.beginShape();
-
 		if (!vertices.isEmpty() && vertices.get(0).equals(vertices.get(vertices.size() - 1))) {
 			vertices.remove(vertices.size() - 1);
 		}
 
+		PShape shape = new PShape();
+		shape.setFamily(PShape.PATH);
+		shape.setFill(micycle.pgs.color.RGB.WHITE);
+		shape.setFill(true);
+
+		shape.beginShape();
 		for (PVector v : vertices) {
 			shape.vertex(v.x, v.y);
 		}
-
 		shape.endShape(PConstants.CLOSE);
+
 		return shape;
 	}
 
