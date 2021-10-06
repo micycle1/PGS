@@ -143,7 +143,7 @@
 		<dependency> <!-- for JTS.utils -->
 			<groupId>org.geotools</groupId>
 			<artifactId>gt-geometry</artifactId>
-			<version>24.4</version>
+			<version>24.5</version>
 		</dependency>
 		<dependency>
 			<groupId>org.locationtech.jts</groupId>
