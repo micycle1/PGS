@@ -28,15 +28,12 @@ import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Polygon;
-import org.locationtech.jts.geom.PrecisionModel;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.locationtech.jts.geom.util.LineStringExtracter;
 import org.locationtech.jts.linearref.LengthIndexedLine;
-import org.locationtech.jts.noding.IteratedNoder;
 import org.locationtech.jts.noding.MCIndexSegmentSetMutualIntersector;
 import org.locationtech.jts.noding.NodedSegmentString;
-import org.locationtech.jts.noding.Noder;
 import org.locationtech.jts.noding.SegmentIntersectionDetector;
 import org.locationtech.jts.noding.SegmentIntersector;
 import org.locationtech.jts.noding.SegmentString;
@@ -145,8 +142,8 @@ public final class PGS_Processing {
 
 		final double increment = 1d / points;
 		for (double distance = 0; distance < 1; distance += increment) {
-			Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
-			coords.add(new PVector((float) coord.x, (float) coord.y));
+			final Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
+			coords.add(PGS.toPVector(coord));
 		}
 		return coords;
 	}
@@ -178,8 +175,8 @@ public final class PGS_Processing {
 
 		final double increment = 1d / points;
 		for (double distance = 0; distance < 1; distance += increment) {
-			Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
-			coords.add(new PVector((float) coord.x, (float) coord.y));
+			final Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
+			coords.add(PGS.toPVector(coord));
 		}
 		return coords;
 	}
@@ -429,7 +426,7 @@ public final class PGS_Processing {
 
 		for (Coordinate coord : r.getGeometry().getCoordinates()) {
 			if (pointLocator.locate(coord) != Location.EXTERIOR) {
-				vertices.add(new PVector((float) coord.x, (float) coord.y));
+				vertices.add(PGS.toPVector(coord));
 			}
 		}
 		return vertices;
@@ -462,11 +459,10 @@ public final class PGS_Processing {
 	 * @param lineSegmentVertices a list of PVectors where each pair (couplet) of
 	 *                            PVectors represent the start and end point of one
 	 *                            line segment
-	 * @return a list of polygonal PShapes each representing a face / enclosed area
+	 * @return a GROUP PShape where each child shape is a face / enclosed area
 	 *         formed between intersecting lines
 	 * @since 1.1.2
 	 */
-	@SuppressWarnings("unchecked")
 	public static PShape polygonizeLines(List<PVector> lineSegmentVertices) {
 		// TODO constructor for LINES PShape
 		if (lineSegmentVertices.size() % 2 != 0) {
@@ -475,26 +471,16 @@ public final class PGS_Processing {
 			return new PShape();
 		}
 
-		List<SegmentString> segmentStrings = new ArrayList<>(lineSegmentVertices.size() / 2);
+		final List<SegmentString> segmentStrings = new ArrayList<>(lineSegmentVertices.size() / 2);
 		for (int i = 0; i < lineSegmentVertices.size(); i += 2) {
 			final PVector v1 = lineSegmentVertices.get(i);
 			final PVector v2 = lineSegmentVertices.get(i + 1);
-			segmentStrings.add(new NodedSegmentString(new Coordinate[] { PGS.coordFromPVector(v1), PGS.coordFromPVector(v2) }, null));
+			if (!v1.equals(v2)) {
+				segmentStrings.add(new NodedSegmentString(new Coordinate[] { PGS.coordFromPVector(v1), PGS.coordFromPVector(v2) }, null));
+			}
 		}
 
-		final Polygonizer polygonizer = new Polygonizer();
-		polygonizer.setCheckRingsValid(false);
-		final Noder noder = new IteratedNoder(new PrecisionModel(PrecisionModel.FLOATING_SINGLE));
-		noder.computeNodes(segmentStrings);
-		noder.getNodedSubstrings().forEach(s -> {
-			SegmentString ss = (SegmentString) s;
-			polygonizer.add(PGS.GEOM_FACTORY.createLineString(new Coordinate[] { ss.getCoordinate(0), ss.getCoordinate(1) }));
-		});
-		Collection<Geometry> polygons = polygonizer.getPolygons();
-
-		final PShape out = new PShape(PConstants.GROUP);
-		polygons.forEach(p -> out.addChild(toPShape(p)));
-		return out;
+		return toPShape(PGS.polygonizeSegments(segmentStrings));
 	}
 
 	/**
@@ -709,7 +695,14 @@ public final class PGS_Processing {
 		}
 
 		final PShape partitions = new PShape(PConstants.GROUP);
-		stack.forEach(g -> partitions.addChild(toPShape(g)));
+		stack.forEach(g -> {
+			/*
+			 * Geometries may not be polygonal; in which case, do not include in output.
+			 */
+			if (g instanceof Polygon) {
+				partitions.addChild(toPShape(g));
+			}
+		});
 		return partitions;
 	}
 

@@ -4,9 +4,12 @@ import static processing.core.PConstants.LINES;
 import static processing.core.PConstants.ROUND;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Set;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
@@ -16,6 +19,10 @@ import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.PrecisionModel;
+import org.locationtech.jts.noding.Noder;
+import org.locationtech.jts.noding.SegmentString;
+import org.locationtech.jts.noding.snap.SnappingNoder;
+import org.locationtech.jts.operation.polygonize.Polygonizer;
 
 import micycle.pgs.color.RGB;
 import processing.core.PShape;
@@ -105,6 +112,10 @@ final class PGS {
 		return new Coordinate(p.x, p.y);
 	}
 
+	static final PVector toPVector(Coordinate c) {
+		return new PVector((float) c.x, (float) c.y);
+	}
+
 	/**
 	 * Reflection-based workaround to get the fill color of a PShape (this field is
 	 * usually private).
@@ -144,6 +155,44 @@ final class PGS {
 		}
 
 		return (area < 0);
+	}
+
+	/**
+	 * Polygonizes a set of line segments via noding.
+	 * 
+	 * @param segments
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	static final Collection<Geometry> polygonizeSegments(List<SegmentString> segments) {
+		final Polygonizer polygonizer = new Polygonizer();
+		polygonizer.setCheckRingsValid(false);
+		/*
+		 * Other noder implementations do not node correctly (fail to detect
+		 * intersections) on many inputs; furthermore, using a very small tolerance
+		 * (i.e. ~1e-10) on SnappingNoder noder on a small tolerance misses
+		 * intersections too (hence 0.01 chosen as suitable).
+		 */
+		final Noder noder = new SnappingNoder(0.01);
+		noder.computeNodes(segments);
+
+		final Set<PEdge> edges = new HashSet<>();
+		noder.getNodedSubstrings().forEach(s -> {
+			final SegmentString ss = (SegmentString) s;
+			/*
+			 * If the same LineString is added more than once to the polygonizer, the string
+			 * is "collapsed" and not counted as an edge. Therefore a set is used to ensure
+			 * strings are added once only to the polygonizer. A PEdge is used to determine
+			 * this (since LineString hashcode doesn't work).
+			 */
+			final PEdge e = new PEdge(toPVector(ss.getCoordinate(0)), toPVector(ss.getCoordinate(1)));
+			if (edges.add(e)) {
+				final LineString l = PGS.GEOM_FACTORY.createLineString(new Coordinate[] { ss.getCoordinate(0), ss.getCoordinate(1) });
+				polygonizer.add(l);
+			}
+		});
+
+		return polygonizer.getPolygons();
 	}
 
 	/**

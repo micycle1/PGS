@@ -241,8 +241,8 @@ public final class PGS_Optimisation {
 		Geometry g = fromPShape(shape);
 		ArrayList<PVector> points = new ArrayList<>();
 		for (int i = 0; i < g.getNumGeometries(); i++) {
-			Coordinate coord = DistanceOp.nearestPoints(g.getGeometryN(i), PGS.pointFromPVector(point))[0];
-			points.add(new PVector((float) coord.x, (float) coord.y));
+			final Coordinate coord = DistanceOp.nearestPoints(g.getGeometryN(i), PGS.pointFromPVector(point))[0];
+			points.add(PGS.toPVector(coord));
 		}
 		return points;
 	}

@@ -3,6 +3,7 @@ package micycle.pgs;
 import static micycle.pgs.PGS.GEOM_FACTORY;
 import static micycle.pgs.PGS.coordFromPVector;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -521,6 +522,40 @@ public final class PGS_Conversion implements PConstants {
 	}
 
 	/**
+	 * Recurses a GROUP PShape, finding all of its non-GROUP child PShapes. This
+	 * differs from PShape.getChildren() in that it will return group, whereas this
+	 * 
+	 * recurseChildren()
+	 * 
+	 * @param shape
+	 * @return a list of non-GROUP PShapes
+	 */
+	public static List<PShape> getChildren(PShape shape) {
+		final List<PShape> children = new ArrayList<>();
+		final ArrayDeque<PShape> parents = new ArrayDeque<>();
+
+		if (shape.getFamily() == GROUP) {
+			parents.add(shape);
+		} else {
+			children.add(shape);
+			return children;
+		}
+
+		while (!parents.isEmpty()) {
+			final PShape parent = parents.pop(); // will always be a GROUP PShape
+			for (PShape child : parent.getChildren()) {
+				if (child.getFamily() == GROUP) {
+					parents.add(child);
+				} else {
+					children.add(child);
+				}
+			}
+		}
+
+		return children;
+	}
+
+	/**
 	 * Finds and returns all the children PShapes of a given PShape. All children
 	 * (including the parent-most (input) shape) are put into the given list.
 	 * <p>
@@ -546,16 +581,14 @@ public final class PGS_Conversion implements PConstants {
 	}
 
 	/**
-	 * Sets the fill color for the PShape and all of it's children recursively (and
+	 * Sets the fill color for the PShape and all of its children recursively (and
 	 * disables stroke).
 	 * 
 	 * @param shape
 	 * @see #setAllStrokeColor(PShape, int, int)
 	 */
 	public static void setAllFillColor(PShape shape, int color) {
-		List<PShape> all = new ArrayList<>();
-		getChildren(shape, all);
-		all.forEach(child -> {
+		getChildren(shape).forEach(child -> {
 			child.setStroke(false);
 			child.setFill(true);
 			child.setFill(color);
@@ -563,18 +596,31 @@ public final class PGS_Conversion implements PConstants {
 	}
 
 	/**
-	 * Sets the stroke color for the PShape and all of it's children recursively.
+	 * Sets the stroke color for the PShape and all of its children recursively.
 	 * 
 	 * @param shape
 	 * @see {@link #setAllFillColor(PShape, int)}
 	 */
 	public static void setAllStrokeColor(PShape shape, int color, int strokeWeight) {
-		List<PShape> all = new ArrayList<>();
-		getChildren(shape, all);
-		all.forEach(child -> {
+		getChildren(shape).forEach(child -> {
 			child.setStroke(true);
 			child.setStroke(color);
 			child.setStrokeWeight(strokeWeight);
+		});
+	}
+
+	/**
+	 * Sets the stroke color equal to the fill color for the PShape and all of its
+	 * descendent shapes individually (that is, each child shape belonging to the
+	 * shape (if any) will have its stroke color set to <b>its own fill color</b>,
+	 * and not the parent-most shape's fill color).
+	 * 
+	 * @param shape
+	 */
+	public static void setAllStrokeToFillColor(PShape shape) {
+		getChildren(shape).forEach(child -> {
+			child.setStroke(true);
+			child.setStroke(PGS.getPShapeFillColor(child));
 		});
 	}
 
@@ -591,7 +637,7 @@ public final class PGS_Conversion implements PConstants {
 	}
 
 	/**
-	 * Calls setStrokefalse) on a PShape and all its children. This method mutates
+	 * Calls setStroke(false) on a PShape and all its children. This method mutates
 	 * the input shape.
 	 * 
 	 * @param shape

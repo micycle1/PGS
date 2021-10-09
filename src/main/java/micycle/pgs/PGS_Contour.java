@@ -233,7 +233,7 @@ public final class PGS_Contour {
 			reverse(coords); // exterior should be CW
 		}
 		for (Coordinate coordinate : coords) {
-			points.add(new PVector((float) coordinate.x, (float) coordinate.y));
+			points.add(PGS.toPVector(coordinate));
 		}
 		points.remove(0); // remove closing point
 
