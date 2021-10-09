@@ -27,6 +27,7 @@ import org.tinfour.common.Vertex;
 import org.tinfour.contour.Contour;
 import org.tinfour.contour.ContourBuilderForTin;
 import org.tinfour.standard.IncrementalTin;
+import org.tinfour.utils.SmoothingFilter;
 import org.twak.camp.Corner;
 import org.twak.camp.Machine;
 import org.twak.camp.Skeleton;
@@ -378,33 +379,61 @@ public final class PGS_Contour {
 	 */
 	public static Map<PShape, Float> isolines(Collection<PVector> points, double intervalValueSpacing, double isolineMin,
 			double isolineMax) {
-		// lines = max-min/spacing
+		return isolines(points, intervalValueSpacing, isolineMin, isolineMax, 0);
+	}
+
+	/**
+	 * Generates a topographic-like isoline contour map from the given points. This
+	 * method uses the Z value of each PVector point as the "elevation" of that
+	 * location in the map.
+	 *
+	 * @param points               List of PVectors: the z coordinate for each
+	 *                             PVector defines the contour height at that
+	 *                             location
+	 * @param intervalValueSpacing contour height distance represented by successive
+	 *                             isolines (e.g. a value of 1 will generate
+	 *                             isolines at each 1 unit of height)
+	 * @param isolineMin           minimum value represented by isolines
+	 * @param isolineMax           maximum value represented by isolines
+	 * @param smoothing            Number of contour smoothing passes to perform.
+	 *                             The best choice for this value depends on the
+	 *                             requirements of the application. Values in the
+	 *                             range 5 to 40 are good candidates for
+	 *                             investigation.
+	 * @return a map of {isoline -> height of the isoline}
+	 */
+	public static Map<PShape, Float> isolines(Collection<PVector> points, double intervalValueSpacing, double isolineMin, double isolineMax,
+			int smoothing) {
 		final IncrementalTin tin = new IncrementalTin(10);
 		points.forEach(point -> tin.add(new Vertex(point.x, point.y, point.z)));
 
 		double[] intervals = generateDoubleSequence(isolineMin, isolineMax, intervalValueSpacing);
 
-		final ContourBuilderForTin builder = new ContourBuilderForTin(tin, null, intervals, false);
+		SmoothingFilter filter = null;
+		if (smoothing > 0) {
+			filter = new SmoothingFilter(tin, smoothing);
+		}
+		final ContourBuilderForTin builder = new ContourBuilderForTin(tin, filter, intervals, false);
 		List<Contour> contours = builder.getContours();
 
 		Map<PShape, Float> isolines = new HashMap<>(contours.size());
 
 		for (Contour contourLine : contours) {
+			final double[] coords = contourLine.getXY(); // [x1, y1, x2, y2, ...]
 			final PShape isoline = new PShape();
 			isoline.setFamily(PShape.PATH);
 			isoline.setStroke(true);
 			isoline.setStrokeWeight(2);
 			isoline.setStroke(RGB.PINK);
-			isoline.beginShape();
 
-			final double[] coords = contourLine.getCoordinates(); // [x1, y1, x2, y2, ...]
+			isoline.beginShape();
 			for (int i = 0; i < coords.length; i += 2) {
 				float vx = (float) coords[i];
 				float vy = (float) coords[i + 1];
 				isoline.vertex(vx, vy);
 			}
-
 			isoline.endShape();
+
 			isolines.put(isoline, (float) contourLine.getZ());
 		}
 
