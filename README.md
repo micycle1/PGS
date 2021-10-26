@@ -486,6 +486,21 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 </table>
 
+## *Coloring*
+
+<table>
+  <tr>
+    <td valign="top" width="33%"><img src="resources/coloring/leaf.png"></td>
+    <td valign="top" width="33%"><img src="resources/coloring/subdivision.png"></td>
+    <td valign="top" width="33%"><img src="resources/coloring/dual.png"></td>
+  </tr>
+  <tr>
+    <td valign="top" width="33%"><img src="resources/coloring/voro.png"></td>
+    <td valign="top" width="33%"><img src="resources/coloring/swirl.png"></td>
+    <td valign="top" width="33%"><img src="resources/coloring/dino.png"></td>
+  </tr>
+</table>
+
 ## *Construction*
 
 <table>
