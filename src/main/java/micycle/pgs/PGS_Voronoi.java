@@ -66,11 +66,9 @@ public final class PGS_Voronoi {
 		final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, null, constrain, 0, false);
 
 		final Geometry g = fromPShape(shape);
-		final Envelope envelope = g.getEnvelopeInternal();
+		
 		final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();
-		options.setBounds(new Rectangle2D.Double(envelope.getMinX(), envelope.getMinY(), envelope.getMaxX() - envelope.getMinX(),
-				envelope.getMaxY() - envelope.getMinY()));
-
+		options.setBounds(tin.getBounds());
 		final BoundedVoronoiDiagram v = new BoundedVoronoiDiagram(tin.getVertices(), options);
 
 		final IIncrementalTinNavigator navigator = tin.getNavigator();
@@ -147,6 +145,7 @@ public final class PGS_Voronoi {
 			}));
 		}
 		lines.endShape();
+
 		voronoi.addChild(lines);
 		voronoi.addChild(axis);
 		return voronoi;

@@ -1,56 +1,45 @@
 package micycle.pgs.utility;
 
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+
 import org.jgrapht.Graph;
 import org.jgrapht.alg.interfaces.VertexColoringAlgorithm;
 import org.jgrapht.alg.util.NeighborCache;
 import org.jgrapht.util.CollectionUtil;
 
 /**
- * The Recursive Largest First (RLF) Algorithm, from A Graph Coloring Algorithm
- * for Large Scheduling Problems, Frank Thomson Leighton: paper @
- * https://nvlpubs.nist.gov/nistpubs/jres/84/jresv84n6p489_a1b.pdf
+ * The Recursive Largest First (RLF) algorithm for graph coloring.
+ * 
  * <p>
- * The Recursive Largest First (RLF) algorithm was proposed in 1979 by F.
- * Leighton
+ * 
+ * The RLF algorithm was originally designed by F. Leighton (1979) in <a href=
+ * "https://nvlpubs.nist.gov/nistpubs/jres/84/jresv84n6p489_a1b.pdf"><i>A Graph
+ * Coloring Algorithm for Large Scheduling Problems</i></a>, in part for use in
+ * constructing solutions to large timetabling problems. It sequentially builds
+ * color classes on the basis of greedy choices. In particular, the first vertex
+ * placed in a color class C is one with a maximum number of uncolored
+ * neighbors, and the next vertices placed in C are chosen so that they have as
+ * many uncolored neighbors which cannot be placed in C.
  * <p>
- * It sequentially builds color classes on the basis of greedy choices. In
- * particular the first vertex placed in a color class C is one with a maximum
- * number of uncolored neighbors, and the next vertices placed in C are chosen
- * so that they have as many uncolored neighbors which cannot be placed in C. T
+ * This implementation is based on the algorithm description in 'A new efficient
+ * RLF-like Algorithm for the Vertex Coloring Problem' : "for practical
+ * purposes, the RLF algorithm, if programmed properly, exhibits an
+ * O(n<sup>2</sup>) time dependence for many applications".
  * <p>
- * As was true with the SLI (smallest last with interchange) algorithm, the RLF
- * algorithm, in general, requires 0(n3) time and 0(n2) space to color an n node
- * graph. Unlike the SLI algorithm, however, the RLF algorithm requires only 0
- * (n2) time to color graphs for which k·e = n 2 where k is the number of colors
- * used to color the graph, e is the number of edges in the graph, and n is the
- * number of nodes in the graph.
+ * RLF exhibits similar chromatic performance compared to DSATUR. In <i>'A
+ * Performance Comparison of Graph Coloring Algorithms'</i> RLF tended to
+ * produce the best colorings (as measured by color number), marginally ahead of
+ * DSATUR.
  * <p>
- * Also see https://www.gerad.ca/~alainh/RLFPaper.pdf
- * <p>
- * Improved drop-in replacement heuristics for RLF are explored in 'A new
- * efficient RLF-like Algorithm for the Vertex Coloring Problem' (though most
- * increase runtime).
- * <p>
- * This implementation of this class is based on the algorithm desctiption in 'A
- * new efficient RLF-like Algorithm for the Vertex Coloring Problem'.
- * <p>
- * for practical purposes, the RLF algorithm, if programmed properly, exhibits
- * an 0(n2 ) time depend ence for many applications.
- * <p>
- * RLF exhibits similar (if not slightly better) chromatic performance compared
- * to DSATUR. In 'A Performance Comparison of Graph Coloring Algorithms Murat
- * Aslan* 1 , Nurdan Akhan Baykan' RLF performs tends to produce best colorings
- * (as measured by color number) (just marginally ahead of DSATUR).
+ * Improved drop-in replacement heuristics for RLF are explored in <i>'A new
+ * efficient RLF-like Algorithm for the Vertex Coloring Problem'</i> (though
+ * most increase runtime complexity).
  * 
  * @author Michael Carleton
  * 
- *         file:///C:/Users/micyc/Downloads/A_Performance_Comparison_of_Graph_Coloring_Algorit.pdf
- *
  * @param <V> the graph vertex type
  * @param <E> the graph edge type
  */
@@ -70,11 +59,12 @@ public class RLFColoring<V, E> implements VertexColoringAlgorithm<V> {
 	 */
 	private final Set<V> W;
 	final Map<V, Integer> C;
-	private final NeighborCache<V, E> adjacency;
+	private final NeighborCache<V, E> neighborCache;
 
 	/**
-	 * Use these maps to store the numbers AU (x) and AW (x) each time a vertex is
-	 * removed from U (rather than calling aU lots).
+	 * These maps to store the numbers AU(x) and AW(x). Each time a vertex is
+	 * removed from U (and its uncolored neighbours added to W) they are updated
+	 * (provided an efficient computing the value each call).
 	 */
 	final Map<V, Integer> AU;
 	final Map<V, Integer> AW;
@@ -86,24 +76,21 @@ public class RLFColoring<V, E> implements VertexColoringAlgorithm<V> {
 		U = new HashSet<>(graph.vertexSet());
 		W = new HashSet<>(graph.vertexSet().size());
 		C = CollectionUtil.newHashMapWithExpectedSize(graph.vertexSet().size());
-		adjacency = new NeighborCache<>(graph);
-		AU = new HashMap<>(graph.vertexSet().size());
-		AW = new HashMap<>(graph.vertexSet().size());
+		neighborCache = new NeighborCache<>(graph);
+		AU = CollectionUtil.newHashMapWithExpectedSize(graph.vertexSet().size());
+		AW = CollectionUtil.newHashMapWithExpectedSize(graph.vertexSet().size());
 	}
 
-	/**
-	 * {@inheritDoc} NOTE notation follows https://www.gerad.ca/~alainh/RLFPaper.pdf
-	 */
 	@Override
 	public Coloring<V> getColoring() {
 		final int n = graph.vertexSet().size();
 
-		V activeVertex = null;
+		V nextClassVertex = null;
 		int maxDegree = 0;
 		activeColor = -1; // current color class (RLF builds color classes sequentially)
 
 		for (V v : U) {
-			AU.put(v, adjacency.neighborsOf(v).size());
+			AU.put(v, neighborCache.neighborsOf(v).size());
 			AW.put(v, 0);
 		}
 
@@ -118,68 +105,54 @@ public class RLFColoring<V, E> implements VertexColoringAlgorithm<V> {
 
 			// Choose a vertex v ∈ U with largest value AU(v).
 			// Select the uncolored vertex which has the largest degree for coloring.
-			maxDegree = -1;
+			maxDegree = Integer.MIN_VALUE;
 			for (V v : U) {
 				int d = AU.get(v);
 				if (d > maxDegree) {
-					maxDegree = d;
-					activeVertex = v;
+					maxDegree = d; // may be negative (which is fine)
+					nextClassVertex = v;
 				}
 			}
-			cV(activeVertex);
+
+			createColorClass(nextClassVertex);
 		}
 
 		return new ColoringImpl<>(C, activeColor + 1);
 	}
 
 	/**
-	 * Finds the neighbours of u in U (the set of uncolored vertices).
-	 * 
-	 * @return
-	 */
-	private Set<V> aU(V u) {
-		// neighborsOf(v) does not include v (which is desirable)
-		final Set<V> aU = new HashSet<>(adjacency.neighborsOf(u));
-		aU.retainAll(U);
-		return aU;
-	}
-
-	/**
 	 * Constructs the color class Cv (using current color value) and assigns color k
 	 * to all vertices in Cv.
 	 * 
-	 * @param vertex
+	 * @param vertex inital vertex of color class
 	 */
-	void cV(V vertex) {
+	void createColorClass(V vertex) {
 		// Initialize W as the set of vertices in U adjacent to v
 		W.clear();
 
-		moveFromUnseen(vertex);
+		color(vertex);
 
 		while (!U.isEmpty()) {
-			// Select a vertex u ∈ U with largest value AW(u)
-			V candidate = findNextCandidate();
-
-			/*
-			 * Every time a vertex in U is chosen to be moved to C, all its neighbors in U
-			 * are moved from U to W
-			 */
-
-			moveFromUnseen(candidate);
+			V candidate = findNextCandidate(); // select a vertex u ∈ U with largest value AW(u)
+			color(candidate);
 		}
 	}
 
-	private void moveFromUnseen(V vertex) {
-		// move all neighbors w ∈ U of u to W
-		final Set<V> uncoloredNeighbours = aU(vertex);
+	/**
+	 * Colors the given vertex with the current color class.
+	 */
+	private void color(V vertex) {
+		// Move all neighbors w ∈ U of u to W
+		final Set<V> uncoloredNeighbours = findUncoloredNeighbours(vertex);
 		W.addAll(uncoloredNeighbours);
 		U.removeAll(uncoloredNeighbours);
-		U.remove(vertex);
 
-		C.put(vertex, activeColor); // Move u from U to C
+		// Move u from U to C
+		U.remove(vertex);
+		C.put(vertex, activeColor);
 
 		uncoloredNeighbours.forEach(n -> {
-			final Set<V> neighbours = adjacency.neighborsOf(n); // NOTE use graph adjacency (not aU())
+			final Set<V> neighbours = neighborCache.neighborsOf(n); // NOTE use graph adjacency (not uncolored neighbours)
 			/*
 			 * Each time a vertex w is moved from U to W, AW(x) is incremented by one unit
 			 * and AU(x) is decreased by one unit for all neighbors x ∈ U of w.
@@ -207,7 +180,8 @@ public class RLFColoring<V, E> implements VertexColoringAlgorithm<V> {
 		V candidate = null;
 
 		int maxDegree = -1;
-		// TODO optimise this O(n) loop (treeset?).
+		// TODO optimise this O(n) loop
+		// look at https://imada.sdu.dk/~marco/Publications/Files/MIC2011-ChiGalGua.pdf
 		for (V v : U) {
 			int d = AW.get(v);
 			if (d > maxDegree) {
@@ -223,5 +197,17 @@ public class RLFColoring<V, E> implements VertexColoringAlgorithm<V> {
 		 */
 
 		return candidate;
+	}
+
+	/**
+	 * Finds the neighbours of u in U (the set of uncolored vertices).
+	 * 
+	 * @return set of uncolored neighbouring vertices of u
+	 */
+	private Set<V> findUncoloredNeighbours(V u) {
+		// neighborsOf(v) does not include v (which is desirable)
+		final Set<V> aU = new HashSet<>(neighborCache.neighborsOf(u));
+		aU.retainAll(U);
+		return aU;
 	}
 }

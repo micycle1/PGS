@@ -95,7 +95,7 @@ public final class PGS_ShapeBoolean {
 	 * @since 1.2.0
 	 */
 	public static PShape unionMesh(PShape mesh) {
-
+		// JTS SegmentExtractingNoder is an alternative option
 		if (mesh.getChildCount() == 0 || mesh.getKind() != PConstants.GROUP) {
 			System.err.println("unionMesh Error: Input shape was not a GROUP shape, or had 0 children.");
 			return new PShape();

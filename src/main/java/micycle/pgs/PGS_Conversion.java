@@ -217,8 +217,10 @@ public final class PGS_Conversion implements PConstants {
 							children.add((Polygon) child);
 						}
 					}
-					// NOTE since 1.2.0 Multi Polygons are no longer flattened -- methods have
-					// varying support for multipolygons
+					/*
+					 * NOTE since 1.2.0 Multi Polygons are no longer flattened. Methods have varying
+					 * support for multipolygons.
+					 */
 					return (GEOM_FACTORY.createMultiPolygon(children.toArray(new Polygon[children.size()])));
 				}
 			case PShape.GEOMETRY :
@@ -522,13 +524,28 @@ public final class PGS_Conversion implements PConstants {
 	}
 
 	/**
-	 * Recurses a GROUP PShape, finding all of its non-GROUP child PShapes. This
-	 * differs from PShape.getChildren() in that it will return group, whereas this
+	 * Flattens a collection of PShapes into a single GROUP PShape which has the
+	 * input shapes as its children.
 	 * 
-	 * recurseChildren()
+	 * @since 1.2.0
+	 */
+	public static PShape flatten(Collection<PShape> shapes) {
+		PShape group = new PShape(GROUP);
+		shapes.forEach(group::addChild);
+		return group;
+	}
+
+	/**
+	 * Recurses a GROUP PShape, finding all of its non-GROUP child PShapes.
+	 * <p>
+	 * This method differs from PShape.getChildren(): that method will return GROUP
+	 * child shapes, whereas this method will recurse such shapes, returing their
+	 * non-group children (in other words, this method explores the whole tree of
+	 * shapes, returning non-group shapes only).
 	 * 
 	 * @param shape
 	 * @return a list of non-GROUP PShapes
+	 * @since 1.2.0
 	 */
 	public static List<PShape> getChildren(PShape shape) {
 		final List<PShape> children = new ArrayList<>();
@@ -543,11 +560,13 @@ public final class PGS_Conversion implements PConstants {
 
 		while (!parents.isEmpty()) {
 			final PShape parent = parents.pop(); // will always be a GROUP PShape
-			for (PShape child : parent.getChildren()) {
-				if (child.getFamily() == GROUP) {
-					parents.add(child);
-				} else {
-					children.add(child);
+			if (parent.getChildCount() > 0) { // avoid NPE on .getChildren()
+				for (PShape child : parent.getChildren()) {
+					if (child.getFamily() == GROUP) {
+						parents.add(child);
+					} else {
+						children.add(child);
+					}
 				}
 			}
 		}
@@ -601,7 +620,7 @@ public final class PGS_Conversion implements PConstants {
 	 * @param shape
 	 * @see {@link #setAllFillColor(PShape, int)}
 	 */
-	public static void setAllStrokeColor(PShape shape, int color, int strokeWeight) {
+	public static void setAllStrokeColor(PShape shape, int color, float strokeWeight) {
 		getChildren(shape).forEach(child -> {
 			child.setStroke(true);
 			child.setStroke(color);
@@ -616,6 +635,7 @@ public final class PGS_Conversion implements PConstants {
 	 * and not the parent-most shape's fill color).
 	 * 
 	 * @param shape
+	 * @since 1.2.0
 	 */
 	public static void setAllStrokeToFillColor(PShape shape) {
 		getChildren(shape).forEach(child -> {
@@ -650,20 +670,17 @@ public final class PGS_Conversion implements PConstants {
 
 	/**
 	 * Rounds the x and y coordinates (to the closest int) of all vertices belonging
-	 * to the shape, mutating the shape. This can sometimes fix a visual problem in
-	 * Processing where narrow gaps can appear between otherwise flush shapes.
+	 * to the shape, <b>mutating</b> the shape. This can sometimes fix a visual
+	 * problem in Processing where narrow gaps can appear between otherwise flush
+	 * shapes.
 	 * 
 	 * @since 1.1.3
 	 */
 	public static void roundVertexCoords(PShape shape) {
-		final List<PShape> children = new ArrayList<>();
-		getChildren(shape, children);
-		children.forEach(c -> {
-			if (c.getKind() != GROUP) {
-				for (int i = 0; i < c.getVertexCount(); i++) {
-					final PVector v = c.getVertex(i);
-					c.setVertex(i, Math.round(v.x), Math.round(v.y));
-				}
+		getChildren(shape).forEach(c -> {
+			for (int i = 0; i < c.getVertexCount(); i++) {
+				final PVector v = c.getVertex(i);
+				c.setVertex(i, Math.round(v.x), Math.round(v.y));
 			}
 		});
 	}
