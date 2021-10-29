@@ -5,19 +5,33 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
-## **1.x.x** *(2021-xx-xx)*
+## **1.2.0** *(2021-xx-xx)*
 
 ### Added
-* `toPointsPShape()` to `PGS_Conversion`. Transforms a list of points into a `POINTS` type PShape.
-* `dualFaces()` to `PGS_Triangulation`.
-* `createSerpinskiCurve()` to `PGS_Construction`.
-* 3 additional method signatures (one for each return type) for `delaunayTriangulation()` that accept a PShape only, returning a constrained triangulation.
+* **`PGS_PointSet`** — a class that generates sets of 2D points having a variety of different distributions and constraints.
+* **`PGS_Coloring`** — a class
+* **`PGS_Tiling`** — a class for tiling, tessellation and subdivision of the plane using periodic or non-periodic geometric shapes.
+* `toPointsPShape()` to `PGS_Conversion`. Generates a `POINTS` type PShape from a list of PVector points.
+* `dualFaces()` to `PGS_Triangulation`. Generates a mesh-like shape consisting of polygonal faces of a dual graph of a given triangulation.
+* `createSerpinskiCurve()` to `PGS_Construction`. Creates a closed *Sierpiński* curve polygon.
+* 3 additional method signatures (one  for each return type) for `delaunayTriangulation()` that accept a PShape only, returning a constrained triangulation.
+* `minimumBoundingTriangle()` to `PGS_Optimisation`. Computes the minimum-area bounding triangle that encloses a shape or point set.
+* `unionMesh()` to `PGS_ShapeBoolean`. Quickly and efficiently unions/merges the faces of a mesh-like shape together.
+* `setAllStrokeToFillColor()` to `PGS_Conversion`. Sets the stroke color to the fill color for a PShape and all its descendants (separately).
+* A number of new primitives to PGS_Construction: serpinskiCurve, spiral, capsule.
 
 ### Changed
 * `fieldWarp()` now supports `POINTS` and `GROUP` PShapes.
+* `partition()`, `split()` and `slice()` (from `PGS_Processing`) now output a single GROUP PShape (rather than a list of PShapes).
+* During conversion, JTS MultiGeometries that contain a single geometry only will be converted to a first-class PShape (rather than a GROUP PShape containing one child).
+* Output PShapes are now always created with a shape family of `PATH` (rather than `GEOMETRY`) to maximise compatibility with the `P2D` renderer.
+* `PGS_Contour.isolines()` now accepts a contour smoothing parameter.
+* `PGS_Processing.polygonizeLines()` is now more robust and faster.
 
 ### Fixed
-Occasional out of bounds error with Poisson Distribution.
+* Occasional out of bounds error with Poisson Distribution.
+* Error when constrained voronoiDiagram called with group PShape.
+* Removing duplicate vertices during PShape->JTS conversion would remove every vertex (not just the duplicated ones).
 
 ## **1.1.3** *(2021-09-01)*
 ### Added

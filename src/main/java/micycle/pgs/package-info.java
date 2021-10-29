@@ -14,7 +14,9 @@
  * <li>{@link micycle.pgs.PGS_PointSet Point Sets}</li>
  * <li>{@link micycle.pgs.PGS_Processing Processing}</li>
  * <li>{@link micycle.pgs.PGS_ShapeBoolean Shape Boolean}</li>
- * <li>{@link micycle.pgs.PGS_ShapePredicates Shape Predicates &amp; Metrics}</li>
+ * <li>{@link micycle.pgs.PGS_ShapePredicates Shape Predicates &amp;
+ * Metrics}</li>
+ * <li>{@link micycle.pgs.PGS_Tiling Tiling}</li>
  * <li>{@link micycle.pgs.PGS_Transformation Transformation}</li>
  * <li>{@link micycle.pgs.PGS_Triangulation Triangulation}</li>
  * <li>{@link micycle.pgs.PGS_Voronoi Voronoi}</li>

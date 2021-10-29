@@ -32,6 +32,8 @@ Library functionality is split over the following classes:
   * Boolean set-operations for 2D shapes
 * `PGS_ShapePredicates`
   * Various shape metrics (area, circularity, etc.) and predicates (*"do these shapes intersect?"*)
+* `PGS_Tiling`
+  * Tiling, tessellation and subdivision of the plane using periodic or non-periodic geometric shapes.
 * `PGS_Transformation`
   * Various geometric and affine transformations that affect vertex coordinates
 * `PGS_Triangulation`
@@ -577,5 +579,31 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/point_set/nRooksLDS.png"></td>
+  </tr>
+</table>
+
+## *Tiling & Subdivision*
+
+<table>
+  <tr>
+    <td align="center" valign="center"><b>Random Quad Subdivision</td>
+    <td align="center" valign="center"><b>Random Rect Subdivision</td>
+    <td align="center" valign="center"><b>Random Triangle Subdivision</td>
+    <td align="center" valign="center"><b>Islamic Tiling</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/tiling/randomSubdivision.png"></td>
+    <td valign="top" width="25%"><img src="resources/tiling/rectSubdivision.png"></td>
+    <td valign="top" width="25%"><img src="resources/tiling/triangleSubdivision.png"></td>
+    <td valign="top" width="25%"><img src="resources/tiling/islamic.png"></td>
+  </tr>
+  <tr>
+    <td align="center" valign="center" colspan="2"><b>Doyle Spiral</td>
+    <td align="center" valign="center"><b>Hexagon Tiling</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/tiling/doyeSpiral1.png"></td>
+    <td valign="top" width="25%"><img src="resources/tiling/doyeSpiral2.png"></td>
+    <td valign="top" width="25%"><img src="resources/tiling/hex.png"></td>
   </tr>
 </table>
