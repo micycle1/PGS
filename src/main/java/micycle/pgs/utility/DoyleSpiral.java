@@ -19,6 +19,7 @@ import static java.lang.Math.PI;
  * @author Java port by Michael Carleton
  *
  */
+@java.lang.SuppressWarnings({"java:S2184", "java:S1905", "java:S100"})
 public class DoyleSpiral {
 
 	// https://bl.ocks.org/robinhouston/6096950
@@ -78,7 +79,7 @@ public class DoyleSpiral {
 		}
 	}
 
-	private static double[] cmul(double w[], double z[]) {
+	private static double[] cmul(double[] w, double[] z) {
 		return new double[] { w[0] * z[0] - w[1] * z[1], w[0] * z[1] + w[1] * z[0] };
 	}
 

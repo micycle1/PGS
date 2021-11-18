@@ -12,6 +12,7 @@
 		<sonar.projectKey>micycle1_PTS</sonar.projectKey>
 		<sonar.organization>micycle</sonar.organization>
 		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
+		<processing.library.dir>${user.home}\Documents\Processing\libraries\PGS\library</processing.library.dir>
 	</properties>
 
 	<build>
@@ -78,6 +79,7 @@
 						<version>3.2.4</version>
 						<configuration>
 							<createDependencyReducedPom>false</createDependencyReducedPom>
+							<minimizeJar>true</minimizeJar>
 							<filters>
 								<filter>
 									<artifact>*:*</artifact>
@@ -97,9 +99,40 @@
 								<goals>
 									<goal>shade</goal>
 								</goals>
-								<configuration>
-									<minimizeJar>true</minimizeJar>
-								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		<profile>
+			<id>local-processing</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-shade-plugin</artifactId>
+						<version>3.2.4</version>
+						<configuration>
+							<createDependencyReducedPom>false</createDependencyReducedPom>
+							<minimizeJar>true</minimizeJar>
+							<finalName>PGS</finalName>
+							<outputDirectory>${processing.library.dir}</outputDirectory>
+							<filters>
+								<filter>
+									<artifact>*:*</artifact>
+									<excludes>
+										<exclude>META-INF/**</exclude>
+									</excludes>
+								</filter>
+							</filters>
+						</configuration>
+						<executions>
+							<execution>
+								<phase>package</phase>
+								<goals>
+									<goal>shade</goal>
+								</goals>
 							</execution>
 						</executions>
 					</plugin>
@@ -180,7 +213,7 @@
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>JMedialAxis</artifactId>
-			<version>cc252ac555</version>
+			<version>8ea577263f</version>
 		</dependency>
 		<dependency>
 			<groupId>org.dyn4j</groupId>

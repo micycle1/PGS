@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import org.locationtech.jts.algorithm.RobustLineIntersector;
 import org.locationtech.jts.geom.Coordinate;
@@ -66,7 +67,7 @@ public final class PGS_Voronoi {
 		final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, null, constrain, 0, false);
 
 		final Geometry g = fromPShape(shape);
-		
+
 		final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();
 		options.setBounds(tin.getBounds());
 		final BoundedVoronoiDiagram v = new BoundedVoronoiDiagram(tin.getVertices(), options);
@@ -162,6 +163,49 @@ public final class PGS_Voronoi {
 	 */
 	public static PShape voronoiDiagram(Collection<PVector> points, boolean constrain) {
 		return voronoiDiagram(PGS_Conversion.toPointsPShape(points), constrain);
+	}
+
+	/**
+	 * Generates a Voronoi diagram from a triangulation object. The voronoi diagram
+	 * will use the constraints of the tin (if any).
+	 * 
+	 * @param triangulation a triangulation mesh
+	 * @return
+	 * @since 1.2.0
+	 */
+	public static PShape voronoiDiagram(IncrementalTin triangulation) {
+		final boolean constrained = !triangulation.getConstraints().isEmpty();
+		final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();
+		options.setBounds(triangulation.getBounds());
+
+		final BoundedVoronoiDiagram v = new BoundedVoronoiDiagram(triangulation.getVertices(), options);
+
+		final IIncrementalTinNavigator navigator = triangulation.getNavigator();
+		
+		Set<PEdge> edges = new HashSet<PEdge>(); // use set to draw edges once only
+
+		v.getPolygons().forEach(poly -> poly.getEdges().forEach(e -> {
+			if (!constrained) {
+				edges.add(new PEdge(e.getA().x, e.getA().y, e.getB().x, e.getB().y));
+			} else {
+				final boolean inA = triangulation.getRegionConstraint(navigator.getNeighborEdge(e.getA().x, e.getA().y)) != null;
+				if (inA) {
+					final boolean inB = triangulation.getRegionConstraint(navigator.getNeighborEdge(e.getB().x, e.getB().y)) != null;
+					if (inB) { // both points lie inside constraints, so include
+						edges.add(new PEdge(e.getA().x, e.getA().y, e.getB().x, e.getB().y));
+					}
+				}
+			}
+		}));
+
+		final PShape lines = PGS.prepareLinesPShape(RGB.PINK, PConstants.SQUARE, 2);
+		edges.forEach(e -> {
+			lines.vertex(e.a.x, e.a.y);
+			lines.vertex(e.b.x, e.b.y);
+		});
+		lines.endShape();
+
+		return lines;
 	}
 
 	/**
@@ -303,7 +347,6 @@ public final class PGS_Voronoi {
 		final double deltaX = a.x - b.x;
 		final double deltaY = a.y - b.y;
 		return deltaX * deltaX + deltaY * deltaY > (d * d);
-
 	}
 
 	/**

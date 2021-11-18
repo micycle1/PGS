@@ -306,8 +306,9 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/geometry_processing/split.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/slice.gif"></td>
   </tr>
-    <tr>
-    <td align="center" valign="center" colspan="2">Partition a shape into simple (convex) polygons.</td>
+  <tr>
+    <td valign="top" width="25%"></td>
+    <td align="center" valign="center">Partition a shape into simple (convex) polygons.</td>
     <td align="center" valign="center">Subdivide (recursively) a shape into quadrants.</td>
     <td align="center" valign="center">Slice a shape in two along a given line.</td>
   </tr>

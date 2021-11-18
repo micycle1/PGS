@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 * Occasional out of bounds error with Poisson Distribution.
-* Error when constrained voronoiDiagram called with group PShape.
+* Error when constrained voronoiDiagram called with `GROUP` PShape input.
 * Removing duplicate vertices during PShape->JTS conversion would remove every vertex (not just the duplicated ones).
 
 ## **1.1.3** *(2021-09-01)*

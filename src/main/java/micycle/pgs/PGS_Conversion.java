@@ -86,7 +86,10 @@ public final class PGS_Conversion implements PConstants {
 				if (closed) { // closed vertex was skipped, so close the path
 					shape.endShape(CLOSE);
 				} else {
+					// shape is more akin to an unconnected line: keep as PATH shape, but don't fill
+					// visually
 					shape.endShape();
+					shape.setFill(false);
 				}
 				break;
 			case Geometry.TYPENAME_POLYGON :

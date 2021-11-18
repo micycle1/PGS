@@ -214,7 +214,8 @@ public final class PGS_Optimisation {
 
 	/**
 	 * Returns the nearest point of the shape to the given point. If the shape is
-	 * has multiple children/geometries, the single closest point is returned.
+	 * has multiple children/geometries (a GROUP shape), the single closest point is
+	 * returned.
 	 * 
 	 * @param shape
 	 * @param point
@@ -228,9 +229,10 @@ public final class PGS_Optimisation {
 	}
 
 	/**
-	 * Returns the nearest point for each "island" in the input shape.
+	 * Returns the nearest point for each "island" / separate polygon in the GROUP
+	 * input shape.
 	 * 
-	 * @param shape
+	 * @param shape a GROUP shape
 	 * @param point
 	 * @return list of closest points for each child shape. Output is identical to
 	 *         {@link #closestPoint(PShape, PVector)} if the input shape is a single

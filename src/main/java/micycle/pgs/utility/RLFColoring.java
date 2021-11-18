@@ -12,9 +12,7 @@ import org.jgrapht.util.CollectionUtil;
 
 /**
  * The Recursive Largest First (RLF) algorithm for graph coloring.
- * 
  * <p>
- * 
  * The RLF algorithm was originally designed by F. Leighton (1979) in <a href=
  * "https://nvlpubs.nist.gov/nistpubs/jres/84/jresv84n6p489_a1b.pdf"><i>A Graph
  * Coloring Algorithm for Large Scheduling Problems</i></a>, in part for use in
@@ -24,9 +22,9 @@ import org.jgrapht.util.CollectionUtil;
  * neighbors, and the next vertices placed in C are chosen so that they have as
  * many uncolored neighbors which cannot be placed in C.
  * <p>
- * This implementation is based on the algorithm description in 'A new efficient
- * RLF-like Algorithm for the Vertex Coloring Problem' : "for practical
- * purposes, the RLF algorithm, if programmed properly, exhibits an
+ * This implementation is based on the original algorithm pseudocode provided in
+ * 'A new efficient RLF-like Algorithm for the Vertex Coloring Problem' : "for
+ * practical purposes, the RLF algorithm, if programmed properly, exhibits an
  * O(n<sup>2</sup>) time dependence for many applications".
  * <p>
  * RLF exhibits similar chromatic performance compared to DSATUR. In <i>'A
@@ -85,7 +83,7 @@ public class RLFColoring<V, E> implements VertexColoringAlgorithm<V> {
 	public Coloring<V> getColoring() {
 		final int n = graph.vertexSet().size();
 
-		V nextClassVertex = null;
+		V nextClassInitialVertex = null;
 		int maxDegree = 0;
 		activeColor = -1; // current color class (RLF builds color classes sequentially)
 
@@ -110,11 +108,11 @@ public class RLFColoring<V, E> implements VertexColoringAlgorithm<V> {
 				int d = AU.get(v);
 				if (d > maxDegree) {
 					maxDegree = d; // may be negative (which is fine)
-					nextClassVertex = v;
+					nextClassInitialVertex = v;
 				}
 			}
 
-			createColorClass(nextClassVertex);
+			createColorClass(nextClassInitialVertex);
 		}
 
 		return new ColoringImpl<>(C, activeColor + 1);

@@ -49,6 +49,16 @@ public class RGB {
 	}
 
 	/**
+	 * 
+	 * @param color
+	 * @param alpha ∈[0, 255] (where 0 is transparent; 255 is opaque)
+	 * @return
+	 */
+	public static int setAlpha(int color, int alpha) {
+		return (color & 16777215) | alpha << 24;
+	}
+
+	/**
 	 * Compose a 32 bit sARGB int from float[] 0...1
 	 * 
 	 * @param in
