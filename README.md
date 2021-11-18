@@ -46,7 +46,7 @@ Library functionality is split over the following classes:
 <details><summary>Processing IDE — Quick</summary>
 <p>
 
-Download the latest *PGS.jar* from [releases](https://github.com/micycle1/PGS/releases) and simply drag-and-drop it onto the [Processing IDE](https://processing.org/reference/environment/).
+Download the latest *PGS.jar* from [releases](https://github.com/micycle1/PGS/releases) and simply drag-and-drop it onto the [Processing IDE](https://processing.org/environment).
 </p>
 </details>
 
@@ -295,12 +295,13 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
-    <td align="center" valign="center" colspan="2"><b>Partitioning</td>
+    <td align="center" valign="center"><b>Perimeter Extract</td>
+    <td align="center" valign="center"><b>Partitioning</td>
     <td align="center" valign="center"><b>Splitting</td>
     <td align="center" valign="center"><b>Slicing</td>
   </tr>
   <tr>
-    <td valign="top" width="25%"><img src="resources/geometry_processing/decompose1.png"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/perimeterExtract.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/decompose2.png"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/split.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/slice.gif"></td>

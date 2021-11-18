@@ -3,13 +3,18 @@ package micycle.pgs;
 import static processing.core.PConstants.LINES;
 import static processing.core.PConstants.ROUND;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.SplittableRandom;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
@@ -25,6 +30,8 @@ import org.locationtech.jts.noding.snap.SnappingNoder;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 
 import micycle.pgs.color.RGB;
+import micycle.pgs.utility.Nullable;
+import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -47,14 +54,14 @@ final class PGS {
 	}
 
 	/**
-	 * Create a LINES PShape, ready for vertices.
+	 * Create a LINES PShape, ready for vertices (shape.vertex(x, y) calls).
 	 * 
-	 * @param strokeColor  nullable
-	 * @param strokeCap    nullable default = ROUND
-	 * @param strokeWeight nullable. default = 2
+	 * @param strokeColor  nullable (default = {@link RGB#PINK})
+	 * @param strokeCap    nullable (default = ROUND)
+	 * @param strokeWeight nullable (default = 2)
 	 * @return
 	 */
-	static final PShape prepareLinesPShape(Integer strokeColor, Integer strokeCap, Integer strokeWeight) {
+	static final PShape prepareLinesPShape(@Nullable Integer strokeColor, @Nullable Integer strokeCap, @Nullable Integer strokeWeight) {
 		if (strokeColor == null) {
 			strokeColor = RGB.PINK;
 		}
@@ -160,7 +167,7 @@ final class PGS {
 	/**
 	 * Polygonizes a set of line segments via noding.
 	 * 
-	 * @param segments
+	 * @param segments NON-NODED list of segments
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
@@ -171,7 +178,9 @@ final class PGS {
 		 * Other noder implementations do not node correctly (fail to detect
 		 * intersections) on many inputs; furthermore, using a very small tolerance
 		 * (i.e. ~1e-10) on SnappingNoder noder on a small tolerance misses
-		 * intersections too (hence 0.01 chosen as suitable).
+		 * intersections too (hence 0.01 chosen as suitable). "Noding robustness issues
+		 * are generally caused by nearly coincident line segments, or by very short
+		 * line segments. Snapping mitigates both of these situations.".
 		 */
 		final Noder noder = new SnappingNoder(0.01);
 		noder.computeNodes(segments);
@@ -191,8 +200,50 @@ final class PGS {
 				polygonizer.add(l);
 			}
 		});
+		return polygonizer.getPolygons(); // NOTE rather slow method
+	}
 
-		return polygonizer.getPolygons();
+
+	/**
+	 * Provides convenient iteration of the child geometries of a JTS MultiGeometry.
+	 * This iterator does not recurse all geometries (as does
+	 * {@link org.locationtech.jts.geom.GeometryCollectionIterator
+	 * GeometryCollectionIterator}), but returns the first level geometries only.
+	 * 
+	 * @author Michael Carleton
+	 */
+	static final class GeometryIterator implements Iterable<Geometry> {
+
+		private final Geometry g;
+
+		public GeometryIterator(Geometry g) {
+			this.g = g;
+		}
+
+		@Override
+		public Iterator<Geometry> iterator() {
+			return new Iterator<Geometry>() {
+				private int currentIndex = 0;
+
+				@Override
+				public boolean hasNext() {
+					return currentIndex < g.getNumGeometries();
+				}
+
+				@Override
+				public Geometry next() {
+					if (!hasNext()) {
+						throw new NoSuchElementException();
+					}
+					return g.getGeometryN(currentIndex++);
+				}
+
+				@Override
+				public void remove() {
+					throw new UnsupportedOperationException();
+				}
+			};
+		}
 	}
 
 	/**

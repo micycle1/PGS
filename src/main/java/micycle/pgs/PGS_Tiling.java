@@ -1,33 +1,13 @@
 package micycle.pgs;
 
-import static micycle.pgs.PGS_Conversion.toPShape;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.SplittableRandom;
 
-import org.geotools.data.simple.SimpleFeatureIterator;
-import org.geotools.data.simple.SimpleFeatureSource;
-import org.geotools.geometry.jts.ReferencedEnvelope;
-import org.geotools.grid.DefaultGridFeatureBuilder;
-import org.geotools.grid.hexagon.HexagonOrientation;
-import org.geotools.grid.hexagon.Hexagons;
-import org.locationtech.jts.geom.Polygon;
-import org.locationtech.jts.operation.polygonize.Polygonizer;
-import org.locationtech.jts.operation.polygonize.QuickPolygonizer;
-import org.rogach.jopenvoronoi.VoronoiDiagram;
-import org.rogach.jopenvoronoi.generate.LindenmayerCurve;
-import org.rogach.jopenvoronoi.generate.PlanarGraph;
-import org.rogach.jopenvoronoi.generate.PlanarGraph.Segment;
-import org.rogach.jopenvoronoi.generate.RandomLabyrinth;
-
 import micycle.pgs.color.RGB;
 import micycle.pgs.utility.DoyleSpiral;
-import micycle.pgs.utility.JigsawTiling;
-import micycle.pgs.utility.PenroseTiling;
 import micycle.pgs.utility.RectangularSubdivision;
 import micycle.pgs.utility.TriangleSubdivision;
-import processing.core.PApplet;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;

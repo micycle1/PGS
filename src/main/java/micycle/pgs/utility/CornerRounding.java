@@ -29,6 +29,19 @@ public final class CornerRounding {
 	 * @return
 	 */
 	public static PShape round(PShape shape, double extent) {
+		if (shape.getChildCount() > 1) {
+			PShape groupRound = new PShape(PConstants.GROUP);
+			for (PShape child : shape.getChildren()) {
+				groupRound.addChild(roundPolygon(child, extent));
+			}
+			return groupRound;
+		}
+		else {
+			return roundPolygon(shape, extent);			
+		}
+	}
+	
+	private static PShape roundPolygon(PShape shape, double extent) {
 		PShape rounded = new PShape(PShape.GEOMETRY);
 		PGS_Conversion.setAllFillColor(rounded, RGB.PINK);
 		rounded.beginShape();

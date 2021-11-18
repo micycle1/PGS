@@ -21,9 +21,12 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.8.1</version>
 				<configuration>
-					<source>8</source>
-					<target>8</target>
-					<encoding>UTF-8</encoding>
+					<release>8</release>
+					<source>14</source>
+					<target>14</target>
+					<compilerArgs>
+						<arg>-Xplugin:jabel</arg>
+					</compilerArgs>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -80,6 +83,10 @@
 									<artifact>*:*</artifact>
 									<excludes>
 										<exclude>META-INF/**</exclude>
+										<exclude>**/*.png</exclude>
+										<exclude>**/*.svg</exclude>
+										<exclude>**/*.gif</exclude>
+										<exclude>**/*.jpg</exclude>
 									</excludes>
 								</filter>
 							</filters>
@@ -211,6 +218,12 @@
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>UniformNoise</artifactId>
 			<version>1.1</version>
+		</dependency>
+		<dependency>
+			<groupId>com.github.bsideup.jabel</groupId>
+			<artifactId>jabel-javac-plugin</artifactId>
+			<version>0.4.2</version>
+			<scope>provided</scope>
 		</dependency>
 	</dependencies>
 

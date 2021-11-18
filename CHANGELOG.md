@@ -22,7 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 * `fieldWarp()` now supports `POINTS` and `GROUP` PShapes.
-* `partition()`, `split()` and `slice()` (from `PGS_Processing`) now output a single GROUP PShape (rather than a list of PShapes).
+* `removeSmallHoles()`, `round()` and `chaikinCut()` now support `GROUP` PShape inputs.
+* `partition()`, `split()` and `slice()` (from `PGS_Processing`) now output a single `GROUP` PShape (rather than a list of PShapes).
 * During conversion, JTS MultiGeometries that contain a single geometry only will be converted to a first-class PShape (rather than a GROUP PShape containing one child).
 * Output PShapes are now always created with a shape family of `PATH` (rather than `GEOMETRY`) to maximise compatibility with the `P2D` renderer.
 * `PGS_Contour.isolines()` now accepts a contour smoothing parameter.

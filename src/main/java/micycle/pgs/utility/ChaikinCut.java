@@ -26,6 +26,19 @@ public class ChaikinCut {
 
 	private ChaikinCut() {
 	}
+	
+	public static PShape chaikin(PShape shape, float ratio, int iterations) {
+		if (shape.getChildCount() > 1) {
+			PShape groupCut = new PShape(PConstants.GROUP);
+			for (PShape child : shape.getChildren()) {
+				groupCut.addChild(cut(child, ratio, iterations));
+			}
+			return groupCut;
+		}
+		else {
+			return cut(shape, ratio, iterations);
+		}
+	}
 
 	/**
 	 * 
@@ -39,7 +52,7 @@ public class ChaikinCut {
 	 * @param close      whether shape is closed
 	 * @return
 	 */
-	public static PShape chaikin(PShape shape, float ratio, int iterations) {
+	private static PShape cut(PShape shape, float ratio, int iterations) {
 		// If the number of iterations is zero, return shape as is
 		if (iterations < 1) {
 			return shape;
@@ -103,7 +116,7 @@ public class ChaikinCut {
 			next.endShape();
 		}
 
-		return chaikin(next, ratio, iterations - 1);
+		return cut(next, ratio, iterations - 1);
 	}
 
 	/**

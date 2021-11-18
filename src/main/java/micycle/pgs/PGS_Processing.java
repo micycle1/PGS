@@ -14,6 +14,7 @@ import java.util.Random;
 import java.util.SplittableRandom;
 import java.util.stream.StreamSupport;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.geodelivery.jap.concavehull.SnapHull;
 import org.geotools.geometry.jts.JTS;
 import org.locationtech.jts.algorithm.Orientation;
@@ -52,6 +53,7 @@ import org.tinfour.utils.TriangleCollector;
 import micycle.balaban.BalabanSolver;
 import micycle.balaban.Point;
 import micycle.balaban.Segment;
+import micycle.pgs.PGS.GeometryIterator;
 import micycle.pgs.utility.PolygonDecomposition;
 import micycle.pgs.utility.SeededRandomPointsInGridBuilder;
 import processing.core.PConstants;
@@ -179,6 +181,35 @@ public final class PGS_Processing {
 			coords.add(PGS.toPVector(coord));
 		}
 		return coords;
+	}
+
+	/**
+	 * Extracts a portion/subline of the perimeter of a shape between two locations
+	 * on the perimeter.
+	 * 
+	 * @param shape the shape from which to extract a the perimeter
+	 * @param from  the starting location of the perimeter extract, given by a
+	 *              fraction (0...1) of the total perimeter length
+	 * @param to    the end location of the perimeter extract, given by a fraction
+	 *              (0...1) of the total perimeter length
+	 * @return
+	 * @since 1.2.0
+	 */
+	public static PShape extractPerimeter(PShape shape, double from, double to) {
+		Geometry g = fromPShape(shape);
+		if (!g.getGeometryType().equals(Geometry.TYPENAME_LINEARRING) && !g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
+			g = ((Polygon) g).getExteriorRing();
+		}
+		final LengthIndexedLine l = new LengthIndexedLine(g);
+		final double length = l.getEndIndex(); // perimeter length
+
+		if (from > to) {
+			final Geometry l1 = l.extractLine(length * from, length);
+			final Geometry l2 = l.extractLine(0, length * to);
+			return toPShape(PGS.GEOM_FACTORY.createLineString(ArrayUtils.addAll(l1.getCoordinates(), l2.getCoordinates())));
+		}
+
+		return toPShape(l.extractLine(length * from, length * to));
 	}
 
 	/**
@@ -436,21 +467,31 @@ public final class PGS_Processing {
 	 * Returns a copy of the shape where small holes (i.e. inner rings with area <
 	 * given threshold) are removed.
 	 * 
-	 * @param shape
-	 * @param areaThreshold
+	 * @param shape         a single polygonal shape or GROUP polygonal shape
+	 * @param areaThreshold remove any holes with an area smaller than this value
 	 * @return
 	 */
 	public static PShape removeSmallHoles(PShape shape, double areaThreshold) {
-		Polygon polygon = (Polygon) fromPShape(shape);
+		final ArrayList<Geometry> polygons = new ArrayList<>();
+		final Geometry g = fromPShape(shape);
+		for (final Geometry geom : new GeometryIterator(g)) {
+			if (geom.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
+				polygons.add(removeSmallHoles((Polygon) geom, areaThreshold));
+			}
+		}
+		return toPShape(polygons);
+	}
+
+	private static Polygon removeSmallHoles(Polygon polygon, double areaThreshold) {
 		Polygon noHolePol = PGS.GEOM_FACTORY.createPolygon(polygon.getExteriorRing());
 		for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
-			LinearRing hole = polygon.getInteriorRingN(i);
+			final LinearRing hole = polygon.getInteriorRingN(i);
 			if (hole.getArea() < areaThreshold) {
 				continue;
 			}
 			noHolePol = (Polygon) noHolePol.difference(hole);
 		}
-		return toPShape(noHolePol);
+		return noHolePol;
 	}
 
 	/**
