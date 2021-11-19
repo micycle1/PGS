@@ -9,16 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 * **`PGS_PointSet`** — a class that generates sets of 2D points having a variety of different distributions and constraints.
-* **`PGS_Coloring`** — a class
+* **`PGS_Coloring`** — a class for TODO
 * **`PGS_Tiling`** — a class for tiling, tessellation and subdivision of the plane using periodic or non-periodic geometric shapes.
+* **`PGS_Meshing`** - a class to host (have been moved from)
 * `toPointsPShape()` to `PGS_Conversion`. Generates a `POINTS` type PShape from a list of PVector points.
-* `dualFaces()` to `PGS_Triangulation`. Generates a mesh-like shape consisting of polygonal faces of a dual graph of a given triangulation.
-* `createSerpinskiCurve()` to `PGS_Construction`. Creates a closed *Sierpiński* curve polygon.
 * 3 additional method signatures (one  for each return type) for `delaunayTriangulation()` that accept a PShape only, returning a constrained triangulation.
 * `minimumBoundingTriangle()` to `PGS_Optimisation`. Computes the minimum-area bounding triangle that encloses a shape or point set.
 * `unionMesh()` to `PGS_ShapeBoolean`. Quickly and efficiently unions/merges the faces of a mesh-like shape together.
 * `setAllStrokeToFillColor()` to `PGS_Conversion`. Sets the stroke color to the fill color for a PShape and all its descendants (separately).
-* A number of new primitives to PGS_Construction: serpinskiCurve, spiral, capsule.
+* A number of new primitives to `PGS_Construction`: `serpinskiCurve()`, `spiral()`, `capsule()`.
+* `quadrangulation()` to `PGS_Meshing`. Produces a quadrangulation from a triangulation via triangle subdivision.
+* `dualFaces()` to `PGS_Meshing`. Generates a mesh-like shape consisting of polygonal faces of a dual graph of a given triangulation.
 
 ### Changed
 * `fieldWarp()` now supports `POINTS` and `GROUP` PShapes.
@@ -28,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Output PShapes are now always created with a shape family of `PATH` (rather than `GEOMETRY`) to maximise compatibility with the `P2D` renderer.
 * `PGS_Contour.isolines()` now accepts a contour smoothing parameter.
 * `PGS_Processing.polygonizeLines()` is now more robust and faster.
+* Moved `urquhartFaces()` and `gabrielFaces()` from `PGS_Triangulation` to `PGS_Meshing`.
 
 ### Fixed
 * Occasional out of bounds error with Poisson Distribution.

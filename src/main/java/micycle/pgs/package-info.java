@@ -9,6 +9,7 @@
  * <li>{@link micycle.pgs.PGS_Construction Construction}</li>
  * <li>{@link micycle.pgs.PGS_Contour Contour}</li>
  * <li>{@link micycle.pgs.PGS_Conversion Conversion}</li>
+ * <li>{@link micycle.pgs.PGS_Meshing Meshing}</li>
  * <li>{@link micycle.pgs.PGS_Morphology Morphology}</li>
  * <li>{@link micycle.pgs.PGS_Optimisation Optimisation}</li>
  * <li>{@link micycle.pgs.PGS_PointSet Point Sets}</li>
