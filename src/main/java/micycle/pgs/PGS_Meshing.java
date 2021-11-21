@@ -1,13 +1,14 @@
 package micycle.pgs;
 
 import static micycle.pgs.PGS_Conversion.toPShape;
-
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.noding.SegmentString;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.operation.polygonize.QuickPolygonizer;
 import org.tinfour.common.IConstraint;
@@ -22,6 +23,7 @@ import org.tinspin.index.kdtree.KDTree;
 
 import micycle.pgs.color.RGB;
 import micycle.pgs.utility.IncrementalTinDual;
+import micycle.pgs.utility.SpiralQuadrangulation;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -227,7 +229,7 @@ public class PGS_Meshing {
 	 * @return a GROUP PShape, where each child shape is one quadrangle
 	 * @since 1.2.0
 	 */
-	public static PShape quadrangulation(final IIncrementalTin triangulation) {
+	public static PShape splitQuadrangulation(final IIncrementalTin triangulation) {
 		// https://www.cs.mcgill.ca/~cs507/projects/1998/rachelp/welcome.html
 		final PShape quads = new PShape(PConstants.GROUP);
 
@@ -272,6 +274,21 @@ public class PGS_Meshing {
 		PGS_Conversion.setAllStrokeColor(quads, RGB.PINK, 2);
 
 		return quads;
+	}
+
+	/**
+	 * Produces a quadrangulation from a point set. The resulting quadrangulation
+	 * has a characteristic spiral pattern.
+	 * 
+	 * @param points
+	 * @return a GROUP PShape where each child shape is a single face
+	 * @since 1.2.0
+	 */
+	public static PShape spiralQuadrangulation(List<PVector> points) {
+		SpiralQuadrangulation sq = new SpiralQuadrangulation(points);
+		List<SegmentString> segments = new ArrayList<>(sq.getQuadrangulationEdges().size());
+		sq.getQuadrangulationEdges().forEach(e -> segments.add(PGS.createSegmentString(e.a, e.b)));
+		return PGS_Conversion.toPShape(PGS.polygonizeSegments(segments));
 	}
 
 	private static Coordinate toCoord(final Vertex v) {

@@ -24,6 +24,7 @@ import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.PrecisionModel;
+import org.locationtech.jts.noding.BasicSegmentString;
 import org.locationtech.jts.noding.Noder;
 import org.locationtech.jts.noding.SegmentString;
 import org.locationtech.jts.noding.snap.SnappingNoder;
@@ -103,6 +104,10 @@ final class PGS {
 		return GEOM_FACTORY.createLineString(new Coordinate[] { coordFromPVector(a), coordFromPVector(b) });
 	}
 
+	static final SegmentString createSegmentString(PVector a, PVector b) {
+		return new BasicSegmentString(new Coordinate[] { PGS.coordFromPVector(a), PGS.coordFromPVector(b) }, null);
+	}
+
 	static final Point createPoint(double x, double y) {
 		return GEOM_FACTORY.createPoint(new Coordinate(x, y));
 	}
@@ -174,20 +179,8 @@ final class PGS {
 	static final Collection<Geometry> polygonizeSegments(List<SegmentString> segments) {
 		final Polygonizer polygonizer = new Polygonizer();
 		polygonizer.setCheckRingsValid(false);
-		/*
-		 * Other noder implementations do not node correctly (fail to detect
-		 * intersections) on many inputs; furthermore, using a very small tolerance
-		 * (i.e. ~1e-10) on SnappingNoder noder on a small tolerance misses
-		 * intersections too (hence 0.01 chosen as suitable). "Noding robustness issues
-		 * are generally caused by nearly coincident line segments, or by very short
-		 * line segments. Snapping mitigates both of these situations.".
-		 */
-		final Noder noder = new SnappingNoder(0.01);
-		noder.computeNodes(segments);
-
 		final Set<PEdge> edges = new HashSet<>();
-		noder.getNodedSubstrings().forEach(s -> {
-			final SegmentString ss = (SegmentString) s;
+		nodeSegmentStrings(segments).forEach(ss -> {
 			/*
 			 * If the same LineString is added more than once to the polygonizer, the string
 			 * is "collapsed" and not counted as an edge. Therefore a set is used to ensure
@@ -202,6 +195,28 @@ final class PGS {
 		});
 		return polygonizer.getPolygons(); // NOTE rather slow method
 	}
+
+	/**
+	 * Computes a robust noding for a collection of SegmentStrings.
+	 * 
+	 * @param segments
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	static final Collection<SegmentString> nodeSegmentStrings(List<SegmentString> segments) {
+		/*
+		 * Other noder implementations do not node correctly (fail to detect
+		 * intersections) on many inputs; furthermore, using a very small tolerance
+		 * (i.e. ~1e-10) on SnappingNoder noder on a small tolerance misses
+		 * intersections too (hence 0.01 chosen as suitable). "Noding robustness issues
+		 * are generally caused by nearly coincident line segments, or by very short
+		 * line segments. Snapping mitigates both of these situations.".
+		 */
+		final Noder noder = new SnappingNoder(0.01);
+		noder.computeNodes(segments);
+		return noder.getNodedSubstrings();
+	}
+
 
 
 	/**
@@ -303,18 +318,22 @@ final class PGS {
 	}
 
 	/**
-	 * Represents an edge between 2 PVectors.
+	 * Represents an adirectional edge between 2 PVectors.
 	 * 
 	 * @author Michael Carleton
 	 *
 	 */
-	static final class PEdge {
+	public static class PEdge {
 
-		final PVector a, b;
+		public final PVector a, b;
 
 		public PEdge(PVector a, PVector b) {
 			this.a = a;
 			this.b = b;
+		}
+
+		PEdge(double x1, double y1, double x2, double y2) {
+			this(new PVector((float) x1, (float) y1), new PVector((float) x2, (float) y2));
 		}
 
 		@Override
@@ -339,6 +358,16 @@ final class PGS {
 			return false;
 		}
 
+		@Override
+		public PEdge clone() {
+			return new PEdge(a.copy(), b.copy());
+		}
+
+		@Override
+		public String toString() {
+			return a.toString() + " <-> " + b.toString();
+		}
+	}
 		@Override
 		public String toString() {
 			return a.toString() + " | " + b.toString();
