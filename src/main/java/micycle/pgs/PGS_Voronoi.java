@@ -35,8 +35,8 @@ import org.tinspin.index.rtree.Entry;
 import org.tinspin.index.rtree.RTree;
 import org.tinspin.index.rtree.RTreeIterator;
 
-import micycle.pgs.PGS.PEdge;
 import micycle.pgs.color.RGB;
+import micycle.pgs.utility.PEdge;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -182,7 +182,7 @@ public final class PGS_Voronoi {
 
 		final IIncrementalTinNavigator navigator = triangulation.getNavigator();
 		
-		Set<PEdge> edges = new HashSet<PEdge>(); // use set to draw edges once only
+		Set<PEdge> edges = new HashSet<>(); // use set to draw edges once only
 
 		v.getPolygons().forEach(poly -> poly.getEdges().forEach(e -> {
 			if (!constrained) {

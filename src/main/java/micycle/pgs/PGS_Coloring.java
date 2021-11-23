@@ -22,7 +22,7 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.noding.BasicSegmentString;
 import org.locationtech.jts.noding.SegmentString;
-import micycle.pgs.PGS.PEdge;
+import micycle.pgs.utility.PEdge;
 import micycle.pgs.color.RGB;
 import micycle.pgs.utility.RLFColoring;
 import processing.core.PShape;

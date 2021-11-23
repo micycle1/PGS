@@ -3,19 +3,13 @@ package micycle.pgs;
 import static processing.core.PConstants.LINES;
 import static processing.core.PConstants.ROUND;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Deque;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
-import java.util.SplittableRandom;
-
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -32,7 +26,7 @@ import org.locationtech.jts.operation.polygonize.Polygonizer;
 
 import micycle.pgs.color.RGB;
 import micycle.pgs.utility.Nullable;
-import processing.core.PConstants;
+import micycle.pgs.utility.PEdge;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -314,63 +308,6 @@ final class PGS {
 					throw new UnsupportedOperationException();
 				}
 			};
-		}
-	}
-
-	/**
-	 * Represents an adirectional edge between 2 PVectors.
-	 * 
-	 * @author Michael Carleton
-	 *
-	 */
-	public static class PEdge {
-
-		public final PVector a, b;
-
-		public PEdge(PVector a, PVector b) {
-			this.a = a;
-			this.b = b;
-		}
-
-		PEdge(double x1, double y1, double x2, double y2) {
-			this(new PVector((float) x1, (float) y1), new PVector((float) x2, (float) y2));
-		}
-
-		@Override
-		/**
-		 * Direction-agnostic hash
-		 */
-		public int hashCode() {
-//			int x = Float.floatToIntBits(Math.min(a.x, b.x));
-//			x = ((x >> 16) ^ Float.floatToIntBits(Math.max(a.x, b.x))) * 0x45d9f3b;
-//			x = ((x >> 16) ^ Float.floatToIntBits(Math.min(a.y, b.y))) * 0x45d9f3b;
-//			x = (x >> 16) ^ Float.floatToIntBits(Math.max(a.y, b.y));
-//			return x;
-			return Float.floatToIntBits(b.y + a.y) ^ Float.floatToIntBits(b.x + a.x - 1);
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			if (obj instanceof PEdge) {
-				PEdge other = (PEdge) obj;
-				return (other.a.equals(a) && other.b.equals(b)) || (other.a.equals(b) && other.b.equals(a));
-			}
-			return false;
-		}
-
-		@Override
-		public PEdge clone() {
-			return new PEdge(a.copy(), b.copy());
-		}
-
-		@Override
-		public String toString() {
-			return a.toString() + " <-> " + b.toString();
-		}
-	}
-		@Override
-		public String toString() {
-			return a.toString() + " | " + b.toString();
 		}
 	}
 
