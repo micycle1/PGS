@@ -10,6 +10,7 @@ import java.util.stream.IntStream;
 
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.Well19937c;
+import org.tinspin.index.kdtree.KDTree;
 
 import micycle.pgs.utility.PoissonDistribution;
 import processing.core.PVector;
@@ -32,6 +33,28 @@ public final class PGS_PointSet {
 	private static final float GOLDEN_ANGLE = (float) (Math.PI * (3 - Math.sqrt(5)));
 
 	private PGS_PointSet() {
+	}
+
+	/**
+	 * Returns a filtered copy of the input, containing no points that are within
+	 * the <code>distanceTolerance</code> of each other.
+	 * 
+	 * @param points            list of points to filter
+	 * @param distanceTolerance a point that is within this distance of a previously
+	 *                          included point is not included in the output
+	 * @return
+	 */
+	public static List<PVector> prunePointsWithinDistance(List<PVector> points, double distanceTolerance) {
+		final KDTree<PVector> tree = KDTree.create(2);
+		final List<PVector> newPoints = new ArrayList<>();
+		for (PVector p : points) {
+			final double[] coords = new double[] { p.x, p.y };
+			if (tree.getNodeCount() == 0 || tree.query1NN(coords).dist() > distanceTolerance) {
+				tree.insert(coords, p);
+				newPoints.add(p);
+			}
+		}
+		return newPoints;
 	}
 
 	/**
