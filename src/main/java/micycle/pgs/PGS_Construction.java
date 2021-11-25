@@ -253,7 +253,60 @@ public class PGS_Construction {
 	}
 
 	/**
-	 * Creates a closed Sierpiński curve (a recursive space-filling curve).
+	 * Creates a spiral shape.
+	 * 
+	 * @param centerX the x coordinate of the spiral center point / origin
+	 * @param centerY the y coordinate of the spiral center point / origin
+	 * @param coils   number of coils/rotations in the spiral
+	 * @return a stroked PATH PShape
+	 * @since 1.2.0
+	 */
+	public static PShape createSpiral(double centerX, double centerY, double coils, double outerRadius) {
+		// from https://stackoverflow.com/a/13901170/9808792
+		final int chord = 2; // distance between points to plot
+		// spiral is rotated by this number of radians
+		final double rotation = 0; // -Math.PI / 2;
+		// value of theta corresponding to end of last coil
+		final double thetaMax = coils * 2 * Math.PI;
+		// How far to step away from center for each side.
+		final double awayStep = Math.max(outerRadius, 1) / thetaMax;
+		final int direction = 1; // either +1 (CW) or -1 (CCW)
+
+		final List<Coordinate> coords = new ArrayList<>();
+		coords.add(new Coordinate(centerX, centerY));
+
+		double theta = chord / awayStep;
+		/*
+		 * For every side, step around and away from center. Start at the angle
+		 * corresponding to a distance of chord away from centre.
+		 */
+		while (theta <= thetaMax) {
+			final double away = awayStep * theta; // How far away from center
+			final double around = direction * theta + rotation; // How far around the center
+			// Convert 'around' and 'away' to X and Y.
+			double x = centerX + Math.cos(around) * away;
+			double y = centerY + Math.sin(around) * away;
+			coords.add(new Coordinate(x, y));
+
+			double delta = (-2 * away + Math.sqrt(4 * away * away + 8 * awayStep * chord)) / (2 * awayStep);
+			theta += delta;
+		}
+
+		if (coords.size() > 1) {
+			Geometry lineString = PGS.GEOM_FACTORY.createLineString(coords.toArray(new Coordinate[coords.size()]));
+			PShape spiral = PGS_Conversion.toPShape(lineString);
+			spiral.setStrokeWeight(10);
+			spiral.setStroke(RGB.WHITE);
+			spiral.setStrokeCap(PConstants.ROUND);
+			return spiral;
+		} else {
+			return new PShape();
+		}
+	}
+
+	/**
+	 * Creates a closed Sierpiński curve (a recursive space-filling curve), having a
+	 * user-defined degree/order.
 	 * 
 	 * @param centerX    the x coordinate of the curve center point
 	 * @param centerY    the y coordinate of the curve center point
