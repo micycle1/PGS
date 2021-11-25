@@ -5,21 +5,22 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
-## **1.2.0** *(2021-xx-xx)*
+## **1.2.0** *(2021-12-xx)*
 
 ### Added
 * **`PGS_PointSet`** — a class that generates sets of 2D points having a variety of different distributions and constraints.
-* **`PGS_Coloring`** — a class for TODO
+* **`PGS_Coloring`** — a class for intelligent coloring of meshes (or mesh-like shapes) such that no two adjacent faces have the same color, while minimising the number of colors used.
 * **`PGS_Tiling`** — a class for tiling, tessellation and subdivision of the plane using periodic or non-periodic geometric shapes.
-* **`PGS_Meshing`** - a class to host (have been moved from)
+* **`PGS_Meshing`** - a class to host mesh generation methods (excluding triangulation).
 * `toPointsPShape()` to `PGS_Conversion`. Generates a `POINTS` type PShape from a list of PVector points.
 * 3 additional method signatures (one  for each return type) for `delaunayTriangulation()` that accept a PShape only, returning a constrained triangulation.
 * `minimumBoundingTriangle()` to `PGS_Optimisation`. Computes the minimum-area bounding triangle that encloses a shape or point set.
 * `unionMesh()` to `PGS_ShapeBoolean`. Quickly and efficiently unions/merges the faces of a mesh-like shape together.
 * `setAllStrokeToFillColor()` to `PGS_Conversion`. Sets the stroke color to the fill color for a PShape and all its descendants (separately).
-* A number of new primitives to `PGS_Construction`: `serpinskiCurve()`, `spiral()`, `capsule()`.
+* A number of new primitives to `PGS_Construction`: *serpinskiCurve*, *spiral*.
 * `splitQuadrangulation()` and `spiralQuadrangulation()` to `PGS_Meshing`. These methods produces a quadrangulation from a triangulation / point set using differing algorithms.
 * `dualFaces()` to `PGS_Meshing`. Generates a mesh-like shape consisting of polygonal faces of a dual graph of a given triangulation.
+* `extractPerimeter()` to `PGS_Processing`. Extracts a portion/subline of the perimeter of a shape between two locations.
 
 ### Changed
 * `fieldWarp()` now supports `POINTS` and `GROUP` PShapes.

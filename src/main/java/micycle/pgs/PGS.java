@@ -166,15 +166,23 @@ final class PGS {
 	/**
 	 * Polygonizes a set of line segments via noding.
 	 * 
-	 * @param segments NON-NODED list of segments
+	 * @param segments list of segments (noded or non-noded)
+	 * @param node     whether to node the segments before polygonization. If the
+	 *                 segments constitute a conforming mesh, then set this as
+	 *                 false; otherwise true.
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	static final Collection<Geometry> polygonizeSegments(List<SegmentString> segments) {
-		final Polygonizer polygonizer = new Polygonizer();
+	static final Collection<Geometry> polygonizeSegments(Collection<SegmentString> segments, boolean node) {
+		final Polygonizer polygonizer = new Polygonizer(); // TODO use QuickPolygonizer?
 		polygonizer.setCheckRingsValid(false);
+		
+		if (node) {
+			segments = nodeSegmentStrings(segments);
+		}
+		
 		final Set<PEdge> edges = new HashSet<>();
-		nodeSegmentStrings(segments).forEach(ss -> {
+		segments.forEach(ss -> {
 			/*
 			 * If the same LineString is added more than once to the polygonizer, the string
 			 * is "collapsed" and not counted as an edge. Therefore a set is used to ensure
@@ -197,7 +205,7 @@ final class PGS {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	static final Collection<SegmentString> nodeSegmentStrings(List<SegmentString> segments) {
+	static final Collection<SegmentString> nodeSegmentStrings(Collection<SegmentString> segments) {
 		/*
 		 * Other noder implementations do not node correctly (fail to detect
 		 * intersections) on many inputs; furthermore, using a very small tolerance
@@ -210,8 +218,6 @@ final class PGS {
 		noder.computeNodes(segments);
 		return noder.getNodedSubstrings();
 	}
-
-
 
 	/**
 	 * Provides convenient iteration of the child geometries of a JTS MultiGeometry.

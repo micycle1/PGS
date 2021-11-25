@@ -228,7 +228,7 @@ public final class PGS_Triangulation {
 	 * Irregular Network (mesh).
 	 * 
 	 * @param shape         the shape whose vertices to generate a triangulation
-	 *                      from
+	 *                      from. <b>Can be null</b>.
 	 * @param steinerPoints A list of additional points to insert into the
 	 *                      triangulation in addition to the vertices of the input
 	 *                      shape. <b>Can be null</b>.
@@ -252,7 +252,7 @@ public final class PGS_Triangulation {
 	 * @see #delaunayTriangulation(PShape, List, boolean, int, boolean)
 	 * @see #delaunayTriangulationPoints(PShape, List, boolean, int, boolean)
 	 */
-	public static IncrementalTin delaunayTriangulationMesh(PShape shape, @Nullable Collection<PVector> steinerPoints, boolean constrain,
+	public static IncrementalTin delaunayTriangulationMesh(@Nullable PShape shape, @Nullable Collection<PVector> steinerPoints, boolean constrain,
 			int refinements, boolean pretty) {
 		Geometry g = shape == null ? PGS.GEOM_FACTORY.createEmpty(2) : fromPShape(shape);
 		final IncrementalTin tin = new IncrementalTin(10);

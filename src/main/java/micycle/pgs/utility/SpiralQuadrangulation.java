@@ -209,7 +209,7 @@ public class SpiralQuadrangulation {
 			return;
 		}
 
-		PVector vfaraway = PVector.add(PVector.mult(elast.a, 1 - FARAWAYMULT), PVector.mult(elast.b, FARAWAYMULT));
+		PVector vfaraway = PVector.add(PVector.mult(elast.a, 1f - FARAWAYMULT), PVector.mult(elast.b, FARAWAYMULT));
 		elast.b.set(vfaraway);
 
 		// Find the line segment which intersects with the extended line segment
@@ -237,8 +237,10 @@ public class SpiralQuadrangulation {
 				edg = spiral.get(ii);
 				dist = distance(elast.a, elast.b, edg.a);
 			}
-			// Add the vertex to close the inner star-shaped region.
-			vY = edg.a;
+			if (edg != null) {
+				// Add the vertex to close the inner star-shaped region.
+				vY = edg.a;
+			}
 		}
 
 		// Triangulate the star-shaped polygon

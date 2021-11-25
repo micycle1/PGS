@@ -15,7 +15,7 @@ Library functionality is split over the following classes:
 * `PGS_CirclePacking`
   * Circle packings of shapes, subject to varying constraints and patterns of tangencies
 * `PGS_Coloring`
-  * TODO
+  * Intelligently color meshes (or mesh-like shapes)
 * `PGS_Construction`
   * Construct uncommon/interesting 2D primitives
 * `PGS_Contour`
@@ -23,7 +23,7 @@ Library functionality is split over the following classes:
 * `PGS_Conversion`
   * Conversion between *Processing* PShapes and *JTS* Geometries 
 * `PGS_Meshing`
-  * Mesh generation (excluding triangulation).
+  * Mesh generation (excluding triangulation)
 * `PGS_Morphology`
   * Methods that affect the geometry or topology of shapes (buffering, simplification, smoothing, etc.)
 * `PGS_Optimsation`
@@ -413,10 +413,12 @@ Much of the functionality (but by no means all) is demonstrated below:
 
   <tr>
     <td align="center" valign="center"><b>Split Quadrangulation</td>
+    <td align="center" valign="center"><b>Edge Collapse Quadrangulation</td>
     <td align="center" valign="center"><b>Spiral Quadrangulation</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/meshing/quadrangulation.png"></td>
+    <td valign="top" width="25%"><img src="resources/meshing/ecQuadrangulation.png"></td>
     <td valign="top" width="25%"><img src="resources/meshing/spiralQuadrangulation.gif"></td>
   </tr>
 </table>

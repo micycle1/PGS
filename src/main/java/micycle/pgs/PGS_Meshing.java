@@ -6,6 +6,10 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 
+import org.jgrapht.alg.interfaces.VertexColoringAlgorithm.Coloring;
+import org.jgrapht.graph.AbstractBaseGraph;
+import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.graph.SimpleGraph;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.noding.SegmentString;
@@ -23,6 +27,7 @@ import org.tinspin.index.kdtree.KDTree;
 
 import micycle.pgs.color.RGB;
 import micycle.pgs.utility.IncrementalTinDual;
+import micycle.pgs.utility.RLFColoring;
 import micycle.pgs.utility.SpiralQuadrangulation;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -31,10 +36,10 @@ import processing.core.PVector;
 /**
  * Mesh generation (excluding triangulation).
  * <p>
- * So far, each method within this class processes an existing Delaunay
+ * Many of the methods within this class process an existing Delaunay
  * triangulation. You must first process a shape using
  * {@link PGS_Triangulation#delaunayTriangulationMesh(PShape, Collection, boolean, int, boolean)
- * delaunayTriangulationMesh()} and then feed it to methods within PGS_Meshing.
+ * delaunayTriangulationMesh()} and then feed it to these methods.
  * 
  * @author Michael Carleton
  * @since 1.2.0
@@ -277,6 +282,67 @@ public class PGS_Meshing {
 	}
 
 	/**
+	 * Generates a quadrangulation from a triangulation by selectively removing (or
+	 * "collapsing") the edges shared by neighboring triangles (via edge coloring).
+	 * 
+	 * @param triangulation     a triangulation mesh
+	 * @param preservePerimeter whether to preserve the perimeter of the input
+	 *                          triangulation; when true, retains edges that lie on
+	 *                          the perimeter of the triangulation mesh that would
+	 *                          have otherwise been removed.
+	 * @return a GROUP PShape, where each child shape is one quadrangle
+	 * @since 1.2.0
+	 */
+	@SuppressWarnings("unchecked")
+	public static PShape edgeCollapseQuadrangulation(final IIncrementalTin triangulation, final boolean preservePerimeter) {
+		/*-
+		 * From 'Fast unstructured quadrilateral mesh generation'.
+		 * A better coloring approach is given in 'Face coloring in unstructured CFD codes'.
+		 * 
+		 * First partition the edges of the triangular mesh into three groups such that
+		 * no triangle has two edges of the same color (find groups by reducing to a
+		 * graph-coloring).
+		 * Then obtain an all-quadrilateral mesh by removing all edges of one 
+		 * particular color.
+		 */
+		final boolean unconstrained = triangulation.getConstraints().isEmpty();
+		final AbstractBaseGraph<IQuadEdge, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
+		TriangleCollector.visitSimpleTriangles(triangulation, t -> {
+			final IConstraint constraint = t.getContainingRegion();
+			if (unconstrained || (constraint != null && constraint.definesConstrainedRegion())) {
+				graph.addVertex(t.getEdgeA().getBaseReference());
+				graph.addVertex(t.getEdgeB().getBaseReference());
+				graph.addVertex(t.getEdgeC().getBaseReference());
+
+				graph.addEdge(t.getEdgeA().getBaseReference(), t.getEdgeB().getBaseReference());
+				graph.addEdge(t.getEdgeA().getBaseReference(), t.getEdgeC().getBaseReference());
+				graph.addEdge(t.getEdgeB().getBaseReference(), t.getEdgeC().getBaseReference());
+			}
+		});
+
+		Coloring<IQuadEdge> coloring = new RLFColoring<>(graph).getColoring();
+		final Polygonizer polygonizer = new QuickPolygonizer(false);
+		polygonizer.setCheckRingsValid(false);
+
+		final HashSet<IQuadEdge> perimeter = new HashSet<>(triangulation.getPerimeter());
+		if (!unconstrained) {
+			perimeter.clear();
+		}
+		System.out.println(perimeter.size());
+		coloring.getColors().forEach((edge, color) -> {
+			/*
+			 * "We can remove the edges of any one of the colors, however a convenient
+			 * choice is the one that leaves the fewest number of unmerged boundary
+			 * triangles". -- ideal, but not implemented here...
+			 */
+			if ((color < 2) || (preservePerimeter && (edge.isConstrainedRegionBorder() || perimeter.contains(edge)))) {
+				polygonizer.add(PGS.GEOM_FACTORY.createLineString(new Coordinate[] { toCoord(edge.getA()), toCoord(edge.getB()) }));
+			}
+		});
+		return toPShape(polygonizer.getPolygons());
+	}
+
+	/**
 	 * Produces a quadrangulation from a point set. The resulting quadrangulation
 	 * has a characteristic spiral pattern.
 	 * 
@@ -286,9 +352,9 @@ public class PGS_Meshing {
 	 */
 	public static PShape spiralQuadrangulation(List<PVector> points) {
 		SpiralQuadrangulation sq = new SpiralQuadrangulation(points);
-		List<SegmentString> segments = new ArrayList<>(sq.getQuadrangulationEdges().size());
+		Collection<SegmentString> segments = new ArrayList<>(sq.getQuadrangulationEdges().size());
 		sq.getQuadrangulationEdges().forEach(e -> segments.add(PGS.createSegmentString(e.a, e.b)));
-		return PGS_Conversion.toPShape(PGS.polygonizeSegments(segments));
+		return PGS_Conversion.toPShape(PGS.polygonizeSegments(segments, true));
 	}
 
 	private static Coordinate toCoord(final Vertex v) {

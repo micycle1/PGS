@@ -521,7 +521,7 @@ public final class PGS_Processing {
 			}
 		}
 
-		return toPShape(PGS.polygonizeSegments(segmentStrings));
+		return toPShape(PGS.polygonizeSegments(segmentStrings, true));
 	}
 
 	/**

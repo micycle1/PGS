@@ -18,9 +18,7 @@ import org.jgrapht.alg.interfaces.VertexColoringAlgorithm.Coloring;
 import org.jgrapht.graph.AbstractBaseGraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
-import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.noding.BasicSegmentString;
 import org.locationtech.jts.noding.SegmentString;
 import micycle.pgs.utility.PEdge;
 import micycle.pgs.color.RGB;
@@ -29,36 +27,25 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Coloring mesh-like shapes / shapes that have neighbouring parts via
- * graph-coloring technique.
- * 
- * Assigns colors to the faces of a mesh such that no two adjacent faces are of
- * the same color.
- * 
- * Intelligently colors meshes (mesh-like shapes), such that no two adjacent
- * faces are of the same color.
- * 
- * PGS_MeshColoring ? PGS_Colorizer ?
- * 
+ * Intelligently color meshes (or mesh-like shapes) such that no two adjacent
+ * faces have the same color, while minimising the number of colors used.
  * <p>
- * The smallest number of colors needed to color a graph G is called the
- * chromatic number
- * 
- * <p>
- * The methods in this class distinguish between mesh-like shapes and
- * non-mesh-like shapes. In mesh-like shapes, and adjacent cells not only share
- * edges, but the edges are identical!; that is, an edge from each has identical
- * coordinates (such as a triangulation). This distinction is necessary because
- * non-mesh-like shapes require a single step of pre-processing ("noding") to
- * find neighbouring cells whose neighbouring edges are not identical (i.e. they
- * overlap but are not equal). In none-mesh-like shape, lines map overlap, but
- * they may not have identical start and points.
+ * The methods in this class distinguish between mesh-like shapes ("conforming"
+ * meshes) and non-mesh-like shapes ("non-conforming" meshes). In mesh-like
+ * shapes, and adjacent cells not only share edges, but the edges are
+ * identical!; that is, an edge from each has identical coordinates (such as a
+ * triangulation). This distinction is necessary because non-mesh-like shapes
+ * require a single step of pre-processing ("noding") to find neighbouring cells
+ * whose neighbouring edges are not identical (i.e. they overlap but are not
+ * equal). In none-mesh-like shape, lines map overlap, but they may not have
+ * identical start and points.
  * 
  * In non-mesh shapes, edges adjacent cells may be shared to some extent (but
  * not the whole length).
  * 
  * 
  * @author Michael Carleton
+ * @since 1.2.0
  *
  */
 public final class PGS_Coloring {
@@ -66,6 +53,11 @@ public final class PGS_Coloring {
 	private PGS_Coloring() {
 	}
 
+	/**
+	 * Specifies the algorithm used by the underlying graph coloring process to find
+	 * a coloring for mesh faces. RLF, followed by DSATUR generally produce the
+	 * "best" colorings (as measured by chromatic number, where lower is better).
+	 */
 	public enum ColoringAlgorithm {
 		/**
 		 * The greedy coloring algorithm with a random vertex ordering.
@@ -75,8 +67,8 @@ public final class PGS_Coloring {
 		 * The largest degree first greedy coloring algorithm.
 		 * 
 		 * <p>
-		 * This is the greedy coloring algorithm which orders the vertices by
-		 * non-increasing degree.
+		 * LDO orders the vertices in decreasing order of degree, the idea being that
+		 * the large degree vertices can be colored more easily.
 		 */
 		LARGEST_DEGREE_FIRST, // aka Largest Degree Ordering ?
 		/**
@@ -88,12 +80,9 @@ public final class PGS_Coloring {
 		 */
 		SMALLEST_DEGREE_LAST,
 		/**
-		 * This is the greedy coloring algorithm using saturation degree ordering. The
-		 * saturation degree of a vertex is defined as the number of different colors to
-		 * which it is adjacent. The algorithm selects always the vertex with the
-		 * largest saturation degree. If multiple vertices have the same maximum
-		 * saturation degree, a vertex of maximum degree in the uncolored subgraph is
-		 * selected.
+		 * DSATUR (saturation degree ordering) is a variant on Largest Degree Ordering
+		 * where the vertices are ordered in decreasing order by "saturation degree",
+		 * defined as the number of distinct colors in the vertex neighborhood.
 		 */
 		DSATUR,
 		/**
@@ -106,12 +95,6 @@ public final class PGS_Coloring {
 		RLF
 	}
 
-	// TODO color point set by embedding as triangulatation then compute coloring of
-	// triangulation
-	private static void colorPoints(List<PVector> points) {
-		// color a gabriel graph?
-	}
-
 	/**
 	 * 
 	 * @param meshShape GROUP PShape, whose children make up a mesh (more formally,
@@ -119,10 +102,6 @@ public final class PGS_Coloring {
 	 * @return
 	 */
 	public static Map<PShape, Integer> colorMesh(PShape meshShape, ColoringAlgorithm coloringAlgorithm) {
-//		if (meshShape.getFamily() != PConstants.GROUP) {
-////			System.err.println("colorMesh(): Input shape is not a group.");
-//			return new HashMap<>();
-//		}
 		return colorMesh(PGS_Conversion.getChildren(meshShape), coloringAlgorithm);
 	}
 
@@ -130,60 +109,34 @@ public final class PGS_Coloring {
 	 * 
 	 * @param shapes a collection of shapes representing a mesh (more formally, a
 	 *               planar straight-line graph).
-	 * @return Get the color map; a mapping from each face to its color class
+	 * @return The color map; a mapping from each face to its color class
 	 * @see #colorMesh(PShape, int[])
 	 */
 	public static Map<PShape, Integer> colorMesh(Collection<PShape> shapes, ColoringAlgorithm coloringAlgorithm) {
-		final AbstractBaseGraph<PShape, DefaultEdge> graph = prepareGraph(shapes);
-		final Coloring<PShape> coloring;
-
-		switch (coloringAlgorithm) {
-			case RANDOM : // randomly ordered sequential
-				coloring = new RandomGreedyColoring<>(graph, new Random()).getColoring();
-				break;
-			case SMALLEST_DEGREE_LAST :
-				/*
-				 * LDO orders the vertices in decreasing order of degree, the idea being that
-				 * the large degree vertices can be colored more easily.
-				 */
-				coloring = new SmallestDegreeLastColoring<>(graph).getColoring();
-				break;
-			case LARGEST_DEGREE_FIRST :
-				coloring = new LargestDegreeFirstColoring<>(graph).getColoring(); // Greedy Welsh-Powell
-				break;
-			case DSATUR : // Degree of Saturation Algorithm (DSATUR)
-				/*
-				 * SDO (saturation degree ordering) is a variant on LDO where the vertices are
-				 * ordered in decreasing order by "saturation degree", defined as the number of
-				 * distinct colors in the vertex neighborhood. NOTE IS BETTER THAN RANDOM
-				 */
-				coloring = new SaturationDegreeColoring<>(graph).getColoring();
-				break;
-			case COARSE :
-				coloring = new ColorRefinementAlgorithm<>(graph).getColoring();
-				break;
-			case RLF :
-				coloring = new RLFColoring<>(graph).getColoring();
-				break;
-			default :
-				return new HashMap<>();
-		}
-		System.out.println(coloring.getNumberColors());
+		final Coloring<PShape> coloring = findColoring(shapes, coloringAlgorithm);
 		return coloring.getColors();
 	}
 
 	/**
-	 * Applies the coloring (given by an array of colors) to the mesh-like shape.
-	 * This method is void; it mutates the fill colour of the input shape.
+	 * Colors the mesh-like shape using the colors provided. This method mutates the
+	 * fill colour of the input shape.
 	 * 
-	 * @param shape
+	 * @param shape        the input shape (now colored according to the palette
+	 *                     provided)
 	 * @param colorPalette
 	 */
-	public static void colorMesh(PShape shape, ColoringAlgorithm coloringAlgorithm, int[] colorPalette) {
-		PGS_Coloring.colorMesh(shape, coloringAlgorithm).forEach((face, color) -> {
-			int c = colorPalette[color % colorPalette.length]; // NOTE remove for now to help debugging
+	public static PShape colorMesh(PShape shape, ColoringAlgorithm coloringAlgorithm, int[] colorPalette) {
+		final Coloring<PShape> coloring = findColoring(shape, coloringAlgorithm);
+		if (coloring.getNumberColors() > colorPalette.length) {
+			System.err.format("WARNING: Number of mesh colors (%s) exceeds those provided in palette (%s)%s", coloring.getNumberColors(),
+					colorPalette.length, System.lineSeparator());
+		}
+		coloring.getColors().forEach((face, color) -> {
+			int c = colorPalette[color % colorPalette.length]; // NOTE use modulo to avoid OOB exception
 			face.setFill(c);
 		});
+
+		return shape; // return original shape (to keep method signature the same as colorNonMesh())
 	}
 
 	/**
@@ -192,8 +145,8 @@ public final class PGS_Coloring {
 	 * @param coloringAlgorithm
 	 * @param colorPalette      ["#FFFFFF", "#...", etc.]
 	 */
-	public static void colorMesh(PShape shape, ColoringAlgorithm coloringAlgorithm, String[] colorPalette) {
-		colorMesh(shape, coloringAlgorithm, hexToColor(colorPalette));
+	public static PShape colorMesh(PShape shape, ColoringAlgorithm coloringAlgorithm, String[] colorPalette) {
+		return colorMesh(shape, coloringAlgorithm, hexToColor(colorPalette));
 	}
 
 	public static Map<PShape, Integer> colorNonMesh(PShape shape, ColoringAlgorithm coloringAlgorithm) {
@@ -225,9 +178,46 @@ public final class PGS_Coloring {
 		return mesh;
 	}
 
+	private static Coloring<PShape> findColoring(PShape meshShape, ColoringAlgorithm coloringAlgorithm) {
+		return findColoring(PGS_Conversion.getChildren(meshShape), coloringAlgorithm);
+	}
+
 	/**
-	 * Generates a (dual) graph representing the mesh (where graph vertices
-	 * represent mesh faces and graph edges represent a shared edge between faces).
+	 * Finds a coloring for the graphable/mesh-like shape (as given by a collection
+	 * of faces) using the coloring algorithm specified.
+	 */
+
+	private static Coloring<PShape> findColoring(Collection<PShape> shapes, ColoringAlgorithm coloringAlgorithm) {
+		final AbstractBaseGraph<PShape, DefaultEdge> graph = prepareGraph(shapes);
+		final Coloring<PShape> coloring;
+
+		switch (coloringAlgorithm) {
+			case RANDOM : // randomly ordered sequential
+				coloring = new RandomGreedyColoring<>(graph, new Random()).getColoring();
+				break;
+			case SMALLEST_DEGREE_LAST :
+				coloring = new SmallestDegreeLastColoring<>(graph).getColoring();
+				break;
+			case LARGEST_DEGREE_FIRST :
+				coloring = new LargestDegreeFirstColoring<>(graph).getColoring(); // Greedy Welsh-Powell
+				break;
+			case DSATUR :
+				coloring = new SaturationDegreeColoring<>(graph).getColoring();
+				break;
+			case COARSE :
+				coloring = new ColorRefinementAlgorithm<>(graph).getColoring();
+				break;
+			case RLF :
+			default :
+				coloring = new RLFColoring<>(graph).getColoring();
+		}
+		return coloring;
+	}
+
+	/**
+	 * Generates a dual-graph from an intermediate graph representation of the given
+	 * mesh (where graph vertices represent mesh faces and graph edges represent a
+	 * shared edge between faces).
 	 * 
 	 * @param meshFaces
 	 * @return dual-graph of the mesh
@@ -264,12 +254,12 @@ public final class PGS_Coloring {
 	}
 
 	/**
-	 * Prepare a non-mesh shape into a graphable shape by "noding" it. This
-	 * essentially means splitting edges into two at points where they intersect
-	 * (touch) another edge.
+	 * Converts a non-mesh shape into a graphable / mesh-like shape by "noding" it.
+	 * This essentially means splitting edges into two at points where they
+	 * intersect (touch) another edge.
 	 * 
 	 * @param shape a GROUP PShape
-	 * @return
+	 * @return the input shape, having been noded and polygonized
 	 */
 	private static Collection<Geometry> nodeNonMesh(PShape shape) {
 		final List<SegmentString> segmentStrings = new ArrayList<>(shape.getChildCount() * 3);
@@ -279,14 +269,14 @@ public final class PGS_Coloring {
 				final PVector a = face.getVertex(i);
 				final PVector b = face.getVertex((i + 1) % face.getVertexCount());
 				if (!a.equals(b)) {
-					segmentStrings.add(new BasicSegmentString(new Coordinate[] { PGS.coordFromPVector(a), PGS.coordFromPVector(b) }, null));
+					segmentStrings.add(PGS.createSegmentString(a, b));
 				}
 			}
 		}
-		return PGS.polygonizeSegments(segmentStrings);
+		return PGS.polygonizeSegments(segmentStrings, true);
 	}
 
-	public static PShape nodeShape(PShape shape) {
+	private static PShape nodeShape(PShape shape) {
 		return toPShape(nodeNonMesh(shape));
 	}
 
@@ -296,7 +286,7 @@ public final class PGS_Coloring {
 	 * @param colors list of hex e.g "021d34" or "#FF6F91"
 	 * @return
 	 */
-	static int[] hexToColor(String[] colors) {
+	private static int[] hexToColor(String[] colors) {
 		int[] out = new int[colors.length];
 		for (int i = 0; i < colors.length; i++) {
 			if (colors[i].charAt(0) == '#') { // handle leading '#'
