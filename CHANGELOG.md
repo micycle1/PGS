@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `extractPerimeter()` to `PGS_Processing`. Extracts a portion/subline of the perimeter of a shape between two locations.
 
 ### Changed
+* `PGS_Construction` now preserves a PShape's *fillColor*, *strokeColor* and *strokeWeight* throughout forward-backward conversion. This behaviour can be toggle using the class's `PRESERVE_STYLE` flag (default = true). Note that PGS' methods will generally not preserve the style of the original PShape because JTS does not preserve geometry user data during its operations.
 * `fieldWarp()` now supports `POINTS` and `GROUP` PShapes.
 * `removeSmallHoles()`, `round()` and `chaikinCut()` now support `GROUP` PShape inputs.
 * `partition()`, `split()` and `slice()` (from `PGS_Processing`) now output a single `GROUP` PShape (rather than a list of PShapes).

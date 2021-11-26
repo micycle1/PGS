@@ -49,6 +49,22 @@ public class RGB {
 	}
 
 	/**
+	 * Decompose color integer (ARGB) into its 3 separate RGB components (0...255)
+	 * 
+	 * @param clr
+	 * @param out
+	 * @return [R,G,B] 0...255
+	 */
+	public static int[] decomposeclrRGB(int clr) {
+		int[] out = new int[3];
+		out[0] = (clr >> 16 & 0xff);
+		out[1] = (clr >> 8 & 0xff);
+		out[2] = (clr & 0xff);
+//		out[3] = (clr >> 24 & 0xff);
+		return out;
+	}
+
+	/**
 	 * 
 	 * @param color
 	 * @param alpha ∈[0, 255] (where 0 is transparent; 255 is opaque)

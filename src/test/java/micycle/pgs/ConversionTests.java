@@ -14,6 +14,7 @@ import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.PrecisionModel;
 
+import micycle.pgs.color.RGB;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -284,6 +285,44 @@ class ConversionTests {
 		assertEquals(shape.getVertex(6), processed.getVertex(3));
 		assertEquals(shape.getVertex(8), processed.getVertex(4));
 		assertEquals(5, processed.getVertexCount());
+	}
+	
+	@Test
+	void testStylePreserved() {
+		PGS_Conversion.PRESERVE_STYLE = true;
+		final PShape shape = new PShape(PShape.GEOMETRY);
+		shape.beginShape();
+		shape.vertex(0, 0);
+		shape.vertex(10, 0);
+		shape.vertex(0, 10);
+		shape.endShape(PShape.CLOSE);
+		
+		int col = RGB.composeColor(50, 125, 175);
+		shape.setFill(col);
+		shape.setStrokeWeight(11.11f);
+		shape.setStroke(col);
+		
+		PShape processed = toPShape(fromPShape(shape));
+		assertEquals(col, PGS.getPShapeFillColor(processed));
+		assertEquals(col, PGS.getPShapeStrokeColor(processed));
+		assertEquals(11.11f, PGS.getPShapeStrokeWeight(processed));
+		
+		final PShape path = new PShape(PShape.PATH);
+		path.beginShape();
+		path.vertex(0, 0);
+		path.vertex(10, 0);
+		path.vertex(0, 10);
+		path.vertex(10, 10);
+		path.endShape(); // unclosed
+		
+		path.setFill(col);
+		path.setStrokeWeight(8f);
+		path.setStroke(col);
+		
+		processed = toPShape(fromPShape(path));
+		assertEquals(col, PGS.getPShapeFillColor(processed));
+		assertEquals(col, PGS.getPShapeStrokeColor(processed));
+		assertEquals(8f, PGS.getPShapeStrokeWeight(processed));
 	}
 
 	private static boolean pointsAreEqual(Coordinate c, PVector p) {

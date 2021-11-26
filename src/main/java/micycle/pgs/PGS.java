@@ -124,13 +124,41 @@ final class PGS {
 
 	/**
 	 * Reflection-based workaround to get the fill color of a PShape (this field is
-	 * usually private).
+	 * usually inaccessible).
 	 */
 	static final int getPShapeFillColor(final PShape sh) {
 		try {
 			final java.lang.reflect.Field f = PShape.class.getDeclaredField("fillColor");
 			f.setAccessible(true);
 			return f.getInt(sh);
+		} catch (ReflectiveOperationException cause) {
+			throw new RuntimeException(cause);
+		}
+	}
+
+	/**
+	 * Reflection-based workaround to get the stroke color of a PShape (this field
+	 * is usually inaccessible).
+	 */
+	static final int getPShapeStrokeColor(final PShape sh) {
+		try {
+			final java.lang.reflect.Field f = PShape.class.getDeclaredField("strokeColor");
+			f.setAccessible(true);
+			return f.getInt(sh);
+		} catch (ReflectiveOperationException cause) {
+			throw new RuntimeException(cause);
+		}
+	}
+
+	/**
+	 * Reflection-based workaround to get the stroke weight of a PShape (this field
+	 * is usually inaccessible).
+	 */
+	static final float getPShapeStrokeWeight(final PShape sh) {
+		try {
+			final java.lang.reflect.Field f = PShape.class.getDeclaredField("strokeWeight");
+			f.setAccessible(true);
+			return f.getFloat(sh);
 		} catch (ReflectiveOperationException cause) {
 			throw new RuntimeException(cause);
 		}
@@ -176,11 +204,11 @@ final class PGS {
 	static final Collection<Geometry> polygonizeSegments(Collection<SegmentString> segments, boolean node) {
 		final Polygonizer polygonizer = new Polygonizer(); // TODO use QuickPolygonizer?
 		polygonizer.setCheckRingsValid(false);
-		
+
 		if (node) {
 			segments = nodeSegmentStrings(segments);
 		}
-		
+
 		final Set<PEdge> edges = new HashSet<>();
 		segments.forEach(ss -> {
 			/*

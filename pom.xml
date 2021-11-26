@@ -174,8 +174,8 @@
 
 	<dependencies>
 		<dependency>
-			<groupId>quil</groupId>
-			<artifactId>processing-core</artifactId>
+			<groupId>com.github.micycle1</groupId>
+			<artifactId>processing3</artifactId>
 			<version>3.5.4</version>
 			<scope>provided</scope> <!-- don't package into uber jar -->
 			<optional>true</optional> <!-- user artifact should override when provided -->
