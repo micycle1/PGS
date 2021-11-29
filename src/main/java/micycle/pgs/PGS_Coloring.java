@@ -1,7 +1,5 @@
 package micycle.pgs;
 
-import static micycle.pgs.PGS_Conversion.toPShape;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -18,8 +16,8 @@ import org.jgrapht.alg.interfaces.VertexColoringAlgorithm.Coloring;
 import org.jgrapht.graph.AbstractBaseGraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
-import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.noding.SegmentString;
+
 import micycle.pgs.utility.PEdge;
 import micycle.pgs.color.RGB;
 import micycle.pgs.utility.RLFColoring;
@@ -150,7 +148,7 @@ public final class PGS_Coloring {
 	}
 
 	public static Map<PShape, Integer> colorNonMesh(PShape shape, ColoringAlgorithm coloringAlgorithm) {
-		final PShape mesh = toPShape(nodeNonMesh(shape));
+		final PShape mesh = nodeNonMesh(shape);
 		return colorMesh(mesh, coloringAlgorithm);
 	}
 
@@ -165,14 +163,14 @@ public final class PGS_Coloring {
 	 * @return
 	 */
 	public static PShape colorNonMesh(PShape shape, ColoringAlgorithm coloringAlgorithm, int[] colors) {
-		final PShape mesh = toPShape(nodeNonMesh(shape));
+		final PShape mesh = nodeNonMesh(shape);
 		colorMesh(mesh, coloringAlgorithm, colors);
 		PGS_Conversion.setAllStrokeColor(mesh, RGB.WHITE, 2);
 		return mesh;
 	}
 
 	public static PShape colorNonMesh(PShape shape, ColoringAlgorithm coloringAlgorithm, String[] colors) {
-		final PShape mesh = toPShape(nodeNonMesh(shape));
+		final PShape mesh = nodeNonMesh(shape);
 		colorMesh(mesh, coloringAlgorithm, colors);
 		PGS_Conversion.setAllStrokeColor(mesh, RGB.WHITE, 2);
 		return mesh;
@@ -261,7 +259,7 @@ public final class PGS_Coloring {
 	 * @param shape a GROUP PShape
 	 * @return the input shape, having been noded and polygonized
 	 */
-	private static Collection<Geometry> nodeNonMesh(PShape shape) {
+	private static PShape nodeNonMesh(PShape shape) {
 		final List<SegmentString> segmentStrings = new ArrayList<>(shape.getChildCount() * 3);
 
 		for (PShape face : shape.getChildren()) {
@@ -274,10 +272,6 @@ public final class PGS_Coloring {
 			}
 		}
 		return PGS.polygonizeSegments(segmentStrings, true);
-	}
-
-	private static PShape nodeShape(PShape shape) {
-		return toPShape(nodeNonMesh(shape));
 	}
 
 	/**

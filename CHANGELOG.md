@@ -18,8 +18,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `unionMesh()` to `PGS_ShapeBoolean`. Quickly and efficiently unions/merges the faces of a mesh-like shape together.
 * `setAllStrokeToFillColor()` to `PGS_Conversion`. Sets the stroke color to the fill color for a PShape and all its descendants (separately).
 * A number of new primitives to `PGS_Construction`: *serpinskiCurve*, *spiral*.
-* `splitQuadrangulation()` and `spiralQuadrangulation()` to `PGS_Meshing`. These methods produces a quadrangulation from a triangulation / point set using differing algorithms.
-* `dualFaces()` to `PGS_Meshing`. Generates a mesh-like shape consisting of polygonal faces of a dual graph of a given triangulation.
 * `extractPerimeter()` to `PGS_Processing`. Extracts a portion/subline of the perimeter of a shape between two locations.
 
 ### Changed

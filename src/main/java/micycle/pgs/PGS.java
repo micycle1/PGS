@@ -25,6 +25,7 @@ import org.locationtech.jts.noding.snap.SnappingNoder;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 
 import micycle.pgs.color.RGB;
+import micycle.pgs.utility.FastPolygonizer;
 import micycle.pgs.utility.Nullable;
 import micycle.pgs.utility.PEdge;
 import processing.core.PShape;
@@ -192,6 +193,16 @@ final class PGS {
 	}
 
 	/**
+	 * Polygonizes a set of edges.
+	 * 
+	 * @param edges a collection of <b>NODED</b> edges.
+	 * @return
+	 */
+	static final PShape polygonizeEdges(Collection<PEdge> edges) {
+		return FastPolygonizer.polygonize(edges);
+	}
+
+	/**
 	 * Polygonizes a set of line segments via noding.
 	 * 
 	 * @param segments list of segments (noded or non-noded)
@@ -201,15 +212,21 @@ final class PGS {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	static final Collection<Geometry> polygonizeSegments(Collection<SegmentString> segments, boolean node) {
-		final Polygonizer polygonizer = new Polygonizer(); // TODO use QuickPolygonizer?
-		polygonizer.setCheckRingsValid(false);
-
+	static final PShape polygonizeSegments(Collection<SegmentString> segments, boolean node) {
 		if (node) {
 			segments = nodeSegmentStrings(segments);
 		}
 
+		/*
+		 * FastPolygonizer is slightly less robust, so use JTS implementation here.
+		 */
+//		final Collection<PEdge> meshEdges = new ArrayList<>(segments.size());
+//		segments.forEach(ss -> meshEdges.add(new PEdge(toPVector(ss.getCoordinate(0)), toPVector(ss.getCoordinate(1)))));
+//		return polygonizeEdges(meshEdges);
+
 		final Set<PEdge> edges = new HashSet<>();
+		final Polygonizer polygonizer = new Polygonizer();
+		polygonizer.setCheckRingsValid(false);
 		segments.forEach(ss -> {
 			/*
 			 * If the same LineString is added more than once to the polygonizer, the string
@@ -223,7 +240,7 @@ final class PGS {
 				polygonizer.add(l);
 			}
 		});
-		return polygonizer.getPolygons(); // NOTE rather slow method
+		return PGS_Conversion.toPShape(polygonizer.getPolygons());
 	}
 
 	/**

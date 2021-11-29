@@ -1,6 +1,5 @@
 package micycle.pgs;
 
-import static micycle.pgs.PGS_Conversion.toPShape;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -10,11 +9,7 @@ import org.jgrapht.alg.interfaces.VertexColoringAlgorithm.Coloring;
 import org.jgrapht.graph.AbstractBaseGraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.noding.SegmentString;
-import org.locationtech.jts.operation.polygonize.Polygonizer;
-import org.locationtech.jts.operation.polygonize.QuickPolygonizer;
 import org.tinfour.common.IConstraint;
 import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.IQuadEdge;
@@ -76,7 +71,6 @@ public class PGS_Meshing {
 	 * @since 1.1.0
 	 * @see #gabrielFaces(IIncrementalTin, boolean)
 	 */
-	@SuppressWarnings("unchecked")
 	public static PShape urquhartFaces(final IIncrementalTin triangulation, final boolean preservePerimeter) {
 		final HashSet<IQuadEdge> edges = new HashSet<>();
 		final HashSet<IQuadEdge> uniqueLongestEdges = new HashSet<>();
@@ -96,20 +90,12 @@ public class PGS_Meshing {
 			}
 		});
 
-		final Polygonizer polygonizer = new QuickPolygonizer(false);
-		polygonizer.setCheckRingsValid(false);
 		edges.removeAll(uniqueLongestEdges);
-		edges.forEach(edge -> polygonizer
-				.add(PGS.GEOM_FACTORY.createLineString(new Coordinate[] { toCoord(edge.getA()), toCoord(edge.getB()) })));
 
-		final PShape out = new PShape(PConstants.GROUP);
-		polygonizer.getPolygons().forEach(p -> {
-			final PShape face = toPShape((Polygon) p);
-			face.setStrokeWeight(3);
-			out.addChild(face);
-		});
+		final Collection<PEdge> meshEdges = new ArrayList<>(edges.size());
+		edges.forEach(edge -> meshEdges.add(new PEdge(edge.getA().x, edge.getA().y, edge.getB().x, edge.getB().y)));
 
-		return out;
+		return PGS.polygonizeEdges(meshEdges);
 	}
 
 	/**
@@ -137,7 +123,6 @@ public class PGS_Meshing {
 	 * @since 1.1.0
 	 * @see #urquhartFaces(IncrementalTin, boolean)
 	 */
-	@SuppressWarnings("unchecked")
 	public static PShape gabrielFaces(final IIncrementalTin triangulation, final boolean preservePerimeter) {
 		final HashSet<IQuadEdge> edges = new HashSet<>();
 		final HashSet<Vertex> vertices = new HashSet<>();
@@ -174,18 +159,10 @@ public class PGS_Meshing {
 		});
 		edges.removeAll(nonGabrielEdges);
 
-		final Polygonizer polygonizer = new QuickPolygonizer(false);
-		polygonizer.setCheckRingsValid(false);
-		edges.forEach(edge -> polygonizer
-				.add(PGS.GEOM_FACTORY.createLineString(new Coordinate[] { toCoord(edge.getA()), toCoord(edge.getB()) })));
+		final Collection<PEdge> meshEdges = new ArrayList<>(edges.size());
+		edges.forEach(edge -> meshEdges.add(new PEdge(edge.getA().x, edge.getA().y, edge.getB().x, edge.getB().y)));
 
-		final PShape out = new PShape(PConstants.GROUP);
-		polygonizer.getPolygons().forEach(p -> {
-			final PShape face = toPShape((Polygon) p);
-			face.setStrokeWeight(3);
-			out.addChild(face);
-		});
-		return out;
+		return PGS.polygonizeEdges(meshEdges);
 	}
 
 	/**
@@ -211,8 +188,6 @@ public class PGS_Meshing {
 		final IncrementalTinDual dual = new IncrementalTinDual(triangulation);
 		final PShape dualMesh = dual.getMesh();
 		PGS_Conversion.setAllFillColor(dualMesh, RGB.WHITE);
-		// PGS_Conversion.disableAllFill(dualMesh);
-		// PGS_Conversion.setAllStrokeColor(dualMesh, RGB.composeColor(0, 50, 255), 2);
 		PGS_Conversion.setAllStrokeColor(dualMesh, RGB.PINK, 2);
 		return dualMesh;
 	}
@@ -285,6 +260,9 @@ public class PGS_Meshing {
 	/**
 	 * Generates a quadrangulation from a triangulation by selectively removing (or
 	 * "collapsing") the edges shared by neighboring triangles (via edge coloring).
+	 * <p>
+	 * This method may be slow on large inputs (as measured by vertex count), owing
+	 * to the graph coloring it performs.
 	 * 
 	 * @param triangulation     a triangulation mesh
 	 * @param preservePerimeter whether to preserve the perimeter of the input
@@ -295,7 +273,6 @@ public class PGS_Meshing {
 	 * @return a GROUP PShape, where each child shape is one quadrangle
 	 * @since 1.2.0
 	 */
-	@SuppressWarnings("unchecked")
 	public static PShape edgeCollapseQuadrangulation(final IIncrementalTin triangulation, final boolean preservePerimeter) {
 		/*-
 		 * From 'Fast unstructured quadrilateral mesh generation'.
@@ -304,7 +281,7 @@ public class PGS_Meshing {
 		 * First partition the edges of the triangular mesh into three groups such that
 		 * no triangle has two edges of the same color (find groups by reducing to a
 		 * graph-coloring).
-		 * Then obtain an all-quadrilateral mesh by removing all edges of one 
+		 * Then obtain an all-quadrilateral mesh by removing all edges of *one* 
 		 * particular color.
 		 */
 		final boolean unconstrained = triangulation.getConstraints().isEmpty();
@@ -323,13 +300,13 @@ public class PGS_Meshing {
 		});
 
 		Coloring<IQuadEdge> coloring = new RLFColoring<>(graph).getColoring();
-		final Polygonizer polygonizer = new QuickPolygonizer(false);
-		polygonizer.setCheckRingsValid(false);
 
 		final HashSet<IQuadEdge> perimeter = new HashSet<>(triangulation.getPerimeter());
 		if (!unconstrained) {
 			perimeter.clear(); // clear, the perimeter of constrained tin is unaffected by the constraint
 		}
+
+		final Collection<PEdge> meshEdges = new ArrayList<>();
 		coloring.getColors().forEach((edge, color) -> {
 			/*
 			 * "We can remove the edges of any one of the colors, however a convenient
@@ -338,10 +315,11 @@ public class PGS_Meshing {
 			 */
 			// NOTE could now apply Topological optimization, as given in paper.
 			if ((color < 2) || (preservePerimeter && (edge.isConstrainedRegionBorder() || perimeter.contains(edge)))) {
-				polygonizer.add(PGS.GEOM_FACTORY.createLineString(new Coordinate[] { toCoord(edge.getA()), toCoord(edge.getB()) }));
+				meshEdges.add(new PEdge(edge.getA().x, edge.getA().y, edge.getB().x, edge.getB().y));
 			}
 		});
-		return toPShape(polygonizer.getPolygons());
+
+		return PGS.polygonizeEdges(meshEdges);
 	}
 
 	/**
@@ -349,8 +327,8 @@ public class PGS_Meshing {
 	 * centroids with those of their neighbours.
 	 * <p>
 	 * This approach tends to create a denser quad mesh than
-	 * {@link #edgeCollapseQuadrangulation(IIncrementalTin, boolean) <code>edgeCollapseQuadrangulation()</code>} on the same
-	 * input.
+	 * {@link #edgeCollapseQuadrangulation(IIncrementalTin, boolean)
+	 * <code>edgeCollapseQuadrangulation()</code>} on the same input.
 	 * 
 	 * @param triangulation     a triangulation mesh
 	 * @param preservePerimeter whether to preserve the perimeter of the input
@@ -361,11 +339,7 @@ public class PGS_Meshing {
 	 * @return a GROUP PShape, where each child shape is one quadrangle
 	 * @since 1.2.0
 	 */
-	@SuppressWarnings("unchecked")
 	public static PShape centroidQuadrangulation(final IIncrementalTin triangulation, final boolean preservePerimeter) {
-		final Polygonizer polygonizer = new QuickPolygonizer(false);
-		polygonizer.setCheckRingsValid(false);
-
 		final boolean unconstrained = triangulation.getConstraints().isEmpty();
 		final HashSet<PEdge> edges = new HashSet<>();
 		TriangleCollector.visitSimpleTriangles(triangulation, t -> {
@@ -387,9 +361,7 @@ public class PGS_Meshing {
 			});
 		}
 
-		edges.forEach(e -> polygonizer.add(e.toLineString()));
-
-		return toPShape(polygonizer.getPolygons());
+		return PGS.polygonizeEdges(edges);
 	}
 
 	/**
@@ -404,11 +376,7 @@ public class PGS_Meshing {
 		SpiralQuadrangulation sq = new SpiralQuadrangulation(points);
 		Collection<SegmentString> segments = new ArrayList<>(sq.getQuadrangulationEdges().size());
 		sq.getQuadrangulationEdges().forEach(e -> segments.add(PGS.createSegmentString(e.a, e.b)));
-		return PGS_Conversion.toPShape(PGS.polygonizeSegments(segments, true));
-	}
-
-	private static Coordinate toCoord(final Vertex v) {
-		return new Coordinate(v.x, v.y);
+		return PGS.polygonizeSegments(segments, true);
 	}
 
 	/**
