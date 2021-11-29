@@ -27,6 +27,7 @@ import org.tinspin.index.kdtree.KDTree;
 
 import micycle.pgs.color.RGB;
 import micycle.pgs.utility.IncrementalTinDual;
+import micycle.pgs.utility.PEdge;
 import micycle.pgs.utility.RLFColoring;
 import micycle.pgs.utility.SpiralQuadrangulation;
 import processing.core.PConstants;
@@ -289,7 +290,8 @@ public class PGS_Meshing {
 	 * @param preservePerimeter whether to preserve the perimeter of the input
 	 *                          triangulation; when true, retains edges that lie on
 	 *                          the perimeter of the triangulation mesh that would
-	 *                          have otherwise been removed.
+	 *                          have otherwise been removed (this results in some
+	 *                          triangles being included in the output).
 	 * @return a GROUP PShape, where each child shape is one quadrangle
 	 * @since 1.2.0
 	 */
@@ -326,19 +328,67 @@ public class PGS_Meshing {
 
 		final HashSet<IQuadEdge> perimeter = new HashSet<>(triangulation.getPerimeter());
 		if (!unconstrained) {
-			perimeter.clear();
+			perimeter.clear(); // clear, the perimeter of constrained tin is unaffected by the constraint
 		}
-		System.out.println(perimeter.size());
 		coloring.getColors().forEach((edge, color) -> {
 			/*
 			 * "We can remove the edges of any one of the colors, however a convenient
 			 * choice is the one that leaves the fewest number of unmerged boundary
 			 * triangles". -- ideal, but not implemented here...
 			 */
+			// NOTE could now apply Topological optimization, as given in paper.
 			if ((color < 2) || (preservePerimeter && (edge.isConstrainedRegionBorder() || perimeter.contains(edge)))) {
 				polygonizer.add(PGS.GEOM_FACTORY.createLineString(new Coordinate[] { toCoord(edge.getA()), toCoord(edge.getB()) }));
 			}
 		});
+		return toPShape(polygonizer.getPolygons());
+	}
+
+	/**
+	 * Generates a quadrangulation from a triangulation by joining triangle
+	 * centroids with those of their neighbours.
+	 * <p>
+	 * This approach tends to create a denser quad mesh than
+	 * {@link #edgeCollapseQuadrangulation(IIncrementalTin, boolean) <code>edgeCollapseQuadrangulation()</code>} on the same
+	 * input.
+	 * 
+	 * @param triangulation     a triangulation mesh
+	 * @param preservePerimeter whether to preserve the perimeter of the input
+	 *                          triangulation; when true, retains edges that lie on
+	 *                          the perimeter of the triangulation mesh that would
+	 *                          have otherwise been removed (this results in some
+	 *                          triangles being included in the output).
+	 * @return a GROUP PShape, where each child shape is one quadrangle
+	 * @since 1.2.0
+	 */
+	@SuppressWarnings("unchecked")
+	public static PShape centroidQuadrangulation(final IIncrementalTin triangulation, final boolean preservePerimeter) {
+		final Polygonizer polygonizer = new QuickPolygonizer(false);
+		polygonizer.setCheckRingsValid(false);
+
+		final boolean unconstrained = triangulation.getConstraints().isEmpty();
+		final HashSet<PEdge> edges = new HashSet<>();
+		TriangleCollector.visitSimpleTriangles(triangulation, t -> {
+			final IConstraint constraint = t.getContainingRegion();
+			if (unconstrained || (constraint != null && constraint.definesConstrainedRegion())) {
+				Vertex centroid = centroid(t);
+				edges.add(new PEdge(centroid.getX(), centroid.getY(), t.getVertexA().x, t.getVertexA().y));
+				edges.add(new PEdge(centroid.getX(), centroid.getY(), t.getVertexB().x, t.getVertexB().y));
+				edges.add(new PEdge(centroid.getX(), centroid.getY(), t.getVertexC().x, t.getVertexC().y));
+			}
+		});
+
+		if (preservePerimeter) {
+			List<IQuadEdge> perimeter = triangulation.getPerimeter();
+			triangulation.edges().forEach(edge -> {
+				if (edge.isConstrainedRegionBorder() || (unconstrained && perimeter.contains(edge))) {
+					edges.add(new PEdge(edge.getA().x, edge.getA().y, edge.getB().x, edge.getB().y));
+				}
+			});
+		}
+
+		edges.forEach(e -> polygonizer.add(e.toLineString()));
+
 		return toPShape(polygonizer.getPolygons());
 	}
 
@@ -384,6 +434,17 @@ public class PGS_Meshing {
 		final Vertex a = edge.getA();
 		final Vertex b = edge.getB();
 		return new double[] { (a.x + b.x) / 2d, (a.y + b.y) / 2d };
+	}
+
+	private static Vertex centroid(final SimpleTriangle t) {
+		final Vertex a = t.getVertexA();
+		final Vertex b = t.getVertexB();
+		final Vertex c = t.getVertexC();
+		double x = a.x + b.x + c.x;
+		x /= 3;
+		double y = a.y + b.y + c.y;
+		y /= 3;
+		return new Vertex(x, y, 0);
 	}
 
 }

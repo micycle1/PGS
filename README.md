@@ -412,13 +412,15 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
-    <td align="center" valign="center"><b>Split Quadrangulation</td>
+    <td align="center" valign="center"><b>Centroid Quadrangulation</td>
     <td align="center" valign="center"><b>Edge Collapse Quadrangulation</td>
+    <td align="center" valign="center"><b>Split Quadrangulation</td>
     <td align="center" valign="center"><b>Spiral Quadrangulation</td>
   </tr>
   <tr>
-    <td valign="top" width="25%"><img src="resources/meshing/quadrangulation.png"></td>
+    <td valign="top" width="25%"><img src="resources/meshing/centroidQuadrangulation.png"></td>
     <td valign="top" width="25%"><img src="resources/meshing/ecQuadrangulation.png"></td>
+    <td valign="top" width="25%"><img src="resources/meshing/quadrangulation.png"></td>
     <td valign="top" width="25%"><img src="resources/meshing/spiralQuadrangulation.gif"></td>
   </tr>
 </table>
