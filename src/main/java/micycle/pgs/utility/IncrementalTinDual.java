@@ -18,10 +18,10 @@ import processing.core.PConstants;
 import processing.core.PShape;
 
 /**
- * Produces a dual graph from a TinFour Delaunay Triangulation. Triangle
- * centroids form the vertices of the dual graph, and each triangulation vertex
- * corresponds to a face in the dual graph; the dual graph has similarity to the
- * voronoi diagram, but it isn't the same.
+ * Produces a (barycentric) dual graph from a TinFour Delaunay Triangulation.
+ * Triangle centroids form the vertices of the dual graph, and each
+ * triangulation vertex corresponds to a face in the dual graph; the dual graph
+ * has similarity to the voronoi diagram, but it isn't the same.
  * <p>
  * The dual of (fairly) regular triangulation is a regular polygonal (hex/oct)
  * mesh.
@@ -95,9 +95,7 @@ public class IncrementalTinDual {
 	 * Generate mesh of polygonal dual faces.
 	 */
 	public PShape getMesh() {
-
 		if (mesh == null) {
-
 			mesh = new PShape(PConstants.GROUP);
 
 			final HashSet<Vertex> seenHubs = new HashSet<>();

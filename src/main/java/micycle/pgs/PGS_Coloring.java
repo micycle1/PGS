@@ -184,7 +184,6 @@ public final class PGS_Coloring {
 	 * Finds a coloring for the graphable/mesh-like shape (as given by a collection
 	 * of faces) using the coloring algorithm specified.
 	 */
-
 	private static Coloring<PShape> findColoring(Collection<PShape> shapes, ColoringAlgorithm coloringAlgorithm) {
 		final AbstractBaseGraph<PShape, DefaultEdge> graph = prepareGraph(shapes);
 		final Coloring<PShape> coloring;

@@ -218,7 +218,8 @@ final class PGS {
 		}
 
 		/*
-		 * FastPolygonizer is slightly less robust, so use JTS implementation here.
+		 * FastPolygonizer is slightly less robust (when input has "dangles"), so use
+		 * JTS implementation in this method.
 		 */
 //		final Collection<PEdge> meshEdges = new ArrayList<>(segments.size());
 //		segments.forEach(ss -> meshEdges.add(new PEdge(toPVector(ss.getCoordinate(0)), toPVector(ss.getCoordinate(1)))));

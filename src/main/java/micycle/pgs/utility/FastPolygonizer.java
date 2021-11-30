@@ -28,6 +28,7 @@ import processing.core.PVector;
 public class FastPolygonizer {
 
 	// Implements John Hughes' answer at math.stackexchange.com/a/1809750/583690
+	// TODO investigate how it handles dangles (seems dangles cause missing faces)
 
 	private FastPolygonizer() {
 	}

@@ -13,7 +13,6 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * <p>
  * Tiling, tessellation and subdivision of the plane using periodic or
  * non-periodic geometric shapes.
  * <p>
@@ -49,10 +48,11 @@ public final class PGS_Tiling {
 	 * Produces a shape made by randomly subdividing a rectangular plane into
 	 * rectangles.
 	 * 
-	 * @param width width of the rectangular plane to subdivide 
-	 * @param height height of the rectangular plane to subdivide
+	 * @param width    width of the rectangular plane to subdivide
+	 * @param height   height of the rectangular plane to subdivide
 	 * @param maxDepth maximum number of subdivisions
-	 * @return a GROUP PShape, where each child is a rectangle, that together comprise the plane
+	 * @return a GROUP PShape, where each child is a rectangle, that together
+	 *         comprise the plane
 	 * @see #rectSubdivsion(double, double, int, long) seeded rectSubdivsion()
 	 */
 	public static PShape rectSubdivsion(double width, double height, int maxDepth) {

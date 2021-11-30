@@ -42,7 +42,7 @@ public final class PGS_Conversion implements PConstants {
 	/**
 	 * Boolean flag that affects whether a PShape's style (fillColor, strokeColor,
 	 * strokeWidth) is preserved during PShape->Geometry->PShape conversion (i.e.
-	 * when <code>toPShape(fromPShape(myPShape))</code> is called).
+	 * when <code>toPShape(fromPShape(myPShape))</code> is called). Default = true.
 	 */
 	public static boolean PRESERVE_STYLE = true;
 
@@ -76,7 +76,7 @@ public final class PGS_Conversion implements PConstants {
 					}
 				}
 				break;
-			case Geometry.TYPENAME_LINEARRING : // linearrings are closed by definition
+			case Geometry.TYPENAME_LINEARRING : // LinearRings are closed by definition
 			case Geometry.TYPENAME_LINESTRING :
 				final LineString l = (LineString) g;
 				final boolean closed = l.isClosed();
@@ -251,7 +251,7 @@ public final class PGS_Conversion implements PConstants {
 				break;
 		}
 
-		if (PRESERVE_STYLE) {
+		if (PRESERVE_STYLE && g != null) {
 			g.setUserData(new PShapeData(shape));
 		}
 

@@ -28,6 +28,9 @@ import processing.core.PVector;
  */
 public final class PGS_PointSet {
 
+	// TODO see
+	// https://github.com/generateme/fastmath/blob/master/src/fastmath/random.clj
+
 	private static final float SQRT_3 = (float) Math.sqrt(3);
 	/** Golden angle (in radians) */
 	private static final float GOLDEN_ANGLE = (float) (Math.PI * (3 - Math.sqrt(5)));
