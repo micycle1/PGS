@@ -25,9 +25,9 @@ import org.locationtech.jts.noding.snap.SnappingNoder;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 
 import micycle.pgs.color.RGB;
-import micycle.pgs.utility.FastPolygonizer;
-import micycle.pgs.utility.Nullable;
-import micycle.pgs.utility.PEdge;
+import micycle.pgs.commons.FastPolygonizer;
+import micycle.pgs.commons.Nullable;
+import micycle.pgs.commons.PEdge;
 import processing.core.PShape;
 import processing.core.PVector;
 

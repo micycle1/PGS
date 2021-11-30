@@ -39,7 +39,7 @@ import hageldave.jplotter.renderables.Lines.SegmentDetails;
 import micycle.medialAxis.MedialAxis;
 import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.color.RGB;
-import micycle.pgs.utility.SolubSkeleton;
+import micycle.pgs.commons.SolubSkeleton;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;

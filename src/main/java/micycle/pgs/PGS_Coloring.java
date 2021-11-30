@@ -18,9 +18,9 @@ import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 import org.locationtech.jts.noding.SegmentString;
 
-import micycle.pgs.utility.PEdge;
 import micycle.pgs.color.RGB;
-import micycle.pgs.utility.RLFColoring;
+import micycle.pgs.commons.PEdge;
+import micycle.pgs.commons.RLFColoring;
 import processing.core.PShape;
 import processing.core.PVector;
 

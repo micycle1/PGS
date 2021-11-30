@@ -5,9 +5,9 @@ import java.util.List;
 import java.util.SplittableRandom;
 
 import micycle.pgs.color.RGB;
-import micycle.pgs.utility.DoyleSpiral;
-import micycle.pgs.utility.RectangularSubdivision;
-import micycle.pgs.utility.TriangleSubdivision;
+import micycle.pgs.commons.DoyleSpiral;
+import micycle.pgs.commons.RectangularSubdivision;
+import micycle.pgs.commons.TriangleSubdivision;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;

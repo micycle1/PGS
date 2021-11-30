@@ -36,7 +36,7 @@ import org.tinspin.index.rtree.RTree;
 import org.tinspin.index.rtree.RTreeIterator;
 
 import micycle.pgs.color.RGB;
-import micycle.pgs.utility.PEdge;
+import micycle.pgs.commons.PEdge;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;

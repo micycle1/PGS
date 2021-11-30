@@ -17,9 +17,9 @@ import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.simplify.VWSimplifier;
 
 import micycle.pgs.color.RGB;
-import micycle.pgs.utility.ChaikinCut;
-import micycle.pgs.utility.CornerRounding;
-import micycle.pgs.utility.GaussianLineSmoothing;
+import micycle.pgs.commons.ChaikinCut;
+import micycle.pgs.commons.CornerRounding;
+import micycle.pgs.commons.GaussianLineSmoothing;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;

@@ -21,10 +21,10 @@ import org.tinspin.index.PointIndex;
 import org.tinspin.index.kdtree.KDTree;
 
 import micycle.pgs.color.RGB;
-import micycle.pgs.utility.IncrementalTinDual;
-import micycle.pgs.utility.PEdge;
-import micycle.pgs.utility.RLFColoring;
-import micycle.pgs.utility.SpiralQuadrangulation;
+import micycle.pgs.commons.IncrementalTinDual;
+import micycle.pgs.commons.PEdge;
+import micycle.pgs.commons.RLFColoring;
+import micycle.pgs.commons.SpiralQuadrangulation;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;

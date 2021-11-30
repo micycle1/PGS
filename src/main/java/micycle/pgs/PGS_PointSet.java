@@ -12,7 +12,7 @@ import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.Well19937c;
 import org.tinspin.index.kdtree.KDTree;
 
-import micycle.pgs.utility.PoissonDistribution;
+import micycle.pgs.commons.PoissonDistribution;
 import processing.core.PVector;
 
 /**

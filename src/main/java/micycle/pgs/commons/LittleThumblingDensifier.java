@@ -1,4 +1,4 @@
-package micycle.pgs.utility;
+package micycle.pgs.commons;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateSequence;

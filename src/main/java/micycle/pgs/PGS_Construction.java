@@ -10,8 +10,8 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
 import micycle.pgs.color.RGB;
-import micycle.pgs.utility.RandomPolygon;
-import micycle.pgs.utility.Star;
+import micycle.pgs.commons.RandomPolygon;
+import micycle.pgs.commons.Star;
 import processing.core.PConstants;
 import processing.core.PShape;
 

@@ -1,4 +1,4 @@
-package micycle.pgs.utility;
+package micycle.pgs.commons;
 
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.Well19937c;

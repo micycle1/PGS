@@ -24,7 +24,7 @@ import org.tinfour.utils.TriangleCollector;
 import earcut4j.Earcut;
 import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.color.RGB;
-import micycle.pgs.utility.Nullable;
+import micycle.pgs.commons.Nullable;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;

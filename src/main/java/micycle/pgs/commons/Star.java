@@ -1,4 +1,4 @@
-package micycle.pgs.utility;
+package micycle.pgs.commons;
 
 /*
  * www.javagl.de - Geom - Geometry utilities

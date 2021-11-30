@@ -17,7 +17,7 @@ import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
-import micycle.pgs.utility.PEdge;
+import micycle.pgs.commons.PEdge;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;

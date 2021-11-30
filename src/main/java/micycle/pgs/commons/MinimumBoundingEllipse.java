@@ -1,4 +1,4 @@
-package micycle.pgs.utility;
+package micycle.pgs.commons;
 
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.EigenDecomposition;

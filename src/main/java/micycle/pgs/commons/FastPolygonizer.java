@@ -1,4 +1,4 @@
-package micycle.pgs.utility;
+package micycle.pgs.commons;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;

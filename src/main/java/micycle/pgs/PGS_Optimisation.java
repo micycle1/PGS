@@ -21,11 +21,11 @@ import org.locationtech.jts.operation.distance.DistanceOp;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
 import micycle.pgs.color.RGB;
-import micycle.pgs.utility.ClosestPointPair;
-import micycle.pgs.utility.FarthestPointPair;
-import micycle.pgs.utility.MaximumInscribedRectangle;
-import micycle.pgs.utility.MinimumBoundingEllipse;
-import micycle.pgs.utility.MinimumBoundingTriangle;
+import micycle.pgs.commons.ClosestPointPair;
+import micycle.pgs.commons.FarthestPointPair;
+import micycle.pgs.commons.MaximumInscribedRectangle;
+import micycle.pgs.commons.MinimumBoundingEllipse;
+import micycle.pgs.commons.MinimumBoundingTriangle;
 import processing.core.PShape;
 import processing.core.PVector;
 
