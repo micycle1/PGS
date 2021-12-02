@@ -40,6 +40,10 @@ All examples are dynamic and/or interactive. Shown below are merely screenshots.
 
 <img src="../resources/examples/slice.png" alt="" width="500"/>
 
+## spiralOutline
+
+<img src="../resources/examples/spiralOutline.png" alt="" width="500"/>
+
 ## textOffsetCurves
 
 <img src="../resources/examples/textOffsetCurves.png" alt="" width="500"/>
