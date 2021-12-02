@@ -7,6 +7,7 @@ import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.Map;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.dissolve.LineDissolver;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Polygon;
@@ -229,15 +231,17 @@ public final class PGS_Contour {
 		Polygon polygon = (Polygon) fromPShape(shape);
 
 		Coordinate[] coords = polygon.getExteriorRing().getCoordinates();
+		CoordinateList coordList = new CoordinateList(coords);
 		if (Orientation.isCCW(coords)) {
 			reverse(coords); // exterior should be CW
+			Collections.reverse(coordList);
 		}
-		for (Coordinate coordinate : coords) {
-			points.add(PGS.toPVector(coordinate));
-		}
-		points.remove(0); // remove closing point
+//		for (Coordinate coordinate : coords) {
+//			points.add(PGS.toPVector(coordinate));
+//		}
+		coordList.remove(0); // remove closing point
 
-		SolubSkeleton skeleton = new SolubSkeleton(points, 0);
+		SolubSkeleton skeleton = new SolubSkeleton(coordList, 0);
 		skeleton.run();
 
 		PShape lines = new PShape();
@@ -246,12 +250,12 @@ public final class PGS_Contour {
 		PShape bones = prepareLinesPShape(null, null, 4);
 
 		skeleton.branches.forEach(branch -> {
-			branches.vertex(branch.sp1.x, branch.sp1.y);
-			branches.vertex(branch.sp2.x, branch.sp2.y);
+			branches.vertex((float)branch.sp1.x, (float)branch.sp1.y);
+			branches.vertex((float)branch.sp2.x, (float)branch.sp2.y);
 		});
 		skeleton.bones.forEach(bone -> {
-			bones.vertex(bone.sp1.x, bone.sp1.y);
-			bones.vertex(bone.sp2.x, bone.sp2.y);
+			bones.vertex((float)bone.sp1.x, (float)bone.sp1.y);
+			bones.vertex((float)bone.sp2.x,(float) bone.sp2.y);
 		});
 
 		bones.endShape();

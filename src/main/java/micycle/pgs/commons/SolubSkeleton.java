@@ -1,14 +1,14 @@
 package micycle.pgs.commons;
 
-import static processing.core.PApplet.round;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Stream;
 
-import processing.core.PVector;
+import org.locationtech.jts.algorithm.LineIntersector;
+import org.locationtech.jts.algorithm.RobustLineIntersector;
+import org.locationtech.jts.geom.Coordinate;
 
 /**
  * Algorithm:
@@ -36,9 +36,9 @@ public class SolubSkeleton {
 	 * https://discourse.processing.org/t/17208/7
 	 */
 
-	private final float tol;
+	private final double tol;
 
-	public List<PVector> vertices;
+	public List<Coordinate> vertices;
 	private List<Ray> rays;
 	/**
 	 * Branches connect the inner bones to the vertices of the polygon.
@@ -56,7 +56,7 @@ public class SolubSkeleton {
 	 * @param vertices unclosed list of vertices going clockwise
 	 * @param tol
 	 */
-	public SolubSkeleton(List<PVector> vertices, float tol) {
+	public SolubSkeleton(List<Coordinate> vertices, double tol) {
 		this.vertices = new ArrayList<>(vertices);
 		this.tol = tol;
 		rays = new ArrayList<>();
@@ -74,19 +74,19 @@ public class SolubSkeleton {
 
 	/**
 	 * Starts by computing the rays originating from the corners of the polygon.
-	 * Each ray object also stores the PVectors of its neighboring polygon edges
+	 * Each ray object also stores the Coordinates of its neighboring polygon edges
 	 * (previous and next).
 	 */
 	private void init() {
 		int lv = vertices.size();
 
 		for (int i = 0; i < vertices.size(); i++) {
-			PVector pv = vertices.get(Math.floorMod(i - 1, lv)); // previous vertex
-			PVector cv = vertices.get(i); // current vertex
-			PVector nv = vertices.get((i + 1) % lv); // next vertex
+			Coordinate pv = vertices.get(Math.floorMod(i - 1, lv)); // previous vertex
+			Coordinate cv = vertices.get(i); // current vertex
+			Coordinate nv = vertices.get((i + 1) % lv); // next vertex
 
-			PVector b = bisector(pv, cv, cv, nv);
-			PVector ept = b.setMag(100000).add(cv); // end-point of the ray (far from start-point)
+			Coordinate b = bisector(pv, cv, cv, nv);
+			Coordinate ept = add(cv, setMag(b, 100000)); // end-point of the ray (far from start-point)
 
 			Edge in = new Edge(pv, cv);
 			Edge out = new Edge(cv, nv);
@@ -100,7 +100,6 @@ public class SolubSkeleton {
 	}
 
 	private void reduce() {
-
 		/*
 		 * Check for ray-ray collision
 		 */
@@ -114,14 +113,14 @@ public class SolubSkeleton {
 				Ray cr = rays.get(i); // current ray
 				Ray nRay = rays.get((i + 1) % lr); // next ray
 
-				float minD = 100000; // min-distance
-				PVector X = null; // intersection point (optional)
+				double minD = 100000; // min-distance
+				Coordinate X = null; // intersection point (optional)
 
 				// check current ray for intersection with prev and next
 
-				PVector x = intersect(cr, pRay); // check with prev
+				Coordinate x = intersect(cr, pRay); // check with prev
 				if (x != null) { // rays intersected
-					float d = x.dist(cr.startPoint);
+					double d = x.distance(cr.startPoint);
 					if (d < minD) {
 						minD = d;
 						X = x;
@@ -130,7 +129,7 @@ public class SolubSkeleton {
 
 				x = intersect(cr, nRay); // check with next
 				if (x != null) { // rays intersected
-					float d = x.dist(cr.startPoint);
+					double d = x.distance(cr.startPoint);
 					if (d < minD) {
 						minD = d;
 						X = x;
@@ -155,7 +154,7 @@ public class SolubSkeleton {
 
 					if (i1.X().equals(i2.X())) {
 						// sum of distances from selected rays (s-pt) to their intersection point
-						float dSum = i1.minD + i2.minD;
+						double dSum = i1.minD + i2.minD;
 						candidates.add(new Candidate(i, i1.X(), dSum));
 					}
 				}
@@ -172,8 +171,8 @@ public class SolubSkeleton {
 						Intersection i2 = intersections.get((id + 1) % intersections.size()); // wrap around to 0
 						if (i1.X() != null && i2.X() != null) {
 							// sending to candidates anyway
-							float dSum = i1.minD + i2.minD; // sum of distances from selected rays (s-pt) to their
-															// intersection point
+							double dSum = i1.minD + i2.minD; // sum of distances from selected rays (s-pt) to their
+																// intersection point
 							candidates.add(new Candidate(id, i1.X(), dSum));
 						}
 					}
@@ -197,15 +196,15 @@ public class SolubSkeleton {
 
 				for (Candidate ray : selectedRays) {
 					int id = ray.id;
-					PVector X = ray.intersectionPoint;
+					Coordinate X = ray.intersectionPoint;
 					Ray r1 = rays.get(id - offset);
 					Ray r2 = rays.get((id + 1 - offset) % lr);
 
 					// stores bones (segments from parent rays to intersection point 'X')
 					Stream.of(r1, r2).forEach(r -> {
 						if (!vertices.contains(r.startPoint)) {
-							float d1 = X.dist(r1.prevEdge.p2);
-							float d2 = X.dist(r2.nextEdge.p1);
+							double d1 = X.distance(r1.prevEdge.p2);
+							double d2 = X.distance(r2.nextEdge.p1);
 							if ((d1 + d2) / 2f > tol) {
 								bones.add(new Bone(r.startPoint, X));
 							} else {
@@ -217,14 +216,14 @@ public class SolubSkeleton {
 					});
 
 					// compute direction of the new ray
-					PVector b = bisector(r1, r2);
-					PVector ept = X.copy().add(b.setMag(100000));
+					Coordinate b = bisector(r1, r2);
+					Coordinate ept = add(X.copy(), setMag(b, 100000));
 
 					// check if ray points in the right direction
 					int si = vertices.indexOf(r2.nextEdge.p1); // #start-pt index
 					int ei = vertices.indexOf(r1.prevEdge.p2); // #end-pt index
 
-					ArrayList<PVector> slice = new ArrayList<>();
+					ArrayList<Coordinate> slice = new ArrayList<>();
 					slice.add(X); // moved from '[X] + slice' to here
 					if (ei > si) {
 						for (int i = si; i < ei; i++) {
@@ -239,8 +238,8 @@ public class SolubSkeleton {
 						}
 					}
 
-					if (!contains(slice, X.copy().add(b.setMag(1)))) {
-						ept.mult(-1);
+					if (!contains(slice, add(X.copy(), setMag(b, 1)))) {
+						ept = mult(ept, -1);
 					}
 
 					// delete parents rays from array list and insert their 'child' instead
@@ -262,17 +261,38 @@ public class SolubSkeleton {
 	 * Computes the bisector of a corner between edge p1-p2 and edge p3-p4. p2 & p3
 	 * are usually the same.
 	 */
-	private static PVector bisector(PVector p1, PVector p2, PVector p3, PVector p4) {
+	private static Coordinate bisector(Coordinate p1, Coordinate p2, Coordinate p3, Coordinate p4) {
 
-		PVector dir1 = PVector.sub(p2, p1).normalize(); // direction between 1st point and 2nd point of edge 1
-		PVector dir2 = PVector.sub(p4, p3).normalize(); // direction between 1st point and 2nd point of edge 2
+		Coordinate dir1 = normalize(sub(p2, p1)); // direction between 1st point and 2nd point of edge 1
+		Coordinate dir2 = normalize(sub(p4, p3)); // direction between 1st point and 2nd point of edge 2
 
-		PVector dsum = PVector.add(dir1, dir2);
+		Coordinate dsum = add(dir1, dir2);
 
-		return new PVector(dsum.y, -dsum.x).normalize();
+		return normalize(new Coordinate(dsum.y, -dsum.x));
 	}
 
-	private static PVector bisector(Ray r1, Ray r2) {
+	private static Coordinate sub(Coordinate a, Coordinate b) {
+		return new Coordinate(a.x - b.x, a.y - b.y);
+	}
+
+	private static Coordinate add(Coordinate a, Coordinate b) {
+		return new Coordinate(a.x + b.x, a.y + b.y);
+	}
+
+	private static Coordinate normalize(Coordinate a) {
+		double mag = Math.sqrt(a.x * a.x + a.y * a.y);
+		return new Coordinate(a.x / mag, a.y / mag);
+	}
+
+	private static Coordinate mult(Coordinate a, double mult) {
+		return new Coordinate(a.x * mult, a.y * mult);
+	}
+
+	private static Coordinate setMag(Coordinate a, double mag) {
+		return mult(normalize(a), mag);
+	}
+
+	private static Coordinate bisector(Ray r1, Ray r2) {
 		return bisector(r1.prevEdge.p1, r1.prevEdge.p2, r2.nextEdge.p1, r2.nextEdge.p2);
 	}
 
@@ -280,35 +300,29 @@ public class SolubSkeleton {
 	 * Checks if 2 lines are intersecting. Optional: returns location of
 	 * intersection point.
 	 */
-	private static PVector intersect(PVector s1, PVector e1, PVector s2, PVector e2) {
+	private static Coordinate intersect(Coordinate s1, Coordinate e1, Coordinate s2, Coordinate e2) {
+		LineIntersector lineIntersector = new RobustLineIntersector();
+		lineIntersector.computeIntersection(s1, e1, s2, e2);
 
-		float uA = ((e2.x - s2.x) * (s1.y - s2.y) - (e2.y - s2.y) * (s1.x - s2.x))
-				/ ((e2.y - s2.y) * (e1.x - s1.x) - (e2.x - s2.x) * (e1.y - s1.y));
-		float uB = ((e1.x - s1.x) * (s1.y - s2.y) - (e1.y - s1.y) * (s1.x - s2.x))
-				/ ((e2.y - s2.y) * (e1.x - s1.x) - (e2.x - s2.x) * (e1.y - s1.y));
-
-		float secX, secY;
-		if (uA >= 0 && uA <= 1 && uB >= 0 && uB <= 1) {
-
-			secX = s1.x + (uA * (e1.x - s1.x));
-			secY = s1.y + (uA * (e1.y - s1.y));
-			return new PVector(round(secX), round(secY)); // TODO round?
+		if (lineIntersector.hasIntersection()) {
+			Coordinate x = lineIntersector.getIntersection(0);
+			return new Coordinate(Math.round(x.x), Math.round(x.y));
 		}
-		return null; // no intersection
+		return null;
 	}
 
-	private static PVector intersect(Ray r1, Ray r2) {
+	private static Coordinate intersect(Ray r1, Ray r2) {
 		return intersect(r1.startPoint, r1.endPoint, r2.startPoint, r2.endPoint);
 	}
 
-	private static boolean contains(ArrayList<PVector> verts, PVector pt) {
+	private static boolean contains(ArrayList<Coordinate> verts, Coordinate pt) {
 
 		int N = verts.size();
 		boolean isInside = false;
 
 		for (int i = 0; i < N; i++) {
-			PVector v1 = verts.get((i + 1) % N);
-			PVector v2 = verts.get(i);
+			Coordinate v1 = verts.get((i + 1) % N);
+			Coordinate v2 = verts.get(i);
 
 			if ((v2.y > pt.y) != (v1.y > pt.y)) {
 				if (pt.x < (v1.x - v2.x) * (pt.y - v2.y) / (v1.y - v2.y) + v2.x) {
@@ -327,12 +341,12 @@ public class SolubSkeleton {
 	 */
 	private class Ray {
 
-		PVector startPoint; // the vertex ray originated from
-		PVector endPoint; // live end point of ray
+		Coordinate startPoint; // the vertex ray originated from
+		Coordinate endPoint; // live end point of ray
 		Edge prevEdge; // edge from previous vertex to startpoint of this ray
 		Edge nextEdge; // from to next vertex
 
-		private Ray(PVector startPoint, PVector endPoint, Edge e1, Edge e2) {
+		private Ray(Coordinate startPoint, Coordinate endPoint, Edge e1, Edge e2) {
 			this.startPoint = startPoint;
 			this.endPoint = endPoint;
 			this.prevEdge = e1;
@@ -345,10 +359,10 @@ public class SolubSkeleton {
 	 */
 	public class Edge {
 
-		public PVector p1; // vertex from
-		public PVector p2; // vertex to
+		public Coordinate p1; // vertex from
+		public Coordinate p2; // vertex to
 
-		public Edge(PVector p1, PVector p2) {
+		public Edge(Coordinate p1, Coordinate p2) {
 			this.p1 = p1;
 			this.p2 = p2;
 		}
@@ -356,10 +370,10 @@ public class SolubSkeleton {
 
 	public class Bone {
 
-		public PVector sp1; // startPoint of ray 1
-		public PVector sp2; // startPoint of ray 2
+		public Coordinate sp1; // startPoint of ray 1
+		public Coordinate sp2; // startPoint of ray 2
 
-		public Bone(PVector sp1, PVector sp2) {
+		public Bone(Coordinate sp1, Coordinate sp2) {
 			this.sp1 = sp1;
 			this.sp2 = sp2;
 		}
@@ -370,10 +384,10 @@ public class SolubSkeleton {
 	 */
 	private class Intersection {
 
-		float minD;
-		PVector intersectionPoint;
+		double minD;
+		Coordinate intersectionPoint;
 
-		public Intersection(PVector intersectionPoint, float minD) {
+		public Intersection(Coordinate intersectionPoint, double minD) {
 			this.minD = minD;
 			this.intersectionPoint = intersectionPoint;
 		}
@@ -381,9 +395,23 @@ public class SolubSkeleton {
 		/**
 		 * Where the rays cross
 		 */
-		PVector X() {
+		Coordinate X() {
 			return intersectionPoint;
 		}
+
+//		@Override
+//		public int hashCode() {
+//			return intersectionPoint.hashCode()^(int)Double.doubleToRawLongBits(minD);
+//		}
+//
+//		@Override
+//		public boolean equals(Object obj) {
+//			if (obj instanceof Intersection) {
+//				Intersection o = (Intersection) obj;
+//				return o.intersectionPoint.equals2D(intersectionPoint) && o.minD == minD;
+//			}
+//			return false;
+//		}
 	}
 
 	/**
@@ -392,10 +420,10 @@ public class SolubSkeleton {
 	private class Candidate implements Comparable<Candidate> {
 
 		int id;
-		PVector intersectionPoint;
-		float minD;
+		Coordinate intersectionPoint;
+		double minD;
 
-		public Candidate(int id, PVector intersectionPoint, float minD) {
+		public Candidate(int id, Coordinate intersectionPoint, double minD) {
 			this.id = id;
 			this.intersectionPoint = intersectionPoint;
 			this.minD = minD;
