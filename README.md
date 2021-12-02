@@ -270,11 +270,13 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Simplification</td>
     <td align="center" valign="center" colspan="2"><b>Chaikin Cutting</td>
+    <td align="center" valign="center" colspan="2"><b>Interpolation</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/morphology/simplifyVW.gif"></td>
     <td valign="top" width="25%"><img src="resources/morphology/chaikinCut1.gif"></td>
     <td valign="top" width="25%"><img src="resources/morphology/chaikinCut2.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/morph.gif"></td>
   </tr>
 </table>
 

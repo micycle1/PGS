@@ -20,6 +20,7 @@ import micycle.pgs.color.RGB;
 import micycle.pgs.commons.ChaikinCut;
 import micycle.pgs.commons.CornerRounding;
 import micycle.pgs.commons.GaussianLineSmoothing;
+import micycle.pgs.commons.ShapeInterpolation;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -366,6 +367,36 @@ public final class PGS_Morphology {
 				// appears to merge shapes. TODO apply .fix() to shapes individually
 				return copy;
 			}
+		}
+	}
+
+	/**
+	 * Generates an intermediate shape between two shapes by interpolating between
+	 * them. This process has many names: shape morphing / blending / averaging /
+	 * tweening / interpolation.
+	 * <p>
+	 * The underlying technique rotates one of the shapes to minimise the total
+	 * distance between each shape's vertices, then performs linear interpolation
+	 * between vertices. In practice this performs well but the outcome worsens as
+	 * shapes become more concave; more sophisticated techniques employ some level
+	 * of rigidity preservation.
+	 * 
+	 * @param from                a single polygon; the shape we want to morph from
+	 * @param to                  a single polygon; the shape we want to morph
+	 *                            <code>from</code> into
+	 * @param interpolationFactor between 0...1
+	 * @return a polygonal PShape
+	 * @since 1.2.0
+	 */
+	public static PShape interpolate(PShape from, PShape to, double interpolationFactor) {
+		final Geometry toGeom = fromPShape(to);
+		final Geometry fromGeom = fromPShape(from);
+		if (toGeom.getGeometryType().equals(Geometry.TYPENAME_POLYGON) && fromGeom.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
+			final ShapeInterpolation tween = new ShapeInterpolation(toGeom, fromGeom);
+			return toPShape(PGS.GEOM_FACTORY.createPolygon(tween.tween(interpolationFactor)));
+		} else {
+			System.err.println("morph() accepts holeless single polygons only (for now).");
+			return from;
 		}
 	}
 

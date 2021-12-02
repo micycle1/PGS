@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `setAllStrokeToFillColor()` to `PGS_Conversion`. Sets the stroke color to the fill color for a PShape and all its descendants (separately).
 * A number of new primitives to `PGS_Construction`: *serpinskiCurve*, *spiral*.
 * `extractPerimeter()` to `PGS_Processing`. Extracts a portion/subline of the perimeter of a shape between two locations.
+* `interpolate()` to `PGS_Morphology`. Generates an intermediate shape between two shapes by interpolating/morphing between them.
 
 ### Changed
 * `PGS_Construction` now preserves a PShape's *fillColor*, *strokeColor* and *strokeWeight* throughout forward-backward conversion. This behaviour can be toggle using the class's `PRESERVE_STYLE` flag (default = true). Note that PGS' methods will generally not preserve the style of the original PShape because JTS does not preserve geometry user data during its operations.
@@ -30,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_Contour.isolines()` now accepts a contour smoothing parameter.
 * `PGS_Processing.polygonizeLines()` is now more robust and faster.
 * Moved `urquhartFaces()` and `gabrielFaces()` from `PGS_Triangulation` to `PGS_Meshing`.
+* Renamed `micycle.pgs.utility` package to `micycle.pgs.commons`.
 
 ### Fixed
 * Occasional out of bounds error with Poisson Distribution.
