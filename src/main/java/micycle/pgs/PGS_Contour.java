@@ -7,7 +7,6 @@ import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -16,7 +15,6 @@ import java.util.Map;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.dissolve.LineDissolver;
 import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Polygon;
@@ -41,14 +39,12 @@ import hageldave.jplotter.renderables.Lines.SegmentDetails;
 import micycle.medialAxis.MedialAxis;
 import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.color.RGB;
-import micycle.pgs.commons.SolubSkeleton;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Methods that produce a variety of methods for producing different kinds of
- * shape contours.
+ * Methods for producing different kinds of shape contours.
  *
  * <p>
  * A 2D contour is a closed sequence (a cycle) of 3 or more connected 2D
@@ -217,55 +213,6 @@ public final class PGS_Contour {
 	}
 
 	/**
-	 * An alternative straight skeleton implementation. Not robust, but fast. Does
-	 * not support holes.
-	 *
-	 * @param shape a hull
-	 * @return shape with two children: one child contains bones; one contains
-	 *         branches
-	 * @see #straightSkeleton(PShape) straightSkeleton(PShape). Fully robust, but
-	 *      slower.
-	 */
-	public static PShape straightSkeletonSolub(PShape shape) {
-		ArrayList<PVector> points = new ArrayList<>();
-		Polygon polygon = (Polygon) fromPShape(shape);
-
-		Coordinate[] coords = polygon.getExteriorRing().getCoordinates();
-		CoordinateList coordList = new CoordinateList(coords);
-		if (Orientation.isCCW(coords)) {
-			reverse(coords); // exterior should be CW
-			Collections.reverse(coordList);
-		}
-//		for (Coordinate coordinate : coords) {
-//			points.add(PGS.toPVector(coordinate));
-//		}
-		coordList.remove(0); // remove closing point
-
-		SolubSkeleton skeleton = new SolubSkeleton(coordList, 0);
-		skeleton.run();
-
-		PShape lines = new PShape();
-		lines.setFamily(PConstants.GROUP);
-		PShape branches = prepareLinesPShape(RGB.composeColor(40, 235, 180, 128), null, null);
-		PShape bones = prepareLinesPShape(null, null, 4);
-
-		skeleton.branches.forEach(branch -> {
-			branches.vertex((float)branch.sp1.x, (float)branch.sp1.y);
-			branches.vertex((float)branch.sp2.x, (float)branch.sp2.y);
-		});
-		skeleton.bones.forEach(bone -> {
-			bones.vertex((float)bone.sp1.x, (float)bone.sp1.y);
-			bones.vertex((float)bone.sp2.x,(float) bone.sp2.y);
-		});
-
-		bones.endShape();
-		branches.endShape();
-		lines.addChild(branches);
-		lines.addChild(bones);
-		return lines;
-	}
-
-	/**
 	 * Generates a topographic-like isoline contour map from the shape's vertices.
 	 * The "elevation" (or z value) of points is the euclidean distance between a
 	 * point in the shape and the given "high" point.
@@ -354,10 +301,12 @@ public final class PGS_Contour {
 
 		PShape out = new PShape();
 		try {
-			// NOTE need to use intersection() rather than checkling whether vertices are
-			// contained within the shape (faster) because vertices of longer (straight)
-			// line segments may lie within the shape when the segment extends outside the
-			// shape
+			/*
+			 * Need to use intersection() rather than checkling whether vertices are
+			 * contained within the shape (faster) because vertices of longer (straight)
+			 * line segments may lie within the shape when the segment extends outside the
+			 * shape
+			 */
 			out = toPShape(DouglasPeuckerSimplifier.simplify(ld.getResult(), 1).intersection(g));
 			PGS_Conversion.disableAllFill(out);
 		} catch (Exception e2) {
