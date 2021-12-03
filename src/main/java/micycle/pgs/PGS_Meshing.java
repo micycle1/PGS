@@ -72,8 +72,8 @@ public class PGS_Meshing {
 	 * @see #gabrielFaces(IIncrementalTin, boolean)
 	 */
 	public static PShape urquhartFaces(final IIncrementalTin triangulation, final boolean preservePerimeter) {
-		final HashSet<IQuadEdge> edges = new HashSet<>();
-		final HashSet<IQuadEdge> uniqueLongestEdges = new HashSet<>();
+		final HashSet<IQuadEdge> edges = PGS.makeHashSet(triangulation.getMaximumEdgeAllocationIndex());
+		final HashSet<IQuadEdge> uniqueLongestEdges = PGS.makeHashSet(triangulation.getMaximumEdgeAllocationIndex());
 
 		final boolean notConstrained = triangulation.getConstraints().isEmpty();
 

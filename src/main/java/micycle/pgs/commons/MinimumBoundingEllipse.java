@@ -416,12 +416,16 @@ public class MinimumBoundingEllipse {
 		// minors and cofactors
 		for (int i = 0; i < matrix.length; i++) {
 			for (int j = 0; j < matrix[i].length; j++) {
-				inverse[i][j] = Math.pow(-1, i + j) * determinant(minor(matrix, i, j));
+				inverse[i][j] = Math.pow(-1, 0d + i + j) * determinant(minor(matrix, i, j));
 			}
 		}
 
 		// adjugate and determinant
-		double det = 1.0 / determinant(matrix);
+		double det = determinant(matrix);
+		if (det == 0) {
+			throw new RuntimeException("Determinant is zero.");
+		}
+		det = 1.0 / det;
 		for (int i = 0; i < inverse.length; i++) {
 			for (int j = 0; j <= i; j++) {
 				double temp = inverse[i][j];

@@ -29,6 +29,7 @@ import org.tinfour.contour.ContourBuilderForTin;
 import org.tinfour.standard.IncrementalTin;
 import org.tinfour.utils.SmoothingFilter;
 import org.twak.camp.Corner;
+import org.twak.camp.Edge;
 import org.twak.camp.Machine;
 import org.twak.camp.Skeleton;
 import org.twak.utils.collections.Loop;
@@ -113,7 +114,7 @@ public final class PGS_Contour {
 
 		final Machine speed = new Machine(1); // every edge same speed
 
-		Geometry g = fromPShape(shape);
+		final Geometry g = fromPShape(shape);
 		Polygon polygon;
 		if (g.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
 			polygon = (Polygon) g;
@@ -128,12 +129,11 @@ public final class PGS_Contour {
 		HashSet<Coordinate> edgeCoordsSet = new HashSet<>();
 
 		Skeleton skeleton;
-		LoopL<org.twak.camp.Edge> loopL = new LoopL<>(); // list of loops
+		LoopL<Edge> loopL = new LoopL<>(); // list of loops
 		ArrayList<Corner> corners = new ArrayList<>();
-		Loop<org.twak.camp.Edge> loop = new Loop<>();
+		Loop<Edge> loop = new Loop<>();
 
-		LinearRing exterior = polygon.getExteriorRing();
-		Coordinate[] coords = exterior.getCoordinates();
+		Coordinate[] coords = polygon.getExteriorRing().getCoordinates();
 		if (!Orientation.isCCW(coords)) {
 			reverse(coords); // exterior should be CCW
 		}
@@ -148,7 +148,7 @@ public final class PGS_Contour {
 		edgeCoordsSet.add(coords[0]); // close loop
 
 		for (int j = 0; j < corners.size() - 1; j++) {
-			org.twak.camp.Edge edge = new org.twak.camp.Edge(corners.get(j), corners.get((j + 1) % (corners.size() - 1)));
+			Edge edge = new Edge(corners.get(j), corners.get((j + 1) % (corners.size() - 1)));
 			edge.machine = speed;
 			loop.append(edge);
 		}
@@ -180,10 +180,10 @@ public final class PGS_Contour {
 			loopL.add(loop);
 		}
 
-		PShape lines = new PShape();
+		final PShape lines = new PShape();
 		lines.setFamily(PConstants.GROUP);
-		PShape bones = prepareLinesPShape(null, null, 4);
-		PShape branches = prepareLinesPShape(RGB.composeColor(40, 235, 180, 128), null, null);
+		final PShape bones = prepareLinesPShape(null, null, 4);
+		final PShape branches = prepareLinesPShape(RGB.composeColor(40, 235, 180, 128), null, null);
 		try {
 			skeleton = new Skeleton(loopL, true);
 			skeleton.skeleton();

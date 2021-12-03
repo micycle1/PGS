@@ -222,7 +222,7 @@ public final class PGS_Coloring {
 	private static AbstractBaseGraph<PShape, DefaultEdge> prepareGraph(Collection<PShape> meshFaces) {
 		final AbstractBaseGraph<PShape, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
 		// map of which edge belong to each face; used to detect half-edges
-		final HashMap<PEdge, PShape> edgesMap = new HashMap<>();
+		final HashMap<PEdge, PShape> edgesMap = new HashMap<>(meshFaces.size() * 4);
 
 		for (PShape face : meshFaces) {
 			graph.addVertex(face); // always add child so disconnected shapes are colored

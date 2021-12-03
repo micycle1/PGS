@@ -101,8 +101,8 @@ public final class PGS_ShapeBoolean {
 			return new PShape();
 		}
 
-		final Set<PEdge> allEdges = new HashSet<>(mesh.getChildCount() * 3);
-		final Set<PEdge> duplicateEdges = new HashSet<>(allEdges.size());
+		final Set<PEdge> allEdges = PGS.makeHashSet(mesh.getChildCount() * 3);
+		final Set<PEdge> duplicateEdges = PGS.makeHashSet(allEdges.size());
 
 		/*
 		 * Compute set of unique edges belonging to the mesh (this set is equivalent to

@@ -25,7 +25,6 @@ import org.locationtech.jts.noding.snap.SnappingNoder;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 
 import micycle.pgs.color.RGB;
-import micycle.pgs.commons.FastPolygonizer;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
 import processing.core.PShape;
@@ -199,7 +198,10 @@ final class PGS {
 	 * @return
 	 */
 	static final PShape polygonizeEdges(Collection<PEdge> edges) {
-		return FastPolygonizer.polygonize(edges);
+//		return FastPolygonizer.polygonize(edges);
+		final List<SegmentString> ss = new ArrayList<>(edges.size());
+		edges.forEach(e -> ss.add(createSegmentString(e.a, e.b)));
+		return polygonizeSegments(ss, false);
 	}
 
 	/**
@@ -225,7 +227,7 @@ final class PGS {
 //		segments.forEach(ss -> meshEdges.add(new PEdge(toPVector(ss.getCoordinate(0)), toPVector(ss.getCoordinate(1)))));
 //		return polygonizeEdges(meshEdges);
 
-		final Set<PEdge> edges = new HashSet<>();
+		final Set<PEdge> edges = PGS.makeHashSet(segments.size());
 		final Polygonizer polygonizer = new Polygonizer();
 		polygonizer.setCheckRingsValid(false);
 		segments.forEach(ss -> {
@@ -263,6 +265,11 @@ final class PGS {
 		final Noder noder = new SnappingNoder(0.01);
 		noder.computeNodes(segments);
 		return noder.getNodedSubstrings();
+	}
+
+	static final <T> HashSet<T> makeHashSet(int expectedSize) {
+		// required capacity = actual_capacity / fill_factor + 1 (to avoid rehashing)
+		return new HashSet<>((int) ((expectedSize) / 0.75 + 1));
 	}
 
 	/**
