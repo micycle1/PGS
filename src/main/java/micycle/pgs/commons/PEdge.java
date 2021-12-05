@@ -21,6 +21,19 @@ public class PEdge {
 		this(new PVector((float) x1, (float) y1), new PVector((float) x2, (float) y2));
 	}
 
+	/**
+	 * Rounds (mutates) the vertices of this PEdge.
+	 * 
+	 * @return this PEdge
+	 */
+	public PEdge round() {
+		a.x = Math.round(a.x);
+		a.y = Math.round(a.y);
+		b.x = Math.round(b.x);
+		b.y = Math.round(b.y);
+		return this;
+	}
+
 	@Override
 	/**
 	 * Direction-agnostic hash

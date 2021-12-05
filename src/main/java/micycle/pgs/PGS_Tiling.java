@@ -6,6 +6,7 @@ import java.util.SplittableRandom;
 
 import micycle.pgs.color.RGB;
 import micycle.pgs.commons.DoyleSpiral;
+import micycle.pgs.commons.PenroseTiling;
 import micycle.pgs.commons.RectangularSubdivision;
 import micycle.pgs.commons.TriangleSubdivision;
 import processing.core.PConstants;
@@ -25,34 +26,16 @@ import processing.core.PVector;
  */
 public final class PGS_Tiling {
 
-	// @formatter:off
-	/**
-	 * Rhombille Penrose tiling?
-	 * Truchet tiling
-	 * L-System too?
-	 * Pentagonal tilings (upto 15)
-	 * Gailiunas's Spiral Tilings
-	 * https://openprocessing.org/browse/?time=anytime&type=all&q=tiling#
-	 * https://openprocessing.org/browse/?time=anytime&type=all&q=tiling#
-	 * overview https://www.nathaniel.ai/de-bruijn-projections/
-	 */
-	// @formatter:on
-
-	// ideas @
-	// https://demonstrations.wolfram.com/topic.html?topic=Art&start=21&limit=20&sortmethod=recent
-
 	private PGS_Tiling() {
 	}
 
 	/**
-	 * Produces a shape made by randomly subdividing a rectangular plane into
-	 * rectangles.
+	 * Recursively and randomly subdivides the given/bounded plane into rectangles.
 	 * 
-	 * @param width    width of the rectangular plane to subdivide
-	 * @param height   height of the rectangular plane to subdivide
-	 * @param maxDepth maximum number of subdivisions
-	 * @return a GROUP PShape, where each child is a rectangle, that together
-	 *         comprise the plane
+	 * @param width    width of the quad subdivision plane
+	 * @param height   height of the quad subdivision plane
+	 * @param maxDepth maximum number of subdivisions (recursion depth)
+	 * @return a GROUP PShape, where each child shape is a face of the subdivision
 	 * @see #rectSubdivsion(double, double, int, long) seeded rectSubdivsion()
 	 */
 	public static PShape rectSubdivsion(double width, double height, int maxDepth) {
@@ -62,12 +45,13 @@ public final class PGS_Tiling {
 	}
 
 	/**
+	 * Recursively and randomly subdivides the given/bounded plane into rectangles.
 	 * 
-	 * @param width
-	 * @param height
-	 * @param maxDepth
-	 * @param seed
-	 * @return
+	 * @param width    width of the quad subdivision plane
+	 * @param height   height of the quad subdivision plane
+	 * @param maxDepth maximum number of subdivisions (recursion depth)
+	 * @param seed     the random seed
+	 * @return a GROUP PShape, where each child shape is a face of the subdivision
 	 * @see #rectSubdivsion(double, double, int) non-seeded rectSubdivsion()
 	 */
 	public static PShape rectSubdivsion(double width, double height, int maxDepth, long seed) {
@@ -75,22 +59,45 @@ public final class PGS_Tiling {
 		return rectangularSubdivision.divide();
 	}
 
+	/**
+	 * Recursively and randomly subdivides the given/bounded plane into triangles.
+	 * 
+	 * @param width    width of the subdivision plane
+	 * @param height   height of the subdivision plane
+	 * @param maxDepth maximum number of subdivisions (recursion depth)
+	 * @return a GROUP PShape, where each child shape is a face of the subdivision
+	 * @see #triangleSubdivsion(double, double, int, long) seeded
+	 *      triangleSubdivsion()
+	 */
 	public static PShape triangleSubdivsion(double width, double height, int maxDepth) {
 		final TriangleSubdivision subdivision = new TriangleSubdivision(width, height, maxDepth, System.currentTimeMillis());
 		return subdivision.divide();
 	}
 
+	/**
+	 * Recursively and randomly subdivides the given/bounded plane into triangles.
+	 * 
+	 * @param width    width of the subdivision plane
+	 * @param height   height of the subdivision plane
+	 * @param maxDepth maximum number of subdivisions (recursion depth)
+	 * @param seed     the random seed
+	 * @return a GROUP PShape, where each child shape is a face of the subdivision
+	 * @see PGS_Tiling#triangleSubdivsion(double, double, int) non-seeded
+	 *      triangleSubdivision()
+	 */
 	public static PShape triangleSubdivsion(double width, double height, int maxDepth, long seed) {
 		final TriangleSubdivision subdivision = new TriangleSubdivision(width, height, maxDepth, seed);
 		return subdivision.divide();
 	}
 
 	/**
+	 * Recursively and randomly subdivides the given/bounded plane into convex quad
+	 * polygons.
 	 * 
-	 * @param width
-	 * @param height
-	 * @param depth
-	 * @return
+	 * @param width  width of the plane that is subdivided
+	 * @param height height of the plane that is subdivided
+	 * @param depth  number of subdivisions (recursion depth)
+	 * @return a GROUP PShape, where each child shape is a face of the subdivision
 	 * @see #quadSubdivision(double, double, int, long) seeded quadSubdivision()
 	 */
 	public static PShape quadSubdivision(double width, double height, int depth) {
@@ -98,16 +105,14 @@ public final class PGS_Tiling {
 	}
 
 	/**
-	 * Recursively and randomly subdivides the given/bounded plane into convex QUADS
-	 * POLYGONS.
+	 * Recursively and randomly subdivides the given/bounded plane into convex quad
+	 * polygons.
 	 * 
-	 * randomSubdivision() ?
-	 * 
-	 * @param width
-	 * @param height
-	 * @param depth
-	 * @param seed
-	 * @return
+	 * @param width  width of the quad subdivision plane
+	 * @param height height of the quad subdivision plane
+	 * @param depth  number of subdivisions (recursion depth)
+	 * @param seed   the random seed
+	 * @return a GROUP PShape, where each child shape is a face of the subdivision
 	 * @see #quadSubdivision(double, double, int) non-seeded quadSubdivision()
 	 */
 	public static PShape quadSubdivision(double width, double height, int depth, long seed) {
@@ -176,6 +181,20 @@ public final class PGS_Tiling {
 			}
 		}
 		return PGS_Processing.polygonizeLines(segments);
+	}
+
+	/**
+	 * Generates a Penrose Tiling (consisting of rhombi).
+	 * 
+	 * @param centerX x coordinate of the center/origin of the tiling
+	 * @param centerY y coordinate of the center/origin of the tiling
+	 * @param radius  maximum radius of the tiling (measured from the center)
+	 * @param steps   number of tiling subdivisions
+	 * @return a GROUP PShape, where each child shape is a face of the tiling
+	 */
+	public static PShape penroseTiling(double centerX, double centerY, final double radius, final int steps) {
+		final PenroseTiling pr = new PenroseTiling(centerX, centerY, radius, steps);
+		return PGS.polygonizeEdges(pr.getEdges());
 	}
 
 	private static void divideRect(PVector p1, PVector p2, PVector p3, PVector p4, int n, PShape parent, SplittableRandom r) {
