@@ -3,10 +3,14 @@ package micycle.pgs;
 import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
 import micycle.pgs.color.RGB;
@@ -14,6 +18,7 @@ import micycle.pgs.commons.RandomPolygon;
 import micycle.pgs.commons.Star;
 import processing.core.PConstants;
 import processing.core.PShape;
+import processing.core.PVector;
 
 /**
  * Construct uncommon/interesting 2D geometries.
@@ -253,15 +258,17 @@ public class PGS_Construction {
 	}
 
 	/**
-	 * Creates a spiral shape.
+	 * Creates an linear/archimedean spiral shape, where the distance between any 2
+	 * successive windings is constant.
 	 * 
-	 * @param centerX the x coordinate of the spiral center point / origin
-	 * @param centerY the y coordinate of the spiral center point / origin
-	 * @param coils   number of coils/rotations in the spiral
+	 * @param centerX     the x coordinate of the spiral center point / origin
+	 * @param centerY     the y coordinate of the spiral center point / origin
+	 * @param coils       number of coils/rotations in the spiral
+	 * @param outerRadius the outer-most radius of the spiral / final coil
 	 * @return a stroked PATH PShape
 	 * @since 1.2.0
 	 */
-	public static PShape createSpiral(double centerX, double centerY, double coils, double outerRadius) {
+	public static PShape createLinearSpiral(double centerX, double centerY, double coils, double outerRadius) {
 		// from https://stackoverflow.com/a/13901170/9808792
 		final int chord = 2; // distance between points to plot
 		// spiral is rotated by this number of radians
@@ -272,8 +279,8 @@ public class PGS_Construction {
 		final double awayStep = Math.max(outerRadius, 1) / thetaMax;
 		final int direction = 1; // either +1 (CW) or -1 (CCW)
 
-		final List<Coordinate> coords = new ArrayList<>();
-		coords.add(new Coordinate(centerX, centerY));
+		final CoordinateList coords = new CoordinateList();
+		coords.add(new Coordinate(centerX, centerY), false);
 
 		double theta = chord / awayStep;
 		/*
@@ -286,14 +293,14 @@ public class PGS_Construction {
 			// Convert 'around' and 'away' to X and Y.
 			double x = centerX + Math.cos(around) * away;
 			double y = centerY + Math.sin(around) * away;
-			coords.add(new Coordinate(x, y));
+			coords.add(new Coordinate(x, y), false);
 
 			double delta = (-2 * away + Math.sqrt(4 * away * away + 8 * awayStep * chord)) / (2 * awayStep);
 			theta += delta;
 		}
 
 		if (coords.size() > 1) {
-			Geometry lineString = PGS.GEOM_FACTORY.createLineString(coords.toArray(new Coordinate[coords.size()]));
+			Geometry lineString = PGS.GEOM_FACTORY.createLineString(coords.toCoordinateArray());
 			PShape spiral = PGS_Conversion.toPShape(lineString);
 			spiral.setStrokeWeight(10);
 			spiral.setStroke(RGB.WHITE);
@@ -302,6 +309,56 @@ public class PGS_Construction {
 		} else {
 			return new PShape();
 		}
+	}
+
+	/**
+	 * Creates Fermat's spiral, a parabolic spiral which is symmetrical about the
+	 * origin.
+	 * 
+	 * @param centerX     the x coordinate of the spiral center point / origin
+	 * @param centerY     the y coordinate of the spiral center point / origin
+	 * @param coils       number of coils/rotations in the spiral
+	 * @param outerRadius the outer-most radius of the spiral / final coil
+	 * @return a stroked PATH PShape
+	 * @since 1.2.0
+	 */
+	public static PShape createFermatSpiral(double centerX, double centerY, double coils, double outerRadius) {
+		double thetaEnd = (Math.PI * coils);
+		final int samples = (int) (50 * coils);
+		double dt = thetaEnd / samples;
+
+		List<PVector> points = new ArrayList<>(samples);
+
+		final CoordinateList yin = new CoordinateList();
+		final CoordinateList yang = new CoordinateList();
+
+		final double z = outerRadius / Math.sqrt(thetaEnd);
+
+		for (int i = 0; i <= samples; i++) {
+			final double theta = i * dt; // archimedean spiral
+			final double r = Math.sqrt(theta) * z; // Specific to made a Fermat Spiral.
+
+			// polar to cartesian
+			double x = r * Math.cos(theta) + centerX;
+			double y = r * Math.sin(theta) + centerY;
+			points.add(new PVector((float) x, (float) y));
+			yin.add(new Coordinate(x, y), false);
+
+			x = -r * Math.cos(theta) + centerX;
+			y = -r * Math.sin(theta) + centerY;
+			yang.add(new Coordinate(x, y), false);
+		}
+
+		Collections.reverse(yin);
+		yin.addAll(yang);
+
+		LineString lineString = PGS.GEOM_FACTORY.createLineString(yin.toCoordinateArray());
+		PShape spiral = PGS_Conversion.toPShape(lineString);
+		spiral.setStrokeWeight(10);
+		spiral.setStroke(RGB.WHITE);
+		spiral.setStrokeCap(PConstants.ROUND);
+		spiral.setFill(false);
+		return spiral;
 	}
 
 	/**

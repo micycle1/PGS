@@ -549,7 +549,7 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center"><b>Random Convex Polygon</td>
     <td align="center" valign="center"><b>Heart</td>
     <td align="center" valign="center"><b>Ring</td>
-    <td align="center" valign="center"><b>Spiral</td>
+    <td align="center" valign="center"><b>Linear Spiral</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/pgs/randomPolygon.gif"></td>
@@ -558,9 +558,11 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/pgs/spiral.gif"></td>
   </tr>
   <tr>
+    <td align="center" valign="center"><b>Fermat Spiral</td>
     <td align="center" valign="center"><b>Sierpinski Curve</td>
   </tr>
   <tr>
+    <td valign="top" width="25%"><img src="resources/pgs/fermatSpiral.gif"></td>
     <td valign="top" width="25%"><img src="resources/pgs/sierpinskiCurve.gif"></td>
   </tr>
 </table>

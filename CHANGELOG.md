@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `minimumBoundingTriangle()` to `PGS_Optimisation`. Computes the minimum-area bounding triangle that encloses a shape or point set.
 * `unionMesh()` to `PGS_ShapeBoolean`. Quickly and efficiently unions/merges the faces of a mesh-like shape together.
 * `setAllStrokeToFillColor()` to `PGS_Conversion`. Sets the stroke color to the fill color for a PShape and all its descendants (separately).
-* A number of new primitives to `PGS_Construction`: *serpinskiCurve*, *spiral*.
+* A number of new primitives to `PGS_Construction`: *serpinskiCurve*, *linearSpiral*, *fermatSpiral*.
 * `extractPerimeter()` to `PGS_Processing`. Extracts a portion/subline of the perimeter of a shape between two locations.
 * `interpolate()` to `PGS_Morphology`. Generates an intermediate shape between two shapes by interpolating/morphing between them.
 

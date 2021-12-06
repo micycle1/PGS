@@ -20,7 +20,7 @@ void draw() {
   fill(0, 0, 0.1, 64);
   rect(0, 0, width, height);
 
-  PShape spiral = PGS_Construction.createSpiral(width/2, height/2, 0.5+mouseX/200f, 250+mouseY/5f);
+  PShape spiral = PGS_Construction.createLinearSpiral(width/2, height/2, 0.5+mouseX/200f, 250+mouseY/5f);
   spiral = PGS_Transformation.rotate(spiral, new PVector(width/2, height/2), frameCount/100f);
   spiral.setFill(false);
   shape(spiral);
