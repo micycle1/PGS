@@ -62,6 +62,12 @@ public final class PGS_Conversion implements PConstants {
 			return new PShape();
 		}
 		PShape shape = new PShape();
+		// apply PGS style by default
+		shape.setFill(true);
+		shape.setFill(micycle.pgs.color.RGB.WHITE);
+		shape.setStroke(true);
+		shape.setStroke(micycle.pgs.color.RGB.PINK);
+		shape.setStrokeWeight(4);
 
 		switch (g.getGeometryType()) {
 			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
@@ -125,6 +131,7 @@ public final class PGS_Conversion implements PConstants {
 			case Geometry.TYPENAME_MULTIPOINT :
 				coords = g.getCoordinates();
 				shape.setFamily(PShape.GEOMETRY);
+				shape.setFill(false);
 				shape.setStrokeCap(PConstants.ROUND);
 				shape.beginShape(PConstants.POINTS);
 				for (int i = 0; i < coords.length; i++) {
@@ -141,12 +148,6 @@ public final class PGS_Conversion implements PConstants {
 		if (PRESERVE_STYLE && g.getUserData() != null && g.getUserData() instanceof PShapeData) {
 			PShapeData style = (PShapeData) g.getUserData();
 			style.applyTo(shape);
-		} else { // fall back to default PGS style
-			shape.setFill(true);
-			shape.setFill(micycle.pgs.color.RGB.WHITE);
-			shape.setStroke(true);
-			shape.setStroke(micycle.pgs.color.RGB.PINK);
-			shape.setStrokeWeight(4);
 		}
 
 		return shape;

@@ -213,18 +213,23 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Computes all points of intersection between the edges of two shapes.
+	 * Computes all <b>points</b> of intersection between the <b>edges</b> of two
+	 * shapes.
+	 * <p>
+	 * NOTE: This method shouldn't be confused with
+	 * {@link micycle.pgs.PGS_ShapeBoolean#intersect(PShape, PShape)
+	 * PGS_ShapeBoolean.intersect()}, which finds the shape made by the intersecting
+	 * shape areas.
 	 * 
 	 * @param a one shape
 	 * @param b another shape
-	 * @return list of all intersecting points represented by PVectors
+	 * @return list of all intersecting points (as PVectors)
 	 */
 	public static List<PVector> shapeIntersection(PShape a, PShape b) {
-
 		final HashSet<PVector> points = new HashSet<>();
 
-		final MCIndexSegmentSetMutualIntersector mci = new MCIndexSegmentSetMutualIntersector(
-				SegmentStringUtil.extractSegmentStrings(fromPShape(a)));
+		final Collection<?> segmentStrings = SegmentStringUtil.extractSegmentStrings(fromPShape(a));
+		final MCIndexSegmentSetMutualIntersector mci = new MCIndexSegmentSetMutualIntersector(segmentStrings);
 		final SegmentIntersectionDetector sid = new SegmentIntersectionDetector();
 
 		mci.process(SegmentStringUtil.extractSegmentStrings(fromPShape(b)), new SegmentIntersector() {

@@ -25,6 +25,7 @@ public class ShapeInterpolation {
 	 * Break-up single polygon to interpolate with a multipolygon.
 	 * See https://github.com/veltman/openvis/blob/master/README.md
 	 * See 'Guaranteed intersection-free polygon morphing'
+	 * RAP C++ : https://github.com/catherinetaylor2/Shape_Interpolation/blob/master/rigid_interp.cpp
 	 */
 
 	private final CoordinateList from, to;

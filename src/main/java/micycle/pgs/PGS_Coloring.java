@@ -28,19 +28,20 @@ import processing.core.PVector;
  * Intelligently color meshes (or mesh-like shapes) such that no two adjacent
  * faces have the same color, while minimising the number of colors used.
  * <p>
- * The methods in this class distinguish between mesh-like shapes ("conforming"
- * meshes) and non-mesh-like shapes ("non-conforming" meshes). In mesh-like
- * shapes, and adjacent cells not only share edges, but the edges are
- * identical!; that is, an edge from each has identical coordinates (such as a
- * triangulation). This distinction is necessary because non-mesh-like shapes
- * require a single step of pre-processing ("noding") to find neighbouring cells
- * whose neighbouring edges are not identical (i.e. they overlap but are not
- * equal). In none-mesh-like shape, lines map overlap, but they may not have
- * identical start and points.
+ * The methods in this class distinguish between mesh-like shapes (<i>conforming
+ * meshes</i>) and non-mesh-like shapes (<i>non-conforming meshes</i>). This
+ * distinction is necessary because shapes that represent non-conforming meshes
+ * require a single step of pre-processing ("noding") to first split edges
+ * before coloring. The difference is described below:
  * 
- * In non-mesh shapes, edges adjacent cells may be shared to some extent (but
- * not the whole length).
- * 
+ * <p style="margin-left: 40px">
+ * <i>Conforming Meshes</i> : Consists of adjacent cells that not only share
+ * edges, but every pair of shared edges are <b>identical</b> (having the same
+ * coordinates) (such as a triangulation). <br>
+ * <i>Non-Conforming Meshes</i> : Consists of adjacent cells that share edges
+ * (i.e. edges may overlap) but adjacent edges do not necessarily have identical
+ * start and end coordinates.
+ * </p>
  * 
  * @author Michael Carleton
  * @since 1.2.0
@@ -65,8 +66,8 @@ public final class PGS_Coloring {
 		 * The largest degree first greedy coloring algorithm.
 		 * 
 		 * <p>
-		 * LDO orders the vertices in decreasing order of degree, the idea being that
-		 * the large degree vertices can be colored more easily.
+		 * This algorithm orders the vertices in decreasing order of degree, the idea
+		 * being that the large degree vertices can be colored more easily.
 		 */
 		LARGEST_DEGREE_FIRST, // aka Largest Degree Ordering ?
 		/**
@@ -74,7 +75,6 @@ public final class PGS_Coloring {
 		 * 
 		 * This is the greedy coloring algorithm with the smallest-last ordering of the
 		 * vertices.
-		 * 
 		 */
 		SMALLEST_DEGREE_LAST,
 		/**
@@ -84,31 +84,38 @@ public final class PGS_Coloring {
 		 */
 		DSATUR,
 		/**
-		 * Finds the coarsest coloring of a graph (via color refinement algorithm).
+		 * Finds the coarsest coloring of a graph.
 		 */
 		COARSE,
 		/**
-		 * Recursive largest-first (recommended).
+		 * Recursive largest-first coloring (recommended).
 		 */
 		RLF
 	}
 
 	/**
+	 * Computes a coloring of the given mesh shape, returning a color class for each
+	 * mesh face.
 	 * 
-	 * @param meshShape GROUP PShape, whose children make up a mesh (more formally,
-	 *                  a planar straight-line graph) (share line segments)
-	 * @return
+	 * @param meshShape         a GROUP PShape, whose children constitute the faces
+	 *                          of a <b>conforming</b> mesh
+	 * @param coloringAlgorithm coloring algorithm used to color the mesh
+	 * @return a color-class map; a mapping of each mesh face (PShape) -> color
+	 *         class (integer)
 	 */
 	public static Map<PShape, Integer> colorMesh(PShape meshShape, ColoringAlgorithm coloringAlgorithm) {
 		return colorMesh(PGS_Conversion.getChildren(meshShape), coloringAlgorithm);
 	}
 
 	/**
+	 * Computes a coloring of the given mesh shape, returning a color class for each
+	 * mesh face.
 	 * 
-	 * @param shapes a collection of shapes representing a mesh (more formally, a
-	 *               planar straight-line graph).
-	 * @return The color map; a mapping from each face to its color class
-	 * @see #colorMesh(PShape, int[])
+	 * @param shapes            a collection of shapes that constitute the faces of
+	 *                          a <b>conforming</b> mesh
+	 * @param coloringAlgorithm coloring algorithm used to color the mesh
+	 * @return a color-class map; a mapping of each mesh face (PShape) -> color
+	 *         class (integer)
 	 */
 	public static Map<PShape, Integer> colorMesh(Collection<PShape> shapes, ColoringAlgorithm coloringAlgorithm) {
 		final Coloring<PShape> coloring = findColoring(shapes, coloringAlgorithm);
@@ -116,12 +123,14 @@ public final class PGS_Coloring {
 	}
 
 	/**
-	 * Colors the mesh-like shape using the colors provided. This method mutates the
-	 * fill colour of the input shape.
+	 * Computes a coloring of the given mesh shape and colors its faces using the
+	 * colors provided. This method mutates the fill colour of the input shape.
 	 * 
-	 * @param shape        the input shape (now colored according to the palette
-	 *                     provided)
-	 * @param colorPalette
+	 * @param shape             a GROUP PShape, whose children constitute the faces
+	 *                          of a <b>conforming</b> mesh
+	 * @param coloringAlgorithm coloring algorithm used to color the mesh
+	 * @param colorPalette      the (integer) colors with which to color the mesh
+	 * @return the input shape (whose faces have now been colored)
 	 */
 	public static PShape colorMesh(PShape shape, ColoringAlgorithm coloringAlgorithm, int[] colorPalette) {
 		final Coloring<PShape> coloring = findColoring(shape, coloringAlgorithm);
@@ -138,15 +147,30 @@ public final class PGS_Coloring {
 	}
 
 	/**
+	 * Computes a coloring of the given mesh shape and colors its faces using the
+	 * colors provided. This method mutates the fill colour of the input shape.
 	 * 
-	 * @param shape
-	 * @param coloringAlgorithm
-	 * @param colorPalette      ["#FFFFFF", "#...", etc.]
+	 * @param shape             a GROUP PShape, whose children constitute the faces
+	 *                          of a <b>conforming</b> mesh
+	 * @param coloringAlgorithm coloring algorithm used to color the mesh
+	 * @param colorPalette      the string colors (e.g. "#FFFFFF", or "cba5e8") with
+	 *                          which to color the mesh
+	 * @return the input shape (whose faces have now been colored)
 	 */
 	public static PShape colorMesh(PShape shape, ColoringAlgorithm coloringAlgorithm, String[] colorPalette) {
 		return colorMesh(shape, coloringAlgorithm, hexToColor(colorPalette));
 	}
 
+	/**
+	 * Computes a coloring of the given non-conforming mesh shape, returning a color
+	 * class for each face of the pre-processed (noded) mesh.
+	 * 
+	 * @param shape             a GROUP PShape, whose children constitute the faces
+	 *                          of a <b>non-conforming</b> mesh
+	 * @param coloringAlgorithm coloring algorithm used to color the mesh
+	 * @return a color-class map; a mapping of each noded mesh face (PShape) ->
+	 *         color class (integer)
+	 */
 	public static Map<PShape, Integer> colorNonMesh(PShape shape, ColoringAlgorithm coloringAlgorithm) {
 		final PShape mesh = nodeNonMesh(shape);
 		return colorMesh(mesh, coloringAlgorithm);
@@ -162,16 +186,40 @@ public final class PGS_Coloring {
 	 * @param colors
 	 * @return
 	 */
-	public static PShape colorNonMesh(PShape shape, ColoringAlgorithm coloringAlgorithm, int[] colors) {
+
+	/**
+	 * Computes a coloring of the given non-conforming mesh shape and colors the
+	 * faces of its noded representation using the colors provided.
+	 * 
+	 * @param shape             a GROUP PShape, whose children constitute the faces
+	 *                          of a <b>non-conforming</b> mesh
+	 * @param coloringAlgorithm coloring algorithm used to color the mesh
+	 * @param colorPalette      the (integer) colors with which to color the mesh
+	 * @return noded representation of the input shape (whose faces have now been
+	 *         colored)
+	 */
+	public static PShape colorNonMesh(PShape shape, ColoringAlgorithm coloringAlgorithm, int[] colorPalette) {
 		final PShape mesh = nodeNonMesh(shape);
-		colorMesh(mesh, coloringAlgorithm, colors);
+		colorMesh(mesh, coloringAlgorithm, colorPalette);
 		PGS_Conversion.setAllStrokeColor(mesh, RGB.WHITE, 2);
 		return mesh;
 	}
 
-	public static PShape colorNonMesh(PShape shape, ColoringAlgorithm coloringAlgorithm, String[] colors) {
+	/**
+	 * Computes a coloring of the given non-conforming mesh shape and colors the
+	 * faces of its noded representation using the colors provided.
+	 * 
+	 * @param shape             a GROUP PShape, whose children constitute the faces
+	 *                          of a <b>non-conforming</b> mesh
+	 * @param coloringAlgorithm coloring algorithm used to color the mesh
+	 * @param colorPalette      the string colors (e.g. "#FFFFFF", or "cba5e8") with
+	 *                          which to color the mesh
+	 * @return noded representation of the input shape (whose faces have now been
+	 *         colored)
+	 */
+	public static PShape colorNonMesh(PShape shape, ColoringAlgorithm coloringAlgorithm, String[] colorPalette) {
 		final PShape mesh = nodeNonMesh(shape);
-		colorMesh(mesh, coloringAlgorithm, colors);
+		colorMesh(mesh, coloringAlgorithm, colorPalette);
 		PGS_Conversion.setAllStrokeColor(mesh, RGB.WHITE, 2);
 		return mesh;
 	}
@@ -251,7 +299,7 @@ public final class PGS_Coloring {
 	}
 
 	/**
-	 * Converts a non-mesh shape into a graphable / mesh-like shape by "noding" it.
+	 * Converts a non-conforming mesh shape into a conforming mesh by "noding" it.
 	 * This essentially means splitting edges into two at points where they
 	 * intersect (touch) another edge.
 	 * 

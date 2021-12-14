@@ -33,9 +33,10 @@ import processing.core.PVector;
  * Mesh generation (excluding triangulation).
  * <p>
  * Many of the methods within this class process an existing Delaunay
- * triangulation. You must first process a shape using
+ * triangulation; you may first generate such a triangulation from a shape using
+ * the
  * {@link PGS_Triangulation#delaunayTriangulationMesh(PShape, Collection, boolean, int, boolean)
- * delaunayTriangulationMesh()} and then feed it to these methods.
+ * delaunayTriangulationMesh()} method
  * 
  * @author Michael Carleton
  * @since 1.2.0
@@ -62,11 +63,9 @@ public class PGS_Meshing {
 	 * delaunayTriangulationMesh()} first and then feed it to this method.
 	 * 
 	 * @param triangulation     a triangulation mesh
-	 * @param preservePerimeter whether to preserve the perimeter of the input
-	 *                          triangulation; when true, retains edges that lie on
-	 *                          the perimeter of the triangulation mesh that would
-	 *                          have otherwise been removed according to the
-	 *                          urquhart condition.
+	 * @param preservePerimeter whether to retain/preserve edges on the perimeter
+	 *                          even if they should be removed according to the
+	 *                          urquhart condition
 	 * @return a GROUP PShape where each child shape is a single face
 	 * @since 1.1.0
 	 * @see #gabrielFaces(IIncrementalTin, boolean)
@@ -114,11 +113,9 @@ public class PGS_Meshing {
 	 * delaunayTriangulationMesh()} first and then feed it to this method.
 	 * 
 	 * @param triangulation     a triangulation mesh
-	 * @param preservePerimeter whether to preserve the perimeter of the input
-	 *                          triangulation; when true, retains edges that lie on
-	 *                          the perimeter of the triangulation mesh that would
-	 *                          have otherwise been removed according to the
-	 *                          urquhart condition.
+	 * @param preservePerimeter whether to retain/preserve edges on the perimeter
+	 *                          even if they should be removed according to the
+	 *                          gabriel condition
 	 * @return a GROUP PShape where each child shape is a single face
 	 * @since 1.1.0
 	 * @see #urquhartFaces(IncrementalTin, boolean)

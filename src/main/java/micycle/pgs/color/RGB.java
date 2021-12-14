@@ -60,7 +60,6 @@ public class RGB {
 		out[0] = (clr >> 16 & 0xff);
 		out[1] = (clr >> 8 & 0xff);
 		out[2] = (clr & 0xff);
-//		out[3] = (clr >> 24 & 0xff);
 		return out;
 	}
 
