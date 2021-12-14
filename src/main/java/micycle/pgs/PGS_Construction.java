@@ -17,7 +17,6 @@ import micycle.pgs.commons.RandomPolygon;
 import micycle.pgs.commons.Star;
 import processing.core.PConstants;
 import processing.core.PShape;
-import processing.core.PVector;
 
 /**
  * Construct uncommon/interesting 2D geometries.
@@ -129,7 +128,6 @@ public class PGS_Construction {
 
 		shape.endShape();
 		return shape;
-
 	}
 
 	/**
@@ -326,8 +324,6 @@ public class PGS_Construction {
 		final int samples = (int) (50 * coils);
 		double dt = thetaEnd / samples;
 
-		List<PVector> points = new ArrayList<>(samples);
-
 		final CoordinateList yin = new CoordinateList();
 		final CoordinateList yang = new CoordinateList();
 
@@ -340,7 +336,6 @@ public class PGS_Construction {
 			// polar to cartesian
 			double x = r * Math.cos(theta) + centerX;
 			double y = r * Math.sin(theta) + centerY;
-			points.add(new PVector((float) x, (float) y));
 			yin.add(new Coordinate(x, y), false);
 
 			x = -r * Math.cos(theta) + centerX;
