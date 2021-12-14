@@ -89,6 +89,7 @@
 										<exclude>**/*.svg</exclude>
 										<exclude>**/*.gif</exclude>
 										<exclude>**/*.jpg</exclude>
+										<exclude>**/*.properties</exclude>
 									</excludes>
 								</filter>
 							</filters>

@@ -3,7 +3,6 @@ package micycle.pgs;
 import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 

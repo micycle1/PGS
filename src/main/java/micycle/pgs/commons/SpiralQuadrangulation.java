@@ -204,7 +204,7 @@ public class SpiralQuadrangulation {
 		final int FARAWAYMULT = 100;
 		PEdge elast = spiral.get(spiral.size() - 1);
 		if (elast != null) {
-			elast = elast.clone();
+			elast = elast.copy();
 		} else {
 			return;
 		}

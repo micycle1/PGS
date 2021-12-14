@@ -39,11 +39,6 @@ public class PEdge {
 	 * Direction-agnostic hash
 	 */
 	public int hashCode() {
-//			int x = Float.floatToIntBits(Math.min(a.x, b.x));
-//			x = ((x >> 16) ^ Float.floatToIntBits(Math.max(a.x, b.x))) * 0x45d9f3b;
-//			x = ((x >> 16) ^ Float.floatToIntBits(Math.min(a.y, b.y))) * 0x45d9f3b;
-//			x = (x >> 16) ^ Float.floatToIntBits(Math.max(a.y, b.y));
-//			return x;
 		return Float.floatToIntBits(b.y + a.y) ^ Float.floatToIntBits(b.x + a.x - 1);
 	}
 
@@ -56,8 +51,10 @@ public class PEdge {
 		return false;
 	}
 
-	@Override
-	public PEdge clone() {
+	/**
+	 * @return a deep copy of this PEdge
+	 */
+	public PEdge copy() {
 		return new PEdge(a.copy(), b.copy());
 	}
 

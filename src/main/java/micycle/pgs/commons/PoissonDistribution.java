@@ -116,13 +116,14 @@ public final class PoissonDistribution {
 		return (p.x >= xmin && p.x < xmax && p.y >= ymin && p.y < ymax); // keep center points in bounds
 	}
 
+	@Deprecated
 	/**
 	 * Create points randomly on a spherical annulus.
 	 * 
 	 * @param p
 	 * @param minDist inner radius
 	 * @param maxDist outer radius
-	 * @deprecated
+	 * @deprecated in favour of Martin Roberts' non-uniform sampling
 	 **/
 	private PVector sampleAnnulus(PVector p, float minDist, float maxDist) {
 		final float theta = random(0, (2 * Math.PI));
