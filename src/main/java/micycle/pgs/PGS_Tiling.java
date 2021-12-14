@@ -26,6 +26,8 @@ import processing.core.PVector;
  */
 public final class PGS_Tiling {
 
+	private static final double ROOT3 = Math.sqrt(3);
+
 	private PGS_Tiling() {
 	}
 
@@ -166,6 +168,59 @@ public final class PGS_Tiling {
 		return new ArrayList<>(doyleSpiral.getCircles());
 	}
 
+	/**
+	 * Generates a hexagonal tiling of the plane.
+	 * 
+	 * @param width      width of the tiling plane
+	 * @param height     height of the tiling plane
+	 * @param sideLength side length of each hexagon
+	 * @param flat       determines the orientation of the hexagons -- whether the
+	 *                   top is flat, or pointy
+	 * @return a GROUP PShape, where each child shape is a hexagon of the tiling
+	 */
+	public static PShape hexTiling(double width, double height, double sideLength, boolean flat) {
+		final double span = sideLength * ROOT3;
+		final PShape tiling = new PShape(PConstants.GROUP);
+		double x = 0;
+		double y = 0;
+
+		int row = 0;
+		while (y < height) {
+			int column = 0;
+
+			if (row % 2 == 0 || flat) {
+				x = 0;
+			} else {
+				x = span / 2;
+			}
+
+			while (x < width) {
+				if (flat) {
+					y = span * row;
+					if (column % 2 != 0) {
+						y += span / 2;
+					}
+				}
+				tiling.addChild(hexagon(x, y, sideLength, flat));
+				x += flat ? sideLength * 1.5 : span;
+				column++;
+			}
+			y += flat ? span / 2 : sideLength * 1.5;
+			row++;
+		}
+
+		return tiling;
+	}
+
+	/**
+	 * Generates an "islamic-style" tiling of the plane.
+	 * 
+	 * @param width  width of the tiling plane
+	 * @param height height of the tiling plane
+	 * @param w
+	 * @param h
+	 * @return a GROUP PShape, where each child shape is a tile of the tiling
+	 */
 	public static PShape islamicTiling(double width, double height, double w, double h) {
 		// adapted from https://openprocessing.org/sketch/320133
 		final double[] vector = { -w, 0, w, -h, w, 0, -w, h };
@@ -195,6 +250,46 @@ public final class PGS_Tiling {
 	public static PShape penroseTiling(double centerX, double centerY, final double radius, final int steps) {
 		final PenroseTiling pr = new PenroseTiling(centerX, centerY, radius, steps);
 		return PGS.polygonizeEdges(pr.getEdges());
+	}
+
+	/**
+	 * Generates a hexagon shape.
+	 * 
+	 * @param x          x-position of hexagon envelope's top left corner
+	 * @param y          y-position of hexagon envelope's top left corner
+	 * @param sideLength hexagon side length
+	 * @param flat       the orientation of the hexagon (whether the top is flat, or
+	 *                   pointy)
+	 * @return a PATH PShape
+	 */
+	private static PShape hexagon(double x, double y, double sideLength, boolean flat) {
+		final double span = sideLength * ROOT3;
+		final PShape hexagon = new PShape(PShape.PATH);
+		hexagon.setStroke(true);
+		hexagon.setStroke(RGB.PINK);
+		hexagon.setStrokeWeight(2);
+		hexagon.setFill(true);
+		hexagon.setFill(RGB.WHITE);
+
+		hexagon.beginShape();
+		if (flat) {
+			hexagon.vertex((float) (x + 0.5 * sideLength), (float) (y + span));
+			hexagon.vertex((float) (x + 1.5 * sideLength), (float) (y + span));
+			hexagon.vertex((float) (x + 2.0 * sideLength), (float) (y + span / 2.0));
+			hexagon.vertex((float) (x + 1.5 * sideLength), (float) y);
+			hexagon.vertex((float) (x + 0.5 * sideLength), (float) y);
+			hexagon.vertex((float) x, (float) (y + span / 2.0));
+		} else {
+			hexagon.vertex((float) (x + 0.5 * span), (float) (y + 2.0 * sideLength));
+			hexagon.vertex((float) (x + span), (float) (y + 1.5 * sideLength));
+			hexagon.vertex((float) (x + span), (float) (y + 0.5 * sideLength));
+			hexagon.vertex((float) (x + 0.5 * span), (float) y);
+			hexagon.vertex((float) x, (float) (y + 0.5 * sideLength));
+			hexagon.vertex((float) x, (float) (y + 1.5 * sideLength));
+		}
+		hexagon.endShape(PConstants.CLOSE);
+
+		return hexagon;
 	}
 
 	private static void divideRect(PVector p1, PVector p2, PVector p3, PVector p4, int n, PShape parent, SplittableRandom r) {

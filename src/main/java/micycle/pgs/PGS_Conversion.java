@@ -5,6 +5,8 @@ import static micycle.pgs.PGS.coordFromPVector;
 import static micycle.pgs.color.RGB.decomposeclrRGB;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -674,6 +676,49 @@ public final class PGS_Conversion implements PConstants {
 				c.setVertex(i, Math.round(v.x), Math.round(v.y));
 			}
 		});
+	}
+
+	/**
+	 * Produces a deep copy / clone of the input shape. Handles GROUP, PRIMITIVE,
+	 * GEOMETRY and PATH PShapes.
+	 * 
+	 * @param shape the PShape to copy
+	 * @return a deep copy of the given shape
+	 */
+	public static PShape copy(PShape shape) {
+		final PShape copy = new PShape();
+		copy.setName(shape.getName());
+
+		try {
+			Method method;
+			switch (shape.getFamily()) {
+				case GROUP :
+					copy.setFamily(GROUP);
+					getChildren(shape).forEach(child -> copy.addChild(copy(child)));
+					return copy;
+				case PShape.PRIMITIVE :
+					copy.setFamily(PShape.PRIMITIVE);
+					method = PShape.class.getDeclaredMethod("copyPrimitive", PShape.class, PShape.class);
+					break;
+				case PShape.GEOMETRY :
+					copy.setFamily(PShape.GEOMETRY);
+					method = PShape.class.getDeclaredMethod("copyGeometry", PShape.class, PShape.class);
+					break;
+				case PShape.PATH :
+					copy.setFamily(PShape.PATH);
+					method = PShape.class.getDeclaredMethod("copyPath", PShape.class, PShape.class);
+					break;
+				default :
+					return copy;
+			}
+			method.setAccessible(true);
+			method.invoke(null, shape, copy);
+		} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException
+				| InvocationTargetException e) {
+			e.printStackTrace();
+		}
+
+		return copy;
 	}
 
 	/**
