@@ -218,7 +218,7 @@
 		<dependency>
 			<groupId>org.jgrapht</groupId>
 			<artifactId>jgrapht-core</artifactId>
-			<version>1.4.0</version> <!-- 1.5+ requires Java 11 -->
+			<version>1.5.1</version> <!-- 1.5+ requires Java 11 -->
 		</dependency>
 		<dependency>
 			<groupId>org.tinfour</groupId>
