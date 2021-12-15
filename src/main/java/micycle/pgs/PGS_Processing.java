@@ -14,6 +14,7 @@ import java.util.Random;
 import java.util.SplittableRandom;
 import java.util.stream.StreamSupport;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.geodelivery.jap.concavehull.SnapHull;
 import org.geotools.geometry.jts.JTS;
 import org.locationtech.jts.algorithm.Orientation;
@@ -28,15 +29,12 @@ import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Polygon;
-import org.locationtech.jts.geom.PrecisionModel;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.locationtech.jts.geom.util.LineStringExtracter;
 import org.locationtech.jts.linearref.LengthIndexedLine;
-import org.locationtech.jts.noding.IteratedNoder;
 import org.locationtech.jts.noding.MCIndexSegmentSetMutualIntersector;
 import org.locationtech.jts.noding.NodedSegmentString;
-import org.locationtech.jts.noding.Noder;
 import org.locationtech.jts.noding.SegmentIntersectionDetector;
 import org.locationtech.jts.noding.SegmentIntersector;
 import org.locationtech.jts.noding.SegmentString;
@@ -55,8 +53,9 @@ import org.tinfour.utils.TriangleCollector;
 import micycle.balaban.BalabanSolver;
 import micycle.balaban.Point;
 import micycle.balaban.Segment;
-import micycle.pgs.utility.PolygonDecomposition;
-import micycle.pgs.utility.SeededRandomPointsInGridBuilder;
+import micycle.pgs.PGS.GeometryIterator;
+import micycle.pgs.commons.PolygonDecomposition;
+import micycle.pgs.commons.SeededRandomPointsInGridBuilder;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -145,8 +144,8 @@ public final class PGS_Processing {
 
 		final double increment = 1d / points;
 		for (double distance = 0; distance < 1; distance += increment) {
-			Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
-			coords.add(new PVector((float) coord.x, (float) coord.y));
+			final Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
+			coords.add(PGS.toPVector(coord));
 		}
 		return coords;
 	}
@@ -178,25 +177,59 @@ public final class PGS_Processing {
 
 		final double increment = 1d / points;
 		for (double distance = 0; distance < 1; distance += increment) {
-			Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
-			coords.add(new PVector((float) coord.x, (float) coord.y));
+			final Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
+			coords.add(PGS.toPVector(coord));
 		}
 		return coords;
 	}
 
 	/**
-	 * Computes all points of intersection between the edges of two shapes.
+	 * Extracts a portion/subline of the perimeter of a shape between two locations
+	 * on the perimeter.
+	 * 
+	 * @param shape the shape from which to extract a the perimeter
+	 * @param from  the starting location of the perimeter extract, given by a
+	 *              fraction (0...1) of the total perimeter length
+	 * @param to    the end location of the perimeter extract, given by a fraction
+	 *              (0...1) of the total perimeter length
+	 * @return
+	 * @since 1.2.0
+	 */
+	public static PShape extractPerimeter(PShape shape, double from, double to) {
+		Geometry g = fromPShape(shape);
+		if (!g.getGeometryType().equals(Geometry.TYPENAME_LINEARRING) && !g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
+			g = ((Polygon) g).getExteriorRing();
+		}
+		final LengthIndexedLine l = new LengthIndexedLine(g);
+		final double length = l.getEndIndex(); // perimeter length
+
+		if (from > to) {
+			final Geometry l1 = l.extractLine(length * from, length);
+			final Geometry l2 = l.extractLine(0, length * to);
+			return toPShape(PGS.GEOM_FACTORY.createLineString(ArrayUtils.addAll(l1.getCoordinates(), l2.getCoordinates())));
+		}
+
+		return toPShape(l.extractLine(length * from, length * to));
+	}
+
+	/**
+	 * Computes all <b>points</b> of intersection between the <b>edges</b> of two
+	 * shapes.
+	 * <p>
+	 * NOTE: This method shouldn't be confused with
+	 * {@link micycle.pgs.PGS_ShapeBoolean#intersect(PShape, PShape)
+	 * PGS_ShapeBoolean.intersect()}, which finds the shape made by the intersecting
+	 * shape areas.
 	 * 
 	 * @param a one shape
 	 * @param b another shape
-	 * @return list of all intersecting points represented by PVectors
+	 * @return list of all intersecting points (as PVectors)
 	 */
 	public static List<PVector> shapeIntersection(PShape a, PShape b) {
-
 		final HashSet<PVector> points = new HashSet<>();
 
-		final MCIndexSegmentSetMutualIntersector mci = new MCIndexSegmentSetMutualIntersector(
-				SegmentStringUtil.extractSegmentStrings(fromPShape(a)));
+		final Collection<?> segmentStrings = SegmentStringUtil.extractSegmentStrings(fromPShape(a));
+		final MCIndexSegmentSetMutualIntersector mci = new MCIndexSegmentSetMutualIntersector(segmentStrings);
 		final SegmentIntersectionDetector sid = new SegmentIntersectionDetector();
 
 		mci.process(SegmentStringUtil.extractSegmentStrings(fromPShape(b)), new SegmentIntersector() {
@@ -283,7 +316,8 @@ public final class PGS_Processing {
 	 * 
 	 * @param shape  defines the region in which random points are generated
 	 * @param points number of points to generate within the shape region
-	 * @param seed
+	 * @param seed   number used to initialize the underlying pseudorandom number
+	 *               generator
 	 * @return
 	 * @since 1.1.0
 	 * @see #generateRandomPoints(PShape, int)
@@ -428,30 +462,41 @@ public final class PGS_Processing {
 
 		for (Coordinate coord : r.getGeometry().getCoordinates()) {
 			if (pointLocator.locate(coord) != Location.EXTERIOR) {
-				vertices.add(new PVector((float) coord.x, (float) coord.y));
+				vertices.add(PGS.toPVector(coord));
 			}
 		}
 		return vertices;
 	}
 
 	/**
-	 * Returns a copy of the shape with small holes (i.e. inner rings with area <
+	 * Returns a copy of the shape where small holes (i.e. inner rings with area <
 	 * given threshold) are removed.
 	 * 
-	 * @param polygon
+	 * @param shape         a single polygonal shape or GROUP polygonal shape
+	 * @param areaThreshold remove any holes with an area smaller than this value
 	 * @return
 	 */
 	public static PShape removeSmallHoles(PShape shape, double areaThreshold) {
-		Polygon polygon = (Polygon) fromPShape(shape);
+		final ArrayList<Geometry> polygons = new ArrayList<>();
+		final Geometry g = fromPShape(shape);
+		for (final Geometry geom : new GeometryIterator(g)) {
+			if (geom.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
+				polygons.add(removeSmallHoles((Polygon) geom, areaThreshold));
+			}
+		}
+		return toPShape(polygons);
+	}
+
+	private static Polygon removeSmallHoles(Polygon polygon, double areaThreshold) {
 		Polygon noHolePol = PGS.GEOM_FACTORY.createPolygon(polygon.getExteriorRing());
 		for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
-			LinearRing hole = polygon.getInteriorRingN(i);
+			final LinearRing hole = polygon.getInteriorRingN(i);
 			if (hole.getArea() < areaThreshold) {
 				continue;
 			}
 			noHolePol = (Polygon) noHolePol.difference(hole);
 		}
-		return toPShape(noHolePol);
+		return noHolePol;
 	}
 
 	/**
@@ -460,11 +505,10 @@ public final class PGS_Processing {
 	 * @param lineSegmentVertices a list of PVectors where each pair (couplet) of
 	 *                            PVectors represent the start and end point of one
 	 *                            line segment
-	 * @return a list of polygonal PShapes each representing a face / enclosed area
+	 * @return a GROUP PShape where each child shape is a face / enclosed area
 	 *         formed between intersecting lines
 	 * @since 1.1.2
 	 */
-	@SuppressWarnings("unchecked")
 	public static PShape polygonizeLines(List<PVector> lineSegmentVertices) {
 		// TODO constructor for LINES PShape
 		if (lineSegmentVertices.size() % 2 != 0) {
@@ -473,26 +517,16 @@ public final class PGS_Processing {
 			return new PShape();
 		}
 
-		List<SegmentString> segmentStrings = new ArrayList<>(lineSegmentVertices.size() / 2);
+		final List<SegmentString> segmentStrings = new ArrayList<>(lineSegmentVertices.size() / 2);
 		for (int i = 0; i < lineSegmentVertices.size(); i += 2) {
 			final PVector v1 = lineSegmentVertices.get(i);
 			final PVector v2 = lineSegmentVertices.get(i + 1);
-			segmentStrings.add(new NodedSegmentString(new Coordinate[] { PGS.coordFromPVector(v1), PGS.coordFromPVector(v2) }, null));
+			if (!v1.equals(v2)) {
+				segmentStrings.add(new NodedSegmentString(new Coordinate[] { PGS.coordFromPVector(v1), PGS.coordFromPVector(v2) }, null));
+			}
 		}
 
-		final Polygonizer polygonizer = new Polygonizer();
-		polygonizer.setCheckRingsValid(false);
-		final Noder noder = new IteratedNoder(new PrecisionModel(PrecisionModel.FLOATING_SINGLE));
-		noder.computeNodes(segmentStrings);
-		noder.getNodedSubstrings().forEach(s -> {
-			SegmentString ss = (SegmentString) s;
-			polygonizer.add(PGS.GEOM_FACTORY.createLineString(new Coordinate[] { ss.getCoordinate(0), ss.getCoordinate(1) }));
-		});
-		Collection<Geometry> polygons = polygonizer.getPolygons();
-		
-		final PShape out = new PShape(PConstants.GROUP);
-		polygons.forEach(p -> out.addChild(toPShape(p)));
-		return out;
+		return PGS.polygonizeSegments(segmentStrings, true);
 	}
 
 	/**
@@ -626,12 +660,13 @@ public final class PGS_Processing {
 	 * Splits a shape into 4 equal quadrants
 	 * 
 	 * @param shape
-	 * @return list containing the 4 split quadrants of the input shape
+	 * @return a GROUP PShape, where each child shape is some quadrant partition of
+	 *         the original shape
+	 * @see #split(PShape, int)
 	 */
-	public static List<PShape> split(PShape shape) {
+	public static PShape split(PShape shape) {
 		// https://stackoverflow.com/questions/64252638/how-to-split-a-jts-polygon
 		Geometry p = fromPShape(shape);
-		ArrayList<PShape> ret = new ArrayList<>();
 
 		final Envelope envelope = p.getEnvelopeInternal();
 		double minX = envelope.getMinX();
@@ -649,12 +684,14 @@ public final class PGS_Processing {
 		Geometry UR = JTS.toGeometry(lrEnv).intersection(p);
 		Geometry LL = JTS.toGeometry(ulEnv).intersection(p);
 		Geometry LR = JTS.toGeometry(urEnv).intersection(p);
-		ret.add(toPShape(UL));
-		ret.add(toPShape(UR));
-		ret.add(toPShape(LL));
-		ret.add(toPShape(LR));
 
-		return ret;
+		final PShape partitions = new PShape(PConstants.GROUP);
+		partitions.addChild(toPShape(UL));
+		partitions.addChild(toPShape(UR));
+		partitions.addChild(toPShape(LL));
+		partitions.addChild(toPShape(LR));
+
+		return partitions;
 	}
 
 	/**
@@ -662,13 +699,15 @@ public final class PGS_Processing {
 	 * 
 	 * @param shape
 	 * @param splitDepth
+	 * @return a GROUP PShape, where each child shape is some quadrant partition of
+	 *         the original shape
+	 * @see #split(PShape)
 	 */
-	public static List<PShape> split(final PShape shape, int splitDepth) {
+	public static PShape split(final PShape shape, int splitDepth) {
 		splitDepth = Math.max(0, splitDepth);
 		ArrayDeque<Geometry> stack = new ArrayDeque<>();
 		stack.add(fromPShape(shape));
 
-		ArrayList<PShape> ret = new ArrayList<>(); // add to when recursion depth reached
 		ArrayList<Geometry> next = new ArrayList<>(); // add to when recursion depth reached
 
 		int depth = 0;
@@ -701,46 +740,53 @@ public final class PGS_Processing {
 			next.clear();
 		}
 
-		stack.forEach(g -> ret.add(toPShape(g)));
-		return ret;
+		final PShape partitions = new PShape(PConstants.GROUP);
+		stack.forEach(g -> {
+			/*
+			 * Geometries may not be polygonal; in which case, do not include in output.
+			 */
+			if (g instanceof Polygon) {
+				partitions.addChild(toPShape(g));
+			}
+		});
+		return partitions;
 	}
 
 	/**
 	 * Partitions a shape into simple polygons using Mark Bayazit's algorithm.
 	 * 
 	 * @param shape
-	 * @return list of convex (simple) polygons comprising the original shape
+	 * @return a GROUP PShape, where each child shape is some convex partition of
+	 *         the original shape
 	 */
-	public static List<PShape> partition(PShape shape) {
+	public static PShape partition(PShape shape) {
 		// https://mpen.ca/406/bayazit
-		// retry GreedyPolygonSplitter()?
+		final Geometry g = fromPShape(shape);
 
-		Geometry g = fromPShape(shape);
-
-		ArrayList<PShape> out = new ArrayList<>();
-
+		final PShape partitions = new PShape(PConstants.GROUP);
 		for (int i = 0; i < g.getNumGeometries(); i++) {
 			Geometry child = g.getGeometryN(i);
 			if (child.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) { // skip any linestrings etc
 				List<Polygon> decomposed = PolygonDecomposition.decompose((Polygon) child);
 				for (Polygon polygon : decomposed) {
-					out.add(toPShape(polygon));
+					partitions.addChild(toPShape(polygon));
 				}
 			}
 		}
 
-		return out;
+		return partitions;
 	}
 
 	/**
-	 * Slice a shape using a line given by its start and endpoints.
+	 * Slices a shape using a line given by its start and endpoints.
 	 * 
-	 * @param shape
+	 * @param shape PShape to slice into two shapes
 	 * @param p1    must be outside shape
 	 * @param p2    must be outside shape
-	 * @return a list containg two PShapes
+	 * @return a GROUP PShape with two children, where each child shape one of the
+	 *         slices
 	 */
-	public static List<PShape> slice(PShape shape, PVector p1, PVector p2) {
+	public static PShape slice(PShape shape, PVector p1, PVector p2) {
 		// adapted from https://gis.stackexchange.com/questions/189976/
 		final Geometry poly = fromPShape(shape);
 		final PreparedGeometry cache = PreparedGeometryFactory.prepare(poly);
@@ -763,10 +809,10 @@ public final class PGS_Processing {
 			}
 		}
 
-		ArrayList<PShape> output = new ArrayList<>();
-		output.add(toPShape(UnaryUnionOp.union(leftSlices)));
-		output.add(toPShape(UnaryUnionOp.union(rightSlices)));
-		return output;
+		final PShape slices = new PShape(PConstants.GROUP);
+		slices.addChild(toPShape(UnaryUnionOp.union(leftSlices)));
+		slices.addChild(toPShape(UnaryUnionOp.union(rightSlices)));
+		return slices;
 	}
 
 	/**

@@ -14,22 +14,30 @@ Library functionality is split over the following classes:
 
 * `PGS_CirclePacking`
   * Circle packings of shapes, subject to varying constraints and patterns of tangencies
+* `PGS_Coloring`
+  * Minimal colorings of meshes (or mesh-like shapes)
 * `PGS_Construction`
   * Construct uncommon/interesting 2D primitives
 * `PGS_Contour`
   * Methods that produce various contours from shapes: medial axes, straight skeletons, offset curves, etc.
 * `PGS_Conversion`
-  * Conversion between PShapes and JTS Geometries 
+  * Conversion between *Processing* PShapes and *JTS* Geometries 
+* `PGS_Meshing`
+  * Mesh generation (excluding triangulation) from shapes
 * `PGS_Morphology`
   * Methods that affect the geometry or topology of shapes (buffering, simplification, smoothing, etc.)
 * `PGS_Optimsation`
   * Solve geometric optimisation problems, such as finding the maximum inscribed circle, or the closest vertex to a coordinate
+* `PGS_PointSet`
+  * Generates sets of 2D points having a variety of different distributions and constraints
 * `PGS_Processing`
   * Methods that process a shape in some way: compute hulls, partition, slice, etc. 
 * `PGS_ShapeBoolean`
   * Boolean set-operations for 2D shapes
 * `PGS_ShapePredicates`
   * Various shape metrics (area, circularity, etc.) and predicates (*"do these shapes intersect?"*)
+* `PGS_Tiling`
+  * Tiling, tessellation and subdivision of the plane using periodic or non-periodic geometric shapes.
 * `PGS_Transformation`
   * Various geometric and affine transformations that affect vertex coordinates
 * `PGS_Triangulation`
@@ -42,7 +50,7 @@ Library functionality is split over the following classes:
 <details><summary>Processing IDE — Quick</summary>
 <p>
 
-Download the latest *PGS.jar* from [releases](https://github.com/micycle1/PGS/releases) and simply drag-and-drop it onto the [Processing IDE](https://processing.org/reference/environment/).
+Download the latest *PGS.jar* from [releases](https://github.com/micycle1/PGS/releases) and simply drag-and-drop it onto the [Processing IDE](https://processing.org/environment).
 </p>
 </details>
 
@@ -97,9 +105,11 @@ Much of the functionality (but by no means all) is demonstrated below:
 
   <tr>
     <td align="center" valign="center"><b>Complement</td>
+    <td align="center" valign="center"><b>Mesh Union</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/boolean/complement.png"></td>
+    <td valign="top" width="25%"><img src="resources/boolean/meshUnion.gif"></td>
   </tr>
 </table>
 
@@ -260,11 +270,13 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Simplification</td>
     <td align="center" valign="center" colspan="2"><b>Chaikin Cutting</td>
+    <td align="center" valign="center" colspan="2"><b>Interpolation</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/morphology/simplifyVW.gif"></td>
     <td valign="top" width="25%"><img src="resources/morphology/chaikinCut1.gif"></td>
     <td valign="top" width="25%"><img src="resources/morphology/chaikinCut2.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/morph.gif"></td>
   </tr>
 </table>
 
@@ -289,18 +301,20 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
-    <td align="center" valign="center" colspan="2"><b>Partitioning</td>
+    <td align="center" valign="center"><b>Perimeter Extraction</td>
+    <td align="center" valign="center"><b>Partitioning</td>
     <td align="center" valign="center"><b>Splitting</td>
     <td align="center" valign="center"><b>Slicing</td>
   </tr>
   <tr>
-    <td valign="top" width="25%"><img src="resources/geometry_processing/decompose1.png"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/perimeterExtract.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/decompose2.png"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/split.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/slice.gif"></td>
   </tr>
-    <tr>
-    <td align="center" valign="center" colspan="2">Partition a shape into simple (convex) polygons.</td>
+  <tr>
+    <td valign="top" width="25%"></td>
+    <td align="center" valign="center">Partition a shape into simple (convex) polygons.</td>
     <td align="center" valign="center">Subdivide (recursively) a shape into quadrants.</td>
     <td align="center" valign="center">Slice a shape in two along a given line.</td>
   </tr>
@@ -354,7 +368,7 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 </table>
 
-## Triangulation
+## *Triangulation*
 
 <table>
   <tr>
@@ -370,20 +384,46 @@ Much of the functionality (but by no means all) is demonstrated below:
 
   <tr>
     <td align="center" valign="center"><b>Poisson Delaunay Triangulation</td>
-    <td align="center" valign="center" colspan="2"><b>Urquhart Faces</td>
-    <td align="center" valign="center"><b>Gabriel Faces</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/contour/poissonTriangulation.gif"></td>
-    <td valign="top" width="25%"><img src="resources/triangulation/urquhart1.png"></td>
-    <td valign="top" width="25%"><img src="resources/triangulation/urquhart2.png"></td>
-    <td valign="top" width="25%"><img src="resources/triangulation/gabriel1.png"></td>
   </tr>
 
   <tr>
     <td align="center" valign="center"><i>Delaunay triangulation</i> of shapes where <i>steiner points</i> generated by poisson disk sampling are inserted.</td>
+  </tr>
+</table>
+
+## *Meshing*
+
+<table>
+  <tr>
+    <td align="center" valign="center" colspan="2"><b>Urquhart Faces</td>
+    <td align="center" valign="center"><b>Gabriel Faces</td>
+    <td align="center" valign="center"><b>Triangulation Dual</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/triangulation/urquhart1.png"></td>
+    <td valign="top" width="25%"><img src="resources/triangulation/urquhart2.png"></td>
+    <td valign="top" width="25%"><img src="resources/triangulation/gabriel1.png"></td>
+    <td valign="top" width="25%"><img src="resources/triangulation/triangulationDual.png"></td>
+  </tr>
+  <tr>
     <td align="center" valign="center" colspan="2">Polygon faces of an <i>Urquhart Graph</i> (derived from a triangulation).</td>
     <td align="center" valign="center">Polygon faces of a <i>Gabriel Graph</i> (derived from a triangulation).</td>
+  </tr>
+
+  <tr>
+    <td align="center" valign="center"><b>Centroid Quadrangulation</td>
+    <td align="center" valign="center"><b>Edge Collapse Quadrangulation</td>
+    <td align="center" valign="center"><b>Split Quadrangulation</td>
+    <td align="center" valign="center"><b>Spiral Quadrangulation</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/meshing/centroidQuadrangulation.png"></td>
+    <td valign="top" width="25%"><img src="resources/meshing/ecQuadrangulation.png"></td>
+    <td valign="top" width="25%"><img src="resources/meshing/quadrangulation.png"></td>
+    <td valign="top" width="25%"><img src="resources/meshing/spiralQuadrangulation.gif"></td>
   </tr>
 </table>
 
@@ -414,22 +454,24 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
+    <td align="center" valign="center"><b>Minimum Bounding Triangle</td>
     <td align="center" valign="center"><b>Envelope</td>
-    <td align="center" valign="center"><b>Closest Vertex</td>
     <td align="center" valign="center" colspan="2"><b>Problem of Apollonius</td>
   </tr>
   <tr>
+    <td valign="top" width="25%"><img src="resources/optimisation/mbt.png"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/envelope.png"></td>
-    <td valign="top"><img src="resources/pgs/closestVertex.gif"></td>
     <td valign="top"><img src="resources/optimisation/apollonius1.gif"></td>
     <td valign="top"><img src="resources/optimisation/apollonius2.gif"></td>
   </tr>
 
   <tr>
+  <td align="center" valign="center"><b>Closest Vertex</td>
     <td align="center" valign="center"><b>Closest Point Pair</td>
     <td align="center" valign="center"><b>Farthest Point Pair</td>
   </tr>
   <tr>
+    <td valign="top" width="25%"><img src="resources/pgs/closestVertex.gif"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/closestPair.png"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/farthestPair.png"></td>
   </tr>
@@ -473,6 +515,21 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 </table>
 
+## *Coloring*
+
+<table>
+  <tr>
+    <td valign="top" width="33%"><img src="resources/coloring/leaf.png"></td>
+    <td valign="top" width="33%"><img src="resources/coloring/subdivision.png"></td>
+    <td valign="top" width="33%"><img src="resources/coloring/dual.png"></td>
+  </tr>
+  <tr>
+    <td valign="top" width="33%"><img src="resources/coloring/voro.png"></td>
+    <td valign="top" width="33%"><img src="resources/coloring/swirl.png"></td>
+    <td valign="top" width="33%"><img src="resources/coloring/dino.png"></td>
+  </tr>
+</table>
+
 ## *Construction*
 
 <table>
@@ -492,10 +549,100 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center"><b>Random Convex Polygon</td>
     <td align="center" valign="center"><b>Heart</td>
     <td align="center" valign="center"><b>Ring</td>
+    <td align="center" valign="center"><b>Linear Spiral</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/pgs/randomPolygon.gif"></td>
     <td valign="top" width="25%"><img src="resources/pgs/heart.png"></td>
     <td valign="top" width="25%"><img src="resources/pgs/ring.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/spiral.gif"></td>
+  </tr>
+  <tr>
+    <td align="center" valign="center"><b>Fermat Spiral</td>
+    <td align="center" valign="center"><b>Sierpinski Curve</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/pgs/fermatSpiral.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/sierpinskiCurve.gif"></td>
+  </tr>
+</table>
+
+## *Point Sets*
+
+<table>
+  <tr>
+    <td align="center" valign="center"><b>Random</td>
+    <td align="center" valign="center"><b>Gaussian</td>
+    <td align="center" valign="center"><b>Square Grid</td>
+    <td align="center" valign="center"><b>Hex Grid</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/point_set/random.png"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/gaussian.png"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/squareGrid.png"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/hexGrid.png"></td>
+  </tr>
+
+  <tr>
+    <td align="center" valign="center"><b>Phyllotaxis</td>
+    <td align="center" valign="center"><b>Poisson</td>
+    <td align="center" valign="center"><b>Hexagon</td>
+    <td align="center" valign="center"><b>Ring</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/point_set/phyllotaxis.gif"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/poisson.png"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/hexaPoints.gif"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/ring.gif"></td>
+  </tr>
+
+  <tr>
+    <td align="center" valign="center"><b>Halton LDS</td>
+    <td align="center" valign="center"><b>Hammersley LDS</td>
+    <td align="center" valign="center"><b>Plastic LDS</td>
+    <td align="center" valign="center"><b>Jittered Plastic LDS</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/point_set/haltonLDS.gif"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/hammersleyLDS.gif"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/plasticLDS.gif"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/plasticJitteredLDS.gif"></td>
+  </tr>
+
+  <tr>
+    <td align="center" valign="center"><b>N-Rooks LDS</td>
+    <td align="center" valign="center"><b>Distance Prune</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/point_set/nRooksLDS.png"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/removeWithinDistance.gif"></td>
+  </tr>
+</table>
+
+## *Tiling & Subdivision*
+
+<table>
+  <tr>
+    <td align="center" valign="center"><b>Random Quad Subdivision</td>
+    <td align="center" valign="center"><b>Random Rect Subdivision</td>
+    <td align="center" valign="center"><b>Random Triangle Subdivision</td>
+    <td align="center" valign="center"><b>Islamic Tiling</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/tiling/randomSubdivision.png"></td>
+    <td valign="top" width="25%"><img src="resources/tiling/rectSubdivision.png"></td>
+    <td valign="top" width="25%"><img src="resources/tiling/triangleSubdivision.png"></td>
+    <td valign="top" width="25%"><img src="resources/tiling/islamic.png"></td>
+  </tr>
+  <tr>
+    <td align="center" valign="center" colspan="2"><b>Doyle Spiral</td>
+    <td align="center" valign="center"><b>Hexagon Tiling</td>
+    <td align="center" valign="center"><b>Penrose Tiling</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/tiling/doyeSpiral1.png"></td>
+    <td valign="top" width="25%"><img src="resources/tiling/doyeSpiral2.png"></td>
+    <td valign="top" width="25%"><img src="resources/tiling/hex.png"></td>
+    <td valign="top" width="25%"><img src="resources/tiling/penrose.png"></td>
   </tr>
 </table>

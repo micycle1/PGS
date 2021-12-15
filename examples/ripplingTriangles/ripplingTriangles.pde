@@ -1,7 +1,6 @@
 import processing.javafx.*;
 import java.util.List;
 import micycle.pgs.*;
-import micycle.pgs.utility.PoissonDistribution;
 import micycle.uniformnoise.*;
 
 PShape triangles; // triangle lattice arranged in a hexagon pattern

@@ -2,7 +2,12 @@ package micycle.pgs;
 
 import static micycle.pgs.PGS.GEOM_FACTORY;
 import static micycle.pgs.PGS.coordFromPVector;
+import static micycle.pgs.color.RGB.decomposeclrRGB;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -27,7 +32,7 @@ import processing.core.PVector;
  * more advanced user use cases.
  * <p>
  * Notably, JTS geometries do not support bezier curves so any bezier curves are
- * subdivided into straight linestrings during PShape -> JTS conversion.
+ * finely subdivided into straight linestrings during PShape -> JTS conversion.
  * 
  * @author Michael Carleton
  *
@@ -36,6 +41,12 @@ public final class PGS_Conversion implements PConstants {
 
 	/** Approximate distance between successive sample points on bezier curves */
 	private static final float BEZIER_SAMPLE_DISTANCE = 2;
+	/**
+	 * Boolean flag that affects whether a PShape's style (fillColor, strokeColor,
+	 * strokeWidth) is preserved during PShape->Geometry->PShape conversion (i.e.
+	 * when <code>toPShape(fromPShape(myPShape))</code> is called). Default = true.
+	 */
+	public static boolean PRESERVE_STYLE = true;
 
 	private PGS_Conversion() {
 	}
@@ -50,10 +61,10 @@ public final class PGS_Conversion implements PConstants {
 	 */
 	public static PShape toPShape(final Geometry g) {
 		if (g == null) {
-			return new PShape(PShape.GEOMETRY);
+			return new PShape();
 		}
-
 		PShape shape = new PShape();
+		// apply PGS style by default
 		shape.setFill(true);
 		shape.setFill(micycle.pgs.color.RGB.WHITE);
 		shape.setStroke(true);
@@ -64,12 +75,16 @@ public final class PGS_Conversion implements PConstants {
 			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
 			case Geometry.TYPENAME_MULTIPOLYGON :
 			case Geometry.TYPENAME_MULTILINESTRING :
-				shape.setFamily(GROUP);
-				for (int i = 0; i < g.getNumGeometries(); i++) {
-					shape.addChild(toPShape(g.getGeometryN(i)));
+				if (g.getNumGeometries() == 1) {
+					shape = toPShape(g.getGeometryN(0));
+				} else {
+					shape.setFamily(GROUP);
+					for (int i = 0; i < g.getNumGeometries(); i++) {
+						shape.addChild(toPShape(g.getGeometryN(i)));
+					}
 				}
 				break;
-			case Geometry.TYPENAME_LINEARRING : // linearrings are closed by definition
+			case Geometry.TYPENAME_LINEARRING : // LinearRings are closed by definition
 			case Geometry.TYPENAME_LINESTRING :
 				final LineString l = (LineString) g;
 				final boolean closed = l.isClosed();
@@ -82,7 +97,10 @@ public final class PGS_Conversion implements PConstants {
 				if (closed) { // closed vertex was skipped, so close the path
 					shape.endShape(CLOSE);
 				} else {
+					// shape is more akin to an unconnected line: keep as PATH shape, but don't fill
+					// visually
 					shape.endShape();
+					shape.setFill(false);
 				}
 				break;
 			case Geometry.TYPENAME_POLYGON :
@@ -115,8 +133,9 @@ public final class PGS_Conversion implements PConstants {
 			case Geometry.TYPENAME_MULTIPOINT :
 				coords = g.getCoordinates();
 				shape.setFamily(PShape.GEOMETRY);
+				shape.setFill(false);
 				shape.setStrokeCap(PConstants.ROUND);
-				shape.beginShape(PShape.POINTS);
+				shape.beginShape(PConstants.POINTS);
 				for (int i = 0; i < coords.length; i++) {
 					final Coordinate coord = coords[i];
 					shape.vertex((float) coord.x, (float) coord.y);
@@ -128,11 +147,18 @@ public final class PGS_Conversion implements PConstants {
 				break;
 		}
 
+		if (PRESERVE_STYLE && g.getUserData() != null && g.getUserData() instanceof PShapeData) {
+			PShapeData style = (PShapeData) g.getUserData();
+			style.applyTo(shape);
+		}
+
 		return shape;
 	}
 
 	/**
-	 * Converts a collection of JTS Geometries to an equivalent GROUP PShape.
+	 * Converts a collection of JTS Geometries to an equivalent GROUP PShape. If the
+	 * collection contains only one geometry, an equivalent PShape will be output
+	 * directly (not a GROUP shape).
 	 */
 	public static PShape toPShape(Collection<Geometry> geometries) {
 		PShape shape = new PShape(GROUP);
@@ -143,6 +169,9 @@ public final class PGS_Conversion implements PConstants {
 		shape.setStrokeWeight(4);
 
 		geometries.forEach(g -> shape.addChild(toPShape(g)));
+		if (shape.getChildCount() == 1) {
+			return shape.getChild(0);
+		}
 
 		return shape;
 	}
@@ -152,9 +181,6 @@ public final class PGS_Conversion implements PConstants {
 	 * <p>
 	 * PShapes with bezier curves are sampled at regular intervals (in which case
 	 * the resulting geometry will have more vertices than the input PShape).
-	 * <p>
-	 * For now, a PShape with multiple children is flattened/unioned since most
-	 * library methods are not (yet) programmed to handle multi/disjoint geometries.
 	 * 
 	 * @param shape
 	 * @return a JTS Geometry equivalent to the input PShape
@@ -165,9 +191,7 @@ public final class PGS_Conversion implements PConstants {
 
 		switch (shape.getFamily()) {
 			case PConstants.GROUP :
-				final List<PShape> flatChildren = new ArrayList<>(shape.getChildCount());
-				getChildren(shape, flatChildren);
-				flatChildren.removeIf(s -> s.getFamily() == PConstants.GROUP);
+				final List<PShape> flatChildren = getChildren(shape);
 				if (flatChildren.isEmpty()) {
 					return GEOM_FACTORY.createEmpty(2);
 				}
@@ -211,9 +235,11 @@ public final class PGS_Conversion implements PConstants {
 							children.add((Polygon) child);
 						}
 					}
-					// NOTE for now, buffer/flatten multiple polygons into a single JTS polygon so
-					// that methods handle them properly
-					return (GEOM_FACTORY.createMultiPolygon(children.toArray(new Polygon[0])).buffer(0));
+					/*
+					 * NOTE since 1.2.0 Multi Polygons are no longer flattened. Methods have varying
+					 * support for multipolygons.
+					 */
+					return (GEOM_FACTORY.createMultiPolygon(children.toArray(new Polygon[children.size()])));
 				}
 			case PShape.GEOMETRY :
 			case PShape.PATH :
@@ -226,6 +252,10 @@ public final class PGS_Conversion implements PConstants {
 			case PShape.PRIMITIVE :
 				g = fromPrimitive(shape);
 				break;
+		}
+
+		if (PRESERVE_STYLE && g != null) {
+			g.setUserData(new PShapeData(shape));
 		}
 
 		return g;
@@ -317,7 +347,7 @@ public final class PGS_Conversion implements PConstants {
 							shape.getVertex(i + 2), BEZIER_SAMPLE_DISTANCE));
 					i += 2;
 					continue;
-				default :
+				default : // VERTEX
 					coords.get(lastGroup).add(coordFromPVector(shape.getVertex(i)));
 					break;
 			}
@@ -326,20 +356,24 @@ public final class PGS_Conversion implements PConstants {
 		for (ArrayList<Coordinate> contour : coords) {
 			final Iterator<Coordinate> iterator = contour.iterator();
 			if (iterator.hasNext()) { // has at least one vertex
+				final List<Coordinate> contourNoDupes = new ArrayList<>(contour.size());
 				Coordinate previous = iterator.next();
-				final List<Coordinate> duplicates = new ArrayList<>();
+				contourNoDupes.add(previous);
 
-				while (iterator.hasNext()) { // find adjacent matching coordinates
+				/*
+				 * Remove consecutive duplicate coordinates
+				 */
+				while (iterator.hasNext()) {
 					Coordinate current = iterator.next();
-					if (current.equals2D(previous)) {
-						duplicates.add(current);
+					if (!current.equals2D(previous)) {
+						contourNoDupes.add(current);
 					}
 					previous = current;
 				}
 
-				if (contour.removeAll(duplicates) && contour.isEmpty()) { // remove adjacent matching coordinates
-					continue; // continue if contour coords are empty after removal
-				}
+				// mutate contour list
+				contour.clear();
+				contour.addAll(contourNoDupes);
 
 				if (!contour.get(0).equals2D(contour.get(contour.size() - 1)) && shape.isClosed()) {
 					contour.add(contour.get(0)); // close LinearRing: "points of LinearRing must form a closed linestring"
@@ -436,6 +470,24 @@ public final class PGS_Conversion implements PConstants {
 	}
 
 	/**
+	 * Transforms a list of points into a POINTS PShape.
+	 * 
+	 * @since 1.2.0
+	 */
+	public static final PShape toPointsPShape(Collection<PVector> points) {
+		PShape shape = new PShape();
+		shape.setFamily(PShape.GEOMETRY);
+		shape.setStrokeCap(ROUND);
+		shape.setStroke(true);
+		shape.setStroke(micycle.pgs.color.RGB.WHITE);
+		shape.setStrokeWeight(2);
+		shape.beginShape(PShape.POINTS);
+		points.forEach(p -> shape.vertex(p.x, p.y));
+		shape.endShape();
+		return shape;
+	}
+
+	/**
 	 * Returns the vertices of a PShape as an unclosed list of PVector coordinates.
 	 * 
 	 * @param shape
@@ -457,73 +509,102 @@ public final class PGS_Conversion implements PConstants {
 	}
 
 	/**
-	 * Generates a simple polygon (no holes) from the given coordinate list.
+	 * Generates a simple closed polygon (assumes no holes) from the list of
+	 * vertices.
+	 * 
+	 * @param vertices list of (un)closed shape vertices
+	 * @see #fromPVector(PVector...)
 	 */
-	public static PShape fromPVector(Collection<PVector> coords) {
-		PShape shape = new PShape();
-		shape.setFamily(PShape.GEOMETRY);
-		shape.setFill(micycle.pgs.color.RGB.WHITE);
-		shape.setFill(true);
-		shape.beginShape();
-
-		for (PVector v : coords) {
-			shape.vertex(v.x, v.y);
+	public static PShape fromPVector(List<PVector> vertices) {
+		if (!vertices.isEmpty() && vertices.get(0).equals(vertices.get(vertices.size() - 1))) {
+			vertices.remove(vertices.size() - 1);
 		}
 
+		PShape shape = new PShape();
+		shape.setFamily(PShape.PATH);
+		shape.setFill(micycle.pgs.color.RGB.WHITE);
+		shape.setFill(true);
+
+		shape.beginShape();
+		for (PVector v : vertices) {
+			shape.vertex(v.x, v.y);
+		}
 		shape.endShape(PConstants.CLOSE);
+
 		return shape;
 	}
 
 	/**
-	 * Generates a simple polygon (no holes) from the given coordinates (PVector
-	 * varargs).
+	 * Generates a simple closed polygon (assumes no holes) from the list of
+	 * vertices (varargs).
+	 * 
+	 * @param vertices list of (un)closed shape vertices
+	 * @see #fromPVector(List)
 	 */
-	public static PShape fromPVector(PVector... coordinates) {
-		final PShape polygon = new PShape(PShape.PATH);
-		polygon.beginShape();
-		for (PVector v : coordinates) {
-			polygon.vertex(v.x, v.y);
-		}
-		polygon.endShape(PConstants.CLOSE);
-		return polygon;
+	public static PShape fromPVector(PVector... vertices) {
+		return fromPVector(Arrays.asList(vertices));
 	}
 
 	/**
-	 * Finds and returns all the children PShapes of a given PShape. All children
-	 * (including the parent-most (input) shape) are put into the given list.
+	 * Flattens a collection of PShapes into a single GROUP PShape which has the
+	 * input shapes as its children.
+	 * 
+	 * @since 1.2.0
+	 */
+	public static PShape flatten(Collection<PShape> shapes) {
+		PShape group = new PShape(GROUP);
+		shapes.forEach(group::addChild);
+		return group;
+	}
+
+	/**
+	 * Recurses a GROUP PShape, finding all of its non-GROUP child PShapes.
 	 * <p>
-	 * The output is flattened -- it does not respect a hierarchy of parent-child
-	 * PShapes.
+	 * This method differs from PShape.getChildren(): that method will return GROUP
+	 * child shapes, whereas this method will recurse such shapes, returing their
+	 * non-group children (in other words, this method explores the whole tree of
+	 * shapes, returning non-group shapes only).
 	 * 
 	 * @param shape
-	 * @param childrenOut a user-provided list into which all child PShapes are
-	 *                    placed
-	 * @return
+	 * @return a list of non-GROUP PShapes
+	 * @since 1.2.0
 	 */
-	public static PShape getChildren(PShape shape, List<PShape> childrenOut) {
-		childrenOut.add(shape);
+	public static List<PShape> getChildren(PShape shape) {
+		final List<PShape> children = new ArrayList<>();
+		final ArrayDeque<PShape> parents = new ArrayDeque<>();
 
-		if (shape.getChildCount() == 0 || shape.getKind() != GROUP) {
-			return shape;
+		if (shape.getFamily() == GROUP) {
+			parents.add(shape);
+		} else {
+			children.add(shape);
+			return children;
 		}
 
-		for (PShape child : shape.getChildren()) {
-			getChildren(child, childrenOut);
+		while (!parents.isEmpty()) {
+			final PShape parent = parents.pop(); // will always be a GROUP PShape
+			if (parent.getChildCount() > 0) { // avoid NPE on .getChildren()
+				for (PShape child : parent.getChildren()) {
+					if (child.getFamily() == GROUP) {
+						parents.add(child);
+					} else {
+						children.add(child);
+					}
+				}
+			}
 		}
-		return null;
+
+		return children;
 	}
 
 	/**
-	 * Sets the fill color for the PShape and all of it's children recursively (and
+	 * Sets the fill color for the PShape and all of its children recursively (and
 	 * disables stroke).
 	 * 
 	 * @param shape
 	 * @see #setAllStrokeColor(PShape, int, int)
 	 */
 	public static void setAllFillColor(PShape shape, int color) {
-		List<PShape> all = new ArrayList<>();
-		getChildren(shape, all);
-		all.forEach(child -> {
+		getChildren(shape).forEach(child -> {
 			child.setStroke(false);
 			child.setFill(true);
 			child.setFill(color);
@@ -531,18 +612,32 @@ public final class PGS_Conversion implements PConstants {
 	}
 
 	/**
-	 * Sets the stroke color for the PShape and all of it's children recursively.
+	 * Sets the stroke color for the PShape and all of its children recursively.
 	 * 
 	 * @param shape
 	 * @see {@link #setAllFillColor(PShape, int)}
 	 */
-	public static void setAllStrokeColor(PShape shape, int color, int strokeWeight) {
-		List<PShape> all = new ArrayList<>();
-		getChildren(shape, all);
-		all.forEach(child -> {
+	public static void setAllStrokeColor(PShape shape, int color, float strokeWeight) {
+		getChildren(shape).forEach(child -> {
 			child.setStroke(true);
 			child.setStroke(color);
 			child.setStrokeWeight(strokeWeight);
+		});
+	}
+
+	/**
+	 * Sets the stroke color equal to the fill color for the PShape and all of its
+	 * descendent shapes individually (that is, each child shape belonging to the
+	 * shape (if any) will have its stroke color set to <b>its own fill color</b>,
+	 * and not the parent-most shape's fill color).
+	 * 
+	 * @param shape
+	 * @since 1.2.0
+	 */
+	public static void setAllStrokeToFillColor(PShape shape) {
+		getChildren(shape).forEach(child -> {
+			child.setStroke(true);
+			child.setStroke(PGS.getPShapeFillColor(child));
 		});
 	}
 
@@ -553,41 +648,77 @@ public final class PGS_Conversion implements PConstants {
 	 * @param shape
 	 */
 	public static void disableAllFill(PShape shape) {
-		ArrayList<PShape> all = new ArrayList<>();
-		getChildren(shape, all);
-		all.forEach(child -> child.setFill(false));
+		getChildren(shape).forEach(child -> child.setFill(false));
 	}
 
 	/**
-	 * Calls setStrokefalse) on a PShape and all its children. This method mutates
+	 * Calls setStroke(false) on a PShape and all its children. This method mutates
 	 * the input shape.
 	 * 
 	 * @param shape
 	 */
 	public static void disableAllStroke(PShape shape) {
-		ArrayList<PShape> all = new ArrayList<>();
-		getChildren(shape, all);
-		all.forEach(child -> child.setStroke(false));
+		getChildren(shape).forEach(child -> child.setStroke(false));
 	}
 
 	/**
-	 * Rounds the x and y coordinates (the closest int) of all vertices belonging to
-	 * the shape, mutating the shape. This can sometimes fix a visual problem in
-	 * Processing where narrow gaps can appear between otherwise flush shapes.
+	 * Rounds the x and y coordinates (to the closest int) of all vertices belonging
+	 * to the shape, <b>mutating</b> the shape. This can sometimes fix a visual
+	 * problem in Processing where narrow gaps can appear between otherwise flush
+	 * shapes.
 	 * 
 	 * @since 1.1.3
 	 */
 	public static void roundVertexCoords(PShape shape) {
-		final List<PShape> children = new ArrayList<>();
-		getChildren(shape, children);
-		children.forEach(c -> {
-			if (c.getKind() != GROUP) {
-				for (int i = 0; i < c.getVertexCount(); i++) {
-					final PVector v = c.getVertex(i);
-					c.setVertex(i, Math.round(v.x), Math.round(v.y));
-				}
+		getChildren(shape).forEach(c -> {
+			for (int i = 0; i < c.getVertexCount(); i++) {
+				final PVector v = c.getVertex(i);
+				c.setVertex(i, Math.round(v.x), Math.round(v.y));
 			}
 		});
+	}
+
+	/**
+	 * Produces a deep copy / clone of the input shape. Handles GROUP, PRIMITIVE,
+	 * GEOMETRY and PATH PShapes.
+	 * 
+	 * @param shape the PShape to copy
+	 * @return a deep copy of the given shape
+	 */
+	public static PShape copy(PShape shape) {
+		final PShape copy = new PShape();
+		copy.setName(shape.getName());
+
+		try {
+			Method method;
+			switch (shape.getFamily()) {
+				case GROUP :
+					copy.setFamily(GROUP);
+					getChildren(shape).forEach(child -> copy.addChild(copy(child)));
+					return copy;
+				case PShape.PRIMITIVE :
+					copy.setFamily(PShape.PRIMITIVE);
+					method = PShape.class.getDeclaredMethod("copyPrimitive", PShape.class, PShape.class);
+					break;
+				case PShape.GEOMETRY :
+					copy.setFamily(PShape.GEOMETRY);
+					method = PShape.class.getDeclaredMethod("copyGeometry", PShape.class, PShape.class);
+					break;
+				case PShape.PATH :
+					copy.setFamily(PShape.PATH);
+					method = PShape.class.getDeclaredMethod("copyPath", PShape.class, PShape.class);
+					break;
+				default :
+					return copy;
+			}
+			method.setAccessible(true);
+			method.invoke(null, shape, copy);
+		} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException
+				| InvocationTargetException e) {
+			e.printStackTrace();
+		}
+
+		return copy;
 	}
 
 	/**
@@ -794,5 +925,62 @@ public final class PGS_Conversion implements PConstants {
 				+ PVector.sub(end, controlPoint2).mag();
 		return (cont_net + chord) / 2;
 
+	}
+
+	static class PShapeData {
+
+		private static Field fillColorF, fillF, strokeColorF, strokeWeightF, strokeF;
+
+		static {
+			try {
+				fillColorF = PShape.class.getDeclaredField("fillColor");
+				fillColorF.setAccessible(true);
+				fillF = PShape.class.getDeclaredField("fill");
+				fillF.setAccessible(true);
+				strokeColorF = PShape.class.getDeclaredField("strokeColor");
+				strokeColorF.setAccessible(true);
+				strokeWeightF = PShape.class.getDeclaredField("strokeWeight");
+				strokeWeightF.setAccessible(true);
+				strokeF = PShape.class.getDeclaredField("stroke");
+				strokeF.setAccessible(true);
+			} catch (NoSuchFieldException | SecurityException e) {
+				e.printStackTrace();
+			}
+		}
+
+		int fillColor, strokeColor;
+		float strokeWeight;
+		boolean fill, stroke;
+
+		private PShapeData(PShape shape) {
+			try {
+				fillColor = fillColorF.getInt(shape);
+				fill = fillF.getBoolean(shape);
+				stroke = strokeF.getBoolean(shape);
+				strokeColor = strokeColorF.getInt(shape);
+				strokeWeight = strokeWeightF.getFloat(shape);
+			} catch (IllegalArgumentException | IllegalAccessException e) {
+				e.printStackTrace();
+			}
+		}
+
+		/**
+		 * Apply this shapedata to a given PShape.
+		 * 
+		 * @param other
+		 */
+		void applyTo(PShape other) {
+			other.setFill(fill);
+			other.setFill(fillColor);
+			other.setStroke(stroke);
+			other.setStroke(strokeColor);
+			other.setStrokeWeight(strokeWeight);
+		}
+
+		@Override
+		public String toString() {
+			return String.format("fillColor: %s; strokeColor: %s; strokeWeight: %.1f", Arrays.toString(decomposeclrRGB(fillColor)),
+					Arrays.toString(decomposeclrRGB(strokeColor)), strokeWeight);
+		}
 	}
 }

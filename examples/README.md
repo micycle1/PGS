@@ -20,6 +20,10 @@ All examples are dynamic and/or interactive. Shown below are merely screenshots.
 
 <img src="../resources/examples/intersectionBoids.png" alt="" width="500"/>
 
+## leafColoring
+
+<img src="../resources/examples/leafColoring.png" alt="" width="500"/>
+
 ## minkShearLetters
 
 <img src="../resources/examples/minkShearLetters.png" alt="" width="500"/>
@@ -39,6 +43,10 @@ All examples are dynamic and/or interactive. Shown below are merely screenshots.
 ## slice
 
 <img src="../resources/examples/slice.png" alt="" width="500"/>
+
+## spiralOutline
+
+<img src="../resources/examples/spiralOutline.png" alt="" width="500"/>
 
 ## textOffsetCurves
 

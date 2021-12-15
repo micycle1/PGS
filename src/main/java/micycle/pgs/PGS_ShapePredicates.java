@@ -79,8 +79,8 @@ public final class PGS_ShapePredicates {
 	 * Measures for each point in the input whether it is contained in the given
 	 * shape. This method checks every point individually, returning a boolean for
 	 * each point. Using this method is faster than calling
-	 * {@link #containsPoint(PShape, PVector)} repeatedly. Points that lie on the
-	 * boundary of the shape are considered to be contained.
+	 * {@link #containsPoint(PShape, PVector) containsPoint()} repeatedly. Points
+	 * that lie on the boundary of the shape are considered to be contained.
 	 * 
 	 * @param shape
 	 * @param points list of points to check
@@ -101,6 +101,9 @@ public final class PGS_ShapePredicates {
 	 * shape; if it is, then the point is included in the output list. This method
 	 * does not mutate the input; it returns a filtered copy. Points that lie on the
 	 * boundary of the shape are considered to be contained.
+	 * <p>
+	 * Using this method is faster than calling
+	 * {@link #containsPoint(PShape, PVector) containsPoint()} repeatedly.
 	 * 
 	 * @param shape
 	 * @param points list of points to check

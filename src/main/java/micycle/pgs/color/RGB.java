@@ -1,13 +1,20 @@
 package micycle.pgs.color;
 
+/**
+ * Provides static methods for Processing color generation (that doesn't require
+ * a PApplet instance).
+ * 
+ * @author Michael Carleton
+ *
+ */
 public class RGB {
 
 	public static final int BLACK = composeColor(0, 0, 0);
 	public static final int WHITE = composeColor(255, 255, 255);
 	public static final int PINK = composeColor(237, 50, 162);
-	
+
 	private static final float INV_255 = 1f / 255f; // used to normalise RGB values to 0...1
-	
+
 	private RGB() {
 	}
 
@@ -31,7 +38,41 @@ public class RGB {
 	public static int composeColor(final int red, final int green, final int blue) {
 		return -16777216 | red << 16 | green << 8 | blue;
 	}
-	
+
+	/**
+	 * @param grey  ∈[0, 255]
+	 * @param alpha ∈[0, 255] (where 0 is transparent; 255 is opaque)
+	 * @return
+	 */
+	public static int composeColor(final int grey, final int alpha) {
+		return alpha << 24 | grey << 16 | grey << 8 | grey;
+	}
+
+	/**
+	 * Decompose color integer (ARGB) into its 3 separate RGB components (0...255)
+	 * 
+	 * @param clr
+	 * @param out
+	 * @return [R,G,B] 0...255
+	 */
+	public static int[] decomposeclrRGB(int clr) {
+		int[] out = new int[3];
+		out[0] = (clr >> 16 & 0xff);
+		out[1] = (clr >> 8 & 0xff);
+		out[2] = (clr & 0xff);
+		return out;
+	}
+
+	/**
+	 * 
+	 * @param color
+	 * @param alpha ∈[0, 255] (where 0 is transparent; 255 is opaque)
+	 * @return
+	 */
+	public static int setAlpha(int color, int alpha) {
+		return (color & 16777215) | alpha << 24;
+	}
+
 	/**
 	 * Compose a 32 bit sARGB int from float[] 0...1
 	 * 
@@ -39,10 +80,9 @@ public class RGB {
 	 * @return
 	 */
 	static int composeclr(float[] RGBA) {
-		return (int) (RGBA[3] * 255) << 24 | (int) (RGBA[0] * 255) << 16 | (int) (RGBA[1] * 255) << 8
-				| (int) (RGBA[2] * 255);
+		return (int) (RGBA[3] * 255) << 24 | (int) (RGBA[0] * 255) << 16 | (int) (RGBA[1] * 255) << 8 | (int) (RGBA[2] * 255);
 	}
-	
+
 	/**
 	 * Decompose and pre-multiply alpha
 	 * 
@@ -51,8 +91,8 @@ public class RGB {
 	 */
 	static float[] decomposeclr(int clr) {
 		final float alpha = (clr >> 24 & 0xff) == 255 ? 1 : (clr >> 24 & 0xff) * INV_255;
-		return new float[] { (clr >> 16 & 0xff) * INV_255 * alpha, (clr >> 8 & 0xff) * INV_255 * alpha,
-				(clr & 0xff) * INV_255 * alpha, alpha };
+		return new float[] { (clr >> 16 & 0xff) * INV_255 * alpha, (clr >> 8 & 0xff) * INV_255 * alpha, (clr & 0xff) * INV_255 * alpha,
+				alpha };
 	}
 
 }

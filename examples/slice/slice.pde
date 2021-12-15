@@ -23,9 +23,9 @@ void slice(PShape shape) {
   PVector pv1 = PGS_Processing.pointOnExterior(mec, frameCount * 0.006f, -1);
   PVector pv2 = PGS_Processing.pointOnExterior(mec, frameCount * 0.003f + 0.5f, -1);
 
-  List<PShape> slice = PGS_Processing.slice(shape, pv1, pv2);
-  PShape s = slice.get(0);
-  PShape s2 = slice.get(1);
+  PShape slices = PGS_Processing.slice(shape, pv1, pv2);
+  PShape s = slices.getChild(0);
+  PShape s2 = slices.getChild(1);
   
   PGS_Conversion.setAllFillColor(s, color(237, 50, 162));
   PGS_Conversion.setAllStrokeColor(s, color(237, 50, 162), 4);

@@ -1,7 +1,6 @@
 // This example shows concave hull, constrained voronoi, shape subtract & intersection, slicing, pointsOnExterior, shape intersection points
 import processing.javafx.*;
 import micycle.pgs.*;
-import micycle.pgs.utility.PoissonDistribution;
 import java.util.List;
 
 PShape polygon;
@@ -16,17 +15,19 @@ void setup() {
   strokeWeight(8);
   center = new PVector(width/2, height/2);
 
-  List<PVector> randomPoints = new PoissonDistribution(1337).generate(30, 30, width - 30, height - 30, 15, 7);
+  List<PVector> randomPoints = PGS_PointSet.poisson(30, 30, width - 30, height - 30, 15,1337);
   polygon = PGS_Processing.concaveHull2(randomPoints, 0);
 
   polygon.setFill(false);
   polygon.setStroke(color(1));
   polygon.setStrokeWeight(3);
 
-  List<PShape> partitions = PGS_Processing.partition(polygon);
+  PShape partitions = PGS_Processing.partition(polygon);
   subPartitions = new ArrayList<PShape>();
-  for (PShape p : partitions) {
-    subPartitions.addAll(PGS_Processing.split(p));
+  for (PShape p : partitions.getChildren()) {
+    PShape split = PGS_Processing.split(p);
+    subPartitions.add(split.getChild(0));
+    subPartitions.add(split.getChild(1));
   }
 }
 
@@ -62,7 +63,7 @@ void draw() {
 
   PShape innerInner = PGS_ShapeBoolean.intersect(polygon, smallStar);
   List<PVector> ps = PGS_Processing.pointsOnExterior(star, 2, 0);
-  innerInner = PGS_Processing.slice(innerInner, ps.get(0), ps.get(1)).get(0);
+  innerInner = PGS_Processing.slice(innerInner, ps.get(0), ps.get(1)).getChild(0);
   PGS_Conversion.disableAllStroke(innerInner);
   shape(innerInner);
 

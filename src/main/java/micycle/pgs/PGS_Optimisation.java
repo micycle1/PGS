@@ -21,10 +21,11 @@ import org.locationtech.jts.operation.distance.DistanceOp;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
 import micycle.pgs.color.RGB;
-import micycle.pgs.utility.ClosestPointPair;
-import micycle.pgs.utility.FarthestPointPair;
-import micycle.pgs.utility.MaximumInscribedRectangle;
-import micycle.pgs.utility.MinimumBoundingEllipse;
+import micycle.pgs.commons.ClosestPointPair;
+import micycle.pgs.commons.FarthestPointPair;
+import micycle.pgs.commons.MaximumInscribedRectangle;
+import micycle.pgs.commons.MinimumBoundingEllipse;
+import micycle.pgs.commons.MinimumBoundingTriangle;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -100,11 +101,12 @@ public final class PGS_Optimisation {
 	 * 
 	 * <p>
 	 * This method uses a brute force algorithm to perform an exhaustive search for
-	 * a solution (therefore it is slow relative to other optimisation methods).
+	 * a solution (therefore it is slow relative to other
+	 * {@link micycle.pgs.PGS_Optimisation PGS_Optimisation} methods).
 	 * 
 	 * @param shape
 	 * @param fast  whether to compute MIR based on a lower resolution input. When
-	 *              true processing is ~6 times faster but potentially a little
+	 *              true, processing is ~6 times faster but potentially a little
 	 *              inaccurate
 	 */
 	public static PShape maximumInscribedRectangle(PShape shape, boolean fast) {
@@ -184,6 +186,17 @@ public final class PGS_Optimisation {
 	}
 
 	/**
+	 * Computes the minimum-area bounding triangle that encloses a shape.
+	 * 
+	 * @param shape
+	 * @return
+	 */
+	public static PShape minimumBoundingTriangle(PShape shape) {
+		MinimumBoundingTriangle mbt = new MinimumBoundingTriangle(fromPShape(shape));
+		return toPShape(mbt.getTriangle());
+	}
+
+	/**
 	 * Computes the minimum diameter of a shape.
 	 * <p>
 	 * The minimum diameter is defined to be the width of the smallest band that
@@ -201,7 +214,8 @@ public final class PGS_Optimisation {
 
 	/**
 	 * Returns the nearest point of the shape to the given point. If the shape is
-	 * has multiple children/geometries, the single closest point is returned.
+	 * has multiple children/geometries (a GROUP shape), the single closest point is
+	 * returned.
 	 * 
 	 * @param shape
 	 * @param point
@@ -215,9 +229,10 @@ public final class PGS_Optimisation {
 	}
 
 	/**
-	 * Returns the nearest point for each "island" in the input shape.
+	 * Returns the nearest point for each "island" / separate polygon in the GROUP
+	 * input shape.
 	 * 
-	 * @param shape
+	 * @param shape a GROUP shape
 	 * @param point
 	 * @return list of closest points for each child shape. Output is identical to
 	 *         {@link #closestPoint(PShape, PVector)} if the input shape is a single
@@ -228,8 +243,8 @@ public final class PGS_Optimisation {
 		Geometry g = fromPShape(shape);
 		ArrayList<PVector> points = new ArrayList<>();
 		for (int i = 0; i < g.getNumGeometries(); i++) {
-			Coordinate coord = DistanceOp.nearestPoints(g.getGeometryN(i), PGS.pointFromPVector(point))[0];
-			points.add(new PVector((float) coord.x, (float) coord.y));
+			final Coordinate coord = DistanceOp.nearestPoints(g.getGeometryN(i), PGS.pointFromPVector(point))[0];
+			points.add(PGS.toPVector(coord));
 		}
 		return points;
 	}
@@ -250,8 +265,12 @@ public final class PGS_Optimisation {
 	}
 
 	/**
-	 * Computes the farthest pair of points in a set of n points. This method runs
-	 * in O(n*log(n)), rather than the naive O(n*n) brute-force approach.
+	 * Computes the farthest pair of points in a set of n points.
+	 * <p>
+	 * This method runs in O(n*log(n)), rather than the naive O(n*n) brute-force
+	 * approach. However, it must first compute the convex hull of the point set, so
+	 * there is more overhead; on small datasets, the brute-force approach is likely
+	 * faster).
 	 * 
 	 * @param points a set of 2D points, represented by PVectors
 	 * @return a List<PVector> containing exactly two elements which are the

@@ -17,9 +17,10 @@ import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.simplify.VWSimplifier;
 
 import micycle.pgs.color.RGB;
-import micycle.pgs.utility.ChaikinCut;
-import micycle.pgs.utility.CornerRounding;
-import micycle.pgs.utility.GaussianLineSmoothing;
+import micycle.pgs.commons.ChaikinCut;
+import micycle.pgs.commons.CornerRounding;
+import micycle.pgs.commons.GaussianLineSmoothing;
+import micycle.pgs.commons.ShapeInterpolation;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -151,7 +152,7 @@ public final class PGS_Morphology {
 		try {
 			return toPShape(JTS.smooth(fromPShape(shape), 1 - fit));
 		} catch (Exception e) {
-			return new PShape();
+			return shape;
 		}
 
 	}
@@ -178,8 +179,8 @@ public final class PGS_Morphology {
 			LineString l = (LineString) g;
 			return toPShape(GaussianLineSmoothing.get(l, Math.max(sigma, 1)));
 		}
-		System.err.println(g.getGeometryType() + " are not supported for this method (yet).");
-		return new PShape(PConstants.GROUP);
+		System.err.println(g.getGeometryType() + " are not supported for the smoothGaussian() method (yet).");
+		return shape;
 	}
 
 	/**
@@ -327,28 +328,76 @@ public final class PGS_Morphology {
 	 */
 	public static PShape fieldWarp(PShape shape, double magnitude, double noiseScale, double time, boolean densify, int noiseSeed) {
 		float scale = (float) noiseScale * 500f;
-		final List<PVector> coords;
+		final boolean pointsShape = shape.getKind() == PConstants.POINTS;
 
-		if (densify) {
+		final PShape copy;
+		if (densify && !pointsShape) {
 			final Densifier d = new Densifier(fromPShape(shape));
 			d.setDistanceTolerance(1);
 			d.setValidate(false);
-			coords = PGS_Conversion.toPVector(toPShape(d.getResultGeometry()));
+			copy = toPShape(d.getResultGeometry());
 		} else {
-			coords = PGS_Conversion.toPVector(shape);
+			copy = toPShape(fromPShape(shape));
 		}
 
 		final UniformNoise noise = new UniformNoise(noiseSeed);
 
-		coords.forEach(coord -> {
-//			float dx = noise.uniformNoise(coord.x / scale, coord.y / scale, time) - 0.5f;
-			float dx = noise.uniformNoise(coord.x / scale, coord.y / scale + time) - 0.5f;
-//			float dy = noise.uniformNoise(coord.x / scale, coord.y / scale, 100 + time) - 0.5f;
-			float dy = noise.uniformNoise(coord.x / scale + (101 + time), coord.y / scale + (101 + time)) - 0.5f;
-			coord.add(dx * (float) magnitude * 2, dy * (float) magnitude * 2);
-		});
-		
-		return toPShape(GeometryFixer.fix(fromPShape(PGS_Conversion.fromPVector(coords))));
+		if (copy.getChildCount() == 0) {
+			// setVertex() will act on group shapes, so treat a single shape as group of 1
+			copy.addChild(copy);
+		}
+
+		for (PShape child : copy.getChildren()) {
+			for (int i = 0; i < child.getVertexCount(); i++) {
+				final PVector coord = child.getVertex(i);
+				float dx = noise.uniformNoise(coord.x / scale, coord.y / scale + time) - 0.5f;
+				float dy = noise.uniformNoise(coord.x / scale + (101 + time), coord.y / scale + (101 + time)) - 0.5f;
+				child.setVertex(i, coord.x + (dx * (float) magnitude * 2), coord.y + (dy * (float) magnitude * 2));
+			}
+		}
+
+		if (pointsShape) {
+			return copy;
+		} else {
+
+			if (copy.getChildCount() == 1) {
+				return toPShape(GeometryFixer.fix(fromPShape(copy.getChild(0))));
+			} else {
+				// don't apply geometryFixer to GROUP shape, since fixing a multigeometry
+				// appears to merge shapes. TODO apply .fix() to shapes individually
+				return copy;
+			}
+		}
+	}
+
+	/**
+	 * Generates an intermediate shape between two shapes by interpolating between
+	 * them. This process has many names: shape morphing / blending / averaging /
+	 * tweening / interpolation.
+	 * <p>
+	 * The underlying technique rotates one of the shapes to minimise the total
+	 * distance between each shape's vertices, then performs linear interpolation
+	 * between vertices. In practice this performs well but the outcome worsens as
+	 * shapes become more concave; more sophisticated techniques employ some level
+	 * of rigidity preservation.
+	 * 
+	 * @param from                a single polygon; the shape we want to morph from
+	 * @param to                  a single polygon; the shape we want to morph
+	 *                            <code>from</code> into
+	 * @param interpolationFactor between 0...1
+	 * @return a polygonal PShape
+	 * @since 1.2.0
+	 */
+	public static PShape interpolate(PShape from, PShape to, double interpolationFactor) {
+		final Geometry toGeom = fromPShape(to);
+		final Geometry fromGeom = fromPShape(from);
+		if (toGeom.getGeometryType().equals(Geometry.TYPENAME_POLYGON) && fromGeom.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
+			final ShapeInterpolation tween = new ShapeInterpolation(toGeom, fromGeom);
+			return toPShape(PGS.GEOM_FACTORY.createPolygon(tween.tween(interpolationFactor)));
+		} else {
+			System.err.println("morph() accepts holeless single polygons only (for now).");
+			return from;
+		}
 	}
 
 }

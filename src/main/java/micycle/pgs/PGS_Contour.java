@@ -27,7 +27,9 @@ import org.tinfour.common.Vertex;
 import org.tinfour.contour.Contour;
 import org.tinfour.contour.ContourBuilderForTin;
 import org.tinfour.standard.IncrementalTin;
+import org.tinfour.utils.SmoothingFilter;
 import org.twak.camp.Corner;
+import org.twak.camp.Edge;
 import org.twak.camp.Machine;
 import org.twak.camp.Skeleton;
 import org.twak.utils.collections.Loop;
@@ -38,14 +40,12 @@ import hageldave.jplotter.renderables.Lines.SegmentDetails;
 import micycle.medialAxis.MedialAxis;
 import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.color.RGB;
-import micycle.pgs.utility.SolubSkeleton;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Methods that produce a variety of methods for producing different kinds of
- * shape contours.
+ * Methods for producing different kinds of shape contours.
  *
  * <p>
  * A 2D contour is a closed sequence (a cycle) of 3 or more connected 2D
@@ -114,7 +114,7 @@ public final class PGS_Contour {
 
 		final Machine speed = new Machine(1); // every edge same speed
 
-		Geometry g = fromPShape(shape);
+		final Geometry g = fromPShape(shape);
 		Polygon polygon;
 		if (g.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
 			polygon = (Polygon) g;
@@ -129,12 +129,11 @@ public final class PGS_Contour {
 		HashSet<Coordinate> edgeCoordsSet = new HashSet<>();
 
 		Skeleton skeleton;
-		LoopL<org.twak.camp.Edge> loopL = new LoopL<>(); // list of loops
+		LoopL<Edge> loopL = new LoopL<>(); // list of loops
 		ArrayList<Corner> corners = new ArrayList<>();
-		Loop<org.twak.camp.Edge> loop = new Loop<>();
+		Loop<Edge> loop = new Loop<>();
 
-		LinearRing exterior = polygon.getExteriorRing();
-		Coordinate[] coords = exterior.getCoordinates();
+		Coordinate[] coords = polygon.getExteriorRing().getCoordinates();
 		if (!Orientation.isCCW(coords)) {
 			reverse(coords); // exterior should be CCW
 		}
@@ -149,7 +148,7 @@ public final class PGS_Contour {
 		edgeCoordsSet.add(coords[0]); // close loop
 
 		for (int j = 0; j < corners.size() - 1; j++) {
-			org.twak.camp.Edge edge = new org.twak.camp.Edge(corners.get(j), corners.get((j + 1) % (corners.size() - 1)));
+			Edge edge = new Edge(corners.get(j), corners.get((j + 1) % (corners.size() - 1)));
 			edge.machine = speed;
 			loop.append(edge);
 		}
@@ -181,10 +180,10 @@ public final class PGS_Contour {
 			loopL.add(loop);
 		}
 
-		PShape lines = new PShape();
+		final PShape lines = new PShape();
 		lines.setFamily(PConstants.GROUP);
-		PShape bones = prepareLinesPShape(null, null, 4);
-		PShape branches = prepareLinesPShape(RGB.composeColor(40, 235, 180, 128), null, null);
+		final PShape bones = prepareLinesPShape(null, null, 4);
+		final PShape branches = prepareLinesPShape(RGB.composeColor(40, 235, 180, 128), null, null);
 		try {
 			skeleton = new Skeleton(loopL, true);
 			skeleton.skeleton();
@@ -205,53 +204,6 @@ public final class PGS_Contour {
 		} catch (Exception ignore) {
 			// hide init or collision errors from console
 		}
-
-		bones.endShape();
-		branches.endShape();
-		lines.addChild(branches);
-		lines.addChild(bones);
-		return lines;
-	}
-
-	/**
-	 * An alternative straight skeleton implementation. Not robust, but fast. Does
-	 * not support holes.
-	 *
-	 * @param shape a hull
-	 * @return shape with two children: one child contains bones; one contains
-	 *         branches
-	 * @see #straightSkeleton(PShape) straightSkeleton(PShape). Fully robust, but
-	 *      slower.
-	 */
-	public static PShape straightSkeletonSolub(PShape shape) {
-		ArrayList<PVector> points = new ArrayList<>();
-		Polygon polygon = (Polygon) fromPShape(shape);
-
-		Coordinate[] coords = polygon.getExteriorRing().getCoordinates();
-		if (Orientation.isCCW(coords)) {
-			reverse(coords); // exterior should be CW
-		}
-		for (Coordinate coordinate : coords) {
-			points.add(new PVector((float) coordinate.x, (float) coordinate.y));
-		}
-		points.remove(0); // remove closing point
-
-		SolubSkeleton skeleton = new SolubSkeleton(points, 0);
-		skeleton.run();
-
-		PShape lines = new PShape();
-		lines.setFamily(PConstants.GROUP);
-		PShape branches = prepareLinesPShape(RGB.composeColor(40, 235, 180, 128), null, null);
-		PShape bones = prepareLinesPShape(null, null, 4);
-
-		skeleton.branches.forEach(branch -> {
-			branches.vertex(branch.sp1.x, branch.sp1.y);
-			branches.vertex(branch.sp2.x, branch.sp2.y);
-		});
-		skeleton.bones.forEach(bone -> {
-			bones.vertex(bone.sp1.x, bone.sp1.y);
-			bones.vertex(bone.sp2.x, bone.sp2.y);
-		});
 
 		bones.endShape();
 		branches.endShape();
@@ -349,10 +301,12 @@ public final class PGS_Contour {
 
 		PShape out = new PShape();
 		try {
-			// NOTE need to use intersection() rather than checkling whether vertices are
-			// contained within the shape (faster) because vertices of longer (straight)
-			// line segments may lie within the shape when the segment extends outside the
-			// shape
+			/*
+			 * Need to use intersection() rather than checkling whether vertices are
+			 * contained within the shape (faster) because vertices of longer (straight)
+			 * line segments may lie within the shape when the segment extends outside the
+			 * shape
+			 */
 			out = toPShape(DouglasPeuckerSimplifier.simplify(ld.getResult(), 1).intersection(g));
 			PGS_Conversion.disableAllFill(out);
 		} catch (Exception e2) {
@@ -378,33 +332,61 @@ public final class PGS_Contour {
 	 */
 	public static Map<PShape, Float> isolines(Collection<PVector> points, double intervalValueSpacing, double isolineMin,
 			double isolineMax) {
-		// lines = max-min/spacing
+		return isolines(points, intervalValueSpacing, isolineMin, isolineMax, 0);
+	}
+
+	/**
+	 * Generates a topographic-like isoline contour map from the given points. This
+	 * method uses the Z value of each PVector point as the "elevation" of that
+	 * location in the map.
+	 *
+	 * @param points               List of PVectors: the z coordinate for each
+	 *                             PVector defines the contour height at that
+	 *                             location
+	 * @param intervalValueSpacing contour height distance represented by successive
+	 *                             isolines (e.g. a value of 1 will generate
+	 *                             isolines at each 1 unit of height)
+	 * @param isolineMin           minimum value represented by isolines
+	 * @param isolineMax           maximum value represented by isolines
+	 * @param smoothing            Number of contour smoothing passes to perform.
+	 *                             The best choice for this value depends on the
+	 *                             requirements of the application. Values in the
+	 *                             range 5 to 40 are good candidates for
+	 *                             investigation.
+	 * @return a map of {isoline -> height of the isoline}
+	 */
+	public static Map<PShape, Float> isolines(Collection<PVector> points, double intervalValueSpacing, double isolineMin, double isolineMax,
+			int smoothing) {
 		final IncrementalTin tin = new IncrementalTin(10);
 		points.forEach(point -> tin.add(new Vertex(point.x, point.y, point.z)));
 
 		double[] intervals = generateDoubleSequence(isolineMin, isolineMax, intervalValueSpacing);
 
-		final ContourBuilderForTin builder = new ContourBuilderForTin(tin, null, intervals, false);
+		SmoothingFilter filter = null;
+		if (smoothing > 0) {
+			filter = new SmoothingFilter(tin, smoothing);
+		}
+		final ContourBuilderForTin builder = new ContourBuilderForTin(tin, filter, intervals, false);
 		List<Contour> contours = builder.getContours();
 
 		Map<PShape, Float> isolines = new HashMap<>(contours.size());
 
 		for (Contour contourLine : contours) {
+			final double[] coords = contourLine.getXY(); // [x1, y1, x2, y2, ...]
 			final PShape isoline = new PShape();
 			isoline.setFamily(PShape.PATH);
 			isoline.setStroke(true);
 			isoline.setStrokeWeight(2);
 			isoline.setStroke(RGB.PINK);
-			isoline.beginShape();
 
-			final double[] coords = contourLine.getCoordinates(); // [x1, y1, x2, y2, ...]
+			isoline.beginShape();
 			for (int i = 0; i < coords.length; i += 2) {
 				float vx = (float) coords[i];
 				float vy = (float) coords[i + 1];
 				isoline.vertex(vx, vy);
 			}
-
 			isoline.endShape();
+
 			isolines.put(isoline, (float) contourLine.getZ());
 		}
 

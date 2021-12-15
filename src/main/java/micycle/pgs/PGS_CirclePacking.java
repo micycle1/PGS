@@ -25,7 +25,7 @@ import org.tinspin.index.PointDistanceFunction;
 import org.tinspin.index.PointEntryDist;
 import org.tinspin.index.covertree.CoverTree;
 
-import micycle.pgs.utility.FrontChainPacker;
+import micycle.pgs.commons.FrontChainPacker;
 import processing.core.PShape;
 import processing.core.PVector;
 

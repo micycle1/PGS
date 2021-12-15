@@ -1,6 +1,5 @@
 import processing.javafx.*;
 import micycle.pgs.*;
-import micycle.pgs.utility.PoissonDistribution;
 import java.util.List;
 
 PShape polygon;
@@ -10,13 +9,15 @@ void setup() {
   size(800, 800, FX2D);
   smooth();
 
-  List<PVector> randomPoints = new PoissonDistribution().generate(30, 30, width - 30, height - 30, 35, 7);
+  List<PVector> randomPoints = PGS_PointSet.poisson(30, 30, width - 30, height - 30, 40);
   polygon = PGS_Processing.concaveHullBFS(randomPoints, 25);
 
-  List<PShape> partitions = PGS_Processing.partition(polygon);
+  PShape partitions = PGS_Processing.partition(polygon);
   subPartitions = new ArrayList<PShape>();
-  for (PShape p : partitions) {
-    subPartitions.addAll(PGS_Processing.split(p));
+  for (PShape p : partitions.getChildren()) {
+    PShape split = PGS_Processing.split(p);
+    subPartitions.add(split.getChild(0));
+    subPartitions.add(split.getChild(1));
   }
 }
 

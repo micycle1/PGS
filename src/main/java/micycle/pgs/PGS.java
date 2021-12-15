@@ -4,10 +4,12 @@ import static processing.core.PConstants.LINES;
 import static processing.core.PConstants.ROUND;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
-
+import java.util.Set;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -16,8 +18,15 @@ import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.PrecisionModel;
+import org.locationtech.jts.noding.BasicSegmentString;
+import org.locationtech.jts.noding.Noder;
+import org.locationtech.jts.noding.SegmentString;
+import org.locationtech.jts.noding.snap.SnappingNoder;
+import org.locationtech.jts.operation.polygonize.Polygonizer;
 
 import micycle.pgs.color.RGB;
+import micycle.pgs.commons.Nullable;
+import micycle.pgs.commons.PEdge;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -40,14 +49,14 @@ final class PGS {
 	}
 
 	/**
-	 * Create a LINES PShape, ready for vertices.
+	 * Create a LINES PShape, ready for vertices (shape.vertex(x, y) calls).
 	 * 
-	 * @param strokeColor  nullable
-	 * @param strokeCap    nullable default = ROUND
-	 * @param strokeWeight nullable. default = 2
+	 * @param strokeColor  nullable (default = {@link RGB#PINK})
+	 * @param strokeCap    nullable (default = ROUND)
+	 * @param strokeWeight nullable (default = 2)
 	 * @return
 	 */
-	static final PShape prepareLinesPShape(Integer strokeColor, Integer strokeCap, Integer strokeWeight) {
+	static final PShape prepareLinesPShape(@Nullable Integer strokeColor, @Nullable Integer strokeCap, @Nullable Integer strokeWeight) {
 		if (strokeColor == null) {
 			strokeColor = RGB.PINK;
 		}
@@ -89,6 +98,10 @@ final class PGS {
 		return GEOM_FACTORY.createLineString(new Coordinate[] { coordFromPVector(a), coordFromPVector(b) });
 	}
 
+	static final SegmentString createSegmentString(PVector a, PVector b) {
+		return new BasicSegmentString(new Coordinate[] { PGS.coordFromPVector(a), PGS.coordFromPVector(b) }, null);
+	}
+
 	static final Point createPoint(double x, double y) {
 		return GEOM_FACTORY.createPoint(new Coordinate(x, y));
 	}
@@ -105,28 +118,47 @@ final class PGS {
 		return new Coordinate(p.x, p.y);
 	}
 
-	/**
-	 * Transforms a list of points into a POINTS PShape.
-	 */
-	static final PShape toPointsPShape(Iterable<PVector> points) {
-		PShape shape = new PShape();
-		shape.setFamily(PShape.GEOMETRY);
-		shape.setStrokeCap(ROUND);
-		shape.beginShape(PShape.POINTS);
-		points.forEach(p -> shape.vertex(p.x, p.y));
-		shape.endShape();
-		return shape;
+	static final PVector toPVector(Coordinate c) {
+		return new PVector((float) c.x, (float) c.y);
 	}
 
 	/**
 	 * Reflection-based workaround to get the fill color of a PShape (this field is
-	 * usually private).
+	 * usually inaccessible).
 	 */
 	static final int getPShapeFillColor(final PShape sh) {
 		try {
 			final java.lang.reflect.Field f = PShape.class.getDeclaredField("fillColor");
 			f.setAccessible(true);
 			return f.getInt(sh);
+		} catch (ReflectiveOperationException cause) {
+			throw new RuntimeException(cause);
+		}
+	}
+
+	/**
+	 * Reflection-based workaround to get the stroke color of a PShape (this field
+	 * is usually inaccessible).
+	 */
+	static final int getPShapeStrokeColor(final PShape sh) {
+		try {
+			final java.lang.reflect.Field f = PShape.class.getDeclaredField("strokeColor");
+			f.setAccessible(true);
+			return f.getInt(sh);
+		} catch (ReflectiveOperationException cause) {
+			throw new RuntimeException(cause);
+		}
+	}
+
+	/**
+	 * Reflection-based workaround to get the stroke weight of a PShape (this field
+	 * is usually inaccessible).
+	 */
+	static final float getPShapeStrokeWeight(final PShape sh) {
+		try {
+			final java.lang.reflect.Field f = PShape.class.getDeclaredField("strokeWeight");
+			f.setAccessible(true);
+			return f.getFloat(sh);
 		} catch (ReflectiveOperationException cause) {
 			throw new RuntimeException(cause);
 		}
@@ -157,6 +189,129 @@ final class PGS {
 		}
 
 		return (area < 0);
+	}
+
+	/**
+	 * Polygonizes a set of edges.
+	 * 
+	 * @param edges a collection of <b>NODED</b> edges.
+	 * @return
+	 */
+	static final PShape polygonizeEdges(Collection<PEdge> edges) {
+//		return FastPolygonizer.polygonize(edges);
+		final List<SegmentString> ss = new ArrayList<>(edges.size());
+		edges.forEach(e -> ss.add(createSegmentString(e.a, e.b)));
+		return polygonizeSegments(ss, false);
+	}
+
+	/**
+	 * Polygonizes a set of line segments via noding.
+	 * 
+	 * @param segments list of segments (noded or non-noded)
+	 * @param node     whether to node the segments before polygonization. If the
+	 *                 segments constitute a conforming mesh, then set this as
+	 *                 false; otherwise true.
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	static final PShape polygonizeSegments(Collection<SegmentString> segments, boolean node) {
+		if (node) {
+			segments = nodeSegmentStrings(segments);
+		}
+
+		/*
+		 * FastPolygonizer is slightly less robust (when input has "dangles"), so use
+		 * JTS implementation in this method.
+		 */
+//		final Collection<PEdge> meshEdges = new ArrayList<>(segments.size());
+//		segments.forEach(ss -> meshEdges.add(new PEdge(toPVector(ss.getCoordinate(0)), toPVector(ss.getCoordinate(1)))));
+//		return polygonizeEdges(meshEdges);
+
+		final Set<PEdge> edges = PGS.makeHashSet(segments.size());
+		final Polygonizer polygonizer = new Polygonizer();
+		polygonizer.setCheckRingsValid(false);
+		segments.forEach(ss -> {
+			/*
+			 * If the same LineString is added more than once to the polygonizer, the string
+			 * is "collapsed" and not counted as an edge. Therefore a set is used to ensure
+			 * strings are added once only to the polygonizer. A PEdge is used to determine
+			 * this (since LineString hashcode doesn't work).
+			 */
+			final PEdge e = new PEdge(toPVector(ss.getCoordinate(0)), toPVector(ss.getCoordinate(1)));
+			if (edges.add(e)) {
+				final LineString l = PGS.GEOM_FACTORY.createLineString(new Coordinate[] { ss.getCoordinate(0), ss.getCoordinate(1) });
+				polygonizer.add(l);
+			}
+		});
+		return PGS_Conversion.toPShape(polygonizer.getPolygons());
+	}
+
+	/**
+	 * Computes a robust noding for a collection of SegmentStrings.
+	 * 
+	 * @param segments
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	static final Collection<SegmentString> nodeSegmentStrings(Collection<SegmentString> segments) {
+		/*
+		 * Other noder implementations do not node correctly (fail to detect
+		 * intersections) on many inputs; furthermore, using a very small tolerance
+		 * (i.e. ~1e-10) on SnappingNoder noder on a small tolerance misses
+		 * intersections too (hence 0.01 chosen as suitable). "Noding robustness issues
+		 * are generally caused by nearly coincident line segments, or by very short
+		 * line segments. Snapping mitigates both of these situations.".
+		 */
+		final Noder noder = new SnappingNoder(0.01);
+		noder.computeNodes(segments);
+		return noder.getNodedSubstrings();
+	}
+
+	static final <T> HashSet<T> makeHashSet(int expectedSize) {
+		// required capacity = actual_capacity / fill_factor + 1 (to avoid rehashing)
+		return new HashSet<>((int) ((expectedSize) / 0.75 + 1));
+	}
+
+	/**
+	 * Provides convenient iteration of the child geometries of a JTS MultiGeometry.
+	 * This iterator does not recurse all geometries (as does
+	 * {@link org.locationtech.jts.geom.GeometryCollectionIterator
+	 * GeometryCollectionIterator}), but returns the first level geometries only.
+	 * 
+	 * @author Michael Carleton
+	 */
+	static final class GeometryIterator implements Iterable<Geometry> {
+
+		private final Geometry g;
+
+		public GeometryIterator(Geometry g) {
+			this.g = g;
+		}
+
+		@Override
+		public Iterator<Geometry> iterator() {
+			return new Iterator<Geometry>() {
+				private int currentIndex = 0;
+
+				@Override
+				public boolean hasNext() {
+					return currentIndex < g.getNumGeometries();
+				}
+
+				@Override
+				public Geometry next() {
+					if (!hasNext()) {
+						throw new NoSuchElementException();
+					}
+					return g.getGeometryN(currentIndex++);
+				}
+
+				@Override
+				public void remove() {
+					throw new UnsupportedOperationException();
+				}
+			};
+		}
 	}
 
 	/**
@@ -212,41 +367,6 @@ final class PGS {
 					throw new UnsupportedOperationException();
 				}
 			};
-		}
-	}
-
-	/**
-	 * Represents an edge between 2 PVectors.
-	 * 
-	 * @author Michael Carleton
-	 *
-	 */
-	static final class PEdge {
-
-		final PVector a, b;
-
-		public PEdge(PVector a, PVector b) {
-			this.a = a;
-			this.b = b;
-		}
-
-		@Override
-		public int hashCode() {
-//		int x = Float.floatToIntBits(Math.min(a.x, b.x)); 
-//	    x = ((x >> 16) ^ Float.floatToIntBits(Math.max(a.x, b.x))) * 0x45d9f3b;
-//	    x = ((x >> 16) ^ Float.floatToIntBits(Math.min(a.y, b.y))) * 0x45d9f3b;
-//	    x = (x >> 16) ^ Float.floatToIntBits(Math.max(a.y, b.y));
-//	    return x;
-			return Float.floatToIntBits(b.y + a.y) ^ Float.floatToIntBits(b.x + a.x - 1);
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			if (obj instanceof PEdge) {
-				PEdge other = (PEdge) obj;
-				return (other.a.equals(a) && other.b.equals(b)) || (other.a.equals(b) && other.b.equals(a));
-			}
-			return false;
 		}
 	}
 

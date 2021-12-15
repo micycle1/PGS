@@ -10,16 +10,17 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import org.locationtech.jts.algorithm.RobustLineIntersector;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
+import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geomgraph.Edge;
 import org.locationtech.jts.geomgraph.EdgeIntersection;
 import org.locationtech.jts.geomgraph.index.EdgeSetIntersector;
 import org.locationtech.jts.geomgraph.index.SegmentIntersector;
 import org.locationtech.jts.geomgraph.index.SimpleMCSweepLineIntersector;
-
 import org.tinfour.common.IIncrementalTinNavigator;
 import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.Vertex;
@@ -34,8 +35,8 @@ import org.tinspin.index.rtree.Entry;
 import org.tinspin.index.rtree.RTree;
 import org.tinspin.index.rtree.RTreeIterator;
 
-import micycle.pgs.PGS.PEdge;
 import micycle.pgs.color.RGB;
+import micycle.pgs.commons.PEdge;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -65,11 +66,10 @@ public final class PGS_Voronoi {
 	public static PShape voronoiDiagram(PShape shape, boolean constrain) {
 		final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, null, constrain, 0, false);
 
-		final Envelope envelope = fromPShape(shape).getEnvelopeInternal();
-		final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();
-		options.setBounds(new Rectangle2D.Double(envelope.getMinX(), envelope.getMinY(), envelope.getMaxX() - envelope.getMinX(),
-				envelope.getMaxY() - envelope.getMinY()));
+		final Geometry g = fromPShape(shape);
 
+		final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();
+		options.setBounds(tin.getBounds());
 		final BoundedVoronoiDiagram v = new BoundedVoronoiDiagram(tin.getVertices(), options);
 
 		final IIncrementalTinNavigator navigator = tin.getNavigator();
@@ -79,12 +79,7 @@ public final class PGS_Voronoi {
 		final PShape lines = PGS.prepareLinesPShape(RGB.PINK, PConstants.SQUARE, 2);
 
 		if (constrain) { // constrain: include only inner voronoi line segments
-
-			final Coordinate[] coords = new Coordinate[shape.getVertexCount()];
-			for (int i = 0; i < shape.getVertexCount(); i++) {
-				final PVector a = shape.getVertex(i);
-				coords[i] = new Coordinate(a.x, a.y);
-			}
+			final Coordinate[] coords = g.getCoordinates();
 
 			final SweepLineSegmentIntersection intersection = new SweepLineSegmentIntersection(coords);
 			final HashSet<Integer> seen = new HashSet<>();
@@ -94,7 +89,7 @@ public final class PGS_Voronoi {
 				for (IQuadEdge e : poly.getEdges()) {
 					final Coordinate c1 = new Coordinate(e.getA().x, e.getA().y);
 					final Coordinate c2 = new Coordinate(e.getB().x, e.getB().y);
-					final int hash = c1.hashCode() + c2.hashCode(); // order-invariant hash
+					final int hash = c1.hashCode() ^ c2.hashCode(); // order-invariant hash
 					if (seen.add(hash)) { // only process unique edges
 						/*
 						 * It's a little faster to filter edges to intersection-check here by first
@@ -151,6 +146,7 @@ public final class PGS_Voronoi {
 			}));
 		}
 		lines.endShape();
+
 		voronoi.addChild(lines);
 		voronoi.addChild(axis);
 		return voronoi;
@@ -166,7 +162,50 @@ public final class PGS_Voronoi {
 	 * @return
 	 */
 	public static PShape voronoiDiagram(Collection<PVector> points, boolean constrain) {
-		return voronoiDiagram(PGS.toPointsPShape(points), constrain);
+		return voronoiDiagram(PGS_Conversion.toPointsPShape(points), constrain);
+	}
+
+	/**
+	 * Generates a Voronoi diagram from a triangulation object. The voronoi diagram
+	 * will use the constraints of the tin (if any).
+	 * 
+	 * @param triangulation a triangulation mesh
+	 * @return
+	 * @since 1.2.0
+	 */
+	public static PShape voronoiDiagram(IncrementalTin triangulation) {
+		final boolean constrained = !triangulation.getConstraints().isEmpty();
+		final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();
+		options.setBounds(triangulation.getBounds());
+
+		final BoundedVoronoiDiagram v = new BoundedVoronoiDiagram(triangulation.getVertices(), options);
+
+		final IIncrementalTinNavigator navigator = triangulation.getNavigator();
+		
+		Set<PEdge> edges = new HashSet<>(); // use set to draw edges once only
+
+		v.getPolygons().forEach(poly -> poly.getEdges().forEach(e -> {
+			if (!constrained) {
+				edges.add(new PEdge(e.getA().x, e.getA().y, e.getB().x, e.getB().y));
+			} else {
+				final boolean inA = triangulation.getRegionConstraint(navigator.getNeighborEdge(e.getA().x, e.getA().y)) != null;
+				if (inA) {
+					final boolean inB = triangulation.getRegionConstraint(navigator.getNeighborEdge(e.getB().x, e.getB().y)) != null;
+					if (inB) { // both points lie inside constraints, so include
+						edges.add(new PEdge(e.getA().x, e.getA().y, e.getB().x, e.getB().y));
+					}
+				}
+			}
+		}));
+
+		final PShape lines = PGS.prepareLinesPShape(RGB.PINK, PConstants.SQUARE, 2);
+		edges.forEach(e -> {
+			lines.vertex(e.a.x, e.a.y);
+			lines.vertex(e.b.x, e.b.y);
+		});
+		lines.endShape();
+
+		return lines;
 	}
 
 	/**
@@ -216,7 +255,7 @@ public final class PGS_Voronoi {
 	 * @see #voronoiCells(PShape)
 	 */
 	public static PShape voronoiCells(Collection<PVector> points) {
-		return voronoiCells(PGS.toPointsPShape(points));
+		return voronoiCells(PGS_Conversion.toPointsPShape(points));
 	}
 
 	/**
@@ -228,7 +267,7 @@ public final class PGS_Voronoi {
 	 * @param circles       list of PVectors to use as circle sites
 	 * @param circleSamples defines how many samples from each circle's
 	 *                      circumference should be used to compute the voronoi
-	 *                      diagram. 50 is a suitable value
+	 *                      diagram. 25-50 is a suitable range
 	 * @param drawBranches  whether to the draw/output branches from the coming from
 	 *                      the center of each circle
 	 * @return
@@ -259,7 +298,7 @@ public final class PGS_Voronoi {
 		sitesList.forEach(c -> sites.insert(new double[] { c.x, c.y }, c));
 
 		final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();
-		options.setBounds(new Rectangle2D.Double(-500, -500, 3000, 3000)); // should be enough
+		options.setBounds(new Rectangle2D.Double(-1000, -1000, 3000, 3000)); // should be enough
 		final BoundedVoronoiDiagram v = new BoundedVoronoiDiagram(tin.getVertices(), options);
 
 		final PShape lines = PGS.prepareLinesPShape(RGB.PINK, PConstants.SQUARE, 3);
@@ -308,7 +347,6 @@ public final class PGS_Voronoi {
 		final double deltaX = a.x - b.x;
 		final double deltaY = a.y - b.y;
 		return deltaX * deltaX + deltaY * deltaY > (d * d);
-
 	}
 
 	/**

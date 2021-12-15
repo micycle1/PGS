@@ -5,6 +5,43 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
+## **1.2.0** *(2021-12-15)*
+
+### Added
+* **`PGS_PointSet`** — a class that generates sets of 2D points having a variety of different distributions and constraints.
+* **`PGS_Coloring`** — a class for intelligent coloring of meshes (or mesh-like shapes) such that no two adjacent faces have the same color, while minimising the number of colors used.
+* **`PGS_Tiling`** — a class for tiling, tessellation and subdivision of the plane using periodic or non-periodic geometric shapes.
+* **`PGS_Meshing`** - a class to host mesh generation methods (excluding triangulation).
+* `toPointsPShape()` to `PGS_Conversion`. Generates a `POINTS` type PShape from a list of PVector points.
+* 3 additional method signatures (one  for each return type) for `delaunayTriangulation()` that accept a PShape only, returning a constrained triangulation.
+* `minimumBoundingTriangle()` to `PGS_Optimisation`. Computes the minimum-area bounding triangle that encloses a shape or point set.
+* `unionMesh()` to `PGS_ShapeBoolean`. Quickly and efficiently unions/merges the faces of a mesh-like shape together.
+* `setAllStrokeToFillColor()` to `PGS_Conversion`. Sets the stroke color to the fill color for a PShape and all its descendants (separately).
+* `copy()` to `PGS_Conversion`. Deep copies / clones a PShape.
+* A number of new primitives to `PGS_Construction`: *serpinskiCurve*, *linearSpiral*, *fermatSpiral*.
+* `extractPerimeter()` to `PGS_Processing`. Extracts a portion/subline of the perimeter of a shape between two locations.
+* `interpolate()` to `PGS_Morphology`. Generates an intermediate shape between two shapes by interpolating/morphing between them.
+
+### Changed
+* `PGS_Construction` now preserves a PShape's *fillColor*, *strokeColor* and *strokeWeight* throughout forward-backward conversion. This behaviour can be toggle using the class's `PRESERVE_STYLE` flag (default = true). Note that PGS' methods will generally not preserve the style of the original PShape because JTS does not preserve geometry user data during its operations.
+* `fieldWarp()` now supports `POINTS` and `GROUP` PShapes.
+* `removeSmallHoles()`, `round()` and `chaikinCut()` now support `GROUP` PShape inputs.
+* `partition()`, `split()` and `slice()` (from `PGS_Processing`) now output a single `GROUP` PShape (rather than a list of PShapes).
+* During conversion, JTS MultiGeometries that contain a single geometry only will be converted to a first-class PShape (rather than a GROUP PShape containing one child).
+* Output PShapes are now always created with a shape family of `PATH` (rather than `GEOMETRY`) to maximise compatibility with the `P2D` renderer.
+* `PGS_Contour.isolines()` now accepts a contour smoothing parameter.
+* `PGS_Processing.polygonizeLines()` is now more robust and faster.
+* Moved `urquhartFaces()` and `gabrielFaces()` from `PGS_Triangulation` to `PGS_Meshing`.
+* Renamed `micycle.pgs.utility` package to `micycle.pgs.commons`.
+
+### Fixed
+* Occasional out of bounds error with Poisson Distribution.
+* Error when constrained voronoiDiagram called with `GROUP` PShape input.
+* Removing duplicate vertices during PShape->JTS conversion would remove every vertex (not just the duplicated ones).
+
+### Removed
+- `PGS_Contour.straightSkeletonSolub()` (didn't meet robustness standards)
+
 ## **1.1.3** *(2021-09-01)*
 ### Added
 - `diameter()` to `PGS_ShapePredicates`. Computes the diameter of a shape.
