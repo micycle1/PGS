@@ -302,35 +302,38 @@ Much of the functionality (but by no means all) is demonstrated below:
 
   <tr>
     <td align="center" valign="center"><b>Perimeter Extraction</td>
-    <td align="center" valign="center"><b>Partitioning</td>
     <td align="center" valign="center"><b>Splitting</td>
-    <td align="center" valign="center"><b>Slicing</td>
+    <td align="center" valign="center"><b>Convex Partitioning</td>
+    <td align="center" valign="center"><b>Equal Partitioning</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/geometry_processing/perimeterExtract.gif"></td>
-    <td valign="top" width="25%"><img src="resources/geometry_processing/decompose2.png"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/split.gif"></td>
-    <td valign="top" width="25%"><img src="resources/geometry_processing/slice.gif"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/decompose2.png"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/partition.png"></td>
+    
   </tr>
   <tr>
     <td valign="top" width="25%"></td>
-    <td align="center" valign="center">Partition a shape into simple (convex) polygons.</td>
     <td align="center" valign="center">Subdivide (recursively) a shape into quadrants.</td>
-    <td align="center" valign="center">Slice a shape in two along a given line.</td>
+    <td align="center" valign="center">Partition a shape into convex polygons.</td>
+    <td align="center" valign="center">Partition a shape into N equal area polygons.</td>
   </tr>
 
   <tr>
-    <td align="center" valign="center" colspan="2"><b>Constrained Random Point Set</td>
+    <td align="center" valign="center"><b>Slicing</td>
+    <td align="center" valign="center"><b>Constrained Random Point Set</td>
     <td align="center" valign="center" colspan="2"><b>Segment Set Intersection</td>
   </tr>
   <tr>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/slice.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/randomGridPoints.gif"></td>
-    <td valign="top" width="25%"><img src="resources/geometry_processing/randomGridPoints2.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/segmentIntersection.png"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/segmentIntersection2.png"></td>
   </tr>
     <tr>
-    <td align="center" valign="center" colspan="2">Generate constrained random point sets where all points lie within a shape. Points can be distributed entirely randomly or according to grid with configurable tightness.</td>
+    <td align="center" valign="center">Slice a shape in two along a given line.</td>
+    <td align="center" valign="center">Generate constrained random point sets where all points lie within a shape.</td>
     <td align="center" valign="center" colspan="2">Find all points of intersection between a collection of line segments.</td>
   </tr>
 

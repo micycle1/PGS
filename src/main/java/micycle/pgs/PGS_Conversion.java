@@ -160,7 +160,7 @@ public final class PGS_Conversion implements PConstants {
 	 * collection contains only one geometry, an equivalent PShape will be output
 	 * directly (not a GROUP shape).
 	 */
-	public static PShape toPShape(Collection<Geometry> geometries) {
+	public static PShape toPShape(Collection<? extends Geometry> geometries) {
 		PShape shape = new PShape(GROUP);
 		shape.setFill(true);
 		shape.setFill(micycle.pgs.color.RGB.WHITE);
