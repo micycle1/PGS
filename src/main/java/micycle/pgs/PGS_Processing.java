@@ -50,6 +50,8 @@ import org.tinfour.common.Vertex;
 import org.tinfour.standard.IncrementalTin;
 import org.tinfour.utils.TriangleCollector;
 
+import de.incentergy.geometry.PolygonSplitter;
+import de.incentergy.geometry.impl.RandomPolygonSplitter;
 import micycle.balaban.BalabanSolver;
 import micycle.balaban.Point;
 import micycle.balaban.Segment;
@@ -753,14 +755,14 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Partitions a shape into simple polygons using Mark Bayazit's algorithm.
+	 * Partitions a shape into simple convex polygons.
 	 * 
-	 * @param shape
+	 * @param shape the shape to partition
 	 * @return a GROUP PShape, where each child shape is some convex partition of
 	 *         the original shape
 	 */
-	public static PShape partition(PShape shape) {
-		// https://mpen.ca/406/bayazit
+	public static PShape convexPartition(PShape shape) {
+		// algorithm described in https://mpen.ca/406/bayazit
 		final Geometry g = fromPShape(shape);
 
 		final PShape partitions = new PShape(PConstants.GROUP);
@@ -778,13 +780,37 @@ public final class PGS_Processing {
 	}
 
 	/**
+	 * Partitions a shape into N approximately equal area polygons.
+	 * <p>
+	 * This method produces a voronoi-like output.
+	 * 
+	 * @param shape a polygonal (non-group, no holes) shape
+	 * @param parts number of roughly equal area partitons to create
+	 * @return a GROUP PShape, where each child shape is some partition of the
+	 *         original
+	 * @since 1.2.1
+	 */
+	public static PShape equalPartition(final PShape shape, final int parts) {
+		final Geometry g = fromPShape(shape);
+		if (g.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
+			PolygonSplitter splitter = new RandomPolygonSplitter();
+			List<? extends Geometry> partitions = splitter.split((Polygon) g, parts);
+			return toPShape(partitions);
+		}
+		else {
+			System.err.println("equalPartition(): Input shape is not a polygon.");
+			return shape;
+		}
+	}
+
+	/**
 	 * Slices a shape using a line given by its start and endpoints.
 	 * 
 	 * @param shape PShape to slice into two shapes
 	 * @param p1    must be outside shape
 	 * @param p2    must be outside shape
-	 * @return a GROUP PShape with two children, where each child shape one of the
-	 *         slices
+	 * @return a GROUP PShape with two children, where each child shape is one of
+	 *         the slices
 	 */
 	public static PShape slice(PShape shape, PVector p1, PVector p2) {
 		// adapted from https://gis.stackexchange.com/questions/189976/

@@ -54,7 +54,7 @@ public class PGS_Meshing {
 	 * In practice this is a way to tessellate a shape into polygons (with the
 	 * resulting tessellation being in between a
 	 * {@link PGS_Triangulation#delaunayTriangulation(PShape, List, boolean, int, boolean)
-	 * triangulation} and a {@link micycle.pgs.PGS_Processing#partition(PShape)
+	 * triangulation} and a {@link micycle.pgs.PGS_Processing#convexPartition(PShape)
 	 * partition}).
 	 * <p>
 	 * Note that this method processes a Delaunay triangulation. Process a shape
