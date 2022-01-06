@@ -50,7 +50,6 @@ import org.tinfour.common.Vertex;
 import org.tinfour.standard.IncrementalTin;
 import org.tinfour.utils.TriangleCollector;
 
-import de.incentergy.geometry.PolygonSplitter;
 import de.incentergy.geometry.impl.RandomPolygonSplitter;
 import micycle.balaban.BalabanSolver;
 import micycle.balaban.Point;
@@ -784,17 +783,24 @@ public final class PGS_Processing {
 	 * <p>
 	 * This method produces a voronoi-like output.
 	 * 
-	 * @param shape a polygonal (non-group, no holes) shape
-	 * @param parts number of roughly equal area partitons to create
-	 * @return a GROUP PShape, where each child shape is some partition of the
-	 *         original
+	 * @param shape   a polygonal (non-group, no holes) shape
+	 * @param parts   number of roughly equal area partitons to create
+	 * @param precise whether to use a subroutine that partitions the shape into
+	 *                more precisely equal partitions. The tradeoff here is
+	 *                computation time vs partition quality
+	 * @return a GROUP PShape, whose child shapes are partitions of the original
 	 * @since 1.2.1
 	 */
-	public static PShape equalPartition(final PShape shape, final int parts) {
+	public static PShape equalPartition(final PShape shape, final int parts, boolean precise) {
 		final Geometry g = fromPShape(shape);
 		if (g.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
-			PolygonSplitter splitter = new RandomPolygonSplitter();
-			List<? extends Geometry> partitions = splitter.split((Polygon) g, parts);
+			RandomPolygonSplitter splitter = new RandomPolygonSplitter();
+			List<? extends Geometry> partitions;
+			if (precise) {
+				partitions = splitter.split((Polygon) g, parts, 10000, 3);
+			} else {
+				partitions = splitter.split((Polygon) g, parts, 2000, 5);
+			}
 			return toPShape(partitions);
 		}
 		else {
