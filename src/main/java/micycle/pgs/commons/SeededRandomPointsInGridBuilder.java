@@ -11,8 +11,8 @@ import org.locationtech.jts.shape.random.RandomPointsInGridBuilder;
 /**
  * An extension to the
  * {@link org.locationtech.jts.shape.random.RandomPointsInGridBuilder
- * RandomPointsInGridBuilder} class that accepts a random seed, allowed
- * repeatable outputs.
+ * RandomPointsInGridBuilder} class that accepts a random seed for repeatable
+ * outputs.
  * 
  * @author Michael Carleton
  *
