@@ -19,9 +19,11 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.util.AffineTransformation;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
 import processing.core.PConstants;
+import processing.core.PMatrix;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -41,12 +43,21 @@ public final class PGS_Conversion implements PConstants {
 
 	/** Approximate distance between successive sample points on bezier curves */
 	private static final float BEZIER_SAMPLE_DISTANCE = 2;
+	private static Field MATRIX_FIELD;
 	/**
 	 * Boolean flag that affects whether a PShape's style (fillColor, strokeColor,
 	 * strokeWidth) is preserved during PShape->Geometry->PShape conversion (i.e.
 	 * when <code>toPShape(fromPShape(myPShape))</code> is called). Default = true.
 	 */
 	public static boolean PRESERVE_STYLE = true;
+
+	static {
+		try {
+			MATRIX_FIELD = PShape.class.getDeclaredField("matrix");
+			MATRIX_FIELD.setAccessible(true);
+		} catch (NoSuchFieldException e) {
+		}
+	}
 
 	private PGS_Conversion() {
 	}
@@ -189,73 +200,95 @@ public final class PGS_Conversion implements PConstants {
 
 		Geometry g = null;
 
-		switch (shape.getFamily()) {
-			case PConstants.GROUP :
-				final List<PShape> flatChildren = getChildren(shape);
-				if (flatChildren.isEmpty()) {
-					return GEOM_FACTORY.createEmpty(2);
-				}
-
-				// Mostly likely a lines-only children, but not necessarily.
-				if (flatChildren.stream().allMatch(c -> c.getFamily() == PShape.PATH && !c.isClosed() && c.getVertexCount() > 1)) {
-					/*
-					 * GROUP PShape may contain multiple shape types. If so, return a Multi___
-					 * collection of the most numerous shape type and discard the rest.
-					 */
-					final List<Polygon> polys = new ArrayList<>();
-					final List<LineString> strings = new ArrayList<>();
-					for (int i = 0; i < flatChildren.size(); i++) {
-						final Geometry child = fromPShape(flatChildren.get(i));
-
-						if (child.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
-							polys.add((Polygon) child);
-						} else if (child.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
-							strings.add((LineString) child);
-						}
+		switchCase: {
+			switch (shape.getFamily()) {
+				case PConstants.GROUP :
+					final List<PShape> flatChildren = getChildren(shape);
+					if (flatChildren.isEmpty()) {
+						return GEOM_FACTORY.createEmpty(2);
 					}
 
-					if (strings.size() > polys.size()) {
-						if (!polys.isEmpty()) {
-							System.err.println("GROUP PShape contains both polygons and strings. Ignoring " + polys.size() + " polygons.");
+					// Mostly likely a lines-only children, but not necessarily.
+					if (flatChildren.stream().allMatch(c -> c.getFamily() == PShape.PATH && !c.isClosed() && c.getVertexCount() > 1)) {
+						/*
+						 * GROUP PShape may contain multiple shape types. If so, return a Multi___
+						 * collection of the most numerous shape type and discard the rest.
+						 */
+						final List<Polygon> polys = new ArrayList<>();
+						final List<LineString> strings = new ArrayList<>();
+						for (int i = 0; i < flatChildren.size(); i++) {
+							final Geometry child = fromPShape(flatChildren.get(i));
+
+							if (child.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
+								polys.add((Polygon) child);
+							} else if (child.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
+								strings.add((LineString) child);
+							}
 						}
-						return GEOM_FACTORY.createMultiLineString(strings.toArray(new LineString[strings.size()]));
+
+						if (strings.size() > polys.size()) {
+							if (!polys.isEmpty()) {
+								System.err.println(
+										"GROUP PShape contains both polygons and strings. Ignoring " + polys.size() + " polygons.");
+							}
+							g = GEOM_FACTORY.createMultiLineString(strings.toArray(new LineString[strings.size()]));
+							break switchCase;
+						} else {
+							if (!strings.isEmpty()) {
+								System.err.println(
+										"GROUP PShape contains both polygons and strings. Ignoring " + strings.size() + " linestrings.");
+							}
+							g = GEOM_FACTORY.createMultiPolygon(polys.toArray(new Polygon[polys.size()]));
+							break switchCase;
+						}
 					} else {
-						if (!strings.isEmpty()) {
-							System.err.println(
-									"GROUP PShape contains both polygons and strings. Ignoring " + strings.size() + " linestrings.");
+						List<Polygon> children = new ArrayList<>();
+						for (int i = 0; i < flatChildren.size(); i++) {
+							Geometry child = fromPShape(flatChildren.get(i));
+							if (child.getGeometryType().equals(Geometry.TYPENAME_POLYGON)
+									|| child.getGeometryType().equals(Geometry.TYPENAME_LINEARRING)) {
+								children.add((Polygon) child);
+							}
 						}
-						return GEOM_FACTORY.createMultiPolygon(polys.toArray(new Polygon[polys.size()]));
+						/*
+						 * NOTE since 1.2.0 Multi Polygons are no longer flattened. Methods have varying
+						 * support for multipolygons.
+						 */
+						g = GEOM_FACTORY.createMultiPolygon(children.toArray(new Polygon[children.size()]));
+						break switchCase;
 					}
-				} else {
-					List<Polygon> children = new ArrayList<>();
-					for (int i = 0; i < flatChildren.size(); i++) {
-						Geometry child = fromPShape(flatChildren.get(i));
-						if (child.getGeometryType().equals(Geometry.TYPENAME_POLYGON)
-								|| child.getGeometryType().equals(Geometry.TYPENAME_LINEARRING)) {
-							children.add((Polygon) child);
-						}
+				case PShape.GEOMETRY :
+				case PShape.PATH :
+					if (shape.getKind() == PConstants.POLYGON || shape.getKind() == PConstants.PATH || shape.getKind() == 0) {
+						g = fromVertices(shape);
+					} else {
+						g = fromCreateShape(shape); // special paths (e.g. POINTS, LINES, etc.)
 					}
-					/*
-					 * NOTE since 1.2.0 Multi Polygons are no longer flattened. Methods have varying
-					 * support for multipolygons.
-					 */
-					return (GEOM_FACTORY.createMultiPolygon(children.toArray(new Polygon[children.size()])));
-				}
-			case PShape.GEOMETRY :
-			case PShape.PATH :
-				if (shape.getKind() == PConstants.POLYGON || shape.getKind() == PConstants.PATH || shape.getKind() == 0) {
-					g = fromVertices(shape);
-				} else {
-					g = fromCreateShape(shape); // special paths (e.g. POINTS, LINES, etc.)
-				}
-				break;
-			case PShape.PRIMITIVE :
-				g = fromPrimitive(shape);
-				break;
+					break;
+				case PShape.PRIMITIVE :
+					g = fromPrimitive(shape);
+					break;
+			}
 		}
 
 		if (PRESERVE_STYLE && g != null) {
 			g.setUserData(new PShapeData(shape));
+		}
+
+		/*
+		 * Finally, apply PShape's affine transformations (which are not applied to its
+		 * vertices directly).
+		 */
+		try {
+			final PMatrix matrix = (PMatrix) MATRIX_FIELD.get(shape);
+			if (matrix != null) { // is null if no affine transformations have been applied to shape
+				final float[] affine = matrix.get(null);
+				if (affine.length == 6) { // process 2D shape matrix only
+					AffineTransformation t = new AffineTransformation(affine[0], affine[1], affine[2], affine[3], affine[4], affine[5]);
+					return t.transform(g);
+				}
+			}
+		} catch (IllegalArgumentException | IllegalAccessException e) {
 		}
 
 		return g;
@@ -490,7 +523,7 @@ public final class PGS_Conversion implements PConstants {
 	/**
 	 * Returns the vertices of a PShape as an unclosed list of PVector coordinates.
 	 * 
-	 * @param shape
+	 * @param shape a non-GROUP PShape
 	 * @return
 	 */
 	public static List<PVector> toPVector(PShape shape) {
@@ -594,6 +627,18 @@ public final class PGS_Conversion implements PConstants {
 		}
 
 		return children;
+	}
+
+	/**
+	 * Creates a single GROUP shape whose children shapes are the list given.
+	 * 
+	 * @param children
+	 * @return a GROUP PShape consisting of the given children
+	 */
+	public static PShape fromChildren(List<PShape> children) {
+		final PShape parent = new PShape(GROUP);
+		children.forEach(parent::addChild);
+		return parent;
 	}
 
 	/**
