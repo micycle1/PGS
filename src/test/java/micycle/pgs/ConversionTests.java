@@ -4,6 +4,7 @@ import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
@@ -63,6 +64,29 @@ class ConversionTests {
 
 		assertEquals(1, p.getNumInteriorRing());
 		assertEquals(shape.getVertexCount() + 2, g.getNumPoints());
+	}
+	
+	@Test
+	void testFromPShapeAffine() {
+		final PShape shape = new PShape(PShape.GEOMETRY);
+		shape.beginShape();
+		shape.vertex(0, 0);
+		shape.vertex(10, 0);
+		shape.vertex(0, 10);
+		shape.endShape(PShape.CLOSE); // close affects rendering only -- does not append another vertex
+		
+		// apply affine transformations to shape
+		shape.translate(100, 100);
+		shape.scale(1.2f, 0.6f);
+		shape.rotate(1);
+
+		final Geometry g = fromPShape(shape);
+
+		assertEquals(shape.getVertexCount() + 1, g.getCoordinates().length); // geometry is closed so has one more point
+		assertEquals(1, g.getNumGeometries());
+		for (int i = 0; i < g.getCoordinates().length; i++) {
+			assertFalse(pointsAreEqual(g.getCoordinates()[i], shape.getVertex(i)));
+		}
 	}
 
 	@Test

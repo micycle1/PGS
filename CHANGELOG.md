@@ -9,9 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 * `equalPartition()` to `PGS_Processing`. Partitions a shape into N approximately equal area polygons.
-
+* `fromChildren()` to PGS_Conversion. Creates a single GROUP parent shape from a list of child shapes.
 ### Changed
 * Renamed `partition()` to `convexPartition()`.
+* `PGS_Conversion.fromPShape()` (a major method used internally) now applies any shape affine transformations (such as `rotate()`, `scale()`, `translate()`) to the resulting geometry.
 
 ## **1.2.0** *(2021-12-15)*
 
