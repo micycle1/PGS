@@ -6,8 +6,10 @@ import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import micycle.pgs.color.RGB;
@@ -19,7 +21,7 @@ import processing.core.PVector;
  * This class solves the problem of finding polygons formed by a collection of
  * edges.
  * <p>
- * It is a faster (by around x15) alternative to JTS'
+ * It is a faster (by around x5) alternative to JTS'
  * {@link org.locationtech.jts.operation.polygonize.Polygonizer polygonizer}.
  * 
  * @author Michael Carleton
@@ -28,7 +30,6 @@ import processing.core.PVector;
 public class FastPolygonizer {
 
 	// Implements John Hughes' answer at math.stackexchange.com/a/1809750/583690
-	// TODO investigate how it handles dangles (seems dangles cause missing faces)
 
 	private FastPolygonizer() {
 	}
@@ -64,6 +65,18 @@ public class FastPolygonizer {
 			stars.computeIfAbsent(e.a, k -> new HashSet<>()).add(e1);
 			stars.computeIfAbsent(e.b, k -> new HashSet<>()).add(e2);
 		});
+
+		// Remove dangles
+		for (Iterator<Entry<PVector, HashSet<Dart>>> it = stars.entrySet().iterator(); it.hasNext();) {
+			Entry<PVector, HashSet<Dart>> entry = it.next();
+			if (entry.getValue().size() == 1) {
+				it.remove();
+				Dart dangle = entry.getValue().iterator().next();
+				darts.remove(dangle);
+				darts.remove(dangle.reverse);
+				stars.get(dangle.b).remove(dangle.reverse);
+			}
+		}
 
 		/*
 		 * For each vertex, for each dart in the star of that vertex, compute the vector
@@ -131,31 +144,36 @@ public class FastPolygonizer {
 				dart = starsOrdered.get(dart.b).get(dart.reverse);
 			}
 
-			final PShape polygon = new PShape(PShape.PATH);
-			polygon.setFill(true);
-			polygon.setStroke(true);
-			polygon.setStrokeWeight(3);
-			polygon.setStrokeCap(PConstants.ROUND);
-			polygon.setFill(RGB.WHITE);
-			polygon.setStroke(RGB.PINK);
+			if (stack.size() > 2) {
 
-			polygon.beginShape();
-			while (!stack.isEmpty()) {
-				final Dart e = stack.pop();
-				polygon.vertex(e.b.x, e.b.y);
+				final PShape polygon = new PShape(PShape.PATH);
+				polygon.setFill(true);
+				polygon.setStroke(true);
+				polygon.setStrokeWeight(3);
+				polygon.setStrokeCap(PConstants.ROUND);
+				polygon.setFill(RGB.WHITE);
+				polygon.setStroke(RGB.PINK);
+
+				polygon.beginShape();
+				while (!stack.isEmpty()) {
+					final Dart e = stack.pop();
+					polygon.vertex(e.b.x, e.b.y);
+				}
+				polygon.endShape(PConstants.CLOSE);
+
+				mesh.addChild(polygon);
+
+				if (polygon.getVertexCount() > largestVertexCount) {
+					largestVertexCount = polygon.getVertexCount();
+					bopIndex = index;
+				}
+				index++;
 			}
-			polygon.endShape(PConstants.CLOSE);
-
-			mesh.addChild(polygon);
-
-			if (polygon.getVertexCount() > largestVertexCount) {
-				largestVertexCount = polygon.getVertexCount();
-				bopIndex = index;
-			}
-			index++;
 		}
 
-		mesh.removeChild(bopIndex);
+		if (bopIndex > -1) {
+			mesh.removeChild(bopIndex);
+		}
 
 		return mesh;
 	}
@@ -182,10 +200,6 @@ public class FastPolygonizer {
 		 * Directional hash
 		 */
 		public int hashCode() {
-//			int x = Float.floatToIntBits(a.x);
-//			x = ((x >> 16) ^ Float.floatToIntBits(a.y)) * 0x45d9f3b;
-//			x = ((x >> 16) ^ Float.floatToIntBits(b.x)) * 0x45d9f3b;
-//			x = (x >> 16) ^ Float.floatToIntBits(b.y);
 			return Float.floatToIntBits(a.x + a.y) ^ Float.floatToIntBits(b.x + b.y - 1);
 		}
 
