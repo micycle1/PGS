@@ -5,6 +5,7 @@ import static processing.core.PConstants.ROUND;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -22,6 +23,7 @@ import org.locationtech.jts.noding.BasicSegmentString;
 import org.locationtech.jts.noding.Noder;
 import org.locationtech.jts.noding.SegmentString;
 import org.locationtech.jts.noding.snap.SnappingNoder;
+import org.locationtech.jts.operation.linemerge.LineMerger;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 
 import micycle.pgs.color.RGB;
@@ -232,7 +234,7 @@ final class PGS {
 		polygonizer.setCheckRingsValid(false);
 		segments.forEach(ss -> {
 			/*
-			 * If the same LineString is added more than once to the polygonizer, the string
+			 * If the same LineString is added more than once to JTS polygonizer, the string
 			 * is "collapsed" and not counted as an edge. Therefore a set is used to ensure
 			 * strings are added once only to the polygonizer. A PEdge is used to determine
 			 * this (since LineString hashcode doesn't work).
@@ -270,6 +272,89 @@ final class PGS {
 	static final <T> HashSet<T> makeHashSet(int expectedSize) {
 		// required capacity = actual_capacity / fill_factor + 1 (to avoid rehashing)
 		return new HashSet<>((int) ((expectedSize) / 0.75 + 1));
+	}
+
+	/**
+	 * Computes an <b>ordered</b> list of <b>vertices</b> that make up the boundary
+	 * of a polygon from an <b>unordered</b> collection of <b>edges</b>. The
+	 * underlying approach is around ~10x faster than JTS .buffer(0) and ~3x faster
+	 * than {@link LineMerger}.
+	 * <p>
+	 * For now, this method does not properly support multi-shapes, nor unclosed
+	 * linestrings.
+	 * <p>
+	 * Notably, unlike {@link LineMerger} this approach does not merge successive
+	 * boundary segments that together form a straight line into a single longer
+	 * segment.
+	 * 
+	 * @param edges unordered/random collection of edges (containing no duplicates),
+	 *              that together constitute the boundary of a single polygon / a
+	 *              closed ring
+	 * @return sequential list of vertices belonging to the polygon that follow some
+	 *         constant winding (may wind clockwise or anti-clockwise)
+	 */
+	static List<PVector> fromEdges(Collection<PEdge> edges) {
+		final HashMap<PVector, HashSet<PEdge>> vertexEdges = new HashMap<>(); // map of vertex to the 2 edges that share it
+
+		/*
+		 * Build up map of vertex->edge to later find edges sharing a given vertex in
+		 * O(1). When the input is valid (edges form a closed loop) every vertex is
+		 * shared by 2 edges.
+		 */
+		for (PEdge e : edges) {
+			if (vertexEdges.containsKey(e.a)) {
+				vertexEdges.get(e.a).add(e);
+			} else {
+				HashSet<PEdge> h = new HashSet<>();
+				h.add(e);
+				vertexEdges.put(e.a, h);
+			}
+			if (vertexEdges.containsKey(e.b)) {
+				vertexEdges.get(e.b).add(e);
+			} else {
+				HashSet<PEdge> h = new HashSet<>();
+				h.add(e);
+				vertexEdges.put(e.b, h);
+			}
+		}
+
+		ArrayList<PVector> vertices = new ArrayList<>(edges.size() + 1); // boundary vertices
+
+		// begin by choosing a random edge
+		final PEdge startingEdge = edges.iterator().next();
+		vertices.add(startingEdge.a);
+		vertices.add(startingEdge.b);
+		vertexEdges.get(startingEdge.a).remove(startingEdge);
+		vertexEdges.get(startingEdge.b).remove(startingEdge);
+
+		while (vertices.size() < edges.size()) {
+			final PVector lastVertex = vertices.get(vertices.size() - 1);
+			HashSet<PEdge> connectedEdges = vertexEdges.get(lastVertex);
+
+			if (connectedEdges.isEmpty()) {
+				/*
+				 * This will be hit if the input is malformed (contains multiple disjoint shapes
+				 * for example), and break when the first loop is closed. On valid inputs the
+				 * while loop will break before this statement can be hit.
+				 */
+				break;
+			}
+
+			final PEdge nextEdge = connectedEdges.iterator().next();
+			if (nextEdge.a.equals(lastVertex)) {
+				vertices.add(nextEdge.b);
+				vertexEdges.get(nextEdge.b).remove(nextEdge);
+			} else {
+				vertices.add(nextEdge.a);
+				vertexEdges.get(nextEdge.a).remove(nextEdge);
+			}
+			connectedEdges.remove(nextEdge); // remove this edge from vertex mapping
+			if (connectedEdges.isEmpty()) {
+				vertexEdges.remove(lastVertex); // have used both edges connected to this vertex -- now remove!
+			}
+		}
+
+		return vertices;
 	}
 
 	/**

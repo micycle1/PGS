@@ -465,10 +465,12 @@ public final class PGS_Conversion implements PConstants {
 				coords[3] = c1.copy(); // close loop
 				return GEOM_FACTORY.createPolygon(coords);
 			case RECT :
-				shapeFactory.setCentre(new Coordinate(shape.getParam(0), shape.getParam(1)));
+				final float w = shape.getParam(2);
+				final float h = shape.getParam(3);
+				shapeFactory.setCentre(new Coordinate(shape.getParam(0) + w / 2, shape.getParam(1) + h / 2));
 				shapeFactory.setNumPoints(4);
-				shapeFactory.setWidth(shape.getParam(2));
-				shapeFactory.setHeight(shape.getParam(3));
+				shapeFactory.setWidth(w);
+				shapeFactory.setHeight(h);
 				return shapeFactory.createRectangle();
 			case QUAD :
 				coords = new Coordinate[4 + 1];

@@ -175,18 +175,7 @@ public final class PGS_Coloring {
 		final PShape mesh = nodeNonMesh(shape);
 		return colorMesh(mesh, coloringAlgorithm);
 	}
-
-	/**
-	 * NOTE unlike {@link #colorMesh(PShape, ColoringAlgorithm, int[])} this method
-	 * returns a PShape, since it doesn't apply coloring to the non-mesh input shape
-	 * (rather a processed mesh version of it)
-	 * 
-	 * @param shape
-	 * @param coloringAlgorithm
-	 * @param colors
-	 * @return
-	 */
-
+	
 	/**
 	 * Computes a coloring of the given non-conforming mesh shape and colors the
 	 * faces of its noded representation using the colors provided.
