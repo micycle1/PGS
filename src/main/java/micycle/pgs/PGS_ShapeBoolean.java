@@ -129,7 +129,7 @@ public final class PGS_ShapeBoolean {
 		/*
 		 * Now get the vertices belonging to boundary edges in sequential/winding order.
 		 */
-		final List<PVector> orderedVertices = computePolygonVertices(allEdges);
+		final List<PVector> orderedVertices = PGS.fromEdges(allEdges);
 		return PGS_Conversion.fromPVector(orderedVertices);
 	}
 
@@ -167,87 +167,5 @@ public final class PGS_ShapeBoolean {
 		shapeFactory.setHeight(height);
 		return toPShape(shapeFactory.createRectangle().difference(fromPShape(shape)));
 	}
-
-	/**
-	 * Computes an <b>ordered</b> list of <b>vertices</b> that make up the boundary
-	 * of a polygon from an <b>unordered</b> collection of <b>edges</b>. The
-	 * underlying approach is around ~10x faster than JTS .buffer(0) and ~3x faster
-	 * than {@link LineMerger}.
-	 * <p>
-	 * For now, this method does not properly support multi-shapes.
-	 * <p>
-	 * Notably, unlike {@link LineMerger} this approach does not merge successive
-	 * boundary segments that together form a straight line into a single longer
-	 * segment.
-	 * 
-	 * @param edges unordered/random collection of edges (containing no duplicates),
-	 *              that together constitute the boundary of a single polygon / a
-	 *              closed ring
-	 * @return sequential list of vertices belonging to the polygon that follow some
-	 *         constant winding (may wind clockwise or anti-clockwise)
-	 */
-	private static List<PVector> computePolygonVertices(Collection<PEdge> edges) {
-		final HashMap<PVector, HashSet<PEdge>> vertexEdges = new HashMap<>(); // map of vertex to the 2 edges that share it
-
-		/*
-		 * Build up map of vertex->edge to later find edges sharing a given vertex in
-		 * O(1). When the input is valid (edges form a closed loop) every vertex is
-		 * shared by 2 edges.
-		 */
-		for (PEdge e : edges) {
-			if (vertexEdges.containsKey(e.a)) {
-				vertexEdges.get(e.a).add(e);
-			} else {
-				HashSet<PEdge> h = new HashSet<>();
-				h.add(e);
-				vertexEdges.put(e.a, h);
-			}
-			if (vertexEdges.containsKey(e.b)) {
-				vertexEdges.get(e.b).add(e);
-			} else {
-				HashSet<PEdge> h = new HashSet<>();
-				h.add(e);
-				vertexEdges.put(e.b, h);
-			}
-		}
-
-		ArrayList<PVector> vertices = new ArrayList<>(edges.size() + 1); // boundary vertices
-
-		// begin by choosing a random edge
-		final PEdge startingEdge = edges.iterator().next();
-		vertices.add(startingEdge.a);
-		vertices.add(startingEdge.b);
-		vertexEdges.get(startingEdge.a).remove(startingEdge);
-		vertexEdges.get(startingEdge.b).remove(startingEdge);
-
-		while (vertices.size() < edges.size()) {
-			final PVector lastVertex = vertices.get(vertices.size() - 1);
-			HashSet<PEdge> connectedEdges = vertexEdges.get(lastVertex);
-
-			if (connectedEdges.isEmpty()) {
-				/*
-				 * This will be hit if the input is malformed (contains multiple disjoint shapes
-				 * for example), and break when the first loop is closed. On valid inputs the
-				 * while loop will break before this statement can be hit.
-				 */
-				break;
-			}
-
-			final PEdge nextEdge = connectedEdges.iterator().next();
-			if (nextEdge.a.equals(lastVertex)) {
-				vertices.add(nextEdge.b);
-				vertexEdges.get(nextEdge.b).remove(nextEdge);
-			} else {
-				vertices.add(nextEdge.a);
-				vertexEdges.get(nextEdge.a).remove(nextEdge);
-			}
-			connectedEdges.remove(nextEdge); // remove this edge from vertex mapping
-			if (connectedEdges.isEmpty()) {
-				vertexEdges.remove(lastVertex); // have used both edges connected to this vertex -- now remove!
-			}
-		}
-
-		return vertices;
-	}
-
+	
 }

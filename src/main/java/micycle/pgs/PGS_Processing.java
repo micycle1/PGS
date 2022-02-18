@@ -501,7 +501,7 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Computes the polygonal faces formed by a set of intersecting line segments.
+	 * Finds the polygonal faces formed by a set of intersecting line segments.
 	 * 
 	 * @param lineSegmentVertices a list of PVectors where each pair (couplet) of
 	 *                            PVectors represent the start and end point of one
@@ -802,8 +802,7 @@ public final class PGS_Processing {
 				partitions = splitter.split((Polygon) g, parts, 2000, 5);
 			}
 			return toPShape(partitions);
-		}
-		else {
+		} else {
 			System.err.println("equalPartition(): Input shape is not a polygon.");
 			return shape;
 		}

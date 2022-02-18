@@ -237,8 +237,9 @@ public final class PGS_ShapePredicates {
 	 * @return
 	 */
 	public static float circularity(PShape shape) {
-		Polygon poly = (Polygon) fromPShape(shape);
-		return (float) (4 * PConstants.PI * poly.getArea() / (poly.getBoundary().getLength() * poly.getBoundary().getLength()));
+		final Polygon poly = (Polygon) fromPShape(shape);
+		final double length = poly.getBoundary().getLength();
+		return (float) (4 * PConstants.PI * poly.getArea() / (length * length));
 	}
 
 	/**
