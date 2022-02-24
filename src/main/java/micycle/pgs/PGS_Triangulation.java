@@ -1,6 +1,7 @@
 package micycle.pgs;
 
 import static micycle.pgs.PGS_Conversion.fromPShape;
+import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -14,6 +15,7 @@ import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Location;
+import org.locationtech.jts.triangulate.polygon.PolygonTriangulator;
 import org.tinfour.common.IConstraint;
 import org.tinfour.common.PolygonConstraint;
 import org.tinfour.common.SimpleTriangle;
@@ -21,7 +23,6 @@ import org.tinfour.common.Vertex;
 import org.tinfour.standard.IncrementalTin;
 import org.tinfour.utils.TriangleCollector;
 
-import earcut4j.Earcut;
 import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.color.RGB;
 import micycle.pgs.commons.Nullable;
@@ -411,54 +412,16 @@ public final class PGS_Triangulation {
 
 	/**
 	 * Computes a triangulation of the shape according to the ear clipping
-	 * ("earcut") method. The triangulation is constrained to the shape by default.
-	 * Does not support holes (for now...).
+	 * ("earcut") method. The triangulation is constrained to the shape outline.
 	 * 
 	 * @param shape shape whose vertices to triangulate
 	 * @return a GROUP PShape, where each child shape is one triangle
 	 * @since 1.1.0
+	 * @since Supports holes since 1.2.1
 	 */
 	public static PShape earCutTriangulation(PShape shape) {
-		return earCutTriangulation(PGS_Conversion.toPVector(shape));
-	}
-
-	/**
-	 * Computes a triangulation of the given points according to the ear clipping
-	 * ("earcut") method.
-	 * 
-	 * @param points
-	 * @return a GROUP PShape, where each child shape is one triangle
-	 */
-	public static PShape earCutTriangulation(List<PVector> points) {
-		final double[] arrCoords = new double[points.size() * 2];
-
-		for (int i = 0; i < points.size(); i++) {
-			arrCoords[2 * i] = points.get(i).x;
-			arrCoords[2 * i + 1] = points.get(i).y;
-		}
-
-		final List<Integer> triangles = Earcut.earcut(arrCoords, null, 2);
-
-		final PShape triangulation = new PShape(PConstants.GROUP);
-
-		for (int i = 0; i < triangles.size(); i += 3) {
-			final int v1 = 2 * triangles.get(i);
-			final int v2 = 2 * triangles.get(i + 1);
-			final int v3 = 2 * triangles.get(i + 2);
-
-			final PShape triangle = new PShape(PShape.PATH);
-			triangle.beginShape();
-			triangle.vertex((float) arrCoords[v1], (float) arrCoords[v1 + 1]);
-			triangle.vertex((float) arrCoords[v2], (float) arrCoords[v2 + 1]);
-			triangle.vertex((float) arrCoords[v3], (float) arrCoords[v3 + 1]);
-			triangle.endShape(PConstants.CLOSE);
-			triangulation.addChild(triangle);
-		}
-
-		PGS_Conversion.setAllFillColor(triangulation, RGB.WHITE);
-		PGS_Conversion.setAllStrokeColor(triangulation, RGB.PINK, 2);
-
-		return triangulation;
+		PolygonTriangulator pt = new PolygonTriangulator(fromPShape(shape));
+		return toPShape(pt.getResult());
 	}
 
 	static PVector toPVector(final Vertex v) {

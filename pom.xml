@@ -209,7 +209,7 @@
 		<dependency>
 			<groupId>org.locationtech.jts</groupId>
 			<artifactId>jts-core</artifactId>
-			<version>1.18.2</version>
+			<version>1.18.3-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.twak</groupId>
@@ -225,11 +225,6 @@
 			<groupId>org.tinfour</groupId>
 			<artifactId>TinfourCore</artifactId>
 			<version>2.1.7</version>
-		</dependency>
-		<dependency>
-			<groupId>io.github.earcut4j</groupId>
-			<artifactId>earcut4j</artifactId>
-			<version>2.2.2</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.micycle1</groupId>

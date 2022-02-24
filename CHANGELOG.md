@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 * Renamed `partition()` to `convexPartition()`.
 * `PGS_Conversion.fromPShape()` (a major method used internally) now applies any shape affine transformations (such as `rotate()`, `scale()`, `translate()`) to the resulting geometry.
+* `earCutTriangulation(PShape)` now uses JTS' implementation which supports inputs with holes.
+
+### Removed
+* `earCutTriangulation(List<PVector> points)` from `PGS_Triangulation`.
 
 ## **1.2.0** *(2021-12-15)*
 
