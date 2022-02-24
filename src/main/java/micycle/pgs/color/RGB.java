@@ -52,7 +52,6 @@ public class RGB {
 	 * Decompose color integer (ARGB) into its 3 separate RGB components (0...255)
 	 * 
 	 * @param clr
-	 * @param out
 	 * @return [R,G,B] 0...255
 	 */
 	public static int[] decomposeclrRGB(int clr) {

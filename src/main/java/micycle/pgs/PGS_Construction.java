@@ -84,14 +84,14 @@ public class PGS_Construction {
 	 * geometric and natural shapes (starfish, petals, snowflakes) by choosing
 	 * suitable values relevant to few parameters.
 	 * 
-	 * @param x      centre point X
-	 * @param y      centre point Y
-	 * @param radius maximum radius
-	 * @param m      specifies the rotational symmetry of the shape (3 = 3 sided; 4
-	 *               = 4 sided)
-	 * @param n1     supershape parameter 1
-	 * @param n2     supershape parameter 2
-	 * @param n3     supershape parameter 3
+	 * @param centerX centre point X
+	 * @param centerY centre point Y
+	 * @param radius  maximum radius
+	 * @param m       specifies the rotational symmetry of the shape (3 = 3 sided; 4
+	 *                = 4 sided)
+	 * @param n1      supershape parameter 1
+	 * @param n2      supershape parameter 2
+	 * @param n3      supershape parameter 3
 	 * @return
 	 */
 	public static PShape createSuperShape(double centerX, double centerY, double radius, double m, double n1, double n2, double n3) {

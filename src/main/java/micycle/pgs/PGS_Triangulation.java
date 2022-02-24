@@ -79,8 +79,8 @@ public final class PGS_Triangulation {
 	 *                      When constrain=false and refinements=0, this argument
 	 *                      has no effect.
 	 * @return a GROUP PShape, where each child shape is one triangle
-	 * @see #delaunayTriangulationPoints(PShape, List, boolean, int, boolean)
-	 * @see #delaunayTriangulationMesh(PShape, List, boolean, int, boolean)
+	 * @see #delaunayTriangulationPoints(PShape, Collection, boolean, int, boolean)
+	 * @see #delaunayTriangulationMesh(PShape, Collection, boolean, int, boolean)
 	 */
 	public static PShape delaunayTriangulation(PShape shape, @Nullable Collection<PVector> steinerPoints, boolean constrain,
 			int refinements, boolean pretty) {
@@ -167,8 +167,8 @@ public final class PGS_Triangulation {
 	 *                      has no effect.
 	 * @return List of PVector coordinates, where each consecutive triplet of
 	 *         coordinates are the 3 vertices belonging to one triangle
-	 * @see #delaunayTriangulationPoints(PShape, List, boolean, int, boolean)
-	 * @see #delaunayTriangulationMesh(PShape, List, boolean, int, boolean)
+	 * @see #delaunayTriangulation(PShape, Collection, boolean, int, boolean)
+	 * @see #delaunayTriangulationMesh(PShape, Collection, boolean, int, boolean)
 	 */
 	public static List<PVector> delaunayTriangulationPoints(PShape shape, @Nullable Collection<PVector> steinerPoints, boolean constrain,
 			int refinements, boolean pretty) {
@@ -249,8 +249,8 @@ public final class PGS_Triangulation {
 	 *                      When constrain=false and refinements=0, this argument
 	 *                      has no effect.
 	 * @return Triangulated Irregular Network object (mesh)
-	 * @see #delaunayTriangulation(PShape, List, boolean, int, boolean)
-	 * @see #delaunayTriangulationPoints(PShape, List, boolean, int, boolean)
+	 * @see #delaunayTriangulation(PShape, Collection, boolean, int, boolean)
+	 * @see #delaunayTriangulationPoints(PShape, Collection, boolean, int, boolean)
 	 */
 	public static IncrementalTin delaunayTriangulationMesh(@Nullable PShape shape, @Nullable Collection<PVector> steinerPoints, boolean constrain,
 			int refinements, boolean pretty) {

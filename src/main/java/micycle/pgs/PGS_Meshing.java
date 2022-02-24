@@ -15,7 +15,6 @@ import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
-import org.tinfour.standard.IncrementalTin;
 import org.tinfour.utils.TriangleCollector;
 import org.tinspin.index.PointIndex;
 import org.tinspin.index.kdtree.KDTree;
@@ -53,7 +52,7 @@ public class PGS_Meshing {
 	 * <p>
 	 * In practice this is a way to tessellate a shape into polygons (with the
 	 * resulting tessellation being in between a
-	 * {@link PGS_Triangulation#delaunayTriangulation(PShape, List, boolean, int, boolean)
+	 * {@link PGS_Triangulation#delaunayTriangulation(PShape)
 	 * triangulation} and a {@link micycle.pgs.PGS_Processing#convexPartition(PShape)
 	 * partition}).
 	 * <p>
@@ -118,7 +117,7 @@ public class PGS_Meshing {
 	 *                          gabriel condition
 	 * @return a GROUP PShape where each child shape is a single face
 	 * @since 1.1.0
-	 * @see #urquhartFaces(IncrementalTin, boolean)
+	 * @see #urquhartFaces(IIncrementalTin, boolean)
 	 */
 	public static PShape gabrielFaces(final IIncrementalTin triangulation, final boolean preservePerimeter) {
 		final HashSet<IQuadEdge> edges = new HashSet<>();

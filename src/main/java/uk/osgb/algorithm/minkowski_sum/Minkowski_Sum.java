@@ -519,7 +519,7 @@ public class Minkowski_Sum {
 	 * @param src          Source geometry, may be polygon or multipolygon
 	 * @param ref          Reference geometry, may be polygon or
 	 *                     linestring/linearring
-	 * @param refSymmetric true if ref is symmetric over origin
+	 * @param isRefSymmetric true if ref is symmetric over origin
 	 * @param isRefConvex
 	 * @return null (not implemented yet)
 	 */

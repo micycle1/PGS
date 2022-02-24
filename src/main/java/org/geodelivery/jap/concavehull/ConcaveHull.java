@@ -77,7 +77,7 @@ public class ConcaveHull {
 	}
 
 	/**
-	 * @param compression
+	 * @param geom
 	 * @return
 	 */
 	public Geometry transform(Geometry geom) {

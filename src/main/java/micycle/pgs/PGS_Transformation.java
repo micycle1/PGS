@@ -282,7 +282,7 @@ public final class PGS_Transformation {
 	 * Flips the shape vertically based on a line given by its X location.
 	 * 
 	 * @param shape
-	 * @param y
+	 * @param x
 	 * @return
 	 */
 	public static PShape flipVertical(PShape shape, double x) {
