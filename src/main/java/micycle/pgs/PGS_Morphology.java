@@ -5,13 +5,13 @@ import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.List;
 
-import org.geotools.geometry.jts.JTS;
 import org.locationtech.jts.densify.Densifier;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.util.GeometryFixer;
+import org.locationtech.jts.shape.CubicBezierCurve;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.simplify.VWSimplifier;
@@ -143,18 +143,13 @@ public final class PGS_Morphology {
 	 * than the input.
 	 * 
 	 * @param shape
-	 * @param fit   tightness of fit from 0 (tight/no smooth) to 1 (loose/most
-	 *              smoothed)
+	 * @param alpha curvedness parameter (0 is linear, 1 is round, >1 is increasingly curved)
 	 * @return smoothed copy of the shape
 	 * @see #smoothGaussian(PShape, double)
 	 */
-	public static PShape smooth(PShape shape, double fit) {
-		try {
-			return toPShape(JTS.smooth(fromPShape(shape), 1 - fit));
-		} catch (Exception e) {
-			return shape;
-		}
-
+	public static PShape smooth(PShape shape, double alpha) {
+		Geometry curve = CubicBezierCurve.bezierCurve(fromPShape(shape), alpha);
+		return toPShape(curve);
 	}
 
 	/**
@@ -162,7 +157,7 @@ public final class PGS_Morphology {
 	 * larger values, this morphs the input shape much more visually than
 	 * {@link #smooth(PShape, double)}.
 	 * 
-	 * @param shape
+	 * @param shape the shape to smooth
 	 * @param sigma The standard deviation of the gaussian kernel. Larger values
 	 *              provide more smoothing.
 	 * @return smoothed copy of the shape
@@ -170,14 +165,13 @@ public final class PGS_Morphology {
 	 */
 	public static PShape smoothGaussian(PShape shape, double sigma) {
 		Geometry g = fromPShape(shape);
-		if (g.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
-			// TODO support holes
+		if (g.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) { // TODO support holes
 			Polygon p = (Polygon) g;
-			return toPShape(GaussianLineSmoothing.get(p.getExteriorRing(), Math.max(sigma, 1)));
+			return toPShape(GaussianLineSmoothing.get(p.getExteriorRing(), Math.max(sigma, 1), 1));
 		}
 		if (g.getGeometryType().equals(Geometry.TYPENAME_LINEARRING) || g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
 			LineString l = (LineString) g;
-			return toPShape(GaussianLineSmoothing.get(l, Math.max(sigma, 1)));
+			return toPShape(GaussianLineSmoothing.get(l, Math.max(sigma, 1), 1));
 		}
 		System.err.println(g.getGeometryType() + " are not supported for the smoothGaussian() method (yet).");
 		return shape;

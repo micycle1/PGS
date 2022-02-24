@@ -20,7 +20,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.8.1</version>
+				<version>3.10.0</version>
 				<configuration>
 					<release>8</release>
 					<source>14</source>
@@ -47,16 +47,15 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>3.3.1</version>
+				<version>3.3.2</version>
 				<executions>
 					<execution>
 						<id>attach-javadocs</id>
-						<phase>deploy</phase>
 						<goals>
 							<goal>jar</goal>
 						</goals>
 						<configuration>
-							<doclint>none</doclint> <!--Prevent Javadoc incomplete errors -->
+							<additionalJOption>-Xdoclint:none</additionalJOption>
 						</configuration>
 					</execution>
 				</executions>
@@ -256,7 +255,7 @@
 		<dependency>
 			<groupId>com.github.hageldave.jplotter</groupId>
 			<artifactId>jplotter</artifactId>
-			<version>0.5.0</version>
+			<version>0.6.1</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
