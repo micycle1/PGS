@@ -214,7 +214,7 @@ public final class PGS_Voronoi {
 	 * 
 	 * @param shape the shape whose vertices to use as Voronoi sites
 	 * @return a GROUP PShape, where each child shape is a Voronoi cell
-	 * @see #voronoiCells(List)
+	 * @see #voronoiCells(Collection)
 	 */
 	public static PShape voronoiCells(PShape shape) {
 		final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, null, false, 0, false);

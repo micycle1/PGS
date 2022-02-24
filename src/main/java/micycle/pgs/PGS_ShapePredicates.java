@@ -48,8 +48,8 @@ public final class PGS_ShapePredicates {
 	 * @param shape
 	 * @param point
 	 * @return
-	 * @see #containsAllPoints(PShape, List)
-	 * @see #containsPoints(PShape, List)
+	 * @see #containsAllPoints(PShape, Collection)
+	 * @see #containsPoints(PShape, Collection)
 	 */
 	public static boolean containsPoint(PShape shape, PVector point) {
 		return fromPShape(shape).covers(PGS.pointFromPVector(point));

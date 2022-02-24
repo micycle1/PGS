@@ -104,10 +104,8 @@ public final class PGS_Contour {
 	 * shrinking mitered offset curves of the polygon
 	 *
 	 * @param shape
-	 * @param p
 	 * @return shape with two children: one child contains bones; one contains
 	 *         branches
-	 * @see #straightSkeletonSolub(List)
 	 */
 	public static PShape straightSkeleton(PShape shape) {
 		// https://github.com/Agent14zbz/ZTools/blob/main/src/main/java/geometry/ZSkeleton.java
@@ -440,7 +438,7 @@ public final class PGS_Contour {
 	 * @param shape   a single polygon or multipolygon (GROUP PShape)
 	 * @param spacing Spacing between successive offset curves. Should be >=1.
 	 * @return A GROUP PShape, where each child shape is one curve
-	 * @see #offsetCurvesOutward(PShape, double, int)
+	 * @see #offsetCurvesOutward(PShape, OffsetStyle, double, int)
 	 */
 	public static PShape offsetCurvesInward(PShape shape, OffsetStyle style, double spacing) {
 		return offsetCurves(shape, style, spacing, 0, false);
@@ -453,7 +451,7 @@ public final class PGS_Contour {
 	 * @param spacing Spacing between successive offset curves. Should be >=1.
 	 * @param curves  number of offset curves (including the original shape outline)
 	 * @return A GROUP PShape, where each child shape is one curve
-	 * @see #offsetCurvesInward(PShape, double)
+	 * @see #offsetCurvesInward(PShape, OffsetStyle, double)
 	 */
 	public static PShape offsetCurvesOutward(PShape shape, OffsetStyle style, double spacing, final int curves) {
 		return offsetCurves(shape, style, spacing, curves, true);

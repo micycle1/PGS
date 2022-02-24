@@ -648,7 +648,7 @@ public final class PGS_Conversion implements PConstants {
 	 * disables stroke).
 	 * 
 	 * @param shape
-	 * @see #setAllStrokeColor(PShape, int, int)
+	 * @see #setAllStrokeColor(PShape, int, float)
 	 */
 	public static void setAllFillColor(PShape shape, int color) {
 		getChildren(shape).forEach(child -> {
