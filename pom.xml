@@ -278,6 +278,12 @@
 			<version>0.4.2</version>
 			<scope>provided</scope>
 		</dependency>
+		<dependency>
+			<groupId>com.github.micycle1</groupId>
+			<artifactId>kendzi-math</artifactId>
+			<version>99f9217e84</version>
+		</dependency>
+
 	</dependencies>
 
 </project>
