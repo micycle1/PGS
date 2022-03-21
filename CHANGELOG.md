@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Renamed `partition()` to `convexPartition()`.
 * `PGS_Conversion.fromPShape()` (a major method used internally) now applies any shape affine transformations (such as `rotate()`, `scale()`, `translate()`) to the resulting geometry.
 * `earCutTriangulation(PShape)` now uses JTS' implementation which supports inputs with holes.
+* `PGS_Morphology.smoothGaussian()` now uses a higher default resolution.
+* `PGS_Contour.straightSkeleton()` now supports multi-polygonal inputs and outputs faces (in addition to bones and branches, as before).
+* `PGS_Contour.straightSkeleton()` uses a different implementation that is ~50x faster!
 
 ### Removed
 * `earCutTriangulation(List<PVector> points)` from `PGS_Triangulation`.

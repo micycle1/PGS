@@ -4,14 +4,18 @@ import static micycle.pgs.PGS.GEOM_FACTORY;
 import static micycle.pgs.PGS.prepareLinesPShape;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import javax.vecmath.Point3d;
+
+import org.joml.Vector2d;
+import org.joml.Vector2dc;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.dissolve.LineDissolver;
 import org.locationtech.jts.geom.Coordinate;
@@ -37,9 +41,13 @@ import org.twak.utils.collections.LoopL;
 
 import hageldave.jplotter.misc.Contours;
 import hageldave.jplotter.renderables.Lines.SegmentDetails;
+import kendzi.math.geometry.skeleton.SkeletonConfiguration;
+import kendzi.math.geometry.skeleton.SkeletonOutput;
 import micycle.medialAxis.MedialAxis;
+import micycle.pgs.PGS.GeometryIterator;
 import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.color.RGB;
+import micycle.pgs.commons.PEdge;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -100,114 +108,191 @@ public final class PGS_Contour {
 	}
 
 	/**
-	 * Roughly, it is the geometric graph whose edges are the traces of vertices of
-	 * shrinking mitered offset curves of the polygon
+	 * Computes the straight skeleton for a shape.
+	 * <p>
+	 * A straight skeleton is a skeletal structure similar to the medial axis,
+	 * consisting of straight-line segments only. Roughly, it is the geometric graph
+	 * whose edges are the traces of vertices of shrinking mitered offset curves of
+	 * the polygon.
 	 *
-	 * @param shape
-	 * @return shape with two children: one child contains bones; one contains
-	 *         branches
+	 * @param shape a single polygon (that can contain holes), or a multi polygon
+	 *              (whose polygons can contain holes)
+	 * @return when the input is a single polygon, returns a GROUP PShape containing
+	 *         3 children: child 1 = skeleton faces; child 2 = branches (lines that
+	 *         connect skeleton to edge); child 3 = bones (the pure straight
+	 *         skeleton). For multi-polygons, a master GROUP shape of skeleton GROUP
+	 *         shapes (described above) is returned.
 	 */
 	public static PShape straightSkeleton(PShape shape) {
-		// https://github.com/Agent14zbz/ZTools/blob/main/src/main/java/geometry/ZSkeleton.java
+		final Geometry g = fromPShape(shape);
+		if (g.getGeometryType().equals(Geometry.TYPENAME_MULTIPOLYGON)) {
+			PShape group = new PShape(PConstants.GROUP);
+			GeometryIterator gi = new GeometryIterator(g);
+			gi.forEach(p -> group.addChild(straightSkeleton((Polygon) p)));
+			return group;
+		} else if (g.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
+			return straightSkeleton((Polygon) g);
+		}
+		return shape;
+	}
 
+	/**
+	 * 
+	 * @param polygon a single polygon that can contain holes
+	 * @return
+	 */
+	private static PShape straightSkeleton(Polygon polygon) {
+		/*
+		 * Kenzi implementation (since PGS 1.2.1) is much faster (~50x!) but can fail on
+		 * more complicated inputs. Therefore try Kenzi implementation first, but fall
+		 * back to Twak implementation if it fails.
+		 */
+		try {
+			return straightSkeletonKendzi(polygon);
+		} catch (Exception e) {
+			return straightSkeletonTwak(polygon);
+		}
+	}
+
+	private static PShape straightSkeletonTwak(Polygon polygon) {
+		if (polygon.getCoordinates().length > 1000) {
+			polygon = (Polygon) DouglasPeuckerSimplifier.simplify(polygon, 2);
+		}
+
+		final Set<Coordinate> edgeCoordsSet = new HashSet<>();
+		final Skeleton skeleton;
+		final LoopL<Edge> loops = new LoopL<>(); // list of loops
 		final Machine speed = new Machine(1); // every edge same speed
 
-		final Geometry g = fromPShape(shape);
-		Polygon polygon;
-		if (g.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
-			polygon = (Polygon) g;
-			if (polygon.getCoordinates().length > 1000) {
-				polygon = (Polygon) DouglasPeuckerSimplifier.simplify(polygon, 1);
-			}
-		} else {
-			System.err.println("MultiPolygon not supported yet.");
-			return new PShape();
+		final LinearRing[] rings = new LinearRingIterator(polygon).getLinearRings();
+		for (int i = 0; i < rings.length; i++) {
+			loops.add(ringToLoop(rings[i], i > 0, edgeCoordsSet, speed));
 		}
 
-		HashSet<Coordinate> edgeCoordsSet = new HashSet<>();
-
-		Skeleton skeleton;
-		LoopL<Edge> loopL = new LoopL<>(); // list of loops
-		ArrayList<Corner> corners = new ArrayList<>();
-		Loop<Edge> loop = new Loop<>();
-
-		Coordinate[] coords = polygon.getExteriorRing().getCoordinates();
-		if (!Orientation.isCCW(coords)) {
-			reverse(coords); // exterior should be CCW
-		}
-
-		for (int j = 0; j < coords.length - 1; j++) {
-			double a = coords[j].x;
-			double b = coords[j].y;
-			corners.add(new Corner(a, b));
-			edgeCoordsSet.add(coords[j]);
-		}
-		corners.add(new Corner(coords[0].x, coords[0].y)); // close loop
-		edgeCoordsSet.add(coords[0]); // close loop
-
-		for (int j = 0; j < corners.size() - 1; j++) {
-			Edge edge = new Edge(corners.get(j), corners.get((j + 1) % (corners.size() - 1)));
-			edge.machine = speed;
-			loop.append(edge);
-		}
-		loopL.add(loop);
-
-		for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
-			corners = new ArrayList<>();
-			LinearRing hole = polygon.getInteriorRingN(i);
-			coords = hole.getCoordinates();
-			if (Orientation.isCCW(coords)) {
-				reverse(coords);
-			}
-
-			for (int j = 0; j < coords.length - 1; j++) {
-				double a = coords[j].x;
-				double b = coords[j].y;
-				corners.add(new Corner(a, b));
-				edgeCoordsSet.add(coords[j]);
-			}
-			corners.add(new Corner(coords[0].x, coords[0].y)); // close loop
-			edgeCoordsSet.add(coords[0]); // close loop
-
-			loop = new Loop<>();
-			for (int j = 0; j < corners.size() - 1; j++) {
-				org.twak.camp.Edge edge = new org.twak.camp.Edge(corners.get(j), corners.get((j + 1) % (corners.size() - 1)));
-				edge.machine = speed;
-				loop.append(edge);
-			}
-			loopL.add(loop);
-		}
-
-		final PShape lines = new PShape();
-		lines.setFamily(PConstants.GROUP);
-		final PShape bones = prepareLinesPShape(null, null, 4);
-		final PShape branches = prepareLinesPShape(RGB.composeColor(40, 235, 180, 128), null, null);
+		final PShape lines = new PShape(PConstants.GROUP);
+		final PShape faces = new PShape(PConstants.GROUP);
+		/*
+		 * Create PEdges first to prevent lines being duplicated in output shapes since
+		 * faces share branches and bones.
+		 */
+		final Set<PEdge> branchEdges = new HashSet<>();
+		final Set<PEdge> boneEdges = new HashSet<>();
 		try {
-			skeleton = new Skeleton(loopL, true);
-			skeleton.skeleton();
+			skeleton = new Skeleton(loops, true);
+			skeleton.skeleton(); // compute skeleton
 
-			skeleton.output.edges.map.values().forEach(e -> {
-				boolean a = edgeCoordsSet.contains(new Coordinate(e.start.x, e.start.y));
-				boolean b = edgeCoordsSet.contains(new Coordinate(e.end.x, e.end.y));
-				if (a ^ b) { // branch (xor)
-					branches.vertex((float) e.start.x, (float) e.start.y);
-					branches.vertex((float) e.end.x, (float) e.end.y);
-				} else {
-					if (!a) { // bone
-						bones.vertex((float) e.start.x, (float) e.start.y);
-						bones.vertex((float) e.end.x, (float) e.end.y);
+			skeleton.output.faces.values().forEach(f -> {
+				final List<Point3d> vertices = f.getLoopL().iterator().next().asList();
+				List<PVector> faceVertices = new ArrayList<>();
+
+				for (int i = 0; i < vertices.size(); i++) {
+					final Point3d p1 = vertices.get(i);
+					final Point3d p2 = vertices.get((i + 1) % vertices.size());
+					faceVertices.add(new PVector((float) p1.x, (float) p1.y));
+					final boolean a = edgeCoordsSet.contains(new Coordinate(p1.x, p1.y)); // NOTE Coordinate()
+					final boolean b = edgeCoordsSet.contains(new Coordinate(p2.x, p2.y));
+					if (a ^ b) { // branch (xor)
+						branchEdges.add(new PEdge(p1.x, p1.y, p2.x, p2.y));
+					} else {
+						if (!a) { // bone
+							boneEdges.add(new PEdge(p1.x, p1.y, p2.x, p2.y));
+						}
 					}
 				}
+
+				PShape face = PGS_Conversion.fromPVector(faceVertices);
+				face.setStroke(true);
+				face.setStrokeWeight(2);
+				face.setStroke(RGB.composeColor(147, 112, 219));
+				faces.addChild(face);
 			});
 		} catch (Exception ignore) {
 			// hide init or collision errors from console
 		}
 
+		final PShape bones = prepareLinesPShape(null, null, 4);
+		boneEdges.forEach(e -> {
+			bones.vertex(e.a.x, e.a.y);
+			bones.vertex(e.b.x, e.b.y);
+		});
 		bones.endShape();
+
+		final PShape branches = prepareLinesPShape(RGB.composeColor(40, 235, 180, 128), null, null);
+		branchEdges.forEach(e -> {
+			branches.vertex(e.a.x, e.a.y);
+			branches.vertex(e.b.x, e.b.y);
+		});
 		branches.endShape();
+
+		lines.addChild(faces);
 		lines.addChild(branches);
 		lines.addChild(bones);
+
 		return lines;
+	}
+
+	private static PShape straightSkeletonKendzi(Polygon polygon) {
+		final LinearRing[] rings = new LinearRingIterator(polygon).getLinearRings();
+		Set<Vector2dc> edgeCoordsSet = new HashSet<>();
+		final List<Vector2dc> points = ringToVec(rings[0], edgeCoordsSet);
+		final List<List<Vector2dc>> holes = new ArrayList<>();
+		for (int i = 1; i < rings.length; i++) {
+			holes.add(ringToVec(rings[i], edgeCoordsSet));
+		}
+
+		final SkeletonOutput so = kendzi.math.geometry.skeleton.Skeleton.skeleton(points, holes, new SkeletonConfiguration());
+		final PShape skeleton = new PShape(PConstants.GROUP);
+		final PShape faces = new PShape(PConstants.GROUP);
+		/*
+		 * Create PEdges first to prevent lines being duplicated in output shapes since
+		 * faces share branches and bones.
+		 */
+		final Set<PEdge> branchEdges = new HashSet<>();
+		final Set<PEdge> boneEdges = new HashSet<>();
+		so.getFaces().forEach(f -> {
+			for (int i = 0; i < f.getPoints().size(); i++) {
+				final Vector2dc p1 = f.getPoints().get(i);
+				final Vector2dc p2 = f.getPoints().get((i + 1) % f.getPoints().size());
+				final boolean a = edgeCoordsSet.contains(p1);
+				final boolean b = edgeCoordsSet.contains(p2);
+				if (a ^ b) { // branch (xor)
+					branchEdges.add(new PEdge(p1.x(), p1.y(), p2.x(), p2.y()));
+				} else {
+					if (!a) { // bone
+						boneEdges.add(new PEdge(p1.x(), p1.y(), p2.x(), p2.y()));
+					}
+				}
+			}
+
+			List<PVector> faceVertices = new ArrayList<>(f.getPoints().size());
+			f.getPoints().forEach(p -> faceVertices.add(new PVector((float) p.x(), (float) p.y())));
+
+			PShape face = PGS_Conversion.fromPVector(faceVertices);
+			face.setStroke(true);
+			face.setStrokeWeight(2);
+			face.setStroke(RGB.composeColor(147, 112, 219));
+			faces.addChild(face);
+		});
+
+		final PShape bones = prepareLinesPShape(null, null, 4);
+		boneEdges.forEach(e -> {
+			bones.vertex(e.a.x, e.a.y);
+			bones.vertex(e.b.x, e.b.y);
+		});
+		bones.endShape();
+
+		final PShape branches = prepareLinesPShape(RGB.composeColor(40, 235, 180, 128), null, null);
+		branchEdges.forEach(e -> {
+			branches.vertex(e.a.x, e.a.y);
+			branches.vertex(e.b.x, e.b.y);
+		});
+		branches.endShape();
+
+		skeleton.addChild(faces);
+		skeleton.addChild(branches);
+		skeleton.addChild(bones);
+
+		return skeleton;
 	}
 
 	/**
@@ -549,6 +634,47 @@ public final class PGS_Contour {
 			a[j] = a[l - j - 1];
 			a[l - j - 1] = temp;
 		}
+	}
+
+	private static Loop<Edge> ringToLoop(LinearRing ring, boolean hole, Set<Coordinate> edgeCoordsSet, Machine speed) {
+		Coordinate[] coords = ring.getCoordinates();
+		if (!hole && !Orientation.isCCW(coords)) {
+			reverse(coords); // exterior should be CCW
+		}
+		if (hole && Orientation.isCCW(coords)) {
+			reverse(coords); // holes should be CW
+		}
+
+		List<Corner> corners = new ArrayList<>();
+		Loop<Edge> loop = new Loop<>();
+
+		for (int j = 0; j < coords.length; j++) {
+			corners.add(new Corner(coords[j].x, coords[j].y));
+			edgeCoordsSet.add(coords[j]);
+		}
+
+		for (int j = 0; j < corners.size() - 1; j++) {
+			Edge edge = new Edge(corners.get(j), corners.get((j + 1) % (corners.size() - 1)));
+			edge.machine = speed;
+			loop.append(edge);
+		}
+
+		return loop;
+	}
+
+	private static List<Vector2dc> ringToVec(LinearRing ring, Set<Vector2dc> edgeCoordsSet) {
+		final List<Vector2dc> points = new ArrayList<>();
+		Coordinate[] coords = ring.getCoordinates();
+		/*
+		 * Kendzi polygons are unclosed (cannot start and end with the same point),
+		 * unlike a LinearRing.
+		 */
+		for (int i = 0; i < coords.length - 1; i++) { // note - 1
+			final Vector2dc p = new Vector2d(coords[i].x, coords[i].y);
+			points.add(p);
+			edgeCoordsSet.add(p);
+		}
+		return points;
 	}
 
 }
