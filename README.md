@@ -26,7 +26,7 @@ Library functionality is split over the following classes:
   * Mesh generation (excluding triangulation) from shapes
 * `PGS_Morphology`
   * Methods that affect the geometry or topology of shapes (buffering, simplification, smoothing, etc.)
-* `PGS_Optimsation`
+* `PGS_Optimisation`
   * Solve geometric optimisation problems, such as finding the maximum inscribed circle, or the closest vertex to a coordinate
 * `PGS_PointSet`
   * Generates sets of 2D points having a variety of different distributions and constraints
@@ -441,7 +441,7 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td valign="top"><img src="resources/pgs/inscribedCircle.gif"></td>
     <td valign="top"><img src="resources/pgs/minimumBoundingRectangle.png"></td>
-    <td valign="top"><img src="resources/optimisation/mir1.png"></td>
+    <td valign="top"><img src="resources/optimisation/mir.png"></td>
     <td valign="top" ><img src="resources/optimisation/mir2.png"></td>
   </tr>
 

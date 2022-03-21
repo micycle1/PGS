@@ -283,7 +283,11 @@
 			<artifactId>kendzi-math</artifactId>
 			<version>99f9217e84</version>
 		</dependency>
-
+		<dependency>
+			<groupId>com.github.paudan</groupId>
+			<artifactId>jswarmopt</artifactId>
+			<version>1.0.3a</version>
+		</dependency>
 	</dependencies>
 
 </project>
