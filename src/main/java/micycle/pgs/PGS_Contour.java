@@ -118,10 +118,11 @@ public final class PGS_Contour {
 	 * @param shape a single polygon (that can contain holes), or a multi polygon
 	 *              (whose polygons can contain holes)
 	 * @return when the input is a single polygon, returns a GROUP PShape containing
-	 *         3 children: child 1 = skeleton faces; child 2 = branches (lines that
-	 *         connect skeleton to edge); child 3 = bones (the pure straight
-	 *         skeleton). For multi-polygons, a master GROUP shape of skeleton GROUP
-	 *         shapes (described above) is returned.
+	 *         3 children: child 1 = GROUP PShape of skeleton faces; child 2 = LINES
+	 *         PShape of branches (lines that connect skeleton to edge); child 3 =
+	 *         LINES PShape of bones (the pure straight skeleton). For
+	 *         multi-polygons, a master GROUP shape of skeleton GROUP shapes
+	 *         (described above) is returned.
 	 */
 	public static PShape straightSkeleton(PShape shape) {
 		final Geometry g = fromPShape(shape);
@@ -217,7 +218,7 @@ public final class PGS_Contour {
 		});
 		bones.endShape();
 
-		final PShape branches = prepareLinesPShape(RGB.composeColor(40, 235, 180, 128), null, null);
+		final PShape branches = prepareLinesPShape(RGB.composeColor(40, 235, 180), null, null);
 		branchEdges.forEach(e -> {
 			branches.vertex(e.a.x, e.a.y);
 			branches.vertex(e.b.x, e.b.y);
@@ -281,7 +282,7 @@ public final class PGS_Contour {
 		});
 		bones.endShape();
 
-		final PShape branches = prepareLinesPShape(RGB.composeColor(40, 235, 180, 128), null, null);
+		final PShape branches = prepareLinesPShape(RGB.composeColor(40, 235, 180), null, null);
 		branchEdges.forEach(e -> {
 			branches.vertex(e.a.x, e.a.y);
 			branches.vertex(e.b.x, e.b.y);

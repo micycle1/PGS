@@ -427,6 +427,10 @@ final class PGS {
 			}
 			array = rings.toArray(new LinearRing[rings.size()]);
 		}
+		
+		public LinearRing[] getLinearRings() {
+			return array;
+		}
 
 		@Override
 		public Iterator<LinearRing> iterator() {
