@@ -23,6 +23,7 @@ import org.locationtech.jts.util.GeometricShapeFactory;
 import micycle.pgs.color.RGB;
 import micycle.pgs.commons.ClosestPointPair;
 import micycle.pgs.commons.FarthestPointPair;
+import micycle.pgs.commons.MaximumInscribedAARectangle;
 import micycle.pgs.commons.MaximumInscribedRectangle;
 import micycle.pgs.commons.MinimumBoundingEllipse;
 import micycle.pgs.commons.MinimumBoundingTriangle;
@@ -95,10 +96,26 @@ public final class PGS_Optimisation {
 	}
 
 	/**
-	 * Compute the minimum inscribed rectangle for a shape. The method computes the
-	 * MIR for convex shapes only; if a concave shape is passed in, the resulting
-	 * rectangle will be computed based on its convex hull.
+	 * Finds an approximate largest area rectangle (of arbitrary orientation)
+	 * contained within a polygon.
 	 * 
+	 * @param shape
+	 * @return a rectangle shape
+	 * @see #maximumInscribedAARectangle(PShape, boolean)
+	 *      maximumInscribedAARectangle() - the largest axis-aligned rectangle
+	 */
+	public static PShape maximumInscribedRectangle(PShape shape) {
+		Polygon polygon = (Polygon) fromPShape(shape);
+		MaximumInscribedRectangle mir = new MaximumInscribedRectangle(polygon);
+		return toPShape(mir.computeMIR());
+	}
+
+	/**
+	 * Finds the rectangle with a maximum area whose sides are parallel to the
+	 * x-axis and y-axis ("axis-aligned"), contained within a convex shape.
+	 * <p>
+	 * This method computes the MIR for convex shapes only; if a concave shape is
+	 * passed in, the resulting rectangle will be computed based on its convex hull.
 	 * <p>
 	 * This method uses a brute force algorithm to perform an exhaustive search for
 	 * a solution (therefore it is slow relative to other
@@ -108,10 +125,14 @@ public final class PGS_Optimisation {
 	 * @param fast  whether to compute MIR based on a lower resolution input. When
 	 *              true, processing is ~6 times faster but potentially a little
 	 *              inaccurate
+	 * @return a rectangle shape
+	 * @since 1.2.1
+	 * @see #maximumInscribedRectangle(PShape) maximumInscribedRectangle() -- the
+	 *      largest rectangle of arbitrary orientation
 	 */
-	public static PShape maximumInscribedRectangle(PShape shape, boolean fast) {
+	public static PShape maximumInscribedAARectangle(PShape shape, boolean fast) {
 		double f = fast ? 5 : 2;
-		final MaximumInscribedRectangle mir = new MaximumInscribedRectangle(fromPShape(shape), f);
+		final MaximumInscribedAARectangle mir = new MaximumInscribedAARectangle(fromPShape(shape), f);
 		int[] r = mir.getInscribedRectangle();
 
 		final GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
@@ -304,7 +325,6 @@ public final class PGS_Optimisation {
 	 * @return The circle (as a PVector) that is tangent to c1, c2 and c3.
 	 */
 	public static PVector solveApollonius(PVector c1, PVector c2, PVector c3, int s1, int s2, int s3) {
-
 		// https://github.com/DIKU-Steiner/ProGAL/blob/master/src/ProGAL/geom2d/ApolloniusSolver.java
 
 		double x1 = c1.x;

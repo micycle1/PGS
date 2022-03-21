@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 * `equalPartition()` to `PGS_Processing`. Partitions a shape into N approximately equal area polygons.
-* `fromChildren()` to PGS_Conversion. Creates a single GROUP parent shape from a list of child shapes.
+* `fromChildren()` to `PGS_Conversion`. Creates a single GROUP parent shape from a list of child shapes.
+* `originScale()` to `PGS_Transformation`. Scales a shape relative to the origin (0,0).
+
 ### Changed
 * Renamed `partition()` to `convexPartition()`.
 * `PGS_Conversion.fromPShape()` (a major method used internally) now applies any shape affine transformations (such as `rotate()`, `scale()`, `translate()`) to the resulting geometry.
@@ -17,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_Morphology.smoothGaussian()` now uses a higher default resolution.
 * `PGS_Contour.straightSkeleton()` now supports multi-polygonal inputs and outputs faces (in addition to bones and branches, as before).
 * `PGS_Contour.straightSkeleton()` uses a different implementation that is ~50x faster!
+* Renamed `maximumInscribedRectangle()` to `maximumInscribedAARectangle()` ("axis-aligned").
+* `PGS_Optimisation.maximumInscribedRectangle()` now finds the maximum-area inscribed rectangle of arbitrary orientation.
 
 ### Removed
 * `earCutTriangulation(List<PVector> points)` from `PGS_Triangulation`.

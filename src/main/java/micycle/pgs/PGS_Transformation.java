@@ -60,6 +60,20 @@ public final class PGS_Transformation {
 		AffineTransformation t = AffineTransformation.scaleInstance(scaleX, scaleY, c.getX(), c.getY());
 		return toPShape(t.transform(g));
 	}
+	
+	/**
+	 * Scales the shape relative to the origin (0,0).
+	 * 
+	 * @param shape
+	 * @param scale cale factor
+	 * @return
+	 * @since 1.2.1
+	 */
+	public static PShape originScale(PShape shape, double scale) {
+		Geometry g = fromPShape(shape);
+		AffineTransformation t = AffineTransformation.scaleInstance(scale, scale, 0, 0);
+		return toPShape(t.transform(g));
+	}
 
 	/**
 	 * Resizes a shape (based on its envelope) to the given dimensions. The output
