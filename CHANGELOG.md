@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Renamed `maximumInscribedRectangle()` to `maximumInscribedAARectangle()` ("axis-aligned").
 * `PGS_Optimisation.maximumInscribedRectangle()` now finds the maximum-area inscribed rectangle of arbitrary orientation.
 
+### Fixed
+* NPE when shapes created with `createShape()` in the P2D renderer were passed to `fromPShape()` (#55).
+
 ### Removed
 * `earCutTriangulation(List<PVector> points)` from `PGS_Triangulation`.
 
