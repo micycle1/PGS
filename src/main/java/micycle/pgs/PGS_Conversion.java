@@ -351,8 +351,18 @@ public final class PGS_Conversion implements PConstants {
 			return GEOM_FACTORY.createPolygon();
 		}
 
-		final int[] contourGroups = getContourGroups(shape.getVertexCodes());
-		final int[] vertexCodes = getVertexTypes(shape);
+		int[] rawVertexCodes = shape.getVertexCodes();
+		/*
+		 * getVertexCodes() is null for P2D shapes with no contours created via
+		 * createShape(), so need to instantiate array here.
+		 */
+		if (rawVertexCodes == null) {
+			rawVertexCodes = new int[shape.getVertexCount()];
+			Arrays.fill(rawVertexCodes, PConstants.VERTEX);
+		}
+
+		final int[] contourGroups = getContourGroups(rawVertexCodes);
+		final int[] vertexCodes = getVertexTypes(rawVertexCodes);
 
 		final ArrayList<ArrayList<Coordinate>> coords = new ArrayList<>(); // list of coords representing rings
 
@@ -731,6 +741,7 @@ public final class PGS_Conversion implements PConstants {
 	 * 
 	 * @param shape the PShape to copy
 	 * @return a deep copy of the given shape
+	 * @since 1.2.0
 	 */
 	public static PShape copy(PShape shape) {
 		final PShape copy = new PShape();
@@ -777,8 +788,7 @@ public final class PGS_Conversion implements PConstants {
 	private static int[] getContourGroups(int[] vertexCodes) {
 
 		int group = 0;
-
-		ArrayList<Integer> groups = new ArrayList<>(vertexCodes.length * 2);
+		List<Integer> groups = new ArrayList<>(vertexCodes.length * 2);
 
 		for (int i = 0; i < vertexCodes.length; i++) {
 			final int vertexCode = vertexCodes[i];
@@ -825,12 +835,12 @@ public final class PGS_Conversion implements PConstants {
 	 * @param shape
 	 * @return
 	 */
-	private static int[] getVertexTypes(PShape shape) {
+	private static int[] getVertexTypes(int[] rawVertexCodes) {
 
-		List<Integer> codes = new ArrayList<>(shape.getVertexCodeCount());
+		List<Integer> codes = new ArrayList<>(rawVertexCodes.length);
 
-		for (int i = 0; i < shape.getVertexCodeCount(); i++) {
-			int vertexCode = shape.getVertexCode(i);
+		for (int i = 0; i < rawVertexCodes.length; i++) {
+			int vertexCode = rawVertexCodes[i];
 			switch (vertexCode) {
 				case VERTEX :
 					codes.add(VERTEX);
