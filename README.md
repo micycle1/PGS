@@ -171,6 +171,9 @@ Much of the functionality (but by no means all) is demonstrated below:
 * Diameter
 * Circularity
 * Similarity
+* Sphericity
+* Elongation
+* Density
 * Holes
 * Is simple?
 * Is convex?
@@ -379,10 +382,10 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center" colspan="2"><b>Earcut Triangulation</td>
   </tr>
   <tr>
-    <td valign="top"><img src="resources/contour/triangulation1.png"></td>
-    <td valign="top"><img src="resources/contour/triangulation2.png"></td>
-    <td valign="top"><img src="resources/contour/earCut.png"></td>
-    <td valign="top" ><img src="resources/contour/earCut2.png"></td>
+    <td valign="top" width="25%"><img src="resources/contour/triangulation1.png"></td>
+    <td valign="top" width="25%"><img src="resources/contour/triangulation2.png"></td>
+    <td valign="top" width="25%"><img src="resources/contour/earCut.png"></td>
+    <td valign="top" width="25%"><img src="resources/contour/earCut2.png"></td>
   </tr>
 
   <tr>

@@ -87,7 +87,7 @@ public class MaximumInscribedRectangle {
 		public double evaluate(double[] position) {
 			final double w = position[2];
 			final double h = position[3];
-			return geometry.containsProperly(rectFromCoords(position)) ? h * w : 0;
+			return geometry.containsProperly(rectFromCoords(position)) ? h * w : 0; // NOTE containsProperly
 		}
 
 	}

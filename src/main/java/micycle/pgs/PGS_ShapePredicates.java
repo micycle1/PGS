@@ -6,6 +6,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import org.locationtech.jts.algorithm.MinimumBoundingCircle;
+import org.locationtech.jts.algorithm.MinimumDiameter;
+import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
 import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.algorithm.match.HausdorffSimilarityMeasure;
 import org.locationtech.jts.geom.Coordinate;
@@ -13,6 +16,7 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
+
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -31,7 +35,7 @@ public final class PGS_ShapePredicates {
 	/**
 	 * Determines whether the outer shape contains the inner shape (meaning every
 	 * point of the inner shape is a point of the outer shape). A shape is
-	 * considered to contain itself. itself.
+	 * considered to contain itself itself.
 	 * 
 	 * @param outer
 	 * @param inner
@@ -254,6 +258,46 @@ public final class PGS_ShapePredicates {
 	public static float similarity(PShape a, PShape b) {
 		HausdorffSimilarityMeasure sm = new HausdorffSimilarityMeasure();
 		return (float) sm.measure(fromPShape(a), fromPShape(b));
+	}
+
+	/**
+	 * Measures the sphericity of a shape; the ratio of the maximum inscribed circle
+	 * to the minimum bounding circle.
+	 * 
+	 * @param shape
+	 * @return a value in [0, 1]
+	 */
+	public static double sphericity(final PShape shape) {
+		Geometry g = fromPShape(shape);
+		MinimumBoundingCircle circle1 = new MinimumBoundingCircle(g);
+		final double rO = circle1.getRadius();
+		MaximumInscribedCircle circle2 = new MaximumInscribedCircle(g, 1);
+		Point center = circle2.getCenter();
+		Point radiusPoint = circle2.getRadiusPoint();
+		final double rI = center.distance(radiusPoint);
+		return Math.min(1, rI / rO);
+	}
+
+	/**
+	 * Measures the elongation of a shape; the ratio of the shapes bounding box's
+	 * length to its width.
+	 * 
+	 * @param shape
+	 * @return a value in [0, 1]
+	 */
+	public static double elongation(final PShape shape) {
+		Geometry obb = MinimumDiameter.getMinimumRectangle(fromPShape(shape));
+		Polygon rect = (Polygon) obb;
+		Coordinate c0 = rect.getCoordinates()[0];
+		Coordinate c1 = rect.getCoordinates()[1];
+		Coordinate c2 = rect.getCoordinates()[2];
+		double l = c0.distance(c1);
+		double w = c1.distance(c2);
+		if (l >= w) {
+			return w / l;
+		} else {
+			return l / w;
+		}
 	}
 
 	/**
