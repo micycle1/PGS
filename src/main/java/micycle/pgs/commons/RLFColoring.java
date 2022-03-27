@@ -60,7 +60,7 @@ public class RLFColoring<V, E> implements VertexColoringAlgorithm<V> {
 	private final NeighborCache<V, E> neighborCache;
 
 	/**
-	 * These maps to store the numbers AU(x) and AW(x). Each time a vertex is
+	 * These maps store the numbers AU(x) and AW(x). Each time a vertex is
 	 * removed from U (and its uncolored neighbours added to W) they are updated
 	 * (provided an efficient computing the value each call).
 	 */
