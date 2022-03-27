@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `fromChildren()` to `PGS_Conversion`. Creates a single GROUP parent shape from a list of child shapes.
 * `originScale()` to `PGS_Transformation`. Scales a shape relative to the origin (0,0).
 * `sphericity()` and `elongation()` to `PGS_ShapePredicates`.
+* A new mesh-coloring algorithm: `GENETIC`, which finds a coloring via a genetic algorithm.
 
 ### Changed
 * Renamed `partition()` to `convexPartition()`.

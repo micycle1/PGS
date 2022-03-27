@@ -19,6 +19,7 @@ import org.jgrapht.graph.SimpleGraph;
 import org.locationtech.jts.noding.SegmentString;
 
 import micycle.pgs.color.RGB;
+import micycle.pgs.commons.GeneticColoring;
 import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.RLFColoring;
 import processing.core.PShape;
@@ -53,7 +54,7 @@ public final class PGS_Coloring {
 	}
 
 	/**
-	 * Specifies the algorithm used by the underlying graph coloring process to find
+	 * Specifies the algorithm/heuristic used by the underlying graph coloring process to find
 	 * a coloring for mesh faces. RLF, followed by DSATUR generally produce the
 	 * "best" colorings (as measured by chromatic number, where lower is better).
 	 */
@@ -90,7 +91,13 @@ public final class PGS_Coloring {
 		/**
 		 * Recursive largest-first coloring (recommended).
 		 */
-		RLF
+		RLF,
+		/**
+		 * Finds a coloring using a genetic algorithm. Unlike all other algorithms this
+		 * specifically targets a chromaticity of 4 (falls back to 5 if no solution is
+		 * found).
+		 */
+		GENETIC
 	}
 
 	/**
@@ -175,7 +182,7 @@ public final class PGS_Coloring {
 		final PShape mesh = nodeNonMesh(shape);
 		return colorMesh(mesh, coloringAlgorithm);
 	}
-	
+
 	/**
 	 * Computes a coloring of the given non-conforming mesh shape and colors the
 	 * faces of its noded representation using the colors provided.
@@ -240,6 +247,9 @@ public final class PGS_Coloring {
 				break;
 			case COARSE :
 				coloring = new ColorRefinementAlgorithm<>(graph).getColoring();
+				break;
+			case GENETIC :
+				coloring = new GeneticColoring<>(graph).getColoring();
 				break;
 			case RLF :
 			default :
