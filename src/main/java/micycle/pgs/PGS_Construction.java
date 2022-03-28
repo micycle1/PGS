@@ -356,6 +356,64 @@ public class PGS_Construction {
 	}
 
 	/**
+	 * Creates a rectangular-shaped spiral shape.
+	 * 
+	 * @param x       x position of the top-left of spiral
+	 * @param y       y position of the top-left of spiral
+	 * @param width   width of outer-most coil
+	 * @param height  height of outer-most coil
+	 * @param spacing the distance between successive coils
+	 * @return a stroked PATH PShape
+	 * @since 1.2.1
+	 */
+	public static PShape createRectangularSpiral(float x, float y, float width, float height, float spacing) {
+		float xx = -width / 2;
+		float yy = -height / 2;
+		int count = 0;
+		// below is used to dictate spiral orientation & starting point
+//		if (count == 1) {
+//			xx *= -1;
+//		}
+//		if (count == 2) {
+//			xx *= -1;
+//			yy *= -1;
+//		}
+//		if (count == 3) {
+//			yy *= -1;
+//		}
+		final float offX = x + width / 2;
+		final float offY = y + height / 2;
+		final PShape spiral = new PShape(PShape.PATH);
+		spiral.setFill(false);
+		spiral.setStroke(true);
+		spiral.setStrokeWeight(spacing * 0.333f);
+		spiral.setStroke(RGB.WHITE);
+		spiral.setStrokeJoin(PConstants.MITER);
+		spiral.setStrokeCap(PConstants.SQUARE);
+		spiral.beginShape();
+		while (width > 0 && height > 0) {
+			int dir = count % 4;
+			spiral.vertex(xx + offX, yy + offY);
+			if (dir == 0) {
+				xx += width;
+				width -= spacing;
+			} else if (dir == 1) {
+				yy += height;
+				height -= spacing;
+			} else if (dir == 2) {
+				xx -= width;
+				width -= spacing;
+			} else if (dir == 3) {
+				yy -= height;
+				height -= spacing;
+			}
+			count++;
+		}
+		spiral.endShape();
+		return spiral;
+	}
+
+	/**
 	 * Creates a closed Sierpiński curve (a recursive space-filling curve), having a
 	 * user-defined degree/order.
 	 * 
