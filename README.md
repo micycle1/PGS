@@ -571,11 +571,27 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
   <tr>
     <td align="center" valign="center"><b>Fermat Spiral</td>
-    <td align="center" valign="center"><b>Sierpinski Curve</td>
+    <td align="center" valign="center"><b>Rectangular Spiral</td>
+    <td align="center" valign="center"><b>Koch Snowflake</td>
+    <td align="center" valign="center"><b>Hilbert Curve</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/pgs/fermatSpiral.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/rectSpiral.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/kochSnowflake.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/hilbertCurve.gif"></td>
+  </tr>
+  <tr>
+    <td align="center" valign="center"><b>Sierpinski Carpet</td>
+    <td align="center" valign="center"><b>Sierpinski Curve</td>
+    <td align="center" valign="center"><b>Sierpinski Tri-Curve A</td>
+    <td align="center" valign="center"><b>Sierpinski Tri-Curve B</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/pgs/sierpinskiCarpet.gif"></td>
     <td valign="top" width="25%"><img src="resources/pgs/sierpinskiCurve.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/sierpinskiThreeSteps.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/sierpinskiFourSteps.gif"></td>
   </tr>
 </table>
 
