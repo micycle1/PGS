@@ -821,16 +821,23 @@ public final class PGS_Processing {
 	 */
 	public static PShape trapezoidPartition(PShape shape) {
 		final PShape trapezoids = new PShape(PConstants.GROUP);
-	
-		final TrapMap map;
+
+		TrapMap map;
 		try {
 			map = new TrapMap(PGS_Conversion.getChildren(shape));
 		} catch (Exception e) {
-			// handle error thrown by TrapMap on degenerate/strange inputs
-			System.err.println(e.getLocalizedMessage());
-			return trapezoids;
+			/*
+			 * Handle error thrown by TrapMap on degenerate/strange inputs. Generally
+			 * shearing will fix the problem (ideally this would be done within TrapMap).
+			 */
+			try {
+				map = new TrapMap(PGS_Conversion.getChildren(PGS_Transformation.shear(shape, .00001, 0)));
+			} catch (Exception e2) {
+				System.err.println(e.getLocalizedMessage());
+				return trapezoids;
+			}
 		}
-	
+
 		final IndexedPointInAreaLocator locator = new IndexedPointInAreaLocator(PGS_Conversion.fromPShape(shape));
 		map.getAllTrapezoids().forEach(t -> {
 			if (t.getFace() != null) {
@@ -851,7 +858,7 @@ public final class PGS_Processing {
 				}
 			}
 		});
-	
+
 		PGS_Conversion.setAllFillColor(trapezoids, RGB.WHITE);
 		PGS_Conversion.setAllStrokeColor(trapezoids, RGB.PINK, 1);
 		return trapezoids;

@@ -157,11 +157,13 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center"><b>Intersects</td>
     <td align="center" valign="center"><b>Contains Shape</td>
     <td align="center" valign="center"><b>Contains Point</td>
+    <td align="center" valign="center"><b>Containing Cell</td>
   </tr>
   <tr>
-    <td valign="top" align="center" width="33%"> <img src="resources/predicate/intersect.gif"><br>Do shapes intersect with each other?</td>
-    <td valign="top" align="center" width="33%"><img src="resources/predicate/contains.gif"><br>Does one shape fully contain another?</td>
-    <td valign="top" align="center" width="33%"><img src="resources/predicate/containsPoint.gif"><br>For individual points and point sets.</td>
+    <td valign="top" align="center" width="25%"> <img src="resources/predicate/intersect.gif"><br>Do shapes intersect with each other?</td>
+    <td valign="top" align="center" width="25%"><img src="resources/predicate/contains.gif"><br>Does one shape fully contain another?</td>
+    <td valign="top" align="center" width="25%"><img src="resources/predicate/containsPoint.gif"><br>For individual points and point sets.</td>
+    <td valign="top" align="center" width="25%"><img src="resources/predicate/containingCell.gif"><br>Which cell contains the query point?</td>
 </table>
 
 
@@ -386,10 +388,10 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center" colspan="2"><b>Earcut Triangulation</td>
   </tr>
   <tr>
-    <td valign="top" width="25%"><img src="resources/contour/triangulation1.png"></td>
-    <td valign="top" width="25%"><img src="resources/contour/triangulation2.png"></td>
-    <td valign="top" width="25%"><img src="resources/contour/earCut.png"></td>
-    <td valign="top" width="25%"><img src="resources/contour/earCut2.png"></td>
+    <td valign="top" width="25%"><img src="resources/triangulation/triangulation2.png"></td>
+    <td valign="top" width="25%"><img src="resources/triangulation/triangulation1.png"></td>
+    <td valign="top" width="25%"><img src="resources/triangulation/earCut.png"></td>
+    <td valign="top" width="25%"><img src="resources/triangulation/earCut2.png"></td>
   </tr>
 
   <tr>
