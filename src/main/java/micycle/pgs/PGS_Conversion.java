@@ -11,9 +11,12 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
+import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.graph.SimpleGraph;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
@@ -22,6 +25,7 @@ import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.util.AffineTransformation;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
+import micycle.pgs.commons.PEdge;
 import processing.core.PConstants;
 import processing.core.PMatrix;
 import processing.core.PShape;
@@ -551,6 +555,56 @@ public final class PGS_Conversion implements PConstants {
 			vertices.remove(vertices.size() - 1);
 		}
 		return vertices;
+	}
+
+	/**
+	 * Converts a mesh-like PShape into a JGraphT graph.
+	 * <p>
+	 * The output is a <i>dual graph</i> of the input; it has a vertex for each face
+	 * (PShape) of the input, and an edge for each pair for faces that are adjacent.
+	 * 
+	 * @param mesh a GROUP PShape, whose children constitute the faces of a
+	 *             <b>conforming mesh</b>. A conforming mesh consists of adjacent
+	 *             cells that not only share edges, but every pair of shared edges
+	 *             are identical (having the same coordinates) (such as a
+	 *             triangulation).
+	 * 
+	 * @return the dual graph of the input mesh; an undirected graph containing no
+	 *         graph loops or multiple edges.
+	 */
+	public static SimpleGraph<PShape, DefaultEdge> toGraph(PShape mesh) {
+		return toGraph(getChildren(mesh));
+	}
+
+	static SimpleGraph<PShape, DefaultEdge> toGraph(Collection<PShape> meshFaces) {
+		final SimpleGraph<PShape, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
+		// map of which edge belong to each face; used to detect half-edges
+		final HashMap<PEdge, PShape> edgesMap = new HashMap<>(meshFaces.size() * 4);
+
+		for (PShape face : meshFaces) {
+			graph.addVertex(face); // always add child so disconnected shapes are colored
+			for (int i = 0; i < face.getVertexCount(); i++) {
+				final PVector a = face.getVertex(i);
+				final PVector b = face.getVertex((i + 1) % face.getVertexCount());
+				if (a.equals(b)) {
+					continue;
+				}
+				final PEdge e = new PEdge(a, b);
+				final PShape neighbour = edgesMap.get(e);
+
+				if (neighbour != null) {
+					// edge seen before, so faces must be adjacent; create edge between faces
+					if (neighbour.equals(face)) { // probably bad input (3 edges the same)
+						System.err.println("PGS_Coloring: Bad input — saw the same edge 3 times.");
+						continue; // continue to prevent self-loop in graph
+					}
+					graph.addEdge(neighbour, face);
+				} else {
+					edgesMap.put(e, face); // edge is new
+				}
+			}
+		}
+		return graph;
 	}
 
 	/**

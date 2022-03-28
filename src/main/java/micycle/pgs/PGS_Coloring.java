@@ -2,7 +2,6 @@ package micycle.pgs;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -15,12 +14,10 @@ import org.jgrapht.alg.color.SmallestDegreeLastColoring;
 import org.jgrapht.alg.interfaces.VertexColoringAlgorithm.Coloring;
 import org.jgrapht.graph.AbstractBaseGraph;
 import org.jgrapht.graph.DefaultEdge;
-import org.jgrapht.graph.SimpleGraph;
 import org.locationtech.jts.noding.SegmentString;
 
 import micycle.pgs.color.RGB;
 import micycle.pgs.commons.GeneticColoring;
-import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.RLFColoring;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -229,7 +226,7 @@ public final class PGS_Coloring {
 	 * of faces) using the coloring algorithm specified.
 	 */
 	private static Coloring<PShape> findColoring(Collection<PShape> shapes, ColoringAlgorithm coloringAlgorithm) {
-		final AbstractBaseGraph<PShape, DefaultEdge> graph = prepareGraph(shapes);
+		final AbstractBaseGraph<PShape, DefaultEdge> graph = PGS_Conversion.toGraph(shapes);
 		final Coloring<PShape> coloring;
 
 		switch (coloringAlgorithm) {
@@ -256,45 +253,6 @@ public final class PGS_Coloring {
 				coloring = new RLFColoring<>(graph).getColoring();
 		}
 		return coloring;
-	}
-
-	/**
-	 * Generates a dual-graph from an intermediate graph representation of the given
-	 * mesh (where graph vertices represent mesh faces and graph edges represent a
-	 * shared edge between faces).
-	 * 
-	 * @param meshFaces
-	 * @return dual-graph of the mesh
-	 */
-	private static AbstractBaseGraph<PShape, DefaultEdge> prepareGraph(Collection<PShape> meshFaces) {
-		final AbstractBaseGraph<PShape, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
-		// map of which edge belong to each face; used to detect half-edges
-		final HashMap<PEdge, PShape> edgesMap = new HashMap<>(meshFaces.size() * 4);
-
-		for (PShape face : meshFaces) {
-			graph.addVertex(face); // always add child so disconnected shapes are colored
-			for (int i = 0; i < face.getVertexCount(); i++) {
-				final PVector a = face.getVertex(i);
-				final PVector b = face.getVertex((i + 1) % face.getVertexCount());
-				if (a.equals(b)) {
-					continue;
-				}
-				final PEdge e = new PEdge(a, b);
-				final PShape neighbour = edgesMap.get(e);
-
-				if (neighbour != null) {
-					// edge seen before, so faces must be adjacent; create edge between faces
-					if (neighbour.equals(face)) { // probably bad input (3 edges the same)
-						System.err.println("PGS_Coloring: Bad input — saw the same edge 3 times.");
-						continue; // continue to prevent self-loop in graph
-					}
-					graph.addEdge(neighbour, face);
-				} else {
-					edgesMap.put(e, face); // edge is new
-				}
-			}
-		}
-		return graph;
 	}
 
 	/**

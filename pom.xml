@@ -270,7 +270,7 @@
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>polysplit</artifactId>
-			<version>df23533048</version>
+			<version>1.1</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.bsideup.jabel</groupId>
@@ -287,6 +287,11 @@
 			<groupId>com.github.paudan</groupId>
 			<artifactId>jswarmopt</artifactId>
 			<version>1.0.3a</version>
+		</dependency>
+		<dependency>
+			<groupId>com.github.micycle1</groupId>
+			<artifactId>TrapMap</artifactId>
+			<version>1.0</version>
 		</dependency>
 	</dependencies>
 
