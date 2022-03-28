@@ -55,8 +55,10 @@ import micycle.balaban.BalabanSolver;
 import micycle.balaban.Point;
 import micycle.balaban.Segment;
 import micycle.pgs.PGS.GeometryIterator;
+import micycle.pgs.color.RGB;
 import micycle.pgs.commons.PolygonDecomposition;
 import micycle.pgs.commons.SeededRandomPointsInGridBuilder;
+import micycle.trapmap.TrapMap;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -779,7 +781,7 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Partitions a shape into N approximately equal area polygons.
+	 * Partitions a shape into N approximately equal-area polygonal cells.
 	 * <p>
 	 * This method produces a voronoi-like output.
 	 * 
@@ -806,6 +808,53 @@ public final class PGS_Processing {
 			System.err.println("equalPartition(): Input shape is not a polygon.");
 			return shape;
 		}
+	}
+
+	/**
+	 * Decomposes/partitions a shape into axis-aligned (stip-like) trazepoids.
+	 * <p>
+	 * The output can contain some "degenerate" trapezoids that do indeed have 4
+	 * vertices but look like triangles.
+	 * 
+	 * @param shape a polygonal or a GROUP shape
+	 * @return a GROUP PShape comprising of trapezoid child shapes
+	 */
+	public static PShape trapezoidPartition(PShape shape) {
+		final PShape trapezoids = new PShape(PConstants.GROUP);
+	
+		final TrapMap map;
+		try {
+			map = new TrapMap(PGS_Conversion.getChildren(shape));
+		} catch (Exception e) {
+			// handle error thrown by TrapMap on degenerate/strange inputs
+			System.err.println(e.getLocalizedMessage());
+			return trapezoids;
+		}
+	
+		final IndexedPointInAreaLocator locator = new IndexedPointInAreaLocator(PGS_Conversion.fromPShape(shape));
+		map.getAllTrapezoids().forEach(t -> {
+			if (t.getFace() != null) {
+				/*
+				 * Some spurious trapezoids that lie outside the shape boundary are not filtered
+				 * out by 't.getFace() != null' (most are). For those that remain use a
+				 * trapezoid's centroid to determine whether it makes up the shape.
+				 */
+				final PShape tz = t.getBoundaryPolygon();
+				final PVector centroid = new PVector(0, 0);
+				// don't need to use all 4 vertices
+				centroid.add(tz.getVertex(0));
+				centroid.add(tz.getVertex(1));
+				centroid.add(tz.getVertex(2));
+				centroid.div(3);
+				if (locator.locate(PGS.coordFromPVector(centroid)) != Location.EXTERIOR) {
+					trapezoids.addChild(tz); // include if not outside
+				}
+			}
+		});
+	
+		PGS_Conversion.setAllFillColor(trapezoids, RGB.WHITE);
+		PGS_Conversion.setAllStrokeColor(trapezoids, RGB.PINK, 1);
+		return trapezoids;
 	}
 
 	/**

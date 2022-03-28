@@ -289,13 +289,13 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center" colspan="2"><b>Points on Perimeter</td>
     <td align="center" valign="center"><b>Point on Perimeter</td>
-    <td align="center" valign="center"><b>Densification</td>
+    <td align="center" valign="center"><b>Perimeter Extraction</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/geometry_processing/pointsOnPerimeter.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/pointsOnPerimeter2.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/pointOnPerimeter.gif"></td>
-    <td valign="top" width="25%"><img src="resources/geometry_processing/densify.gif"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/perimeterExtract.gif"></td>
   </tr>
     <tr>
     <td align="center" valign="center" colspan="2">Find <i>N</i> points (evenly distributed) along the perimeter of a shape, or points every <i>D</i> distance (with optional perpendicular offset).</td>
@@ -304,20 +304,19 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
-    <td align="center" valign="center"><b>Perimeter Extraction</td>
     <td align="center" valign="center"><b>Splitting</td>
     <td align="center" valign="center"><b>Convex Partitioning</td>
     <td align="center" valign="center"><b>Equal Partitioning</td>
+    <td align="center" valign="center"><b>Trapezoid Partitioning</td>
   </tr>
   <tr>
-    <td valign="top" width="25%"><img src="resources/geometry_processing/perimeterExtract.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/split.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/decompose2.png"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/partition.png"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/trapezoidPartition.gif"></td>
     
   </tr>
   <tr>
-    <td valign="top" width="25%"></td>
     <td align="center" valign="center">Subdivide (recursively) a shape into quadrants.</td>
     <td align="center" valign="center">Partition a shape into convex polygons.</td>
     <td align="center" valign="center">Partition a shape into N equal area polygons.</td>
@@ -365,12 +364,17 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/geometry_processing/shapeIntersection.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/polygonizeLines2.png"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/polygonizeLines.png"></td>
-
   </tr>
     <tr>
       <td align="center" valign="center">A convex hull with some level of shape-feature snapping.</td>
       <td align="center" valign="center">Find all points of intersection between two shapes.</td>
       <td align="center" valign="center" colspan="2">Find the polygonal faces formed by a set of intersecting line segments.</td>
+  </tr>
+    <tr>
+    <td align="center" valign="center"><b>Densification</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/densify.gif"></td>
   </tr>
 </table>
 
