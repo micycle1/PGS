@@ -10,7 +10,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Set;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -24,9 +23,8 @@ import org.locationtech.jts.noding.Noder;
 import org.locationtech.jts.noding.SegmentString;
 import org.locationtech.jts.noding.snap.SnappingNoder;
 import org.locationtech.jts.operation.linemerge.LineMerger;
-import org.locationtech.jts.operation.polygonize.Polygonizer;
-
 import micycle.pgs.color.RGB;
+import micycle.pgs.commons.FastPolygonizer;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
 import processing.core.PShape;
@@ -200,10 +198,7 @@ final class PGS {
 	 * @return
 	 */
 	static final PShape polygonizeEdges(Collection<PEdge> edges) {
-//		return FastPolygonizer.polygonize(edges);
-		final List<SegmentString> ss = new ArrayList<>(edges.size());
-		edges.forEach(e -> ss.add(createSegmentString(e.a, e.b)));
-		return polygonizeSegments(ss, false);
+		return FastPolygonizer.polygonize(edges);
 	}
 
 	/**
@@ -215,37 +210,13 @@ final class PGS {
 	 *                 false; otherwise true.
 	 * @return
 	 */
-	@SuppressWarnings("unchecked")
 	static final PShape polygonizeSegments(Collection<SegmentString> segments, boolean node) {
 		if (node) {
 			segments = nodeSegmentStrings(segments);
 		}
-
-		/*
-		 * FastPolygonizer is slightly less robust (when input has "dangles"), so use
-		 * JTS implementation in this method.
-		 */
-//		final Collection<PEdge> meshEdges = new ArrayList<>(segments.size());
-//		segments.forEach(ss -> meshEdges.add(new PEdge(toPVector(ss.getCoordinate(0)), toPVector(ss.getCoordinate(1)))));
-//		return polygonizeEdges(meshEdges);
-
-		final Set<PEdge> edges = PGS.makeHashSet(segments.size());
-		final Polygonizer polygonizer = new Polygonizer();
-		polygonizer.setCheckRingsValid(false);
-		segments.forEach(ss -> {
-			/*
-			 * If the same LineString is added more than once to JTS polygonizer, the string
-			 * is "collapsed" and not counted as an edge. Therefore a set is used to ensure
-			 * strings are added once only to the polygonizer. A PEdge is used to determine
-			 * this (since LineString hashcode doesn't work).
-			 */
-			final PEdge e = new PEdge(toPVector(ss.getCoordinate(0)), toPVector(ss.getCoordinate(1)));
-			if (edges.add(e)) {
-				final LineString l = PGS.GEOM_FACTORY.createLineString(new Coordinate[] { ss.getCoordinate(0), ss.getCoordinate(1) });
-				polygonizer.add(l);
-			}
-		});
-		return PGS_Conversion.toPShape(polygonizer.getPolygons());
+		final Collection<PEdge> meshEdges = new ArrayList<>(segments.size());
+		segments.forEach(ss -> meshEdges.add(new PEdge(toPVector(ss.getCoordinate(0)), toPVector(ss.getCoordinate(1)))));
+		return polygonizeEdges(meshEdges);
 	}
 
 	/**
