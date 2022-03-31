@@ -21,7 +21,7 @@ import processing.core.PVector;
  * This class solves the problem of finding polygons formed by a collection of
  * edges.
  * <p>
- * It is a faster (by around x5) alternative to JTS'
+ * At least twice as fast as JTS'
  * {@link org.locationtech.jts.operation.polygonize.Polygonizer polygonizer}.
  * 
  * @author Michael Carleton

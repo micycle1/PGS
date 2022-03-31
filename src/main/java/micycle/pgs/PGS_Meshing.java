@@ -369,9 +369,7 @@ public class PGS_Meshing {
 	 */
 	public static PShape spiralQuadrangulation(List<PVector> points) {
 		SpiralQuadrangulation sq = new SpiralQuadrangulation(points);
-		Collection<SegmentString> segments = new ArrayList<>(sq.getQuadrangulationEdges().size());
-		sq.getQuadrangulationEdges().forEach(e -> segments.add(PGS.createSegmentString(e.a, e.b)));
-		return PGS.polygonizeSegments(segments, true);
+		return PGS.polygonizeEdges(sq.getQuadrangulationEdges());
 	}
 
 	/**
