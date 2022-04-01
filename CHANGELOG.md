@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `toGraph()` to `PGS_Conversion`. Converts a shape to a graph, representing its dual-graph (this method was previously private).
 * `findContainingShape()` to `PGS_ShapePredicates`. Finds the child shape in a GROUP shape that contains a query point.
 * `createRectangularSpiral()` to `PGS_Construction`. Creates a rectangular-shaped spiral.
+* `largestEmptyCircle()` to `PGS_Optimisation`. Finds the largest empty circle in a set of obstacle geometries.
 
 ### Changed
 * Renamed `partition()` to `convexPartition()`.

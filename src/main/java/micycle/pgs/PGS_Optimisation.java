@@ -1,9 +1,8 @@
 package micycle.pgs;
 
-import static micycle.pgs.PGS.SHAPE_SAMPLES;
-import static micycle.pgs.PGS.GEOM_FACTORY;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
+import static micycle.pgs.PGS_Construction.createEllipse;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -11,6 +10,7 @@ import java.util.List;
 
 import org.locationtech.jts.algorithm.MinimumBoundingCircle;
 import org.locationtech.jts.algorithm.MinimumDiameter;
+import org.locationtech.jts.algorithm.construct.LargestEmptyCircle;
 import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
@@ -65,13 +65,9 @@ public final class PGS_Optimisation {
 	 */
 	public static PShape maximumInscribedCircle(PShape shape, double tolerance) {
 		MaximumInscribedCircle mic = new MaximumInscribedCircle(fromPShape(shape), tolerance);
-
-		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-		shapeFactory.setNumPoints(SHAPE_SAMPLES);
-		shapeFactory.setCentre(new Coordinate(mic.getCenter().getX(), mic.getCenter().getY()));
-		shapeFactory.setWidth(mic.getRadiusLine().getLength() * 2); // r*2 for total width & height
-		shapeFactory.setHeight(mic.getRadiusLine().getLength() * 2); // r*2 for total width & height
-		return toPShape(shapeFactory.createEllipse());
+		final double wh = mic.getRadiusLine().getLength() * 2;
+		Polygon circle = createEllipse(PGS.coordFromPoint(mic.getCenter()), wh, wh);
+		return toPShape(circle);
 	}
 
 	/**
@@ -85,14 +81,9 @@ public final class PGS_Optimisation {
 		Geometry g = fromPShape(shape);
 		Point p = PGS.pointFromPVector(centerPoint);
 		Coordinate closestEdgePoint = DistanceOp.nearestPoints(g.getBoundary(), p)[0];
-
-		double radius = PGS.distance(GEOM_FACTORY.createPoint(closestEdgePoint), p);
-		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-		shapeFactory.setNumPoints(SHAPE_SAMPLES);
-		shapeFactory.setCentre(p.getCoordinate());
-		shapeFactory.setWidth(radius * 2); // r*2 for total width & height
-		shapeFactory.setHeight(radius * 2); // r*2 for total width & height
-		return toPShape(shapeFactory.createEllipse());
+		double radius = PGS.coordFromPVector(centerPoint).distance(closestEdgePoint);
+		Polygon circle = createEllipse(p.getCoordinate(), radius * 2, radius * 2);
+		return toPShape(circle);
 	}
 
 	/**
@@ -150,12 +141,9 @@ public final class PGS_Optimisation {
 	 */
 	public static PShape minimumBoundingCircle(PShape shape) {
 		MinimumBoundingCircle mbc = new MinimumBoundingCircle(fromPShape(shape));
-		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-		shapeFactory.setNumPoints(SHAPE_SAMPLES);
-		shapeFactory.setCentre(new Coordinate(mbc.getCentre().getX(), mbc.getCentre().getY()));
-		shapeFactory.setWidth(mbc.getRadius() * 2); // r*2 for total width & height
-		shapeFactory.setHeight(mbc.getRadius() * 2); // r*2 for total width & height
-		return toPShape(shapeFactory.createEllipse());
+		final double wh = mbc.getRadius() * 2;
+		Polygon circle = createEllipse(mbc.getCentre(), wh, wh);
+		return toPShape(circle);
 	}
 
 	/**
@@ -231,6 +219,28 @@ public final class PGS_Optimisation {
 	public static PShape minimumDiameter(PShape shape) {
 		LineString md = (LineString) MinimumDiameter.getMinimumDiameter(fromPShape(shape));
 		return toPShape(md);
+	}
+
+	/**
+	 * Constructs the Largest Empty Circle for a set of obstacle geometries, up to a
+	 * specified tolerance. Valid obstacles are point and line shapes (such as a
+	 * POINTS PShape).
+	 * <p>
+	 * The Largest Empty Circle is the largest circle which has its center in the
+	 * convex hull of the obstacles (the boundary), and whose interior does not
+	 * intersect with any obstacle. The circle center is the point in the interior
+	 * of the boundary which has the farthest distance from the obstacles (up to
+	 * tolerance).
+	 * 
+	 * @param obstacles a shape representing the obstacles (points and lines)
+	 * @param tolerance the distance tolerance for computing the circle center point
+	 * @return
+	 */
+	public static PShape largestEmptyCircle(PShape obstacles, double tolerance) {
+		LargestEmptyCircle lec = new LargestEmptyCircle(fromPShape(obstacles), Math.max(0.01, tolerance));
+		double wh = lec.getRadiusLine().getLength() * 2;
+		Polygon circle = createEllipse(PGS.coordFromPoint(lec.getCenter()), wh, wh);
+		return toPShape(circle);
 	}
 
 	/**

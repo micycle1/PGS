@@ -478,11 +478,13 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
-  <td align="center" valign="center"><b>Closest Vertex</td>
+    <td align="center" valign="center"><b>Largest Empty Circle</td>
+    <td align="center" valign="center"><b>Closest Vertex</td>
     <td align="center" valign="center"><b>Closest Point Pair</td>
     <td align="center" valign="center"><b>Farthest Point Pair</td>
   </tr>
   <tr>
+    <td valign="top" width="25%"><img src="resources/optimisation/lec.png"></td>
     <td valign="top" width="25%"><img src="resources/pgs/closestVertex.gif"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/closestPair.png"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/farthestPair.png"></td>

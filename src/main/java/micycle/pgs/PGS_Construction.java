@@ -28,6 +28,12 @@ public class PGS_Construction {
 
 	private PGS_Construction() {
 	}
+	
+	private static final GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
+	
+	static {
+		shapeFactory.setNumPoints(PGS.SHAPE_SAMPLES);
+	}
 
 	/**
 	 * Generates a random simple convex polygon (n-gon).
@@ -455,6 +461,14 @@ public class PGS_Construction {
 		return curve;
 	}
 
+	
+	static Polygon createEllipse(Coordinate center, double width, double height) {
+		shapeFactory.setCentre(center);
+		shapeFactory.setWidth(width);
+		shapeFactory.setHeight(height);
+		return shapeFactory.createEllipse();
+	}
+	
 	/**
 	 * Sierpinski curve subdivide.
 	 */
