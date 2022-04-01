@@ -10,7 +10,7 @@ import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.util.AffineTransformation;
-import org.locationtech.jts.operation.distance.DistanceOp;
+import org.locationtech.jts.operation.distance.IndexedFacetDistance;
 
 import processing.core.PShape;
 import processing.core.PVector;
@@ -29,7 +29,6 @@ import processing.core.PVector;
 public final class PGS_Transformation {
 
 	private PGS_Transformation() {
-
 	}
 
 	/**
@@ -60,7 +59,7 @@ public final class PGS_Transformation {
 		AffineTransformation t = AffineTransformation.scaleInstance(scaleX, scaleY, c.getX(), c.getY());
 		return toPShape(t.transform(g));
 	}
-	
+
 	/**
 	 * Scales the shape relative to the origin (0,0).
 	 * 
@@ -98,48 +97,51 @@ public final class PGS_Transformation {
 	 * Scales a shape (based on its centroid) so that it touches the boundary of
 	 * another shape. The scaling shape's centroid must lie outside the other shape.
 	 * 
-	 * @param shape     its centroid should be outside container
-	 * @param other
+	 * @param shape     the shape to scale. its centroid should be outside container
+	 * @param boundary
 	 * @param tolerance >=0
 	 */
-	public static PShape touchScale(PShape shape, PShape other, double tolerance) {
-		tolerance = Math.max(tolerance, 1);
+	public static PShape touchScale(PShape shape, PShape boundary, double tolerance) {
+		tolerance = Math.max(tolerance, 0.01);
+		final IndexedFacetDistance index = new IndexedFacetDistance(fromPShape(boundary));
 		Geometry scaleShape = fromPShape(shape);
 
 		final Coordinate centroid = scaleShape.getCentroid().getCoordinate();
 
-		double dist = 999999;
+		double dist = Double.MAX_VALUE;
 		final int maxIter = 75;
 		int iter = 0;
-		// NOTE uses DistanceOp.nearestPoints() which is n^2
-		while (dist > tolerance && iter < maxIter) {
-			Coordinate[] coords = DistanceOp.nearestPoints(scaleShape, fromPShape(other));
-			dist = PGS.distance(coords[0], coords[1]);
 
-			/**
-			 * If dist == 0, then shape is either fully contained within the container or
-			 * covers it. We attempt to first shrink the shape so that no longer covers the
-			 * container. If dist remains zero after repeated shrinking we conclude the
-			 * shape is inside the container.
+		while (dist > tolerance && iter < maxIter) {
+			Coordinate[] coords = index.nearestPoints(scaleShape);
+			dist = coords[0].distance(coords[1]);
+
+			/*
+			 * When dist == 0, the shape is either fully contained within the boundary or
+			 * partially covers it. We attempt to first shrink the shape so that no longer
+			 * covers the boundary. If dist remains zero after repeated shrinking we
+			 * conclude the shape is properly inside the boundary.
 			 */
 			if (dist == 0) {
-				int z = 7;
-				while (z > 0) {
+				int z = 0;
+				while (z++ < 7) {
 					AffineTransformation t = AffineTransformation.scaleInstance(0.5, 0.5, centroid.x, centroid.y);
 					scaleShape = t.transform(scaleShape);
-					coords = DistanceOp.nearestPoints(scaleShape, fromPShape(other));
-					dist = PGS.distance(coords[0], coords[1]);
+					dist = index.distance(scaleShape);
 					if (dist > 0) {
 						break;
 					}
-					z--;
 				}
-				if (dist == 0) { // still 0? probably contained inside, so just return shape
-					return shape;
+				if (dist == 0) {
+					/*
+					 * If dist still == 0, then shape's centroid lies on the perimeter of the
+					 * boundary.
+					 */
+					return toPShape(scaleShape);
 				}
 			}
-			double d1 = PGS.distance(centroid, coords[0]);
-			double d2 = PGS.distance(centroid, coords[1]);
+			double d1 = centroid.distance(coords[1]);
+			double d2 = centroid.distance(coords[0]);
 			AffineTransformation t = AffineTransformation.scaleInstance(d2 / d1, d2 / d1, centroid.x, centroid.y);
 			scaleShape = t.transform(scaleShape);
 			iter++;

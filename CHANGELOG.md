@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_Contour.straightSkeleton()` uses a different implementation that is ~50x faster!
 * Renamed `maximumInscribedRectangle()` to `maximumInscribedAARectangle()` ("axis-aligned").
 * `PGS_Optimisation.maximumInscribedRectangle()` now finds the maximum-area inscribed rectangle of arbitrary orientation.
+* `PGS_Transformation.touchScale()` now scales shapes that are contained within a larger shape.
 
 ### Fixed
 * NPE when shapes created with `createShape()` in the P2D renderer were passed to `fromPShape()` (#55).
