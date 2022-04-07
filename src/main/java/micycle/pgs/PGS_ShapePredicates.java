@@ -136,6 +136,7 @@ public final class PGS_ShapePredicates {
 	 * @param point      the query point
 	 * @return the child shape that contains the query point, or null if no child
 	 *         shape contains the point
+	 * @since 1.2.1
 	 */
 	public static PShape findContainingShape(PShape groupShape, PVector point) {
 		if (groupShape.getKind() != PConstants.GROUP) { // handle non-mesh shape

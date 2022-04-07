@@ -6,6 +6,7 @@ import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -251,6 +252,12 @@ public final class PGS_Contour {
 		final Set<PEdge> branchEdges = new HashSet<>();
 		final Set<PEdge> boneEdges = new HashSet<>();
 		so.getFaces().forEach(f -> {
+			/*
+			 * q stores the index of second vertex of the face that is a shape vertex. This
+			 * is used to rotate f.getPoints() so that the vertices of every face PShape
+			 * begin at the shape edge.
+			 */
+			int q = 0;
 			for (int i = 0; i < f.getPoints().size(); i++) {
 				final Vector2dc p1 = f.getPoints().get(i);
 				final Vector2dc p2 = f.getPoints().get((i + 1) % f.getPoints().size());
@@ -258,14 +265,18 @@ public final class PGS_Contour {
 				final boolean b = edgeCoordsSet.contains(p2);
 				if (a ^ b) { // branch (xor)
 					branchEdges.add(new PEdge(p1.x(), p1.y(), p2.x(), p2.y()));
+					q = i;
 				} else {
 					if (!a) { // bone
 						boneEdges.add(new PEdge(p1.x(), p1.y(), p2.x(), p2.y()));
+					} else {
+						q = i;
 					}
 				}
 			}
 
 			List<PVector> faceVertices = new ArrayList<>(f.getPoints().size());
+			Collections.rotate(f.getPoints(), -q + 1);
 			f.getPoints().forEach(p -> faceVertices.add(new PVector((float) p.x(), (float) p.y())));
 
 			PShape face = PGS_Conversion.fromPVector(faceVertices);
