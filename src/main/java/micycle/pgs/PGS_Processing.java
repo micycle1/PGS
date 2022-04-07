@@ -818,6 +818,7 @@ public final class PGS_Processing {
 	 * 
 	 * @param shape a polygonal or a GROUP shape
 	 * @return a GROUP PShape comprising of trapezoid child shapes
+	 * @since 1.2.1
 	 */
 	public static PShape trapezoidPartition(PShape shape) {
 		final PShape trapezoids = new PShape(PConstants.GROUP);

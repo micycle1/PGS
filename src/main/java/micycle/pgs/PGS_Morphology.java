@@ -143,7 +143,8 @@ public final class PGS_Morphology {
 	 * than the input.
 	 * 
 	 * @param shape
-	 * @param alpha curvedness parameter (0 is linear, 1 is round, >1 is increasingly curved)
+	 * @param alpha curvedness parameter (0 is linear, 1 is round, >1 is
+	 *              increasingly curved)
 	 * @return smoothed copy of the shape
 	 * @see #smoothGaussian(PShape, double)
 	 */
@@ -371,9 +372,9 @@ public final class PGS_Morphology {
 	 * <p>
 	 * The underlying technique rotates one of the shapes to minimise the total
 	 * distance between each shape's vertices, then performs linear interpolation
-	 * between vertices. In practice this performs well but the outcome worsens as
-	 * shapes become more concave; more sophisticated techniques employ some level
-	 * of rigidity preservation.
+	 * between vertices. This performs well in practice but the outcome worsens as
+	 * shapes become more concave; more sophisticated techniques would employ some
+	 * level of rigidity preservation.
 	 * 
 	 * @param from                a single polygon; the shape we want to morph from
 	 * @param to                  a single polygon; the shape we want to morph

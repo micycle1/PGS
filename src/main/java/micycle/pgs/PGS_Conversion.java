@@ -60,6 +60,7 @@ public final class PGS_Conversion implements PConstants {
 			MATRIX_FIELD = PShape.class.getDeclaredField("matrix");
 			MATRIX_FIELD.setAccessible(true);
 		} catch (NoSuchFieldException e) {
+			System.err.println(e.getLocalizedMessage());
 		}
 	}
 
@@ -571,6 +572,7 @@ public final class PGS_Conversion implements PConstants {
 	 * 
 	 * @return the dual graph of the input mesh; an undirected graph containing no
 	 *         graph loops or multiple edges.
+	 * @since 1.2.1
 	 */
 	public static SimpleGraph<PShape, DefaultEdge> toGraph(PShape mesh) {
 		return toGraph(getChildren(mesh));
