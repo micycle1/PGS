@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `equalPartition()` to `PGS_Processing`. Partitions a shape into N approximately equal area polygons.
 * `trapezoidPartition()` to `PGS_Processing`. Partitions a shape into axis-aligned trazepoids.
 * `fromChildren()` to `PGS_Conversion`. Creates a single GROUP parent shape from a list of child shapes.
+* `toWKT()` and `fromWKT()` to `PGS_Conversion`. Converts PShapes to and from a *Well-Known Text* representation.
 * `originScale()` to `PGS_Transformation`. Scales a shape relative to the origin (0,0).
 * A new mesh-coloring algorithm: `GENETIC`, which finds a coloring via a genetic algorithm.
 * `toGraph()` to `PGS_Conversion`. Converts a shape to a graph, representing its dual-graph (this method was previously private).

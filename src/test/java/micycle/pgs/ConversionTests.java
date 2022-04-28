@@ -348,6 +348,21 @@ class ConversionTests {
 		assertEquals(col, PGS.getPShapeStrokeColor(processed));
 		assertEquals(8f, PGS.getPShapeStrokeWeight(processed));
 	}
+	
+	@Test
+	void testWKTIO() {
+		final PShape shape = new PShape(PShape.GEOMETRY);
+		shape.beginShape();
+		shape.vertex(0, 0);
+		shape.vertex(10, 0);
+		shape.vertex(0, 10);
+		shape.endShape(PShape.CLOSE);
+		
+		String wkt = PGS_Conversion.toWKT(shape);
+		PShape in = PGS_Conversion.fromWKT(wkt);
+		
+		assertTrue(PGS_ShapePredicates.equalsNorm(shape, in));
+	}
 
 	private static boolean pointsAreEqual(Coordinate c, PVector p) {
 		return (c.x == p.x && c.y == p.y);

@@ -22,7 +22,11 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.PrecisionModel;
 import org.locationtech.jts.geom.util.AffineTransformation;
+import org.locationtech.jts.io.ParseException;
+import org.locationtech.jts.io.WKTReader;
+import org.locationtech.jts.io.WKTWriter;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
 import micycle.pgs.commons.PEdge;
@@ -597,7 +601,7 @@ public final class PGS_Conversion implements PConstants {
 				if (neighbour != null) {
 					// edge seen before, so faces must be adjacent; create edge between faces
 					if (neighbour.equals(face)) { // probably bad input (3 edges the same)
-						System.err.println("PGS_Coloring: Bad input — saw the same edge 3 times.");
+						System.err.println("toGraph: Bad input — saw the same edge 3 times.");
 						continue; // continue to prevent self-loop in graph
 					}
 					graph.addEdge(neighbour, face);
@@ -607,6 +611,41 @@ public final class PGS_Conversion implements PConstants {
 			}
 		}
 		return graph;
+	}
+
+	/**
+	 * Writes the <i>Well-Known Text</i> representation of a shape. The
+	 * <i>Well-Known Text</i> format is defined in the OGC Simple Features
+	 * Specification for SQL.
+	 * 
+	 * @param shape shape to process
+	 * @return a Geometry Tagged Text string
+	 * @since 1.2.1
+	 */
+	public static String toWKT(PShape shape) {
+		WKTWriter writer = new WKTWriter(2);
+		writer.setPrecisionModel(new PrecisionModel(PrecisionModel.FIXED)); // 1 d.p.
+//		writer.setMaxCoordinatesPerLine(1);
+		return writer.writeFormatted(fromPShape(shape));
+	}
+
+	/**
+	 * Converts a geometry in <i>Well-Known Text</i> format to a PShape.
+	 * 
+	 * @param textRepresentation one or more Geometry Tagged Text strings,
+	 *                           separated by whitespace
+	 * @return a PShape specified by the text
+	 * @since 1.2.1
+	 */
+	public static PShape fromWKT(String textRepresentation) {
+		WKTReader reader = new WKTReader(GEOM_FACTORY);
+		reader.setFixStructure(true);
+		try {
+			return toPShape(reader.read(textRepresentation));
+		} catch (ParseException e) {
+			e.printStackTrace();
+			return null;
+		}
 	}
 
 	/**
