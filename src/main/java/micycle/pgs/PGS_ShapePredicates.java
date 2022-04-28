@@ -351,6 +351,60 @@ public final class PGS_ShapePredicates {
 	}
 
 	/**
+	 * Tests two shapes for <b>structural equality</b>. In simple terms, this means
+	 * that they must have the same number of vertices, in the same locations, and
+	 * in the same order.
+	 * <p>
+	 * Note: If two Polygons have matching vertices, but one is arranged clockwise
+	 * while the other is counter-clockwise, then then this method will return
+	 * false.
+	 * 
+	 * @param a shape a
+	 * @param b shape b
+	 * @return true if both shapes have identical structure and point values.
+	 * @since 1.2.1
+	 * @see #equalsNorm(PShape, PShape)
+	 * @see #equalsTopo(PShape, PShape)
+	 */
+	public static boolean equalsExact(PShape a, PShape b) {
+		return fromPShape(a).equalsExact(fromPShape(b));
+	}
+
+	/**
+	 * Tests two shapes for <b>normalised structural equality</b>. In simple terms,
+	 * this means that they must have the same number of vertices in the same
+	 * locations. Unlike {@link #equalsExact(PShape, PShape)}, vertices do not need
+	 * to be in the same order for the shapes to be considered equal.
+	 * 
+	 * @param a shape a
+	 * @param b shape b
+	 * @return true the shapes are exactly equal in their normalized form
+	 * @since 1.2.1
+	 * @see #equalsExact(PShape, PShape)
+	 * @see #equalsTopo(PShape, PShape)
+	 */
+	public static boolean equalsNorm(PShape a, PShape b) {
+		return fromPShape(a).equalsNorm(fromPShape(b));
+	}
+
+	/**
+	 * Tests two shapes for <b>topological equality</b>. In simple terms, this is
+	 * equivalent to drawing the two shapes and seeing if all of their component
+	 * edges overlap. It is the most robust kind of comparison but also the most
+	 * computationally expensive.
+	 * 
+	 * @param a shape a
+	 * @param b shape b
+	 * @return true if the two shapes are topologically equal
+	 * @since 1.2.1
+	 * @see #equalsExact(PShape, PShape)
+	 * @see #equalsTopo(PShape, PShape)
+	 */
+	public static boolean equalsTopo(PShape a, PShape b) {
+		return fromPShape(a).equalsTopo(fromPShape(b));
+	}
+
+	/**
 	 * Checks whether a shape is simple. A shape is simple if it has no points of
 	 * self-tangency, self-intersection or other anomalous points.
 	 */
