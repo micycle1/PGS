@@ -12,10 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `trapezoidPartition()` to `PGS_Processing`. Partitions a shape into axis-aligned trazepoids.
 * `fromChildren()` to `PGS_Conversion`. Creates a single GROUP parent shape from a list of child shapes.
 * `originScale()` to `PGS_Transformation`. Scales a shape relative to the origin (0,0).
-* `sphericity()` and `elongation()` to `PGS_ShapePredicates`.
 * A new mesh-coloring algorithm: `GENETIC`, which finds a coloring via a genetic algorithm.
 * `toGraph()` to `PGS_Conversion`. Converts a shape to a graph, representing its dual-graph (this method was previously private).
+* `sphericity()` and `elongation()` to `PGS_ShapePredicates`.
 * `findContainingShape()` to `PGS_ShapePredicates`. Finds the child shape in a GROUP shape that contains a query point.
+* `equalsExact()`, `equalsNorm()` and `equalsTopo()` to `PGS_ShapePredicates`. These methods test for equality between two shapes according to different criteria.
 * `createRectangularSpiral()` to `PGS_Construction`. Creates a rectangular-shaped spiral.
 * `largestEmptyCircle()` to `PGS_Optimisation`. Finds the largest empty circle in a set of obstacle geometries.
 

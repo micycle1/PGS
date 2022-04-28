@@ -179,6 +179,7 @@ Much of the functionality (but by no means all) is demonstrated below:
 * Holes
 * Is simple?
 * Is convex?
+* Equal? (structural and topological equivalence)
 * Distance
 * Area
 * Centroid
