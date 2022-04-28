@@ -26,6 +26,7 @@ import org.tinspin.index.PointEntryDist;
 import org.tinspin.index.covertree.CoverTree;
 
 import micycle.pgs.commons.FrontChainPacker;
+import micycle.pgs.commons.MaximumInscribedCircles;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -213,17 +214,9 @@ public final class PGS_CirclePacking {
 	}
 
 	/**
-	 * Generates a circle packing consisting of n maximum inscribed circles,
-	 * computed iteratively, starting with the biggest circle (the shape's global
-	 * maximum inscribed circle).
-	 * 
-	 * Pack with (the n biggest circles) circles that are the maximum size at each
-	 * stage. Starts with . Pack with successive maximumly inscribed circles.
-	 * <p>
-	 * <b>Warning:</b><br/>
-	 * This method is much slower than the other circle packing methods. Processing
-	 * with n > 100 may take several seconds.
-	 * </p>
+	 * Generates a circle packing consisting of the N largest maximum inscribed
+	 * circles, starting with the largest circle (the shape's global maximum
+	 * inscribed circle).
 	 * 
 	 * @param shape     the shape from which to generate a circle packing
 	 * @param n         number of maximum inscribed circles to return, starting with
@@ -236,24 +229,14 @@ public final class PGS_CirclePacking {
 	 *         the center point and .z represents radius.
 	 */
 	public static List<PVector> maximumInscribedPack(PShape shape, int n, double tolerance) {
-		tolerance = Math.max(0.5, tolerance);
-		Geometry geometry = fromPShape(shape);
-		final GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-		shapeFactory.setNumPoints(20);
+		MaximumInscribedCircles mics = new MaximumInscribedCircles(fromPShape(shape), tolerance);
 
 		final List<PVector> out = new ArrayList<>();
-
 		for (int i = 0; i < n; i++) {
-			final MaximumInscribedCircle mic = new MaximumInscribedCircle(geometry, tolerance);
-			final double d, x, y;
-			x = mic.getCenter().getX();
-			y = mic.getCenter().getY();
-			d = mic.getRadiusLine().getLength() * 2;
-			out.add(new PVector((float) x, (float) y, (float) d / 2));
-			shapeFactory.setCentre(new Coordinate(x, y));
-			shapeFactory.setSize(d);
-			geometry = geometry.difference(shapeFactory.createEllipse());
+			double[] c = mics.getNextLargestCircle();
+			out.add(new PVector((float) c[0], (float) c[1], (float) c[2]));
 		}
+
 		return out;
 	}
 
