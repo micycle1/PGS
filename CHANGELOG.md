@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Renamed `maximumInscribedRectangle()` to `maximumInscribedAARectangle()` ("axis-aligned").
 * `PGS_Optimisation.maximumInscribedRectangle()` now finds the maximum-area inscribed rectangle of arbitrary orientation.
 * `PGS_Transformation.touchScale()` now scales shapes that are contained within a larger shape.
+* Reimplemented `PGS_CirclePacking.maximumInstribedPack()`. New algorithm is perfectly accurate and is ~10x faster!
 
 ### Fixed
 * NPE when shapes created with `createShape()` in the P2D renderer were passed to `fromPShape()` (#55).
