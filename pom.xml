@@ -206,9 +206,9 @@
 			<version>1.18.3-SNAPSHOT</version>
 		</dependency>
 		<dependency>
-			<groupId>com.github.twak</groupId>
+			<groupId>com.github.micycle1</groupId>
 			<artifactId>campskeleton</artifactId>
-			<version>8df5b241d5</version>
+			<version>84629162cf</version>
 		</dependency>
 		<dependency>
 			<groupId>org.jgrapht</groupId>
