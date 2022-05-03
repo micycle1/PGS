@@ -162,11 +162,6 @@
 
 	<repositories>
 		<repository>
-			<id>mvnrepository</id>
-			<name>mvnrepository</name>
-			<url>https://www.mvnrepository.com</url>
-		</repository>
-		<repository>
 			<id>osgeo</id>
 			<name>osgeo</name>
 			<url>https://repo.osgeo.org/repository/release</url>
