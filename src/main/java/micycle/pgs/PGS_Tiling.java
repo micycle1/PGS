@@ -17,8 +17,8 @@ import processing.core.PVector;
  * Tiling, tessellation and subdivision of the plane using periodic or
  * non-periodic geometric shapes.
  * <p>
- * A tiling is created when a collection of plane figures (tiles) fills a plane
- * such that no gaps occur between the tiles and no two tiles overlap each
+ * A tiling is created when a collection of plane figures (tileCount) fills a plane
+ * such that no gaps occur between the tileCount and no two tileCount overlap each
  * other.
  * 
  * @author Michael Carleton
@@ -213,7 +213,7 @@ public final class PGS_Tiling {
 	}
 
 	/**
-	 * Generates an "islamic-style" tiling of the plane.
+	 * Generates an "islamic-style" (Girih) tiling of the plane.
 	 * 
 	 * @param width  width of the tiling plane
 	 * @param height height of the tiling plane

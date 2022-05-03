@@ -213,7 +213,7 @@
 		<dependency>
 			<groupId>com.github.twak</groupId>
 			<artifactId>campskeleton</artifactId>
-			<version>9bd1d7325d</version>
+			<version>8df5b241d5</version>
 		</dependency>
 		<dependency>
 			<groupId>org.jgrapht</groupId>
