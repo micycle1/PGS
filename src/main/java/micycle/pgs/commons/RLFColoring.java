@@ -56,6 +56,7 @@ public class RLFColoring<V, E> implements VertexColoringAlgorithm<V> {
 	 * neighbor in C
 	 */
 	private final Set<V> W;
+	/** the colored vertices, and their corresponding color */
 	final Map<V, Integer> C;
 	private final NeighborCache<V, E> neighborCache;
 
