@@ -208,7 +208,7 @@
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>campskeleton</artifactId>
-			<version>84629162cf</version>
+			<version>7294764e44</version>
 		</dependency>
 		<dependency>
 			<groupId>org.jgrapht</groupId>
