@@ -632,8 +632,8 @@ public final class PGS_Conversion implements PConstants {
 	/**
 	 * Converts a geometry in <i>Well-Known Text</i> format to a PShape.
 	 * 
-	 * @param textRepresentation one or more Geometry Tagged Text strings,
-	 *                           separated by whitespace
+	 * @param textRepresentation one or more Geometry Tagged Text strings, separated
+	 *                           by whitespace
 	 * @return a PShape specified by the text
 	 * @since 1.2.1
 	 */
@@ -649,27 +649,35 @@ public final class PGS_Conversion implements PConstants {
 	}
 
 	/**
-	 * Generates a simple closed polygon (assumes no holes) from the list of
-	 * vertices.
+	 * Generates a shape from a list of vertices. If the list of vertices is closed
+	 * (first and last vertices are the same), the vertices are interpreted as a
+	 * closed polygon (having no holes); if the list is unclosed, they are treated
+	 * as a linestring.
 	 * 
 	 * @param vertices list of (un)closed shape vertices
+	 * @return a PATH PShape (either open linestring or closed polygon)
 	 * @see #fromPVector(PVector...)
 	 */
 	public static PShape fromPVector(List<PVector> vertices) {
+		boolean closed = false;
 		if (!vertices.isEmpty() && vertices.get(0).equals(vertices.get(vertices.size() - 1))) {
-			vertices.remove(vertices.size() - 1);
+			closed = true;
 		}
 
 		PShape shape = new PShape();
 		shape.setFamily(PShape.PATH);
 		shape.setFill(micycle.pgs.color.RGB.WHITE);
-		shape.setFill(true);
+		shape.setFill(closed);
+		shape.setStroke(!closed);
+		shape.setStroke(micycle.pgs.color.RGB.WHITE);
+		shape.setStrokeWeight(2);
 
 		shape.beginShape();
-		for (PVector v : vertices) {
+		for (int i = 0; i < vertices.size() - (closed ? 1 : 0); i++) {
+			PVector v = vertices.get(i);
 			shape.vertex(v.x, v.y);
 		}
-		shape.endShape(PConstants.CLOSE);
+		shape.endShape(closed ? PConstants.CLOSE : PConstants.OPEN);
 
 		return shape;
 	}
