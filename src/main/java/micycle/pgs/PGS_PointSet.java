@@ -58,6 +58,72 @@ public final class PGS_PointSet {
 	}
 
 	/**
+	 * Sorts a list of points according to the Hilbert space-filling curve to ensure
+	 * a high-degree of spatial locality in the sequence of points.
+	 * <p>
+	 * Note: this method mutates the z values of the PVectors.
+	 * 
+	 * @param points list of points to sort
+	 * @return a sorted copy of the input list, having a different order according
+	 *         to points' Hilbert ranking
+	 */
+	public static List<PVector> hilbertSort(List<PVector> points) {
+		List<PVector> pointsNew = new ArrayList<>(points);
+
+		double xMin, xMax, yMin, yMax;
+		if (pointsNew.isEmpty()) {
+			return points;
+		}
+
+		// find bounds
+		PVector v = pointsNew.get(0);
+		xMin = v.x;
+		xMax = v.x;
+		yMin = v.y;
+		yMax = v.y;
+
+		for (PVector PVector : pointsNew) {
+			if (PVector.x < xMin) {
+				xMin = PVector.x;
+			} else if (PVector.x > xMax) {
+				xMax = PVector.x;
+			}
+			if (PVector.y < yMin) {
+				yMin = PVector.y;
+			} else if (PVector.y > yMax) {
+				yMax = PVector.y;
+			}
+		}
+
+		double xDelta = xMax - xMin;
+		double yDelta = yMax - yMin;
+		if (xDelta == 0 || yDelta == 0) {
+			return points;
+		}
+		if (pointsNew.size() < 24) {
+			return points;
+		}
+
+		double hn = Math.log(pointsNew.size()) / 0.693147180559945 / 2.0;
+		int nHilbert = (int) Math.floor(hn + 0.5);
+		if (nHilbert < 4) {
+			nHilbert = 4;
+		}
+
+		// scale coordinates to 2^n - 1
+		double hScale = (1 << nHilbert) - 1.0;
+		for (PVector vh : pointsNew) {
+			int ix = (int) (hScale * (vh.x - xMin) / xDelta);
+			int iy = (int) (hScale * (vh.y - yMin) / yDelta);
+			vh.z = (xy2Hilbert(ix, iy, nHilbert));
+		}
+
+		Collections.sort(pointsNew, (o1, o2) -> Float.compare(o1.z, o2.z));
+
+		return pointsNew;
+	}
+
+	/**
 	 * Generates a set of random (uniform) points that lie within a bounding
 	 * rectangle.
 	 * 
@@ -635,6 +701,30 @@ public final class PGS_PointSet {
 		}
 
 		return points;
+	}
+
+	/**
+	 * Computes the hilbert index of a coordinate on a hilbert curve of order n.
+	 */
+	private static int xy2Hilbert(final int px, final int py, final int n) {
+		int i, xi, yi;
+		int s, temp;
+
+		int x = px;
+		int y = py;
+		s = 0; // Initialize.
+		for (i = n - 1; i >= 0; i--) {
+			xi = (x >> i) & 1; // Get bit i of x.
+			yi = (y >> i) & 1; // Get bit i of y.
+
+			if (yi == 0) {
+				temp = x; // Swap x and y and,
+				x = y ^ (-xi); // if xi = 1,
+				y = temp ^ (-xi); // complement them.
+			}
+			s = 4 * s + 2 * xi + (xi ^ yi); // Append two bits to s.
+		}
+		return s;
 	}
 
 	/**

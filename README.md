@@ -642,10 +642,12 @@ Much of the functionality (but by no means all) is demonstrated below:
 
   <tr>
     <td align="center" valign="center"><b>N-Rooks LDS</td>
+    <td align="center" valign="center"><b>Hilbert Sort</td>
     <td align="center" valign="center"><b>Distance Prune</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/point_set/nRooksLDS.png"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/hilbertSort.gif"></td>
     <td valign="top" width="25%"><img src="resources/point_set/removeWithinDistance.gif"></td>
   </tr>
 </table>
