@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `equalsExact()`, `equalsNorm()` and `equalsTopo()` to `PGS_ShapePredicates`. These methods test for equality between two shapes according to different criteria.
 * `createRectangularSpiral()` to `PGS_Construction`. Creates a rectangular-shaped spiral.
 * `largestEmptyCircle()` to `PGS_Optimisation`. Finds the largest empty circle in a set of obstacle geometries.
+* `hilbertSort()` to `PGS_PointSet`. Sorts a list of points using their location on a Hilbert curve.
 
 ### Changed
 * Renamed `partition()` to `convexPartition()`.
@@ -32,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_Optimisation.maximumInscribedRectangle()` now finds the maximum-area inscribed rectangle of arbitrary orientation.
 * `PGS_Transformation.touchScale()` now scales shapes that are contained within a larger shape.
 * Reimplemented `PGS_CirclePacking.maximumInstribedPack()`. New algorithm is perfectly accurate and is ~10x faster!
+* `PGS_Conversion.fromPVector()` now outputs an unclosed path shape if the input vertices are unclosed (rather than always treating the input as a closed polygon).
 
 ### Fixed
 * NPE when shapes created with `createShape()` in the P2D renderer were passed to `fromPShape()` (#55).
