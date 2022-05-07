@@ -382,6 +382,7 @@ public final class PGS_Morphology {
 	 * @param interpolationFactor between 0...1
 	 * @return a polygonal PShape
 	 * @since 1.2.0
+	 * @see #interpolate(PShape, PShape, int)
 	 */
 	public static PShape interpolate(PShape from, PShape to, double interpolationFactor) {
 		final Geometry toGeom = fromPShape(to);
@@ -389,6 +390,40 @@ public final class PGS_Morphology {
 		if (toGeom.getGeometryType().equals(Geometry.TYPENAME_POLYGON) && fromGeom.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
 			final ShapeInterpolation tween = new ShapeInterpolation(toGeom, fromGeom);
 			return toPShape(PGS.GEOM_FACTORY.createPolygon(tween.tween(interpolationFactor)));
+		} else {
+			System.err.println("morph() accepts holeless single polygons only (for now).");
+			return from;
+		}
+	}
+
+	/**
+	 * Generates intermediate shapes (frames) between two shapes by interpolating
+	 * between them. This process has many names: shape morphing / blending /
+	 * averaging / tweening / interpolation.
+	 * <p>
+	 * This method is faster than calling
+	 * {@link #interpolate(PShape, PShape, double) interpolate()} repeatedly for
+	 * different interpolation factors.
+	 * 
+	 * @param from   a single polygon; the shape we want to morph from
+	 * @param to     a single polygon; the shape we want to morph <code>from</code>
+	 *               into
+	 * @param frames the number of frames (including first and last) to generate. >= 2
+	 * @return a GROUP PShape, where each child shape is a frame
+	 * @since 1.2.1
+	 * @see #interpolate(PShape, PShape, double)
+	 */
+	public static PShape interpolate(PShape from, PShape to, int frames) {
+		final Geometry toGeom = fromPShape(to);
+		final Geometry fromGeom = fromPShape(from);
+		if (toGeom.getGeometryType().equals(Geometry.TYPENAME_POLYGON) && fromGeom.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
+			final ShapeInterpolation tween = new ShapeInterpolation(toGeom, fromGeom);
+			final float fraction = 1f / (frames - 1);
+			PShape out = new PShape();
+			for (int i = 0; i < frames; i++) {
+				out.addChild(toPShape(PGS.GEOM_FACTORY.createPolygon(tween.tween(fraction * i))));
+			}
+			return out;
 		} else {
 			System.err.println("morph() accepts holeless single polygons only (for now).");
 			return from;
