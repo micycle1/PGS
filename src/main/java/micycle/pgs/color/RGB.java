@@ -93,5 +93,22 @@ public class RGB {
 		return new float[] { (clr >> 16 & 0xff) * INV_255 * alpha, (clr >> 8 & 0xff) * INV_255 * alpha, (clr & 0xff) * INV_255 * alpha,
 				alpha };
 	}
+	
+	/**
+	 * Converts hex color strings to Processing integer colors (RRGGBB).
+	 * 
+	 * @param colors list of hex e.g "021d34" or "#FF6F91"
+	 * @return
+	 */
+	public static int[] hexToColor(String[] colors) {
+		int[] out = new int[colors.length];
+		for (int i = 0; i < colors.length; i++) {
+			if (colors[i].charAt(0) == '#') { // handle leading '#'
+				colors[i] = colors[i].substring(1);
+			}
+			out[i] = -16777216 + (int) (Long.parseLong(colors[i], 16));
+		}
+		return out;
+	}
 
 }

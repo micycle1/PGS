@@ -63,9 +63,11 @@ public final class PGS_PointSet {
 	 * <p>
 	 * Note: this method mutates the z values of the PVectors.
 	 * 
-	 * @param points list of points to sort
+	 * @param points list of points to sort. a list requires at least 24 points to
+	 *               be sorted.
 	 * @return a sorted copy of the input list, having a different order according
 	 *         to points' Hilbert ranking
+	 * @since 1.2.1
 	 */
 	public static List<PVector> hilbertSort(List<PVector> points) {
 		List<PVector> pointsNew = new ArrayList<>(points);

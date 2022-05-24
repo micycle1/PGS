@@ -162,7 +162,7 @@ public final class PGS_Coloring {
 	 * @return the input shape (whose faces have now been colored)
 	 */
 	public static PShape colorMesh(PShape shape, ColoringAlgorithm coloringAlgorithm, String[] colorPalette) {
-		return colorMesh(shape, coloringAlgorithm, hexToColor(colorPalette));
+		return colorMesh(shape, coloringAlgorithm, RGB.hexToColor(colorPalette));
 	}
 
 	/**
@@ -276,23 +276,6 @@ public final class PGS_Coloring {
 			}
 		}
 		return PGS.polygonizeSegments(segmentStrings, true);
-	}
-
-	/**
-	 * Converts hex color strings to Processing integer colors (RRGGBB).
-	 * 
-	 * @param colors list of hex e.g "021d34" or "#FF6F91"
-	 * @return
-	 */
-	private static int[] hexToColor(String[] colors) {
-		int[] out = new int[colors.length];
-		for (int i = 0; i < colors.length; i++) {
-			if (colors[i].charAt(0) == '#') { // handle leading '#'
-				colors[i] = colors[i].substring(1);
-			}
-			out[i] = -16777216 + (int) (Long.parseLong(colors[i], 16));
-		}
-		return out;
 	}
 
 }
