@@ -17,6 +17,7 @@ import java.util.stream.StreamSupport;
 import org.apache.commons.lang3.ArrayUtils;
 import org.geodelivery.jap.concavehull.SnapHull;
 import org.geotools.geometry.jts.JTS;
+import org.locationtech.jts.algorithm.Angle;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.densify.Densifier;
@@ -96,7 +97,7 @@ public final class PGS_Processing {
 
 	/**
 	 * Extracts a point from the perimeter (exterior) of the shape at a given
-	 * fraction around it perimeter.
+	 * fraction around its perimeter.
 	 * 
 	 * @param shape
 	 * @param distance       0...1 around shape perimeter; or -1...0 (other
@@ -213,6 +214,38 @@ public final class PGS_Processing {
 		}
 
 		return toPShape(l.extractLine(length * from, length * to));
+	}
+
+	/**
+	 * Finds the angle of the line tangent to the shape at a certain point on its
+	 * perimeter (given by the some fraction of the distance around the perimeter).
+	 * <p>
+	 * The tangent line is orientated clockwise with respect to the shape and the
+	 * output angle is normalized to be in the range [ -PI, PI ].
+	 * 
+	 * @param shape
+	 * @param distanceFraction the distance fraction around the perimeter [0...1]
+	 * @return the normalized angle (in radians) that a line tangent to the
+	 *         perimeter of the shape at the given position makes with the positive
+	 *         x-axis, where 0 is north.
+	 * @since 1.2.1
+	 */
+	public static double tangentAngle(PShape shape, double distanceFraction) {
+		distanceFraction %= 1;
+
+		Geometry g = fromPShape(shape);
+		if (!g.getGeometryType().equals(Geometry.TYPENAME_LINEARRING) && !g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
+			g = ((Polygon) g).getExteriorRing();
+		}
+		LengthIndexedLine l = new LengthIndexedLine(g);
+
+		double d1 = (distanceFraction * l.getEndIndex()) - 1e-7;
+		double d2 = (distanceFraction * l.getEndIndex()) + 1e-7;
+
+		Coordinate coordA = l.extractPoint(d1); // CCW - point behind first
+		Coordinate coordB = l.extractPoint(d2); // CCW - point after second
+
+		return Angle.angle(coordA, coordB);
 	}
 
 	/**
@@ -554,6 +587,15 @@ public final class PGS_Processing {
 	 */
 	public static PShape convexHull(PShape... shapes) {
 		return convexHull(Arrays.asList(shapes));
+	}
+
+	public static PShape concaveHullJTS(List<PVector> points, double threshold) {
+//		Geometry g = fromPShape(PGS_Conversion.toPointsPShape(points));
+		Geometry g = prepareConcaveGeometry(points);
+		org.locationtech.jts.algorithm.hull.ConcaveHull concaveHull = new org.locationtech.jts.algorithm.hull.ConcaveHull(g);
+		concaveHull.setMaximumEdgeLength(threshold);
+//		concaveHull.setMaximumEdgeLengthRatio(threshold);
+		return toPShape(concaveHull.getHull());
 	}
 
 	/**
