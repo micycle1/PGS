@@ -375,9 +375,11 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
     <tr>
     <td align="center" valign="center"><b>Densification</td>
+    <td align="center" valign="center"><b>Tangent Angle</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/geometry_processing/densify.gif"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/tangentAngle.png"></td>
   </tr>
 </table>
 
