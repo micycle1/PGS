@@ -26,6 +26,7 @@ public class ShapeInterpolation {
 	 * See https://github.com/veltman/openvis/blob/master/README.md
 	 * See 'Guaranteed intersection-free polygon morphing'
 	 * RAP C++ : https://github.com/catherinetaylor2/Shape_Interpolation/blob/master/rigid_interp.cpp
+	 * and https://github.com/deliagander/ARAPShapeInterpolation
 	 */
 
 	private final CoordinateList from, to;
@@ -36,7 +37,6 @@ public class ShapeInterpolation {
 
 	public ShapeInterpolation(LinearRing from, LinearRing to) {
 		if (!Orientation.isCCW(from.getCoordinates())) {
-			System.out.println("sdas");
 			from = from.reverse();
 		}
 		if (!Orientation.isCCW(to.getCoordinates())) {
