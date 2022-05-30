@@ -11,6 +11,7 @@ import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.util.GeometryFixer;
+import org.locationtech.jts.operation.buffer.VariableBuffer;
 import org.locationtech.jts.shape.CubicBezierCurve;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
@@ -46,11 +47,30 @@ public final class PGS_Morphology {
 	 * Computes a buffer area around the shape, having the given buffer width.
 	 * 
 	 * @param shape
-	 * @param buffer extent/width of the buffer (may be positive or negative)
-	 * @return
+	 * @param buffer extent/width of the buffer (which may be positive or negative)
+	 * @return a polygonal shape representing the buffer region (which may beempty)
 	 */
 	public static PShape buffer(PShape shape, double buffer) {
 		return toPShape(fromPShape(shape).buffer(buffer, 8));
+	}
+
+	/**
+	 * Buffers a shape with a varying buffer distance (interpolated between a start
+	 * distance and an end distance) along the shape's perimeter.
+	 * 
+	 * @param shape         a single polygon or lineal shape
+	 * @param startDistance the starting buffer amount
+	 * @param endDistance   the terminating buffer amount
+	 * @return a polygonal shape representing the variable buffer region (which may
+	 *         beempty)
+	 * @since 1.2.1
+	 */
+	public static PShape variableBuffer(PShape shape, double startDistance, double endDistance) {
+		Geometry g = fromPShape(shape);
+		if (!g.getGeometryType().equals(Geometry.TYPENAME_LINEARRING) && !g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
+			g = ((Polygon) g).getExteriorRing(); // variable buffer applies to linestrings only
+		}
+		return toPShape(VariableBuffer.buffer(g, startDistance, endDistance));
 	}
 
 	/**
@@ -408,7 +428,8 @@ public final class PGS_Morphology {
 	 * @param from   a single polygon; the shape we want to morph from
 	 * @param to     a single polygon; the shape we want to morph <code>from</code>
 	 *               into
-	 * @param frames the number of frames (including first and last) to generate. >= 2
+	 * @param frames the number of frames (including first and last) to generate. >=
+	 *               2
 	 * @return a GROUP PShape, where each child shape is a frame
 	 * @since 1.2.1
 	 * @see #interpolate(PShape, PShape, double)

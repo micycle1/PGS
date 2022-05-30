@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `largestEmptyCircle()` to `PGS_Optimisation`. Finds the largest empty circle in a set of obstacle geometries.
 * `hilbertSort()` to `PGS_PointSet`. Sorts a list of points using their location on a Hilbert curve.
 * `tangentAngle()` to `PGS_Processing`. Finds the angle of the line tangent to a shape at a certain point on its perimeter.
+* `variableBuffer()` to `PGS_Morphology`. Buffers a shape with a buffer whose distance varies along the shape's perimeter.
 
 ### Changed
 * Renamed `partition()` to `convexPartition()`.
