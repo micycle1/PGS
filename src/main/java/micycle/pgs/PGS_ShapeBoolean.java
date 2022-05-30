@@ -124,9 +124,15 @@ public final class PGS_ShapeBoolean {
 		}
 
 		/*
-		 * Now get the vertices belonging to boundary edges in sequential/winding order.
+		 * Now find a sequential/winding order for the vertices of the boundary. The
+		 * vertices output fromEdges() is not closed, so close it afterwards (assumes
+		 * the input to unionMesh() was indeed closed and valid).
 		 */
 		final List<PVector> orderedVertices = PGS.fromEdges(allEdges);
+		if (!orderedVertices.get(0).equals(orderedVertices.get(orderedVertices.size() - 1))) {
+			orderedVertices.add(orderedVertices.get(0)); // close vertex list for fromPVector()
+		}
+
 		return PGS_Conversion.fromPVector(orderedVertices);
 	}
 
@@ -164,5 +170,5 @@ public final class PGS_ShapeBoolean {
 		shapeFactory.setHeight(height);
 		return toPShape(shapeFactory.createRectangle().difference(fromPShape(shape)));
 	}
-	
+
 }

@@ -252,7 +252,7 @@ final class PGS {
 	 * than {@link LineMerger}.
 	 * <p>
 	 * For now, this method does not properly support multi-shapes, nor unclosed
-	 * linestrings.
+	 * edge collections (that form unclosed linestrings).
 	 * <p>
 	 * Notably, unlike {@link LineMerger} this approach does not merge successive
 	 * boundary segments that together form a straight line into a single longer
@@ -261,8 +261,10 @@ final class PGS {
 	 * @param edges unordered/random collection of edges (containing no duplicates),
 	 *              that together constitute the boundary of a single polygon / a
 	 *              closed ring
-	 * @return sequential list of vertices belonging to the polygon that follow some
-	 *         constant winding (may wind clockwise or anti-clockwise)
+	 * @return list of sequential vertices belonging to the polygon that follow some
+	 *         constant winding (may wind clockwise or anti-clockwise). Note: this
+	 *         vertex list is not closed (having same start and end vertex) by
+	 *         default!
 	 */
 	static List<PVector> fromEdges(Collection<PEdge> edges) {
 		final HashMap<PVector, HashSet<PEdge>> vertexEdges = new HashMap<>(); // map of vertex to the 2 edges that share it
@@ -398,7 +400,7 @@ final class PGS {
 			}
 			array = rings.toArray(new LinearRing[rings.size()]);
 		}
-		
+
 		public LinearRing[] getLinearRings() {
 			return array;
 		}

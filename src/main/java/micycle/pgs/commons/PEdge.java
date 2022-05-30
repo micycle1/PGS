@@ -3,7 +3,10 @@ package micycle.pgs.commons;
 import processing.core.PVector;
 
 /**
- * Represents an adirectional edge between 2 PVectors.
+ * An undirected edge / line segment joining 2 PVectors.
+ * <p>
+ * Note: <code>new PEdge(a, b)</code> and <code>new PEdge(b, a)</code> are
+ * consided equal.
  * 
  * @author Michael Carleton
  *
@@ -36,7 +39,7 @@ public class PEdge {
 
 	@Override
 	/**
-	 * Direction-agnostic hash
+	 * Direction-agnostic hash.
 	 */
 	public int hashCode() {
 		return Float.floatToIntBits(b.y + a.y) ^ Float.floatToIntBits(b.x + a.x - 1);
