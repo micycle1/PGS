@@ -488,31 +488,6 @@ public final class PGS_Contour {
 	}
 
 	/**
-	 * Generates isolines from a 2D regular grid of elevation values. This method
-	 * generates isolines having the exact "height" of the provided iso value,
-	 * unlike the other methods that generate isolines at each iso value step.
-	 *
-	 * @param values   z-coordinates for the grid points
-	 * @param isoValue the iso value for which the contour (iso) lines should be
-	 *                 computed
-	 * @param scaleX   factor to scale contour lines by in X direction. 1 returns
-	 *                 the lines up to the same dimensions of the underlying matrix.
-	 * @param scaleY   factor to scale contour lines by in Y direction. 1 returns
-	 *                 the lines up to the same dimensions of the underlying matrix.
-	 * @return
-	 */
-		PShape lines = prepareLinesPShape(null, null, null);
-
-		List<SegmentDetails> segments = Contours.computeContourLines(values, isoValue, 0);
-		segments.forEach(s -> {
-			lines.vertex((float) (s.p0.getX() * scaleX), (float) (s.p0.getY() * scaleY));
-			lines.vertex((float) (s.p1.getX() * scaleX), (float) (s.p1.getY() * scaleY));
-		});
-		lines.endShape();
-		return lines;
-	}
-
-	/**
 	 * Specifies the join style for offset curves.
 	 */
 	public enum OffsetStyle {
