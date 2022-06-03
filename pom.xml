@@ -108,9 +108,15 @@
 										<exclude>**/*.gif</exclude>
 										<exclude>**/*.jpg</exclude>
 										<exclude>**/*.properties</exclude>
+										<exclude>processing/**</exclude>
 									</excludes>
 								</filter>
 							</filters>
+							<artifactSet>
+								<excludes>
+									<exclude>processing:*</exclude>
+								</excludes>
+							</artifactSet>
 						</configuration>
 						<executions>
 							<execution>
@@ -131,7 +137,7 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-shade-plugin</artifactId>
-						<version>3.2.4</version>
+						<version>3.3.0</version>
 						<configuration>
 							<createDependencyReducedPom>false</createDependencyReducedPom>
 							<minimizeJar>true</minimizeJar>
@@ -142,6 +148,12 @@
 									<artifact>*:*</artifact>
 									<excludes>
 										<exclude>META-INF/**</exclude>
+										<exclude>**/*.png</exclude>
+										<exclude>**/*.svg</exclude>
+										<exclude>**/*.gif</exclude>
+										<exclude>**/*.jpg</exclude>
+										<exclude>**/*.properties</exclude>
+										<exclude>processing/**</exclude>
 									</excludes>
 								</filter>
 							</filters>
@@ -195,20 +207,15 @@
 			<scope>provided</scope> <!-- don't package into uber jar -->
 			<optional>true</optional> <!-- user artifact should override when provided -->
 		</dependency>
-		<dependency> <!-- for JTS.utils -->
-			<groupId>org.geotools</groupId>
-			<artifactId>gt-geometry</artifactId>
-			<version>24.4</version>
-		</dependency>
 		<dependency>
 			<groupId>org.locationtech.jts</groupId>
 			<artifactId>jts-core</artifactId>
 			<version>1.18.3-SNAPSHOT</version>
 		</dependency>
 		<dependency>
-			<groupId>com.github.micycle1</groupId>
+			<groupId>com.github.twak</groupId>
 			<artifactId>campskeleton</artifactId>
-			<version>7294764e44</version>
+			<version>8df5b241d5</version>
 		</dependency>
 		<dependency>
 			<groupId>org.jgrapht</groupId>
@@ -231,6 +238,11 @@
 			<version>[4.0,)</version>
 		</dependency>
 		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-math3</artifactId>
+			<version>3.6.1</version>
+		</dependency>
+		<dependency>
 			<groupId>org.tinspin</groupId>
 			<artifactId>tinspin-indexes</artifactId>
 			<version>1.7.1</version>
@@ -248,11 +260,6 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>com.github.hageldave.jplotter</groupId>
-			<artifactId>jplotter</artifactId>
-			<version>0.6.1</version>
-		</dependency>
-		<dependency>
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>balaban-intersection</artifactId>
 			<version>1.0.0</version>
@@ -266,6 +273,11 @@
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>polysplit</artifactId>
 			<version>1.1</version>
+		</dependency>
+		<dependency>
+			<groupId>com.github.micycle1</groupId>
+			<artifactId>space-filling-curves</artifactId>
+			<version>1.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.bsideup.jabel</groupId>

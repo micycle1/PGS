@@ -120,6 +120,7 @@ public class RandomPolygon {
 			PVector p = points.get(i);
 			points.set(i, new PVector((float) (p.x + xShift), (float) (p.y + yShift)));
 		}
+		points.add(points.get(0)); // close polygon
 
 		return points;
 	}

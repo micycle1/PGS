@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 * `earCutTriangulation(List<PVector> points)` from `PGS_Triangulation`.
+* `isolinesFromGrid()` from `PGS_Contour`.
 
 ## **1.2.0** *(2021-12-15)*
 

@@ -12,11 +12,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.SplittableRandom;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import org.apache.commons.lang3.ArrayUtils;
 import org.geodelivery.jap.concavehull.SnapHull;
-import org.geotools.geometry.jts.JTS;
 import org.locationtech.jts.algorithm.Angle;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
@@ -196,7 +195,7 @@ public final class PGS_Processing {
 	 *              fraction (0...1) of the total perimeter length
 	 * @param to    the end location of the perimeter extract, given by a fraction
 	 *              (0...1) of the total perimeter length
-	 * @return
+	 * @return lineal shape
 	 * @since 1.2.0
 	 */
 	public static PShape extractPerimeter(PShape shape, double from, double to) {
@@ -210,7 +209,8 @@ public final class PGS_Processing {
 		if (from > to) {
 			final Geometry l1 = l.extractLine(length * from, length);
 			final Geometry l2 = l.extractLine(0, length * to);
-			return toPShape(PGS.GEOM_FACTORY.createLineString(ArrayUtils.addAll(l1.getCoordinates(), l2.getCoordinates())));
+			return toPShape(PGS.GEOM_FACTORY.createLineString(
+					Stream.concat(Arrays.stream(l1.getCoordinates()), Arrays.stream(l2.getCoordinates())).toArray(Coordinate[]::new)));
 		}
 
 		return toPShape(l.extractLine(length * from, length * to));
@@ -725,10 +725,10 @@ public final class PGS_Processing {
 		Envelope lrEnv = new Envelope(midX, maxX, minY, midY);
 		Envelope ulEnv = new Envelope(minX, midX, midY, maxY);
 		Envelope urEnv = new Envelope(midX, maxX, midY, maxY);
-		Geometry UL = JTS.toGeometry(llEnv).intersection(p);
-		Geometry UR = JTS.toGeometry(lrEnv).intersection(p);
-		Geometry LL = JTS.toGeometry(ulEnv).intersection(p);
-		Geometry LR = JTS.toGeometry(urEnv).intersection(p);
+		Geometry UL = toGeometry(llEnv).intersection(p);
+		Geometry UR = toGeometry(lrEnv).intersection(p);
+		Geometry LL = toGeometry(ulEnv).intersection(p);
+		Geometry LR = toGeometry(urEnv).intersection(p);
 
 		final PShape partitions = new PShape(PConstants.GROUP);
 		partitions.addChild(toPShape(UL));
@@ -771,10 +771,10 @@ public final class PGS_Processing {
 				Envelope lrEnv = new Envelope(midX, maxX, minY, midY);
 				Envelope ulEnv = new Envelope(minX, midX, midY, maxY);
 				Envelope urEnv = new Envelope(midX, maxX, midY, maxY);
-				Geometry UL = JTS.toGeometry(llEnv).intersection(slice);
-				Geometry UR = JTS.toGeometry(lrEnv).intersection(slice);
-				Geometry LL = JTS.toGeometry(ulEnv).intersection(slice);
-				Geometry LR = JTS.toGeometry(urEnv).intersection(slice);
+				Geometry UL = toGeometry(llEnv).intersection(slice);
+				Geometry UR = toGeometry(lrEnv).intersection(slice);
+				Geometry LL = toGeometry(ulEnv).intersection(slice);
+				Geometry LR = toGeometry(urEnv).intersection(slice);
 				next.add(UL);
 				next.add(UR);
 				next.add(LL);
@@ -943,6 +943,14 @@ public final class PGS_Processing {
 		slices.addChild(toPShape(UnaryUnionOp.union(leftSlices)));
 		slices.addChild(toPShape(UnaryUnionOp.union(rightSlices)));
 		return slices;
+	}
+
+	private static Polygon toGeometry(Envelope envelope) {
+		return PGS.GEOM_FACTORY.createPolygon(
+				PGS.GEOM_FACTORY.createLinearRing(new Coordinate[] { new Coordinate(envelope.getMinX(), envelope.getMinY()),
+						new Coordinate(envelope.getMaxX(), envelope.getMinY()), new Coordinate(envelope.getMaxX(), envelope.getMaxY()),
+						new Coordinate(envelope.getMinX(), envelope.getMaxY()), new Coordinate(envelope.getMinX(), envelope.getMinY()) }),
+				null);
 	}
 
 	/**

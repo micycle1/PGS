@@ -4,6 +4,7 @@ import static micycle.pgs.PGS.GEOM_FACTORY;
 import static micycle.pgs.PGS.prepareLinesPShape;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -40,8 +41,6 @@ import org.twak.camp.Skeleton;
 import org.twak.utils.collections.Loop;
 import org.twak.utils.collections.LoopL;
 
-import hageldave.jplotter.misc.Contours;
-import hageldave.jplotter.renderables.Lines.SegmentDetails;
 import kendzi.math.geometry.skeleton.SkeletonConfiguration;
 import kendzi.math.geometry.skeleton.SkeletonOutput;
 import micycle.medialAxis.MedialAxis;
@@ -502,7 +501,6 @@ public final class PGS_Contour {
 	 *                 the lines up to the same dimensions of the underlying matrix.
 	 * @return
 	 */
-	public static PShape isolinesFromGrid(double[][] values, double isoValue, double scaleX, double scaleY) {
 		PShape lines = prepareLinesPShape(null, null, null);
 
 		List<SegmentDetails> segments = Contours.computeContourLines(values, isoValue, 0);
