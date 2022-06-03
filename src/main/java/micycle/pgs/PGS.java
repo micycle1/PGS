@@ -151,7 +151,7 @@ final class PGS {
 	}
 
 	/**
-	 * Reflection-based workaround to get the stroke weight of a PShape (this field
+	 * Reflection-based workaround to get the stroke strokeWeight of a PShape (this field
 	 * is usually inaccessible).
 	 */
 	static final float getPShapeStrokeWeight(final PShape sh) {
