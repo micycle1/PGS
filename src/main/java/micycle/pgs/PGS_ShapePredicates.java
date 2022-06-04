@@ -4,19 +4,21 @@ import static micycle.pgs.PGS_Conversion.fromPShape;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
+import org.locationtech.jts.algorithm.Angle;
 import org.locationtech.jts.algorithm.MinimumBoundingCircle;
 import org.locationtech.jts.algorithm.MinimumDiameter;
 import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
 import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.algorithm.match.HausdorffSimilarityMeasure;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
-
 import micycle.trapmap.TrapMap;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -351,6 +353,26 @@ public final class PGS_ShapePredicates {
 	}
 
 	/**
+	 * Computes the maximum/largest interior angle of a polygon.
+	 * 
+	 * @param shape polygonal shape
+	 * @return an angle in the range [0, 2PI]
+	 */
+	public static double maximumInteriorAngle(PShape shape) {
+		final CoordinateList coords = new CoordinateList(fromPShape(shape).getCoordinates());
+		coords.remove(coords.size() - 1); // remove duplicate/closed coordinate
+		Collections.reverse(coords); // as CCW winding by default
+		double maxAngle = 0;
+		for (int i = 0; i < coords.size(); i++) {
+			Coordinate p0 = coords.get(i);
+			Coordinate p1 = coords.get((i + 1) % coords.size());
+			Coordinate p2 = coords.get((i + 2) % coords.size());
+			maxAngle = Math.max(maxAngle, Angle.interiorAngle(p0, p1, p2));
+		}
+		return maxAngle;
+	}
+
+	/**
 	 * Tests two shapes for <b>structural equality</b>. In simple terms, this means
 	 * that they must have the same number of vertices, in the same locations, and
 	 * in the same order.
@@ -414,7 +436,7 @@ public final class PGS_ShapePredicates {
 
 	/**
 	 * Determines whether a shape is convex. A shape is convex if its interior
-	 * angles are less than or equal to 180°.
+	 * angles are all less than or equal to 180°.
 	 */
 	public static boolean isConvex(PShape shape) {
 		final Geometry g = fromPShape(shape);

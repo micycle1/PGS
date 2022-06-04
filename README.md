@@ -177,6 +177,7 @@ Much of the functionality (but by no means all) is demonstrated below:
 * Elongation
 * Density
 * Holes
+* Maximum interior angle
 * Is simple?
 * Is convex?
 * Equal? (structural and topological equivalence)
