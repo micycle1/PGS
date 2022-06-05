@@ -5,9 +5,13 @@ import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
+import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.graph.SimpleGraph;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.geom.Coordinate;
@@ -17,6 +21,8 @@ import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.triangulate.polygon.PolygonTriangulator;
 import org.tinfour.common.IConstraint;
+import org.tinfour.common.IIncrementalTin;
+import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.PolygonConstraint;
 import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
@@ -253,8 +259,8 @@ public final class PGS_Triangulation {
 	 * @see #delaunayTriangulation(PShape, Collection, boolean, int, boolean)
 	 * @see #delaunayTriangulationPoints(PShape, Collection, boolean, int, boolean)
 	 */
-	public static IncrementalTin delaunayTriangulationMesh(@Nullable PShape shape, @Nullable Collection<PVector> steinerPoints, boolean constrain,
-			int refinements, boolean pretty) {
+	public static IncrementalTin delaunayTriangulationMesh(@Nullable PShape shape, @Nullable Collection<PVector> steinerPoints,
+			boolean constrain, int refinements, boolean pretty) {
 		Geometry g = shape == null ? PGS.GEOM_FACTORY.createEmpty(2) : fromPShape(shape);
 		final IncrementalTin tin = new IncrementalTin(10);
 
@@ -422,6 +428,52 @@ public final class PGS_Triangulation {
 	public static PShape earCutTriangulation(PShape shape) {
 		PolygonTriangulator pt = new PolygonTriangulator(fromPShape(shape));
 		return toPShape(pt.getResult());
+	}
+
+	/**
+	 * Finds the graph-form of a triangulation.
+	 * <p>
+	 * The output is a <i>dual graph</i> of the input; it has a vertex for each
+	 * constrained triangle of the input, and an edge connecting each pair of triangles that are
+	 * adjacent.
+	 * 
+	 * @param triangulation triangulation mesh
+	 * @return
+	 * @since 1.2.1
+	 */
+	public static SimpleGraph<SimpleTriangle, DefaultEdge> toGraph(IIncrementalTin triangulation) {
+		final SimpleGraph<SimpleTriangle, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
+		
+		final boolean notConstrained = triangulation.getConstraints().isEmpty();
+		final Map<IQuadEdge, SimpleTriangle> edgeMap = new HashMap<>(triangulation.countTriangles().getCount()*3);
+		
+		TriangleCollector.visitSimpleTriangles(triangulation, t -> {
+			final IConstraint constraint = t.getContainingRegion();
+			if (notConstrained || (constraint != null && constraint.definesConstrainedRegion())) {
+				edgeMap.put(t.getEdgeA(), t);
+				edgeMap.put(t.getEdgeB(), t);
+				edgeMap.put(t.getEdgeC(), t);
+				graph.addVertex(t);
+			}
+		});
+
+		graph.vertexSet().forEach(t -> {
+			final SimpleTriangle n1 = edgeMap.get(t.getEdgeA().getDual());
+			final SimpleTriangle n2 = edgeMap.get(t.getEdgeB().getDual());
+			final SimpleTriangle n3 = edgeMap.get(t.getEdgeC().getDual());
+			if (n1 != null) {
+				graph.addEdge(t, n1);
+			}
+			if (n2 != null) {
+				graph.addEdge(t, n2);
+			}
+			if (n3 != null) {
+				graph.addEdge(t, n3);
+			}
+		});
+
+		
+		return graph;
 	}
 
 	static PVector toPVector(final Vertex v) {

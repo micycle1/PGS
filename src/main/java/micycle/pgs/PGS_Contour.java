@@ -13,22 +13,28 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import javax.vecmath.Point3d;
 
+import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.graph.SimpleGraph;
 import org.joml.Vector2d;
 import org.joml.Vector2dc;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.dissolve.LineDissolver;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.locationtech.jts.operation.buffer.BufferOp;
 import org.locationtech.jts.operation.buffer.BufferParameters;
+import org.locationtech.jts.operation.linemerge.LineMerger;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
+import org.tinfour.common.IIncrementalTin;
+import org.tinfour.common.IQuadEdge;
+import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
 import org.tinfour.contour.Contour;
 import org.tinfour.contour.ContourBuilderForTin;
@@ -75,8 +81,11 @@ public final class PGS_Contour {
 	}
 
 	/**
-	 * Computes the medial axis of the given shape. The 3 parameters can be used to
-	 * prune the medial axis according to different features (at the same time).
+	 * Computes the medial axis of the given shape, which provides a
+	 * characterization of the skeleton of a shape.
+	 * <p>
+	 * The 3 parameters can be used to prune the medial axis according to different
+	 * features (at the same time).
 	 *
 	 * @param shape
 	 * @param axialThreshold    Prune edges based on their axial gradient. The axial
@@ -105,6 +114,142 @@ public final class PGS_Contour {
 		});
 		lines.endShape();
 		return lines;
+	}
+
+	/**
+	 * Computes the chordal axis of a shape, which provides a characterization of
+	 * the skeleton of a shape.
+	 * <p>
+	 * In its primitive form, the chordal axis is constructed by joining the
+	 * midpoints of the chords and the centroids of junction and terminal triangles
+	 * of the delaunay trianglution of a shape.
+	 * <p>
+	 * It can be considered a more useful alternative to the medial axis for
+	 * obtaining skeletons of discrete shapes.
+	 * 
+	 * @param shape polygonal shape
+	 * @return a GROUP PShape, where each group is a single maximum-length line
+	 *         segment (possibly >2 vertices)
+	 * @since 1.2.1
+	 */
+	@SuppressWarnings("unchecked")
+	public static PShape chordalAxis(PShape shape) {
+		/*-
+		 * See 'Rectification of the Chordal Axis Transform and a New Criterion for
+		 * Shape Decomposition' for CAT extension.
+		 * See 'Morphological Analysis of Shapes' for CAT pruning techniques.
+		 * See 'Shape Matching By Part Alignment Using Extended Chordal Axis Transform'.
+		 */
+
+		final IIncrementalTin triangulation = PGS_Triangulation.delaunayTriangulationMesh(shape);
+		final SimpleGraph<SimpleTriangle, DefaultEdge> graph = PGS_Triangulation.toGraph(triangulation);
+
+		PShape axis = PGS.prepareLinesPShape(null, null, 4);
+
+		for (SimpleTriangle t : graph.vertexSet()) {
+			/*
+			 * For each triangle, determine how many edges it has in common with the shape
+			 * boundary, and use this number [1,2,3] to classify it. Below, triangles are
+			 * classified based on the number of neighbor triangles.
+			 */
+			switch (graph.outDegreeOf(t)) {
+				case 1 : // Terminal triangle (2 edges in perimeter)
+					final IQuadEdge interiorEdge; // one edge is interior
+					if (t.getEdgeA().isConstrainedRegionBorder()) {
+						if (t.getEdgeB().isConstrainedRegionBorder()) {
+							interiorEdge = t.getEdgeC();
+						} else {
+							interiorEdge = t.getEdgeB();
+						}
+					} else {
+						interiorEdge = t.getEdgeA();
+					}
+					PVector centroid = centroid(t);
+					axis.vertex(centroid.x, centroid.y);
+					axis.vertex(midpoint(interiorEdge).x, midpoint(interiorEdge).y);
+					break;
+				case 2 : // Sleeve triangle (one edge in perimeter)
+					final IQuadEdge interiorEdgeA; // 2 edges are interior
+					final IQuadEdge interiorEdgeB;
+					if (t.getEdgeA().isConstrainedRegionBorder()) {
+						interiorEdgeA = t.getEdgeB();
+						interiorEdgeB = t.getEdgeC();
+					} else if (t.getEdgeB().isConstrainedRegionBorder()) {
+						interiorEdgeA = t.getEdgeA();
+						interiorEdgeB = t.getEdgeC();
+					} else {
+						interiorEdgeA = t.getEdgeA();
+						interiorEdgeB = t.getEdgeB();
+					}
+					PVector midpoint1 = midpoint(interiorEdgeA);
+					PVector midpoint2 = midpoint(interiorEdgeB);
+					axis.vertex(midpoint1.x, midpoint1.y);
+					axis.vertex(midpoint2.x, midpoint2.y);
+					break;
+				case 3 : // Junction triangle (no edge in perimeter)
+//					centroid = centroid(t);
+//					final PVector c1Midpoint = midpoint(t.getEdgeA());
+//					axis.vertex(c1Midpoint.x, c1Midpoint.y);
+//					axis.vertex(centroid.x, centroid.y);
+//					final PVector c2Midpoint = midpoint(t.getEdgeB());
+//					axis.vertex(c2Midpoint.x, c2Midpoint.y);
+//					axis.vertex(centroid.x, centroid.y);
+//					final PVector c3Midpoint = midpoint(t.getEdgeC());
+//					axis.vertex(c3Midpoint.x, c3Midpoint.y);
+//					axis.vertex(centroid.x, centroid.y);
+					
+					double maxLength = t.getEdgeA().getLength();
+					IQuadEdge longest = t.getEdgeA();
+					IQuadEdge shortA = t.getEdgeB(), shortB = t.getEdgeC();
+					if (t.getEdgeB().getLength() > maxLength) {
+						maxLength = t.getEdgeB().getLength();
+						shortA = t.getEdgeA();
+						shortB = t.getEdgeC();
+						longest = t.getEdgeB();
+					}
+					if (t.getEdgeC().getLength() > maxLength) {
+						shortA = t.getEdgeA();
+						shortB = t.getEdgeB();
+						longest = t.getEdgeC();
+					}
+					final PVector midpointL = midpoint(longest);
+					final PVector midpointA = midpoint(shortA);
+					final PVector midpointB = midpoint(shortB);
+					axis.vertex(midpointA.x, midpointA.y);
+					axis.vertex(midpointL.x, midpointL.y);
+					axis.vertex(midpointB.x, midpointB.y);
+					axis.vertex(midpointL.x, midpointL.y);
+					break;
+				default :
+					break;
+			}
+		}
+		axis.endShape();
+
+		final LineMerger lm = new LineMerger();
+		for (int i = 0; i < axis.getVertexCount(); i += 2) {
+			axis.getVertex(i);
+			axis.getVertex(i + 1);
+			final LineString l = PGS.createLineString(axis.getVertex(i), axis.getVertex(i + 1));
+			lm.add(l);
+		}
+
+		return toPShape(lm.getMergedLineStrings());
+	}
+
+	private static PVector midpoint(IQuadEdge e) {
+		return new PVector((float) (e.getA().x + e.getB().x) / 2, (float) (e.getA().y + e.getB().y) / 2);
+	}
+
+	private static PVector centroid(final SimpleTriangle t) {
+		final Vertex a = t.getVertexA();
+		final Vertex b = t.getVertexB();
+		final Vertex c = t.getVertexC();
+		double x = a.x + b.x + c.x;
+		x /= 3;
+		double y = a.y + b.y + c.y;
+		y /= 3;
+		return new PVector((float) x, (float) y);
 	}
 
 	/**

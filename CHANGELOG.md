@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `hilbertSort()` to `PGS_PointSet`. Sorts a list of points using their location on a Hilbert curve.
 * `tangentAngle()` to `PGS_Processing`. Finds the angle of the line tangent to a shape at a certain point on its perimeter.
 * `variableBuffer()` to `PGS_Morphology`. Buffers a shape with a buffer whose distance varies along the shape's perimeter.
+* `toGraph()` to `PGS_Triangulation`. Converts a triangulation mesh to a (jGraphT) graph, representing its dual-graph.
+* `chordalAxis()` to `PGS_Contour`. Finds the chordal axis (a type of skeleton) of a shape.
 
 ### Changed
 * Renamed `partition()` to `convexPartition()`.

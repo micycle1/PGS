@@ -218,16 +218,19 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Straight Skeleton</td>
     <td align="center" valign="center" colspan="2"><b>Medial Axis</td>
+    <td align="center" valign="center"><b>Chordal Axis</td>
   </tr>
   <tr>
     <td valign="top"><img src="resources/contour/straightSkeleton.png"></td>
     <td valign="top"><img src="resources/contour/medialAxis.gif"></td>
     <td valign="top"><img src="resources/contour/medialAxis.png"></td>
+    <td valign="top"><img src="resources/contour/chordalAxis.png"></td>
   </tr>
     </tr>
     <tr>
     <td align="center" valign="center"></td>
     <td align="center" valign="center" colspan="2">Medial axis transform with feature pruning via distance, area or <i>axial angle</i>. </td>
+    <td align="center" valign="center">Chordal Axis Transform</td>
   </tr>
 </table>
 
