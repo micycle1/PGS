@@ -4,6 +4,7 @@ import static micycle.pgs.PGS.GEOM_FACTORY;
 import static micycle.pgs.PGS.coordFromPVector;
 import static micycle.pgs.color.RGB.decomposeclrRGB;
 
+import java.awt.Shape;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -17,6 +18,8 @@ import java.util.List;
 
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
+import org.locationtech.jts.awt.ShapeReader;
+import org.locationtech.jts.awt.ShapeWriter;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
@@ -566,7 +569,7 @@ public final class PGS_Conversion implements PConstants {
 	 * Converts a mesh-like PShape into a JGraphT graph.
 	 * <p>
 	 * The output is a <i>dual graph</i> of the input; it has a vertex for each face
-	 * (PShape) of the input, and an edge for each pair for faces that are adjacent.
+	 * (PShape) of the input, and an edge for each pair of faces that are adjacent.
 	 * 
 	 * @param mesh a GROUP PShape, whose children constitute the faces of a
 	 *             <b>conforming mesh</b>. A conforming mesh consists of adjacent
@@ -646,6 +649,31 @@ public final class PGS_Conversion implements PConstants {
 			e.printStackTrace();
 			return null;
 		}
+	}
+
+	/**
+	 * Creates a Java2D/java.awt Shape representing a PShape.
+	 * 
+	 * @param shape the PShape to convert
+	 * @return a Java2D shape representing the PShape
+	 * @since 1.2.1
+	 */
+	public static Shape toJava2D(PShape shape) {
+		return new ShapeWriter().toShape(fromPShape(shape));
+	}
+
+	/**
+	 * Converts a Java2D/java.awt Shape to a Processing PShape.
+	 * <p>
+	 * If the shape contains bezier components (such as <code>CubicCurve2D</code>,
+	 * these are decomposed into straight-line segments in the output.
+	 * 
+	 * @param shape the Java2D shape to convert
+	 * @return a PShape representing the Java2D shape
+	 * @since 1.2.1
+	 */
+	public static PShape fromJava2D(Shape shape) {
+		return toPShape(ShapeReader.read(shape, BEZIER_SAMPLE_DISTANCE, GEOM_FACTORY));
 	}
 
 	/**
