@@ -142,7 +142,7 @@ public final class PGS_Contour {
 		 */
 
 		final IIncrementalTin triangulation = PGS_Triangulation.delaunayTriangulationMesh(shape);
-		final SimpleGraph<SimpleTriangle, DefaultEdge> graph = PGS_Triangulation.toGraph(triangulation);
+		final SimpleGraph<SimpleTriangle, DefaultEdge> graph = PGS_Triangulation.toDualGraph(triangulation);
 
 		PShape axis = PGS.prepareLinesPShape(null, null, 4);
 

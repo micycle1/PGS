@@ -367,6 +367,36 @@ class ConversionTests {
 		assertTrue(PGS_ShapePredicates.equalsNorm(shape, in));
 	}
 	
+	@Test
+	void testWKBIO() {
+		final PShape shape = new PShape(PShape.GEOMETRY);
+		shape.beginShape();
+		shape.vertex(0, 0);
+		shape.vertex(10, 0);
+		shape.vertex(0, 10);
+		shape.endShape(PShape.CLOSE);
+		
+		byte[] wkb = PGS_Conversion.toWKB(shape);
+		PShape in = PGS_Conversion.fromWKB(wkb);
+		
+		assertTrue(PGS_ShapePredicates.equalsNorm(shape, in));
+	}
+	
+	@Test
+	void testHexWKBIO() {
+		final PShape shape = new PShape(PShape.GEOMETRY);
+		shape.beginShape();
+		shape.vertex(0, 0);
+		shape.vertex(10, 0);
+		shape.vertex(0, 10);
+		shape.endShape(PShape.CLOSE);
+		
+		String hex = PGS_Conversion.toHexWKB(shape);
+		PShape in = PGS_Conversion.fromHexWKB(hex);
+		
+		assertTrue(PGS_ShapePredicates.equalsNorm(shape, in));
+	}
+	
 	void testJava2DIO() {
 		final PShape shape = new PShape(PShape.GEOMETRY);
 		shape.beginShape();
