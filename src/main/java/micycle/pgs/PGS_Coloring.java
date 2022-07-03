@@ -226,7 +226,7 @@ public final class PGS_Coloring {
 	 * of faces) using the coloring algorithm specified.
 	 */
 	private static Coloring<PShape> findColoring(Collection<PShape> shapes, ColoringAlgorithm coloringAlgorithm) {
-		final AbstractBaseGraph<PShape, DefaultEdge> graph = PGS_Conversion.toGraph(shapes);
+		final AbstractBaseGraph<PShape, DefaultEdge> graph = PGS_Conversion.toDualGraph(shapes);
 		final Coloring<PShape> coloring;
 
 		switch (coloringAlgorithm) {

@@ -18,6 +18,7 @@ import java.util.List;
 
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
+import org.jgrapht.graph.SimpleWeightedGraph;
 import org.locationtech.jts.awt.ShapeReader;
 import org.locationtech.jts.awt.ShapeWriter;
 import org.locationtech.jts.geom.Coordinate;
@@ -28,6 +29,8 @@ import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.locationtech.jts.geom.util.AffineTransformation;
 import org.locationtech.jts.io.ParseException;
+import org.locationtech.jts.io.WKBReader;
+import org.locationtech.jts.io.WKBWriter;
 import org.locationtech.jts.io.WKTReader;
 import org.locationtech.jts.io.WKTWriter;
 import org.locationtech.jts.util.GeometricShapeFactory;
@@ -39,13 +42,15 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Conversion between Processing PShapes and JTS Geometries.
+ * Conversion between Processing PShapes and JTS Geometries. Also includes
+ * helper/utility methods for PShapes.
  * <p>
  * Methods in this class are used by the library but are kept accessible for
  * more advanced user use cases.
  * <p>
  * Notably, JTS geometries do not support bezier curves so any bezier curves are
- * finely subdivided into straight linestrings during PShape -> JTS conversion.
+ * finely subdivided into straight linestrings during PShape -> JTS Geometry
+ * conversion.
  * 
  * @author Michael Carleton
  *
@@ -307,7 +312,8 @@ public final class PGS_Conversion implements PConstants {
 	}
 
 	/**
-	 * Converts a PShape made via beginShape(KIND), where KIND is not POLYGON.
+	 * Converts a PShape made via beginShape(KIND), where KIND is not POLYGON, to
+	 * its equivalent JTS Geometry.
 	 * 
 	 * @param shape
 	 * @return
@@ -545,7 +551,8 @@ public final class PGS_Conversion implements PConstants {
 	}
 
 	/**
-	 * Returns the vertices of a PShape as an unclosed list of PVector coordinates.
+	 * Returns the vertices of a PShape as an <b>unclosed</b> list of PVector
+	 * coordinates.
 	 * 
 	 * @param shape a non-GROUP PShape
 	 * @return
@@ -566,13 +573,44 @@ public final class PGS_Conversion implements PConstants {
 	}
 
 	/**
-	 * Converts a mesh-like PShape into a JGraphT graph.
+	 * Converts a shape into a simple graph; graph vertices represent shape
+	 * vertices, and graph edges represent shape edges (formed from adjacent
+	 * vertices in polygonal shapes).
+	 * 
+	 * @param shape the shape to convert
+	 * @return graph representation of the input shape
+	 * @since 1.2.1
+	 * @see #toDualGraph(PShape)
+	 */
+	public static SimpleGraph<PVector, PEdge> toGraph(PShape shape) {
+		final SimpleGraph<PVector, PEdge> graph = new SimpleWeightedGraph<>(PEdge.class);
+		for (PShape face : getChildren(shape)) {
+			for (int i = 0; i < face.getVertexCount(); i++) {
+				final PVector a = face.getVertex(i);
+				final PVector b = face.getVertex((i + 1) % face.getVertexCount());
+				if (a.equals(b)) {
+					continue;
+				}
+				final PEdge e = new PEdge(a, b);
+
+				graph.addVertex(a);
+				graph.addVertex(b);
+				graph.addEdge(a, b, e);
+				graph.setEdgeWeight(e, e.length());
+			}
+		}
+
+		return graph;
+	}
+
+	/**
+	 * Converts a mesh-like PShape into its undirected, unweighted dual-graph.
 	 * <p>
 	 * The output is a <i>dual graph</i> of the input; it has a vertex for each face
 	 * (PShape) of the input, and an edge for each pair of faces that are adjacent.
 	 * 
-	 * @param mesh a GROUP PShape, whose children constitute the faces of a
-	 *             <b>conforming mesh</b>. A conforming mesh consists of adjacent
+	 * @param mesh a GROUP PShape, whose children constitute the polygonal faces of
+	 *             a <b>conforming mesh</b>. A conforming mesh consists of adjacent
 	 *             cells that not only share edges, but every pair of shared edges
 	 *             are identical (having the same coordinates) (such as a
 	 *             triangulation).
@@ -580,12 +618,13 @@ public final class PGS_Conversion implements PConstants {
 	 * @return the dual graph of the input mesh; an undirected graph containing no
 	 *         graph loops or multiple edges.
 	 * @since 1.2.1
+	 * @see #toGraph(PShape)
 	 */
-	public static SimpleGraph<PShape, DefaultEdge> toGraph(PShape mesh) {
-		return toGraph(getChildren(mesh));
+	public static SimpleGraph<PShape, DefaultEdge> toDualGraph(PShape mesh) {
+		return toDualGraph(getChildren(mesh));
 	}
 
-	static SimpleGraph<PShape, DefaultEdge> toGraph(Collection<PShape> meshFaces) {
+	static SimpleGraph<PShape, DefaultEdge> toDualGraph(Collection<PShape> meshFaces) {
 		final SimpleGraph<PShape, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
 		// map of which edge belong to each face; used to detect half-edges
 		final HashMap<PEdge, PShape> edgesMap = new HashMap<>(meshFaces.size() * 4);
@@ -624,6 +663,7 @@ public final class PGS_Conversion implements PConstants {
 	 * @param shape shape to process
 	 * @return a Geometry Tagged Text string
 	 * @since 1.2.1
+	 * @see #fromWKT(String)
 	 */
 	public static String toWKT(PShape shape) {
 		WKTWriter writer = new WKTWriter(2);
@@ -633,12 +673,13 @@ public final class PGS_Conversion implements PConstants {
 	}
 
 	/**
-	 * Converts a geometry in <i>Well-Known Text</i> format to a PShape.
+	 * Converts a geometry in <i>Well-Known Text</i> format into a PShape.
 	 * 
 	 * @param textRepresentation one or more Geometry Tagged Text strings, separated
 	 *                           by whitespace
 	 * @return a PShape specified by the text
 	 * @since 1.2.1
+	 * @see #toWKT(PShape)
 	 */
 	public static PShape fromWKT(String textRepresentation) {
 		WKTReader reader = new WKTReader(GEOM_FACTORY);
@@ -649,6 +690,63 @@ public final class PGS_Conversion implements PConstants {
 			e.printStackTrace();
 			return null;
 		}
+	}
+
+	/**
+	 * Writes a shape into <i>Well-Known Binary</i> format. The WKB format is
+	 * specified in the OGC <i>Simple Features for SQL specification</i></a>.
+	 * 
+	 * @param shape shape to process
+	 * @return WKB byte representation of shape
+	 * @since 1.2.1
+	 * @see #fromWKB(byte[])
+	 * @see #toHexWKB(PShape)
+	 */
+	public static byte[] toWKB(PShape shape) {
+		WKBWriter writer = new WKBWriter();
+		return writer.write(fromPShape(shape));
+	}
+
+	/**
+	 * Converts a geometry in <i>Well-Known Binary</i> format into a PShape.
+	 * 
+	 * @param shapeWKB byte representation of shape to process
+	 * @return a PShape specified by the WKB
+	 * @since 1.2.1
+	 * @see #toWKB(PShape)
+	 */
+	public static PShape fromWKB(byte[] shapeWKB) {
+		WKBReader reader = new WKBReader();
+		try {
+			return toPShape(reader.read(shapeWKB));
+		} catch (ParseException e) {
+			return new PShape();
+		}
+	}
+
+	/**
+	 * Writes a shape into the hexadecimal string representation of its
+	 * <i>Well-Known Binary</i> format.
+	 * 
+	 * @param shape shape to process
+	 * @return hexadecimal string representation of shape WKB
+	 * @since 1.2.1
+	 * @see #toWKB(PShape)
+	 */
+	public static String toHexWKB(PShape shape) {
+		return WKBWriter.toHex(toWKB(shape));
+	}
+
+	/**
+	 * Converts a geometry in <i>Well-Known Binary</i> hex format into a PShape.
+	 * 
+	 * @param shapeWKB hex string WKB representation of shape to process
+	 * @return a PShape specified by the WKB
+	 * @since 1.2.1
+	 * @see #toWKB(PShape)
+	 */
+	public static PShape fromHexWKB(String shapeWKB) {
+		return fromWKB(WKBReader.hexToBytes(shapeWKB));
 	}
 
 	/**

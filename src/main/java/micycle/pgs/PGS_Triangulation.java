@@ -12,6 +12,7 @@ import java.util.function.Consumer;
 
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
+import org.jgrapht.graph.SimpleWeightedGraph;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.geom.Coordinate;
@@ -121,7 +122,7 @@ public final class PGS_Triangulation {
 	 * Generates a Delaunay Triangulation from a collection of points.
 	 * 
 	 * @param points the point collection to triangulate
-	 * @return a TRIANGLES PShape
+	 * @return a GROUP PShape, where each child shape is one triangle
 	 * @see #delaunayTriangulation(PShape, Collection, boolean, int, boolean)
 	 * @since 1.1.0
 	 */
@@ -431,22 +432,54 @@ public final class PGS_Triangulation {
 	}
 
 	/**
-	 * Finds the graph-form of a triangulation.
+	 * Finds the graph equivalent to a triangulation. Graph vertices are
+	 * triangulation vertices; graph edges are triangulation edges.
 	 * <p>
-	 * The output is a <i>dual graph</i> of the input; it has a vertex for each
-	 * constrained triangle of the input, and an edge connecting each pair of triangles that are
-	 * adjacent.
+	 * The output is an undirected weighted graph; edge weights are their euclidean
+	 * length of their triangulation equivalent.
+	 * 
+	 * @param triangulation         triangulation mesh
+	 * @param includePerimeterEdges whether to include edges from the trianglation's
+	 *                              perimeter in the graph
+	 * @return
+	 * @since 1.2.1
+	 * @see #toDualGraph(IIncrementalTin)
+	 */
+	public static SimpleGraph<Vertex, IQuadEdge> toGraph(IIncrementalTin triangulation, boolean includePerimeterEdges) {
+		final SimpleGraph<Vertex, IQuadEdge> graph = new SimpleWeightedGraph<>(IQuadEdge.class);
+		final boolean notConstrained = triangulation.getConstraints().isEmpty();
+		triangulation.edges().forEach(e -> {
+			if (!includePerimeterEdges && isEdgeOnPerimeter(e)) {
+				return;
+			}
+			if ((notConstrained || e.isConstrained())) {
+				final IQuadEdge base = e.getBaseReference();
+				graph.addVertex(base.getA());
+				graph.addVertex(base.getB());
+				graph.addEdge(base.getA(), base.getB(), base);
+				graph.setEdgeWeight(base, base.getLength());
+			}
+		});
+		return graph;
+	}
+
+	/**
+	 * Finds the dual-graph of a triangulation.
+	 * <p>
+	 * A dual graph of a triangulation has a vertex for each constrained triangle of
+	 * the input, and an edge connecting each pair of triangles that are adjacent.
 	 * 
 	 * @param triangulation triangulation mesh
 	 * @return
 	 * @since 1.2.1
+	 * @see #toGraph(IIncrementalTin, boolean)
 	 */
-	public static SimpleGraph<SimpleTriangle, DefaultEdge> toGraph(IIncrementalTin triangulation) {
+	public static SimpleGraph<SimpleTriangle, DefaultEdge> toDualGraph(IIncrementalTin triangulation) {
 		final SimpleGraph<SimpleTriangle, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
-		
+
 		final boolean notConstrained = triangulation.getConstraints().isEmpty();
-		final Map<IQuadEdge, SimpleTriangle> edgeMap = new HashMap<>(triangulation.countTriangles().getCount()*3);
-		
+		final Map<IQuadEdge, SimpleTriangle> edgeMap = new HashMap<>(triangulation.countTriangles().getCount() * 3);
+
 		TriangleCollector.visitSimpleTriangles(triangulation, t -> {
 			final IConstraint constraint = t.getContainingRegion();
 			if (notConstrained || (constraint != null && constraint.definesConstrainedRegion())) {
@@ -472,12 +505,32 @@ public final class PGS_Triangulation {
 			}
 		});
 
-		
 		return graph;
 	}
 
 	static PVector toPVector(final Vertex v) {
 		return new PVector((float) v.getX(), (float) v.getY());
+	}
+
+	/**
+	 * Tests to see if an edge or its dual is on the perimeter.
+	 *
+	 * @param edge a valid instance
+	 * @return true if the edge is on the perimeter; otherwise, false.
+	 */
+	private static boolean isEdgeOnPerimeter(IQuadEdge edge) {
+		/*
+		 * The logic here is that each edge defines one side of a triangle with vertices
+		 * A, B, and C. Vertices A and B are the first and second vertices of the edge,
+		 * vertex C is the opposite one. Triangles lying outside the Delaunay
+		 * Triangulation have a "ghost" vertex for vertex C. Tinfour represents a ghost
+		 * vertex with a null reference. So we test both the edge and its dual to see if
+		 * their vertex C reference is null. Also note that vertex C is the second
+		 * vertex of the forward edge from our edge of interest. Thus the C =
+		 * edge.getForward().getB().
+		 */
+
+		return edge.getForward().getB() == null || edge.getForwardFromDual().getB() == null;
 	}
 
 	/**
