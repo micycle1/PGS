@@ -5,6 +5,7 @@ import static processing.core.PConstants.ROUND;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -151,8 +152,8 @@ final class PGS {
 	}
 
 	/**
-	 * Reflection-based workaround to get the stroke strokeWeight of a PShape (this field
-	 * is usually inaccessible).
+	 * Reflection-based workaround to get the stroke strokeWeight of a PShape (this
+	 * field is usually inaccessible).
 	 */
 	static final float getPShapeStrokeWeight(final PShape sh) {
 		try {
@@ -215,7 +216,12 @@ final class PGS {
 			segments = nodeSegmentStrings(segments);
 		}
 		final Collection<PEdge> meshEdges = new ArrayList<>(segments.size());
-		segments.forEach(ss -> meshEdges.add(new PEdge(toPVector(ss.getCoordinate(0)), toPVector(ss.getCoordinate(1)))));
+		segments.forEach(ss -> { // ss is not necessarily a single edge (can be many connected edges)
+			for (int i = 0; i < ss.size() - 1; i++) {
+				meshEdges.add(new PEdge(toPVector(ss.getCoordinate(i)), toPVector(ss.getCoordinate(i + 1))));
+			}
+		});
+		Collections.shuffle((List<?>) meshEdges);
 		return polygonizeEdges(meshEdges);
 	}
 
@@ -267,6 +273,7 @@ final class PGS {
 	 *         default!
 	 */
 	static List<PVector> fromEdges(Collection<PEdge> edges) {
+		// same as org.locationtech.jts.operation.linemerge.LineSequencer ?
 		final HashMap<PVector, HashSet<PEdge>> vertexEdges = new HashMap<>(); // map of vertex to the 2 edges that share it
 
 		/*
