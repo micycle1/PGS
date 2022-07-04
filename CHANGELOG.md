@@ -11,8 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `equalPartition()` to `PGS_Processing`. Partitions a shape into N approximately equal area polygons.
 * `trapezoidPartition()` to `PGS_Processing`. Partitions a shape into axis-aligned trazepoids.
 * `fromChildren()` to `PGS_Conversion`. Creates a single GROUP parent shape from a list of child shapes.
-* `toWKT()` and `fromWKT()` to `PGS_Conversion`. Converts PShapes to and from a *Well-Known Text* representation.
-* `originScale()` to `PGS_Transformation`. Scales a shape relative to the origin (0,0).
+* `WKT` and `WKB` conversion methods to `PGS_Conversion`. Converts PShapes to and from their *Well-Known Text* / *Well-Known Binary* representation.
+* `toJava2D()` and `fromJava2D()` to `PGS_Conversion`. Converts PShapes to and from Java2D/java.awt shape objects.
+* `originScale()` to `PGS_Transformation`. Scales a shape relative to the origin (0, 0).
 * A new mesh-coloring algorithm: `GENETIC`, which finds a coloring via a genetic algorithm.
 * `toGraph()` to `PGS_Conversion`. Converts a shape to a (jGraphT) graph, representing its dual-graph (this method was previously private).
 * `sphericity()`, `elongation()` and `maximumInteriorAngle()` to `PGS_ShapePredicates`.
@@ -20,10 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `equalsExact()`, `equalsNorm()` and `equalsTopo()` to `PGS_ShapePredicates`. These methods test for equality between two shapes according to different criteria.
 * `createRectangularSpiral()` to `PGS_Construction`. Creates a rectangular-shaped spiral.
 * `largestEmptyCircle()` to `PGS_Optimisation`. Finds the largest empty circle in a set of obstacle geometries.
-* `hilbertSort()` to `PGS_PointSet`. Sorts a list of points using their location on a Hilbert curve.
+* `hilbertSort()` to `PGS_PointSet`. Sorts a list of points according to their location on a Hilbert curve.
 * `tangentAngle()` to `PGS_Processing`. Finds the angle of the line tangent to a shape at a certain point on its perimeter.
 * `variableBuffer()` to `PGS_Morphology`. Buffers a shape with a buffer whose distance varies along the shape's perimeter.
-* `toGraph()` to `PGS_Triangulation`. Converts a triangulation mesh to a (jGraphT) graph, representing its dual-graph.
+* `toGraph()` and `toDualGraph()` to `PGS_Triangulation`. Converts a triangulation mesh to a (jGraphT) graph, representing either it directly, or its dual-graph.
 * `chordalAxis()` to `PGS_Contour`. Finds the chordal axis (a type of skeleton) of a shape.
 
 ### Changed
@@ -44,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 * `earCutTriangulation(List<PVector> points)` from `PGS_Triangulation`.
-* `isolinesFromGrid()` from `PGS_Contour`.
+* `isolinesFromGrid()` from `PGS_Contour` (dependency too large).
 
 ## **1.2.0** *(2021-12-15)*
 
@@ -81,7 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Removing duplicate vertices during PShape->JTS conversion would remove every vertex (not just the duplicated ones).
 
 ### Removed
-- `PGS_Contour.straightSkeletonSolub()` (didn't meet robustness standards)
+- `PGS_Contour.straightSkeletonSolub()` (didn't meet robustness standards).
 
 ## **1.1.3** *(2021-09-01)*
 ### Added

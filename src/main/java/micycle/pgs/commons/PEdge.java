@@ -5,7 +5,7 @@ import processing.core.PVector;
 /**
  * An undirected edge / line segment joining 2 PVectors.
  * <p>
- * Note: <code>new PEdge(a, b)</code> and <code>new PEdge(b, a)</code> are
+ * Note: PEdges <code>PEdge(a, b)</code> and <code>PEdge(b, a)</code> are
  * consided equal.
  * 
  * @author Michael Carleton
@@ -35,6 +35,14 @@ public class PEdge {
 		b.x = Math.round(b.x);
 		b.y = Math.round(b.y);
 		return this;
+	}
+
+	public PVector midpoint() {
+		return a.copy().add(b).div(2);
+	}
+
+	public float length() {
+		return a.dist(b);
 	}
 
 	@Override
