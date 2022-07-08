@@ -80,7 +80,7 @@ public final class PGS_ShapeBoolean {
 	}
 
 	/**
-	 * Unions/flattens/merges a mesh-like PShape (that is, a GROUP PShape whose
+	 * Unions/flattens/merges/dissolves a mesh-like PShape (that is, a GROUP PShape whose
 	 * children represent faces that share edges) into a single shape that
 	 * represents the boundary of the mesh. This method is optimised for meshes, and
 	 * is accordingly much faster than unioning the mesh faces together using other
@@ -111,7 +111,7 @@ public final class PGS_ShapeBoolean {
 				final PVector b = child.getVertex((i + 1) % child.getVertexCount());
 				if (!a.equals(b)) {
 					PEdge edge = new PEdge(a, b);
-					if (!allEdges.add(edge)) {
+					if (!allEdges.add(edge)) { // could use a bag collection here
 						duplicateEdges.add(edge);
 					}
 				}

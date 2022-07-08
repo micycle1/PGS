@@ -546,7 +546,7 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center" colspan="2"><b>Tangency Pack</td>
   </tr>
   <tr>
-    <td valign="top"><img src="resources/circle_packing/tangencyPack.gif"></td>
+    <td valign="top"><img src="resources/circle_packing/tangentPack.gif"></td>
     <td valign="top"><img src="resources/circle_packing/tangentPack1.png"></td>
   </tr>
 </table>

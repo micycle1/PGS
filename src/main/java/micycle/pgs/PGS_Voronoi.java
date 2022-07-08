@@ -268,7 +268,7 @@ public final class PGS_Voronoi {
 	 * @param circleSamples defines how many samples from each circle's
 	 *                      circumference should be used to compute the voronoi
 	 *                      diagram. 25-50 is a suitable range
-	 * @param drawBranches  whether to the draw/output branches from the coming from
+	 * @param drawBranches  whether to draw/output the branches from the coming from
 	 *                      the center of each circle
 	 * @return
 	 */
