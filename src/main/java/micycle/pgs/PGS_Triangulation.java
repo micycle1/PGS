@@ -268,13 +268,16 @@ public final class PGS_Triangulation {
 		final ArrayList<Vertex> vertices = new ArrayList<>();
 		final Coordinate[] coords = g.getCoordinates();
 		for (int i = 0; i < coords.length; i++) {
-			vertices.add(new Vertex(coords[i].x, coords[i].y, 0));
+			vertices.add(new Vertex(coords[i].x, coords[i].y, 0, i));
 		}
 
 		tin.add(vertices, null); // initial triangulation
 
+		int vertexIndex = coords.length;
 		if (steinerPoints != null) {
-			steinerPoints.forEach(v -> tin.add(new Vertex(v.x, v.y, 0))); // add steiner points
+			for (PVector v : steinerPoints) { // add steiner points
+				tin.add(new Vertex(v.x, v.y, 0, vertexIndex++));
+			}
 		}
 
 		if (refinements > 0) {
@@ -529,7 +532,6 @@ public final class PGS_Triangulation {
 		 * vertex of the forward edge from our edge of interest. Thus the C =
 		 * edge.getForward().getB().
 		 */
-
 		return edge.getForward().getB() == null || edge.getForwardFromDual().getB() == null;
 	}
 

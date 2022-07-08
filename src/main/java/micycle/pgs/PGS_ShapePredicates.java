@@ -357,6 +357,7 @@ public final class PGS_ShapePredicates {
 	 * 
 	 * @param shape polygonal shape
 	 * @return an angle in the range [0, 2PI]
+	 * @since 1.2.1
 	 */
 	public static double maximumInteriorAngle(PShape shape) {
 		final CoordinateList coords = new CoordinateList(fromPShape(shape).getCoordinates());

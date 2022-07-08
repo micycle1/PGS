@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `variableBuffer()` to `PGS_Morphology`. Buffers a shape with a buffer whose distance varies along the shape's perimeter.
 * `toGraph()` and `toDualGraph()` to `PGS_Triangulation`. Converts a triangulation mesh to a (jGraphT) graph, representing either it directly, or its dual-graph.
 * `chordalAxis()` to `PGS_Contour`. Finds the chordal axis (a type of skeleton) of a shape.
+* `tangencyPack()` to `PGS_CirclePacking`. Generates a circle packing having a pattern of tangencies specified by a triangulation.
 
 ### Changed
 * Renamed `partition()` to `convexPartition()`.
