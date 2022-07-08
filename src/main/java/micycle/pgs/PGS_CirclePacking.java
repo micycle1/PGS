@@ -9,7 +9,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
 import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
@@ -18,6 +17,7 @@ import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.locationtech.jts.util.GeometricShapeFactory;
+import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
 import org.tinfour.standard.IncrementalTin;
@@ -27,6 +27,7 @@ import org.tinspin.index.covertree.CoverTree;
 
 import micycle.pgs.commons.FrontChainPacker;
 import micycle.pgs.commons.MaximumInscribedCircles;
+import micycle.pgs.commons.TangencyPack;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -50,11 +51,9 @@ import processing.core.PVector;
  */
 public final class PGS_CirclePacking {
 
-	/*
-	 * Roadmap (see/implement): 'A LINEARIZED CIRCLE PACKING ALGORITHM'? Integrate
-	 * methods from github.com/kensmath/CirclePack. 'A circle packing algorithm'
-	 * Charles R. Collins, Kenneth Stephenson. 'A note on circle packing' Young Joon
-	 * AHN.
+	/*-
+	 * Roadmap (see/implement): 'A LINEARIZED CIRCLE PACKING ALGORITHM'? 
+	 * 'A note on circle packing' Young Joon AHN.
 	 */
 
 	private PGS_CirclePacking() {
@@ -238,6 +237,52 @@ public final class PGS_CirclePacking {
 		}
 
 		return out;
+	}
+
+	/**
+	 * Generates a circle packing having a pattern of tangencies specified by a
+	 * triangulation.
+	 * 
+	 * <p>
+	 * This is an implementation of 'A circle packing algorithm' by Charles R.
+	 * Collins & Kenneth Stephenson.
+	 * 
+	 * @param triangulation represents the pattern of tangencies; vertices connected
+	 *                      by an edge inthe triangulation represent tangent circles
+	 *                      in thepacking
+	 * @param boundaryRadii radius of every circle associated with the
+	 *                      boundary/perimeter vertices of the triangulation
+	 * @return A list of PVectors, each representing one circle: (.x, .y) represent
+	 *         the center point and .z represents radius.
+	 */
+	public static List<PVector> tangencyPack(IIncrementalTin triangulation, double boundaryRadii) {
+		TangencyPack pack = new TangencyPack(triangulation, boundaryRadii);
+		return pack.pack();
+	}
+
+	/**
+	 * Generates a circle packing having a pattern of tangencies specified by a
+	 * triangulation.
+	 * 
+	 * <p>
+	 * This is an implementation of 'A circle packing algorithm' by Charles R.
+	 * Collins & Kenneth Stephenson.
+	 * 
+	 * @param triangulation represents the pattern of tangencies; vertices connected
+	 *                      by an edge inthe triangulation represent tangent circles
+	 *                      in thepacking
+	 * @param boundaryRadii list of radii of circles associated with the
+	 *                      boundary/perimeter vertices of the triangulation. The
+	 *                      list may have fewer radii than the number of
+	 *                      boundaryvertices; in this case, boundary radii will wrap
+	 *                      aroundthe list
+	 * @return A list of PVectors, each representing one circle: (.x, .y) represent
+	 *         the center point and .z represents radius. The packing is centered on
+	 *         (0, 0) by default.
+	 */
+	public static List<PVector> tangencyPack(IIncrementalTin triangulation, double[] boundaryRadii) {
+		TangencyPack pack = new TangencyPack(triangulation, boundaryRadii);
+		return pack.pack();
 	}
 
 	/**
