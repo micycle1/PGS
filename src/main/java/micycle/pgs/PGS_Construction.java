@@ -8,14 +8,26 @@ import java.util.List;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
+import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.operation.linemerge.LineMerger;
+import org.locationtech.jts.shape.GeometricShapeBuilder;
+import org.locationtech.jts.shape.fractal.HilbertCurveBuilder;
+import org.locationtech.jts.shape.fractal.KochSnowflakeBuilder;
+import org.locationtech.jts.shape.fractal.SierpinskiCarpetBuilder;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
 import micycle.pgs.color.RGB;
+import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.RandomPolygon;
 import micycle.pgs.commons.Star;
+import micycle.spacefillingcurves.SierpinskiFiveSteps;
+import micycle.spacefillingcurves.SierpinskiFourSteps;
+import micycle.spacefillingcurves.SierpinskiTenSteps;
+import micycle.spacefillingcurves.SierpinskiThreeSteps;
+import micycle.spacefillingcurves.SpaceFillingCurve;
 import processing.core.PConstants;
 import processing.core.PShape;
 
@@ -29,9 +41,9 @@ public class PGS_Construction {
 
 	private PGS_Construction() {
 	}
-	
+
 	private static final GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-	
+
 	static {
 		shapeFactory.setNumPoints(PGS.SHAPE_SAMPLES);
 	}
@@ -462,14 +474,130 @@ public class PGS_Construction {
 		return curve;
 	}
 
-	
+	/**
+	 * Creates a Hilbert Curve shape, a type of plane-filling curve.
+	 * 
+	 * @param width  pixel width of the curve
+	 * @param height pixel height of the curve
+	 * @param order  order of the hilbert curve. should be at least 0
+	 * @return a stroked PATH PShape, anchored at (0, 0)
+	 * @since 1.2.1
+	 */
+	public static PShape createHilbertCurve(double width, double height, int order) {
+		final GeometricShapeBuilder builder = new HilbertCurveBuilder(PGS.GEOM_FACTORY);
+		builder.setExtent(new Envelope(0, width, 0, height));
+		final int points = (int) Math.ceil(Math.exp((order * Math.log(4))) * 3); // inverse of recursionLevelForSize()
+		builder.setNumPoints(points);
+		PShape out = toPShape(builder.getGeometry());
+		out.setStroke(255);
+		out.setStrokeWeight(4);
+		return out;
+	}
+
+	/**
+	 * Creates a Sierpiński Carpet shape, a type of plane fractal.
+	 * 
+	 * @param width  pixel width of the curve
+	 * @param height pixel height of the curve
+	 * @param order  the number of recursive subdivisions (at least 0, probably no
+	 *               more than 5)
+	 * @return carpet shape, anchored at (0, 0)
+	 * @since 1.2.1
+	 */
+	public static PShape createSierpinskiCarpet(double width, double height, int order) {
+		final GeometricShapeBuilder builder = new SierpinskiCarpetBuilder(PGS.GEOM_FACTORY);
+		builder.setExtent(new Envelope(0, width, 0, height));
+		final int points = (int) Math.ceil(Math.exp((order * Math.log(4))) * 3); // inverse of recursionLevelForSize()
+		builder.setNumPoints(points);
+		PShape out = toPShape(builder.getGeometry());
+		out.setStroke(false);
+		return out;
+	}
+
+	/**
+	 * Creates a Koch Snowflake shape, a fractal curve.
+	 * 
+	 * @param width  pixel width of the curve's envelope
+	 * @param height pixel width of the curve's envelope
+	 * @param order  the number of recursive subdivisions (at least 0)
+	 * @return snowflake shape, whose envelope is anchored at (0, 0)
+	 * @since 1.2.1
+	 */
+	public static PShape createKochSnowflake(double width, double height, int order) {
+		order++; //
+		final GeometricShapeBuilder builder = new KochSnowflakeBuilder(PGS.GEOM_FACTORY);
+		builder.setExtent(new Envelope(0, width, 0, height));
+		final int points = (int) Math.ceil(Math.exp((order * Math.log(4))) * 3); // inverse of recursionLevelForSize()
+		builder.setNumPoints(points);
+		PShape out = toPShape(builder.getGeometry());
+		out.setStroke(false);
+		return out;
+	}
+
+	public enum SierpinskiTriCurveType {
+		TRI, TETRA, PENTA, DECA;
+	}
+
+	/**
+	 * Creates one of a family of trifurcating Sierpinski curves.
+	 * 
+	 * @param type  the type of tri-curve: {TRI, TETRA, PENTA, DECA}
+	 * @param width pixel width of the curve's envelope
+	 * @param order the number of recursive subdivisions (at least 1)
+	 * @return curve shape, anchored at (0, 0)
+	 * @since 1.2.1
+	 */
+	public static PShape createSierpinskiTriCurve(SierpinskiTriCurveType type, double width, int order) {
+		SpaceFillingCurve fractal;
+
+		switch (type) {
+			default :
+			case TRI :
+				fractal = new SierpinskiThreeSteps(width, width);
+				break;
+			case TETRA :
+				fractal = new SierpinskiFourSteps(width, width);
+				break;
+			case PENTA :
+				fractal = new SierpinskiFiveSteps(width, width);
+				break;
+			case DECA :
+				fractal = new SierpinskiTenSteps(width, width);
+		}
+		fractal.setN(order);
+
+		fractal.start();
+
+		final List<PEdge> edges = new ArrayList<>(fractal.getLineSegments().size());
+		fractal.getLineSegments().forEach(l -> edges.add(new PEdge(l[0], l[1], l[2], l[3])));
+		/*
+		 * Fractal is comprised of unconnected line segments -- they need to be merged
+		 * together. Use linemerger since PGS.fromEdges() does not support unclosed edge
+		 * collections.
+		 */
+		final LineMerger lm = new LineMerger();
+		edges.forEach(e -> {
+			final LineString l = PGS.createLineString(e.a, e.b);
+			lm.add(l);
+		});
+		LineString path = (LineString) lm.getMergedLineStrings().iterator().next();
+		CoordinateList list = new CoordinateList(path.getCoordinates());
+		list.closeRing();
+
+		PShape out = toPShape(PGS.GEOM_FACTORY.createLinearRing(list.toCoordinateArray()));
+		out.setStroke(false);
+		out = PGS_Transformation.resizeByWidth(out, width);
+		out = PGS_Transformation.translateToOrigin(out);
+		return out;
+	}
+
 	static Polygon createEllipse(Coordinate center, double width, double height) {
 		shapeFactory.setCentre(center);
 		shapeFactory.setWidth(width);
 		shapeFactory.setHeight(height);
 		return shapeFactory.createEllipse();
 	}
-	
+
 	/**
 	 * Sierpinski curve subdivide.
 	 */
