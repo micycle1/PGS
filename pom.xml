@@ -310,6 +310,11 @@
 			<artifactId>FixPoint4j</artifactId>
 			<version>0.3</version>
 		</dependency>
+		<dependency>
+			<groupId>net.jafama</groupId>
+			<artifactId>jafama</artifactId>
+			<version>2.3.2</version>
+		</dependency>
 	</dependencies>
 
 </project>
