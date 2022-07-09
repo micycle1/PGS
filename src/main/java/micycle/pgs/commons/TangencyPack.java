@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.commons.math3.complex.Complex;
@@ -20,6 +21,7 @@ import com.github.xmunkki.fixpoint.Fixed64;
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import micycle.pgs.PGS_Triangulation;
+import net.jafama.FastMath;
 import processing.core.PVector;
 
 /**
@@ -53,6 +55,7 @@ public class TangencyPack {
 	 */
 
 	private static final double TOLERANCE = 1 + 1e-8;
+	private static final double TWO_PI = Math.PI * 2;
 
 	private final IIncrementalTin triangulation;
 	/**
@@ -63,7 +66,7 @@ public class TangencyPack {
 	/**
 	 * The radius of each circle (including boundary circles).
 	 */
-	private Object2DoubleMap<Vertex> radii;
+	private Object2DoubleOpenHashMap<Vertex> radii;
 	private double[] boundaryRadii;
 	private Map<Vertex, Complex> placements = new HashMap<>();
 	private List<PVector> circles;
@@ -121,6 +124,19 @@ public class TangencyPack {
 		init();
 	}
 
+	/**
+	 * Computes and returns a circle packing for the configuration of tangencies
+	 * given by the triangulation.
+	 * 
+	 * @return a list of PVectors, each representing one circle: (.x, .y) represent
+	 *         the center point and .z represents radius.
+	 */
+	public List<PVector> pack() {
+		computeRadii();
+		computeCenters();
+		return circles;
+	}
+
 	private void init() {
 		Set<Vertex> perimeterVertices = new HashSet<>();
 		triangulation.getPerimeter().forEach(e -> {
@@ -148,30 +164,17 @@ public class TangencyPack {
 				meanVertexPos.add((float) v.x, (float) v.y);
 			}
 		}
-		
+
 		// pick a rather central vertex, so output is same on identical input
 		meanVertexPos.div(flowers.size());
 		double maxDist = Double.MAX_VALUE;
 		for (Vertex v : flowers.keySet()) {
 			double dist = v.getDistanceSq(meanVertexPos.x, meanVertexPos.y);
-			if 	(dist < maxDist) {
+			if (dist < maxDist) {
 				maxDist = dist;
 				centralVertex = v;
-			}	
+			}
 		}
-	}
-
-	/**
-	 * Computes and returns a circle packing for the configuration of tangencies
-	 * given by the triangulation.
-	 * 
-	 * @return a list of PVectors, each representing one circle: (.x, .y) represent
-	 *         the center point and .z represents radius.
-	 */
-	public List<PVector> pack() {
-		computeRadii();
-		computeCenters();
-		return circles;
 	}
 
 	/**
@@ -179,8 +182,11 @@ public class TangencyPack {
 	 * rapidly to a unique fixed point for which all flower angles are are within a
 	 * desired tolerance of 2π, at which point iteration stops and a packing is
 	 * found.
+	 * 
+	 * @deprecated in favor of superstep solution
 	 */
-	private void computeRadii() {
+	@Deprecated
+	private void computeRadiiSimple() {
 		double lastChange = TOLERANCE + 1;
 		while (lastChange > TOLERANCE) {
 			lastChange = 1.0;
@@ -188,6 +194,112 @@ public class TangencyPack {
 				double theta = flower(v);
 				lastChange = Math.max(lastChange, theta);
 			}
+		}
+	}
+
+	/**
+	 * This method implements the super acceleration described in 'A circle packing
+	 * algorithm'.
+	 */
+	private void computeRadii() {
+		final double ttoler = 3 * radii.size() * 1e-11;
+		int key = 1; // initial superstep type
+		double accumErr2 = Double.MAX_VALUE;
+		int localPasses = 1;
+
+		while ((accumErr2 > ttoler && localPasses < 500)) { // main loop
+			Object2DoubleMap<Vertex> R1 = new Object2DoubleOpenHashMap<>(radii);
+			double c1;
+
+			double factor;
+
+			do { // Make sure factor < 1.0
+				c1 = computeAngleSums();
+				c1 = Math.sqrt(c1);
+
+				factor = c1 / accumErr2;
+				if (factor >= 1.0) {
+					accumErr2 = c1;
+					key = 1;
+				}
+			} while (factor >= 1.0);
+
+			// ================= superstep calculation ====================
+
+			Object2DoubleMap<Vertex> R2 = new Object2DoubleOpenHashMap<>(radii);
+
+			// find maximum step one can safely take
+			double lmax = 10000;
+			double fact0;
+
+			for (Vertex v : R1.keySet()) {
+				double r1 = R1.getDouble(v);
+				double r2 = R2.getDouble(v);
+				double rat = r2 - r1;
+				double tr;
+				if (rat < 0) {
+					lmax = (lmax < (tr = (-r2 / rat))) ? lmax : tr; // to keep R>0
+				}
+			}
+			lmax = lmax / 2;
+
+			// do super step
+			double m = 1;
+			int sct = 1;
+			int fct = 2;
+			double lambda;
+			if (key == 1) { // type 1 SS
+				lambda = m * factor;
+				double mmax = 0.75 / (1 - factor); // upper limit on m
+				double mm = 0.0;
+				m = (mmax < (mm = (1 + 0.8 / (sct + 1)) * m)) ? mmax : mm;
+			} else { // type 2 SS
+				fact0 = 0.0;
+				double ftol = 0.0;
+				if (sct > fct && Math.abs(factor - fact0) < ftol) { // try SS-2
+					lambda = factor / (1 - factor);
+					sct = -1;
+				} else {
+					lambda = factor; // do something
+				}
+			}
+			lambda = (lambda > lmax) ? lmax : lambda;
+
+			// interpolate new radii labels
+			for (Vertex v : R1.keySet()) {
+				double r1 = R1.getDouble(v);
+				double r2 = R2.getDouble(v);
+				double nwr = r2 + lambda * (r2 - r1);
+				radii.put(v, nwr);
+			}
+
+			// end of superstep
+
+			// do step/check superstep
+			accumErr2 = computeAngleSums();
+			accumErr2 = Math.sqrt(accumErr2);
+
+			// check results
+			double pred = FastMath.exp(lambda * FastMath.log(factor)); // predicted improvement
+			double act = accumErr2 / c1; // actual improvement
+			if (act < 1) { // did some good
+				if (act > pred) { // not as good as expected: reset
+					if (key == 1) {
+						key = 2;
+					}
+				} // implied else: accept result
+			} else { // reset to before superstep
+				for (Vertex v : R1.keySet()) {
+					double r2 = R2.getDouble(v);
+					radii.put(v, r2);
+				}
+				accumErr2 = c1;
+				if (key == 2) {
+					key = 1;
+				}
+			}
+
+			localPasses++;
 		}
 	}
 
@@ -215,12 +327,60 @@ public class TangencyPack {
 	}
 
 	/**
+	 * Compute the angle sum for every flower.
+	 * 
+	 * @return sum of angle error (difference between 2PI) across all flowers
+	 */
+	private double computeAngleSums() {
+		double error = 0;
+		for (Entry<Vertex, List<Vertex>> entry : flowers.entrySet()) {
+			final Vertex v = entry.getKey();
+			final List<Vertex> flower = entry.getValue();
+
+			final double ra = radii.getDouble(v);
+			double angleSum = angleSum(ra, flower);
+
+			final int N = 2 * flower.size();
+			final double del = FastMath.sin(TWO_PI / N);
+			final double bet = FastMath.sin(angleSum / N);
+			final double r2 = ra * bet * (1 - del) / (del * (1 - bet));
+
+			// alternative form
+//			double hat = ra / (1.0 / FastMath.sin(angleSum / (2 * flower.size())) - 1);
+//			double r2 = hat * (1.0 / FastMath.sin(Math.PI / flower.size()) - 1);
+
+			radii.put(v, r2);
+			angleSum -= TWO_PI;
+			error += angleSum * angleSum; // accum abs error
+		}
+		return error;
+	}
+
+	/**
+	 * 
+	 * @param rc     radius of center circle
+	 * @param center center circle
+	 * @param flower center circle's petals
+	 * @return
+	 */
+	private double angleSum(final double rc, final List<Vertex> flower) {
+		final int n = flower.size();
+		double sum = 0.0;
+		for (int i = 0; i < n; i++) {
+			int j = i + 1 == n ? 0 : i + 1;
+			sum += tangentAngle(rc, radii.getDouble(flower.get(i)), radii.getDouble(flower.get(j)));
+		}
+		return sum;
+	}
+
+	/**
 	 * Compute the angle sum for the petals surrounding the given vertex and update
 	 * the radius of the vertex such that the angle sum would equal 2π.
 	 * 
 	 * @param center target vertex
 	 * @return a measure of the error (difference between target angle sum (2π) and
 	 *         the actual angle sum
+	 * @deprecated used by {@link #computeRadiiSimple()}
 	 */
 	private double flower(final Vertex center) {
 		List<Vertex> flower = flowers.get(center);
@@ -229,11 +389,11 @@ public class TangencyPack {
 		double sum = 0.0;
 		for (int i = 0; i < n; i++) {
 			int j = i + 1 == n ? 0 : i + 1;
-			sum += tangentAngle(rc, radii.getDouble(flower.get(i)), radii.getDouble(flower.get(j)));
+			sum += tangentAngleFast(rc, radii.getDouble(flower.get(i)), radii.getDouble(flower.get(j)));
 		}
 
-		double hat = rc / (1.0 / sin(sum / (2 * n)) - 1);
-		double newrad = hat * (1.0 / sin(Math.PI / n) - 1);
+		double hat = rc / (1.0 / FastMath.sin(sum / (2 * n)) - 1);
+		double newrad = hat * (1.0 / FastMath.sin(Math.PI / n) - 1);
 		radii.put(center, newrad);
 
 		return Math.max(newrad / rc, rc / newrad);
@@ -274,6 +434,17 @@ public class TangencyPack {
 		}
 	}
 
+	private static double tangentAngle(double a, double b, double c) {
+		/*
+		 * Overall computation time is actually reduced by forgoing trig approximation
+		 * functions (tangentAngleFast()), because the slight inaccuracies mean solution
+		 * converges more slowly and ends up doing more iterations overall.
+		 */
+		final double q = b * c;
+		final double o = 1 - 2 * q / (a * a + a * (b + c) + q);
+		return FastMath.acos(o);
+	}
+
 	/**
 	 * Computes the angle that circles y and z make with circle x (angle yxz). The
 	 * circles are given by their radii and are mutually tangent.
@@ -282,25 +453,12 @@ public class TangencyPack {
 	 * @param ry radius of circle y, a "petal" circle
 	 * @param rz radius of circle z, a "petal" circle
 	 * @return angle of yxz
+	 * @deprecated
 	 */
-	private static double tangentAngle(final double rx, final double ry, final double rz) {
+	private static double tangentAngleFast(final double rx, final double ry, final double rz) {
 		final double x = (ry * rz) / ((rx + ry) * (rx + rz));
-//		return 2 * Fixed64.ToDouble(Fixed64.Asin(Fixed64.FromDouble(Math.sqrt(x)))); // slower
+		// return 2 * Fixed64.ToDouble(Fixed64.Asin(Fixed64.FromDouble(Math.sqrt(x))));
 		return 2 * Fixed64.ToDouble(Fixed64.Atan(Fixed64.FromDouble(Math.sqrt(x) / (Math.sqrt(1 - x)))));
-	}
-
-	/**
-	 * @deprecated slower than chosen method
-	 */
-	@Deprecated
-	private static double tangentAngle2(double a, double b, double c) {
-		final double q = b * c;
-		final double o = 1 - 2 * q / (a * a + a * (b + c) + q);
-		return Math.acos(o);
-	}
-
-	private static double sin(double x) {
-		return Fixed64.ToDouble(Fixed64.Sin(Fixed64.FromDouble(x)));
 	}
 
 	private static class RadialComparator implements Comparator<Vertex> {
@@ -333,8 +491,8 @@ public class TangencyPack {
 			double dyq = q.y - o.y;
 
 			int result = 0;
-			double alph = atan2Quick(dxp, dyp);
-			double beta = atan2Quick(dxq, dyq);
+			double alph = FastMath.atan2(dxp, dyp);
+			double beta = FastMath.atan2(dxq, dyq);
 			if (alph < beta) {
 				result = -1;
 			}
@@ -342,28 +500,6 @@ public class TangencyPack {
 				result = 1;
 			}
 			return result;
-		}
-
-		private static double atan2Quick(final double y, final double x) {
-			final double THREE_QRTR_PI = Math.PI * 0.75;
-			final double QRTR_PI = Math.PI * 0.25;
-
-			double r, angle;
-			final double abs_y = Math.abs(y) + 1e-10f; // kludge to prevent 0/0 condition
-
-			if (x < 0.0f) {
-				r = (x + abs_y) / (abs_y - x); // (3)
-				angle = THREE_QRTR_PI; // (4)
-			} else {
-				r = (x - abs_y) / (x + abs_y); // (1)
-				angle = QRTR_PI; // (2)
-			}
-			angle += (0.1963f * r * r - 0.9817f) * r; // (2 | 4)
-			if (y < 0.0f) {
-				return (-angle); // negate if in quad III or IV
-			} else {
-				return (angle);
-			}
 		}
 
 	}
