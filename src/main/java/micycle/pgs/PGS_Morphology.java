@@ -3,11 +3,13 @@ package micycle.pgs;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.locationtech.jts.densify.Densifier;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.util.GeometryFixer;
@@ -17,6 +19,7 @@ import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.simplify.VWSimplifier;
 
+import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.color.RGB;
 import micycle.pgs.commons.ChaikinCut;
 import micycle.pgs.commons.CornerRounding;
@@ -146,11 +149,11 @@ public final class PGS_Morphology {
 	}
 
 	/**
-	 * Minkowski difference a.k.a erosion
+	 * Computes a <i>Minkowski difference</i> (a.k.a erosion) of the two source
+	 * shapes.
 	 * 
-	 * @param source
-	 * @param subtract
-	 * @return
+	 * @return shape representing the Minkowski difference of source-subtract
+	 * @see #minkSum(PShape, PShape)
 	 */
 	public static PShape minkDifference(PShape source, PShape subtract) {
 		Geometry sum = Minkowski_Sum.minkDiff(fromPShape(source), fromPShape(subtract), true, true);
@@ -162,7 +165,7 @@ public final class PGS_Morphology {
 	 * positioned using Bezier splines. The output shape tends to be a little larger
 	 * than the input.
 	 * 
-	 * @param shape
+	 * @param shape shape to smooth
 	 * @param alpha curvedness parameter (0 is linear, 1 is round, >1 is
 	 *              increasingly curved)
 	 * @return smoothed copy of the shape
@@ -176,7 +179,7 @@ public final class PGS_Morphology {
 	/**
 	 * Smoothes a shape by applying a gaussian filter to vertex coordinates. At
 	 * larger values, this morphs the input shape much more visually than
-	 * {@link #smooth(PShape, double)}.
+	 * {@link #smooth(PShape, double) smooth()}.
 	 * 
 	 * @param shape the shape to smooth
 	 * @param sigma The standard deviation of the gaussian kernel. Larger values
@@ -186,9 +189,20 @@ public final class PGS_Morphology {
 	 */
 	public static PShape smoothGaussian(PShape shape, double sigma) {
 		Geometry g = fromPShape(shape);
-		if (g.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) { // TODO support holes
-			Polygon p = (Polygon) g;
-			return toPShape(GaussianLineSmoothing.get(p.getExteriorRing(), Math.max(sigma, 1), 1));
+		if (g.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
+			LinearRingIterator lri = new LinearRingIterator(g);
+			LineString[] rings = lri.getLinearRings();
+			LinearRing[] ringSmoothed = new LinearRing[rings.length];
+			for (int i = 0; i < rings.length; i++) {
+				ringSmoothed[i] = PGS.GEOM_FACTORY
+						.createLinearRing(GaussianLineSmoothing.get(rings[i], Math.max(sigma, 1), 1).getCoordinates());
+			}
+
+			LinearRing[] holes = null;
+			if (ringSmoothed.length > 1) {
+				holes = Arrays.copyOfRange(ringSmoothed, 1, ringSmoothed.length);
+			}
+			return toPShape(PGS.GEOM_FACTORY.createPolygon(ringSmoothed[0], holes));
 		}
 		if (g.getGeometryType().equals(Geometry.TYPENAME_LINEARRING) || g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
 			LineString l = (LineString) g;
@@ -430,7 +444,8 @@ public final class PGS_Morphology {
 	 *               into
 	 * @param frames the number of frames (including first and last) to generate. >=
 	 *               2
-	 * @return a GROUP PShape, where each child shape is a frame
+	 * @return a GROUP PShape, where each child shape is a frame from the
+	 *         interpolation
 	 * @since 1.2.1
 	 * @see #interpolate(PShape, PShape, double)
 	 */
