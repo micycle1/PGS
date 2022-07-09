@@ -75,22 +75,70 @@ public final class PGS_Transformation {
 	}
 
 	/**
-	 * Resizes a shape (based on its envelope) to the given dimensions. The output
-	 * is repositioned to (0, 0).
+	 * Resizes a shape (based on its envelope) to the given dimensions, relative to
+	 * its center point.
 	 * 
 	 * @param shape
 	 * @param targetWidth  width of the output copy
 	 * @param targetHeight height of the output copy
-	 * @return resized copy of input
+	 * @return resized copy of input shape
 	 */
 	public static PShape resize(PShape shape, double targetWidth, double targetHeight) {
 		targetWidth = Math.max(targetWidth, 0.001);
 		targetHeight = Math.max(targetHeight, 0.001);
 		Geometry geometry = fromPShape(shape);
 		Envelope e = geometry.getEnvelopeInternal();
+		Point c = geometry.getCentroid();
 
-		AffineTransformation t = AffineTransformation.scaleInstance(targetWidth / e.getWidth(), targetHeight / e.getHeight());
+		AffineTransformation t = AffineTransformation.scaleInstance(targetWidth / e.getWidth(), targetHeight / e.getHeight(), c.getX(),
+				c.getY());
 		return translateToOrigin(toPShape(t.transform(geometry)));
+	}
+
+	/**
+	 * Resizes a shape (based on its envelope) to the given width relative to its
+	 * center point; the height is resized accordingly to maintain the shape's
+	 * aspect ratio.
+	 * 
+	 * @param shape       the shape to resize
+	 * @param targetWidth width of the output
+	 * @return resized copy of input shape
+	 * @since 1.2.1
+	 * @see #resizeByHeight(PShape, double)
+	 */
+	public static PShape resizeByWidth(PShape shape, double targetWidth) {
+		targetWidth = Math.max(targetWidth, 1e-5);
+
+		Geometry geometry = fromPShape(shape);
+		Envelope e = geometry.getEnvelopeInternal();
+		Point c = geometry.getCentroid();
+
+		AffineTransformation t = AffineTransformation.scaleInstance(targetWidth / e.getWidth(), targetWidth / e.getWidth(), c.getX(),
+				c.getY());
+		return toPShape(t.transform(geometry));
+	}
+
+	/**
+	 * Resizes a shape (based on its envelope) to the given height relative to its
+	 * center point; the width is resized accordingly to maintain the shape's aspect
+	 * ratio.
+	 * 
+	 * @param shape        the shape to resize
+	 * @param targetHeight height of the output
+	 * @return resized copy of input shape
+	 * @since 1.2.1
+	 * @see #resizeByWidth(PShape, double)
+	 */
+	public static PShape resizeByHeight(PShape shape, double targetHeight) {
+		targetHeight = Math.max(targetHeight, 1e-5);
+
+		Geometry geometry = fromPShape(shape);
+		Envelope e = geometry.getEnvelopeInternal();
+		Point c = geometry.getCentroid();
+
+		AffineTransformation t = AffineTransformation.scaleInstance(targetHeight / e.getHeight(), targetHeight / e.getHeight(), c.getX(),
+				c.getY());
+		return toPShape(t.transform(geometry));
 	}
 
 	/**
