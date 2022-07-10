@@ -279,6 +279,7 @@ public final class PGS_CirclePacking {
 	 * @return A list of PVectors, each representing one circle: (.x, .y) represent
 	 *         the center point and .z represents radius. The packing is centered on
 	 *         (0, 0) by default.
+	 * @since 1.2.1
 	 */
 	public static List<PVector> tangencyPack(IIncrementalTin triangulation, double[] boundaryRadii) {
 		TangencyPack pack = new TangencyPack(triangulation, boundaryRadii);

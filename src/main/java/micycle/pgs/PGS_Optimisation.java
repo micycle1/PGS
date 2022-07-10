@@ -296,7 +296,8 @@ public final class PGS_Optimisation {
 	}
 
 	/**
-	 * Computes the farthest pair of points in a set of n points.
+	 * Computes the farthest pair of points (the "diametral pair") in a set of n
+	 * points.
 	 * <p>
 	 * This method runs in O(n*log(n)), rather than the naive O(n*n) brute-force
 	 * approach. However, it must first compute the convex hull of the point set, so

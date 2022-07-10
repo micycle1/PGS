@@ -207,7 +207,7 @@ public class TangencyPack {
 		double accumErr2 = Double.MAX_VALUE;
 		int localPasses = 1;
 
-		while ((accumErr2 > ttoler && localPasses < 500)) { // main loop
+		while ((accumErr2 > ttoler && localPasses < 1000)) { // main loop
 			Object2DoubleMap<Vertex> R1 = new Object2DoubleOpenHashMap<>(radii);
 			double c1;
 
