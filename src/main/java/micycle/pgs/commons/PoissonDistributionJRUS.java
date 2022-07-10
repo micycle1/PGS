@@ -1,7 +1,9 @@
 package micycle.pgs.commons;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.SplittableRandom;
 
 import processing.core.PVector;
@@ -95,13 +97,36 @@ public final class PoissonDistributionJRUS {
 		return generate(xmin, ymin, xmax, ymax, minDist, 11);
 	}
 
+	/**
+	 * Generates a poisson point set having <code>N</code> points. After generating
+	 * an initial set of ~N (hereafter <code>N'</code>) points (the actual number
+	 * tends to overshoot the target by a few percent), <code>N'-N</code> points are
+	 * removed from the inital set.
+	 * 
+	 * @param xmin x-coordinate of boundary minimum
+	 * @param ymin y-coordinate of boundary minimum
+	 * @param xmax x-coordinate of boundary maximum
+	 * @param ymax y-coordinate of boundary maximum
+	 * @param n    target size of poisson point set
+	 * @return a set of random points
+	 */
+	public List<PVector> generate(double xmin, double ymin, double xmax, double ymax, int n) {
+		// see https://observablehq.com/@fil/poisson-finish
+		// and https://observablehq.com/@washpostgraphics/poisson-finish
+		double radius2 = (Math.sqrt(0.5) * ((xmax - xmin) * (ymax - ymin))) / n;
+		double radius = Math.sqrt(radius2);
+		List<PVector> pointz = generate(xmin, ymin, xmax, ymax, radius, 11);
+		Collections.shuffle(pointz, new Random(1337));
+		return pointz.subList(0, Math.min(pointz.size(), n)); // use min() in case undershoot
+	}
+
 	private List<PVector> generate(double width, double height, double radius, int k) {
 		int m = 1 + k * 2; // a number mutually prime to k
 		cellSize = 1 / (radius * Math.sqrt(0.5));
 		final double minDistSquared = radius * radius;
 		/*
-		 * Pad the grid on the sides to eliminate the need for special-case code near
-		 * edges.
+		 * Pad the grid by 2 on the sides to eliminate the need for special-case code
+		 * near edges.
 		 */
 		gridWidth = (int) Math.ceil(width * cellSize) + 4;
 		int gridHeight = (int) Math.ceil(height * cellSize) + 4;

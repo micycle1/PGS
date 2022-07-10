@@ -419,6 +419,23 @@ public final class PGS_PointSet {
 	}
 
 	/**
+	 * Generates a poisson point set having N points.
+	 * 
+	 * @param xMin x-coordinate of boundary minimum
+	 * @param yMin y-coordinate of boundary minimum
+	 * @param xMax x-coordinate of boundary maximum
+	 * @param yMax y-coordinate of boundary maximum
+	 * @param n target size of poisson point set
+	 * @param seed number used to initialize the underlying pseudorandom number
+	 *             generator
+	 * @return
+	 */
+	public static List<PVector> poisson(double xMin, double yMin, double xMax, double yMax, int n, long seed) {
+		final PoissonDistributionJRUS pd = new PoissonDistributionJRUS(seed);
+		return pd.generate(xMin, yMin, xMax, yMax, n);
+	}
+
+	/**
 	 * Generates a set of points arranged in a phyllotaxis pattern (an arrangement
 	 * similar to the florets in the head of a sunflower), using the golden ratio
 	 * (the most irrational number) to position points with the least possible

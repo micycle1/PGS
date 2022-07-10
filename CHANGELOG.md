@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `chordalAxis()` to `PGS_Contour`. Finds the chordal axis (a type of skeleton) of a shape.
 * `tangencyPack()` to `PGS_CirclePacking`. Generates a circle packing having a pattern of tangencies specified by a triangulation.
 * Added methods for Hilbert Curve, Sierpinski Carpet, Koch Snowflake and Sierpinski Tri-Curves to `PGS_Construction`.
+* Additional method signature for `PGS_PointSet.poisson()` that accepts a number defining the size of the point set.
 
 ### Changed
 * **NOTE**: Moved hull methods from `PGS_Processing` to `PGS_Hull`.
