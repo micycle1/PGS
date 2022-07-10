@@ -13,9 +13,20 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 
+import org.jgrapht.alg.drawing.IndexedFRLayoutAlgorithm2D;
+import org.jgrapht.alg.drawing.LayoutAlgorithm2D;
+import org.jgrapht.alg.drawing.model.Box2D;
+import org.jgrapht.alg.drawing.model.LayoutModel2D;
+import org.jgrapht.alg.drawing.model.MapLayoutModel2D;
+import org.jgrapht.alg.drawing.model.Point2D;
+import org.jgrapht.alg.util.NeighborCache;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 import org.jgrapht.graph.SimpleWeightedGraph;
@@ -42,15 +53,16 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Conversion between Processing PShapes and JTS Geometries. Also includes
- * helper/utility methods for PShapes.
+ * Conversion between <i>Processing</i> <code>PShapes</code> and <i>JTS</i>
+ * <code>Geometries</code> (amongst other formats). Also includes helper/utility
+ * methods for PShapes.
  * <p>
- * Methods in this class are used by the library but are kept accessible for
- * more advanced user use cases.
+ * Methods in this class are used by the library internally but are kept
+ * accessible for more advanced user use cases.
  * <p>
  * Notably, JTS geometries do not support bezier curves so any bezier curves are
- * finely subdivided into straight linestrings during PShape -> JTS Geometry
- * conversion.
+ * finely subdivided into straight linestrings during <code>PShape</code> -> JTS
+ * <code>Geometry</code> conversion.
  * 
  * @author Michael Carleton
  *
@@ -604,6 +616,55 @@ public final class PGS_Conversion implements PConstants {
 	}
 
 	/**
+	 * Takes as input a graph and computes a layout for the graph vertices using a
+	 * Force-Directed placement algorithm (not vertex coordinates, if any exist).
+	 * Vertices are joined by their edges.
+	 * <p>
+	 * The output is a rather abstract representation of the input graph, and not a
+	 * geometric equivalent (unlike most other conversion methods in the class).
+	 * 
+	 * @param <V>                 any vertex type
+	 * @param <E>                 any edge type
+	 * @param graph               the graph whose edges and vertices to lay out
+	 * @param normalizationFactor normalization factor for the optimal distance,
+	 *                            between 0 and 1.
+	 * @param boundsX             horizontal vertex bounds
+	 * @param boundsY             vertical vertex bounds
+	 * @return a GROUP PShape consisting of 2 children; child 0 is the linework
+	 *         (LINES) depicting edges and child 1 is the points (POINTS) depicting
+	 *         vertices. The bounds of the layout are anchored at (0, 0);
+	 * @since 1.2.1
+	 */
+	public static <V, E> PShape fromGraph(SimpleGraph<V, E> graph, double normalizationFactor, double boundsX, double boundsY) {
+		normalizationFactor = Math.min(Math.max(normalizationFactor, 0.001), 1);
+		LayoutAlgorithm2D<V, E> layout;
+		layout = new IndexedFRLayoutAlgorithm2D<>(50, 0.7, normalizationFactor, new Random(1337));
+		LayoutModel2D<V> model = new MapLayoutModel2D<>(new Box2D(boundsX, boundsY));
+		layout.layout(graph, model);
+
+		NeighborCache<V, E> cache = new NeighborCache<>(graph);
+		Set<PEdge> edges = new HashSet<>(graph.edgeSet().size());
+		Map<V, PVector> pointMap = new HashMap<>();
+		model.forEach(a -> {
+			Point2D point = a.getValue();
+			pointMap.put(a.getKey(), new PVector((float) point.getX(), (float) point.getY()));
+		});
+		pointMap.keySet().forEach(v -> cache.neighborsOf(v).forEach(n -> edges.add(new PEdge(pointMap.get(v), pointMap.get(n)))));
+
+		PShape lines = PGS.prepareLinesPShape(null, null, null);
+		edges.forEach(e -> {
+			lines.vertex(e.a.x, e.a.y);
+			lines.vertex(e.b.x, e.b.y);
+		});
+		lines.endShape();
+
+		PShape pointsS = toPointsPShape(pointMap.values());
+		pointsS.setStrokeWeight(10);
+
+		return flatten(lines, pointsS);
+	}
+
+	/**
 	 * Converts a mesh-like PShape into its undirected, unweighted dual-graph.
 	 * <p>
 	 * The output is a <i>dual graph</i> of the input; it has a vertex for each face
@@ -784,9 +845,10 @@ public final class PGS_Conversion implements PConstants {
 	 * @return a PATH PShape (either open linestring or closed polygon)
 	 * @see #fromPVector(PVector...)
 	 */
-	public static PShape fromPVector(List<PVector> vertices) {
+	public static PShape fromPVector(Collection<PVector> vertices) {
+		List<PVector> verticesList = new ArrayList<>(vertices);
 		boolean closed = false;
-		if (!vertices.isEmpty() && vertices.get(0).equals(vertices.get(vertices.size() - 1))) {
+		if (!vertices.isEmpty() && verticesList.get(0).equals(verticesList.get(vertices.size() - 1))) {
 			closed = true;
 		}
 
@@ -799,8 +861,8 @@ public final class PGS_Conversion implements PConstants {
 		shape.setStrokeWeight(2);
 
 		shape.beginShape();
-		for (int i = 0; i < vertices.size() - (closed ? 1 : 0); i++) {
-			PVector v = vertices.get(i);
+		for (int i = 0; i < verticesList.size() - (closed ? 1 : 0); i++) {
+			PVector v = verticesList.get(i);
 			shape.vertex(v.x, v.y);
 		}
 		shape.endShape(closed ? PConstants.CLOSE : PConstants.OPEN);
@@ -824,11 +886,23 @@ public final class PGS_Conversion implements PConstants {
 	 * input shapes as its children.
 	 * 
 	 * @since 1.2.0
+	 * @see #flatten(PShape...)
 	 */
 	public static PShape flatten(Collection<PShape> shapes) {
 		PShape group = new PShape(GROUP);
 		shapes.forEach(group::addChild);
 		return group;
+	}
+
+	/**
+	 * Flattens a collection of PShapes into a single GROUP PShape which has the
+	 * input shapes as its children.
+	 * 
+	 * @since 1.2.1
+	 * @see #flatten(Collection)
+	 */
+	public static PShape flatten(PShape... shapes) {
+		return flatten(Arrays.asList(shapes));
 	}
 
 	/**

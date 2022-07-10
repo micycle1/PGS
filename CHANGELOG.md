@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## **1.2.1** *(2022-xx-xx)*
 
 ### Added
+#### Classes
+* **`PGS_Hull`** — a dedicated class for convex and concave hulls of polygons and point sets.
+* **`PGS_SegmentSet`** — a class that generates random sets of <i>non-intersecting</i> line segments.
+
+#### Methods
 * `equalPartition()` to `PGS_Processing`. Partitions a shape into N approximately equal area polygons.
 * `trapezoidPartition()` to `PGS_Processing`. Partitions a shape into axis-aligned trazepoids.
 * `fromChildren()` to `PGS_Conversion`. Creates a single GROUP parent shape from a list of child shapes.
@@ -17,13 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `resizeByWidth()` and `resizeByHeight()` to `PGS_Transformation`. Resizes a shape to a given width/height, whilst resizing the height/width to maintain aspect ratio.
 * A new mesh-coloring algorithm: `GENETIC`, which finds a coloring via a genetic algorithm.
 * `toGraph()` to `PGS_Conversion`. Converts a shape to a (jGraphT) graph, representing its dual-graph (this method was previously private).
+* `fromGraph()` to `PGS_Conversion`. Converts a (jGraphT) graph to a shape, using a Force-Directed placement algorithm.
 * `sphericity()`, `elongation()` and `maximumInteriorAngle()` to `PGS_ShapePredicates`.
 * `findContainingShape()` to `PGS_ShapePredicates`. Finds the child shape in a GROUP shape that contains a query point.
 * `equalsExact()`, `equalsNorm()` and `equalsTopo()` to `PGS_ShapePredicates`. These methods test for equality between two shapes according to different criteria.
 * `createRectangularSpiral()` to `PGS_Construction`. Creates a rectangular-shaped spiral.
 * `largestEmptyCircle()` to `PGS_Optimisation`. Finds the largest empty circle in a set of obstacle geometries.
 * `hilbertSort()` to `PGS_PointSet`. Sorts a list of points according to their location on a Hilbert curve.
-* `tangentAngle()` to `PGS_Processing`. Finds the angle of the line tangent to a shape at a certain point on its perimeter.
+* `tangentAngle()` to `PGS_Processing`. Finds the angle a the line tangent to a shape at a certain point on its perimeter.
 * `variableBuffer()` to `PGS_Morphology`. Buffers a shape with a buffer whose distance varies along the shape's perimeter.
 * `toGraph()` and `toDualGraph()` to `PGS_Triangulation`. Converts a triangulation mesh to a (jGraphT) graph, representing either it directly, or its dual-graph.
 * `chordalAxis()` to `PGS_Contour`. Finds the chordal axis (a type of skeleton) of a shape.
@@ -31,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Added methods for Hilbert Curve, Sierpinski Carpet, Koch Snowflake and Sierpinski Tri-Curves to `PGS_Construction`.
 
 ### Changed
+* **NOTE**: Moved hull methods from `PGS_Processing` to `PGS_Hull`.
 * Renamed `partition()` to `convexPartition()`.
 * `PGS_Conversion.fromPShape()` (a major method used internally) now applies any shape affine transformations (such as `rotate()`, `scale()`, `translate()`) to the resulting geometry.
 * `earCutTriangulation(PShape)` now uses JTS' implementation which supports inputs with holes.
@@ -43,6 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Reimplemented `PGS_CirclePacking.maximumInstribedPack()`. New algorithm is perfectly accurate and is ~10x faster!
 * `PGS_Conversion.fromPVector()` now outputs an unclosed path shape if the input vertices are unclosed (rather than always treating the input as a closed polygon).
 * `PGS_Transformation.resize()` now resizes a shape with respect to its center.
+* `PGS_Morphology.smoothGaussian()` now supports polygons with holes.
 
 ### Fixed
 * NPE when shapes created with `createShape()` in the P2D renderer were passed to `fromPShape()` (#55).
@@ -54,10 +62,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## **1.2.0** *(2021-12-15)*
 
 ### Added
+#### Classes
 * **`PGS_PointSet`** — a class that generates sets of 2D points having a variety of different distributions and constraints.
 * **`PGS_Coloring`** — a class for intelligent coloring of meshes (or mesh-like shapes) such that no two adjacent faces have the same color, while minimising the number of colors used.
 * **`PGS_Tiling`** — a class for tiling, tessellation and subdivision of the plane using periodic or non-periodic geometric shapes.
 * **`PGS_Meshing`** - a class to host mesh generation methods (excluding triangulation).
+
+#### Methods
 * `toPointsPShape()` to `PGS_Conversion`. Generates a `POINTS` type PShape from a list of PVector points.
 * 3 additional method signatures (one  for each return type) for `delaunayTriangulation()` that accept a PShape only, returning a constrained triangulation.
 * `minimumBoundingTriangle()` to `PGS_Optimisation`. Computes the minimum-area bounding triangle that encloses a shape or point set.
