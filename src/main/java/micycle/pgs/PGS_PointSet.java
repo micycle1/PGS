@@ -12,7 +12,7 @@ import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.Well19937c;
 import org.tinspin.index.kdtree.KDTree;
 
-import micycle.pgs.commons.PoissonDistribution;
+import micycle.pgs.commons.PoissonDistributionJRUS;
 import processing.core.PVector;
 
 /**
@@ -391,8 +391,7 @@ public final class PGS_PointSet {
 	 * @see #poisson(double, double, double, double, double, long) seeded poisson()
 	 */
 	public static List<PVector> poisson(double xMin, double yMin, double xMax, double yMax, double minDist) {
-		final PoissonDistribution pd = new PoissonDistribution();
-		return pd.generate(xMin, yMin, xMax, yMax, minDist, 5);
+		return poisson(xMin, yMin, xMax, yMax, minDist, System.currentTimeMillis());
 	}
 
 	/**
@@ -415,8 +414,8 @@ public final class PGS_PointSet {
 	 * @see #poisson(double, double, double, double, double) non-seeded poisson()
 	 */
 	public static List<PVector> poisson(double xMin, double yMin, double xMax, double yMax, double minDist, long seed) {
-		final PoissonDistribution pd = new PoissonDistribution(seed);
-		return pd.generate(xMin, yMin, xMax, yMax, minDist, 5);
+		final PoissonDistributionJRUS pd = new PoissonDistributionJRUS(seed);
+		return pd.generate(xMin, yMin, xMax, yMax, minDist);
 	}
 
 	/**
