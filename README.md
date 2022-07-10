@@ -21,7 +21,7 @@ Library functionality is split over the following classes:
 * `PGS_Contour`
   * Methods that produce various contours from shapes: medial axes, straight skeletons, offset curves, etc.
 * `PGS_Conversion`
-  * Conversion between *Processing* PShapes and *JTS* Geometries 
+  * Conversion between *Processing* PShapes and *JTS* Geometries (amongst other formats)
 * `PGS_Meshing`
   * Mesh generation (excluding triangulation) from shapes
 * `PGS_Morphology`
