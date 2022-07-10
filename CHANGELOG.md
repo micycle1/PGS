@@ -51,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_Conversion.fromPVector()` now outputs an unclosed path shape if the input vertices are unclosed (rather than always treating the input as a closed polygon).
 * `PGS_Transformation.resize()` now resizes a shape with respect to its center.
 * `PGS_Morphology.smoothGaussian()` now supports polygons with holes.
+* Algorithm used by `PGS_PointSet.poisson()`. New algorithm is faster and produces better quality point set outputs.
 
 ### Fixed
 * NPE when shapes created with `createShape()` in the P2D renderer were passed to `fromPShape()` (#55).
@@ -110,7 +111,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `polygonizeLines()` now returns a `GROUP` PShape (where each face is a child shape), rather than `List<PShape>`.
 - Reduced buffer line simplification applied during `offsetCurvesOutwards()`  (outer-most lines are now noticeably more smooth).
 - `offsetCurvesOutward()` now supports multi polygons (GROUP PShapes).
-- Algorithm used by `PoissonDistribution`; poisson point outputs are now more densely packed and more regularly spaced.
+- Algorithm used by `PGS_PointSet.poisson()`; poisson point outputs are now more densely packed and more regularly spaced.
 - Triangulation methods now output `GROUP` PShapes, so individual triangles are more easily accessible.
 
 ### Fixed
