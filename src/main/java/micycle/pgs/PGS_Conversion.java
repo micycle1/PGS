@@ -3,6 +3,10 @@ package micycle.pgs;
 import static micycle.pgs.PGS.GEOM_FACTORY;
 import static micycle.pgs.PGS.coordFromPVector;
 import static micycle.pgs.color.RGB.decomposeclrRGB;
+import static processing.core.PConstants.GROUP;
+import static processing.core.PConstants.QUADRATIC_VERTEX;
+import static processing.core.PConstants.BEZIER_VERTEX;
+import static processing.core.PConstants.CURVE_VERTEX;
 
 import java.awt.Shape;
 import java.lang.reflect.Field;
@@ -67,7 +71,7 @@ import processing.core.PVector;
  * @author Michael Carleton
  *
  */
-public final class PGS_Conversion implements PConstants {
+public final class PGS_Conversion {
 
 	/** Approximate distance between successive sample points on bezier curves */
 	private static final float BEZIER_SAMPLE_DISTANCE = 2;
@@ -135,7 +139,7 @@ public final class PGS_Conversion implements PConstants {
 					shape.vertex((float) coords[i].x, (float) coords[i].y);
 				}
 				if (closed) { // closed vertex was skipped, so close the path
-					shape.endShape(CLOSE);
+					shape.endShape(PConstants.CLOSE);
 				} else {
 					// shape is more akin to an unconnected line: keep as PATH shape, but don't fill
 					// visually
@@ -167,7 +171,7 @@ public final class PGS_Conversion implements PConstants {
 					}
 					shape.endContour();
 				}
-				shape.endShape(CLOSE);
+				shape.endShape(PConstants.CLOSE);
 				break;
 			case Geometry.TYPENAME_POINT :
 			case Geometry.TYPENAME_MULTIPOINT :
@@ -484,7 +488,7 @@ public final class PGS_Conversion implements PConstants {
 	private static Polygon fromPrimitive(PShape shape) {
 		final GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
 		switch (shape.getKind()) {
-			case ELLIPSE :
+			case PConstants.ELLIPSE :
 				final double a = shape.getParam(2) / 2d;
 				final double b = shape.getParam(3) / 2d;
 				final double perimeter = Math.PI * (3 * (a + b) - Math.sqrt((3 * a + b) * (a + 3 * b)));
@@ -496,7 +500,7 @@ public final class PGS_Conversion implements PConstants {
 				shapeFactory.setWidth(a * 2);
 				shapeFactory.setHeight(b * 2);
 				return shapeFactory.createEllipse();
-			case TRIANGLE :
+			case PConstants.TRIANGLE :
 				Coordinate[] coords = new Coordinate[3 + 1];
 				Coordinate c1 = new Coordinate(shape.getParam(0), shape.getParam(1));
 				coords[0] = c1;
@@ -504,7 +508,7 @@ public final class PGS_Conversion implements PConstants {
 				coords[2] = new Coordinate(shape.getParam(4), shape.getParam(5));
 				coords[3] = c1.copy(); // close loop
 				return GEOM_FACTORY.createPolygon(coords);
-			case RECT :
+			case PConstants.RECT :
 				final float w = shape.getParam(2);
 				final float h = shape.getParam(3);
 				shapeFactory.setCentre(new Coordinate(shape.getParam(0) + w / 2, shape.getParam(1) + h / 2));
@@ -512,7 +516,7 @@ public final class PGS_Conversion implements PConstants {
 				shapeFactory.setWidth(w);
 				shapeFactory.setHeight(h);
 				return shapeFactory.createRectangle();
-			case QUAD :
+			case PConstants.QUAD :
 				coords = new Coordinate[4 + 1];
 				c1 = new Coordinate(shape.getParam(0), shape.getParam(1));
 				coords[0] = c1;
@@ -521,7 +525,7 @@ public final class PGS_Conversion implements PConstants {
 				coords[3] = new Coordinate(shape.getParam(6), shape.getParam(7));
 				coords[4] = c1.copy(); // close loop
 				return GEOM_FACTORY.createPolygon(coords);
-			case ARC :
+			case PConstants.ARC :
 				shapeFactory.setCentre(new Coordinate(shape.getParam(0), shape.getParam(1)));
 				shapeFactory.setWidth(shape.getParam(2));
 				shapeFactory.setHeight(shape.getParam(3));
@@ -529,12 +533,12 @@ public final class PGS_Conversion implements PConstants {
 				final double circumference = Math.PI * Math.max(shape.getParam(2), shape.getParam(3));
 				shapeFactory.setNumPoints((int) (circumference / BEZIER_SAMPLE_DISTANCE));
 				return shapeFactory.createArcPolygon(-Math.PI / 2 + shape.getParam(4), shape.getParam(5));
-			case LINE :
-			case POINT :
+			case PConstants.LINE :
+			case PConstants.POINT :
 				System.err.print("Non-polygon primitives are not supported.");
 				break;
-			case BOX :
-			case SPHERE :
+			case PConstants.BOX :
+			case PConstants.SPHERE :
 				System.err.print("3D primitives are not supported.");
 				break;
 			default :
@@ -552,10 +556,10 @@ public final class PGS_Conversion implements PConstants {
 	public static final PShape toPointsPShape(Collection<PVector> points) {
 		PShape shape = new PShape();
 		shape.setFamily(PShape.GEOMETRY);
-		shape.setStrokeCap(ROUND);
+		shape.setStrokeCap(PConstants.ROUND);
 		shape.setStroke(true);
 		shape.setStroke(micycle.pgs.color.RGB.WHITE);
-		shape.setStrokeWeight(2);
+		shape.setStrokeWeight(5);
 		shape.beginShape(PShape.POINTS);
 		points.forEach(p -> shape.vertex(p.x, p.y));
 		shape.endShape();
@@ -1096,7 +1100,7 @@ public final class PGS_Conversion implements PConstants {
 		for (int i = 0; i < vertexCodes.length; i++) {
 			final int vertexCode = vertexCodes[i];
 			switch (vertexCode) {
-				case VERTEX :
+				case PConstants.VERTEX :
 					groups.add(group);
 					break;
 
@@ -1115,7 +1119,7 @@ public final class PGS_Conversion implements PConstants {
 					groups.add(group);
 					break;
 
-				case BREAK :
+				case PConstants.BREAK :
 					// BREAK marks beginning/end of new contour, and should be proceeded by a VERTEX
 					if (i > 0) {
 						// In P2D, svg-loaded shapes begin with a break (so we don't want to increment)
@@ -1145,8 +1149,8 @@ public final class PGS_Conversion implements PConstants {
 		for (int i = 0; i < rawVertexCodes.length; i++) {
 			int vertexCode = rawVertexCodes[i];
 			switch (vertexCode) {
-				case VERTEX :
-					codes.add(VERTEX);
+				case PConstants.VERTEX :
+					codes.add(PConstants.VERTEX);
 					break;
 
 				case QUADRATIC_VERTEX :
@@ -1164,7 +1168,7 @@ public final class PGS_Conversion implements PConstants {
 					codes.add(CURVE_VERTEX);
 					break;
 
-				case BREAK :
+				case PConstants.BREAK :
 					break;
 
 				default :
