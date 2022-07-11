@@ -251,14 +251,12 @@ public final class PGS_Conversion {
 						final List<LineString> strings = new ArrayList<>();
 						for (int i = 0; i < flatChildren.size(); i++) {
 							final Geometry child = fromPShape(flatChildren.get(i));
-
 							if (child.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
 								polys.add((Polygon) child);
 							} else if (child.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
 								strings.add((LineString) child);
 							}
 						}
-
 						if (strings.size() > polys.size()) {
 							if (!polys.isEmpty()) {
 								System.err.println(
@@ -965,14 +963,16 @@ public final class PGS_Conversion {
 	 * disables stroke).
 	 * 
 	 * @param shape
+	 * @return 
 	 * @see #setAllStrokeColor(PShape, int, float)
 	 */
-	public static void setAllFillColor(PShape shape, int color) {
+	public static PShape setAllFillColor(PShape shape, int color) {
 		getChildren(shape).forEach(child -> {
 			child.setStroke(false);
 			child.setFill(true);
 			child.setFill(color);
 		});
+		return shape;
 	}
 
 	/**
@@ -981,12 +981,13 @@ public final class PGS_Conversion {
 	 * @param shape
 	 * @see {@link #setAllFillColor(PShape, int)}
 	 */
-	public static void setAllStrokeColor(PShape shape, int color, float strokeWeight) {
+	public static PShape setAllStrokeColor(PShape shape, int color, float strokeWeight) {
 		getChildren(shape).forEach(child -> {
 			child.setStroke(true);
 			child.setStroke(color);
 			child.setStrokeWeight(strokeWeight);
 		});
+		return shape;
 	}
 
 	/**
@@ -996,13 +997,15 @@ public final class PGS_Conversion {
 	 * and not the parent-most shape's fill color).
 	 * 
 	 * @param shape
+	 * @return 
 	 * @since 1.2.0
 	 */
-	public static void setAllStrokeToFillColor(PShape shape) {
+	public static PShape setAllStrokeToFillColor(PShape shape) {
 		getChildren(shape).forEach(child -> {
 			child.setStroke(true);
 			child.setStroke(PGS.getPShapeFillColor(child));
 		});
+		return shape;
 	}
 
 	/**
@@ -1010,9 +1013,11 @@ public final class PGS_Conversion {
 	 * the input shape.
 	 * 
 	 * @param shape
+	 * @return 
 	 */
-	public static void disableAllFill(PShape shape) {
+	public static PShape disableAllFill(PShape shape) {
 		getChildren(shape).forEach(child -> child.setFill(false));
+		return shape;
 	}
 
 	/**
@@ -1020,9 +1025,11 @@ public final class PGS_Conversion {
 	 * the input shape.
 	 * 
 	 * @param shape
+	 * @return 
 	 */
-	public static void disableAllStroke(PShape shape) {
+	public static PShape disableAllStroke(PShape shape) {
 		getChildren(shape).forEach(child -> child.setStroke(false));
+		return shape;
 	}
 
 	/**
@@ -1030,16 +1037,18 @@ public final class PGS_Conversion {
 	 * to the shape, <b>mutating</b> the shape. This can sometimes fix a visual
 	 * problem in Processing where narrow gaps can appear between otherwise flush
 	 * shapes.
+	 * @return 
 	 * 
 	 * @since 1.1.3
 	 */
-	public static void roundVertexCoords(PShape shape) {
+	public static PShape roundVertexCoords(PShape shape) {
 		getChildren(shape).forEach(c -> {
 			for (int i = 0; i < c.getVertexCount(); i++) {
 				final PVector v = c.getVertex(i);
 				c.setVertex(i, Math.round(v.x), Math.round(v.y));
 			}
 		});
+		return shape;
 	}
 
 	/**
