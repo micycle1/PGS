@@ -696,13 +696,15 @@ Much of the functionality (but by no means all) is demonstrated below:
 
 <table>
   <tr>
-    <td align="center" valign="center"><b>Random</td>
-    <td align="center" valign="center"><b></td>
-    <td align="center" valign="center"><b></td>
-    <td align="center" valign="center"><b></td>
+    <td align="center" valign="center" colspan="2"><b>Graph-matched</td>
+    <td align="center" valign="center"><b>Stochastic</td>
+    <td align="center" valign="center"><b>Noded</td>
   </tr>
   <tr>
-    <td valign="top" width="25%"><img src="resources/point_set/random.png"></td>
+    <td valign="top" width="25%"><img src="resources/segment_set/graphMatched1.png"></td>
+    <td valign="top" width="25%"><img src="resources/segment_set/graphMatched2.png"></td>
+    <td valign="top" width="25%"><img src="resources/segment_set/stochastic.gif"></td>
+    <td valign="top" width="25%"><img src="resources/segment_set/noded.gif"></td>
   </tr>
 </table>
 
