@@ -147,7 +147,7 @@ public class TangencyPack {
 		flowers = new HashMap<>();
 		radii = new Object2DoubleOpenHashMap<>(triangulation.getVertices().size());
 
-		SimpleGraph<Vertex, IQuadEdge> graph = PGS_Triangulation.toGraph(triangulation, true);
+		SimpleGraph<Vertex, IQuadEdge> graph = PGS_Triangulation.toTinfourGraph(triangulation);
 		NeighborCache<Vertex, IQuadEdge> neighbors = new NeighborCache<>(graph);
 
 		final PVector meanVertexPos = new PVector();
