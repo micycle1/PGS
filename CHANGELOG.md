@@ -53,6 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_Transformation.resize()` now resizes a shape with respect to its center.
 * `PGS_Morphology.smoothGaussian()` now supports polygons with holes.
 * Algorithm used by `PGS_PointSet.poisson()`. New algorithm is faster and produces better quality point set outputs.
+* Styling methods in `PGS_Conversion()` (such as `setAllFillColor()`) now return the a reference to input (rather than being `public void`) for the purposes of method chaining.
+* GROUP PShapes having different child types (paths and polygons for instance) are now fully preserved during PShape<->Geometry conversion.
 
 ### Fixed
 * NPE when shapes created with `createShape()` in the P2D renderer were passed to `fromPShape()` (#55).
@@ -96,7 +98,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 * Occasional out of bounds error with Poisson Distribution.
 * Error when constrained voronoiDiagram called with `GROUP` PShape input.
-* Removing duplicate vertices during PShape->JTS conversion would remove every vertex (not just the duplicated ones).
+* Removing duplicate vertices during PShape->Geometry conversion would remove every vertex (not just the duplicated ones).
 
 ### Removed
 - `PGS_Contour.straightSkeletonSolub()` (didn't meet robustness standards).

@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.jgrapht.alg.drawing.IndexedFRLayoutAlgorithm2D;
 import org.jgrapht.alg.drawing.LayoutAlgorithm2D;
@@ -129,7 +130,7 @@ public final class PGS_Conversion {
 				}
 				break;
 			case Geometry.TYPENAME_LINEARRING : // LinearRings are closed by definition
-			case Geometry.TYPENAME_LINESTRING :
+			case Geometry.TYPENAME_LINESTRING : // LineStrings may be open
 				final LineString l = (LineString) g;
 				final boolean closed = l.isClosed();
 				shape.setFamily(PShape.PATH);
@@ -152,7 +153,7 @@ public final class PGS_Conversion {
 				shape.setFamily(PShape.PATH);
 				shape.beginShape();
 
-				/**
+				/*
 				 * Outer and inner loops are iterated up to length-1 to skip the point that
 				 * closes the JTS shape (same as the first point).
 				 */
@@ -230,76 +231,25 @@ public final class PGS_Conversion {
 	 * @return a JTS Geometry equivalent to the input PShape
 	 */
 	public static Geometry fromPShape(PShape shape) {
+		Geometry g = GEOM_FACTORY.createEmpty(2);
 
-		Geometry g = null;
-
-		switchCase: {
-			switch (shape.getFamily()) {
-				case PConstants.GROUP :
-					final List<PShape> flatChildren = getChildren(shape);
-					if (flatChildren.isEmpty()) {
-						return GEOM_FACTORY.createEmpty(2);
-					}
-
-					// Mostly likely a lines-only children, but not necessarily.
-					if (flatChildren.stream().allMatch(c -> c.getFamily() == PShape.PATH && !c.isClosed() && c.getVertexCount() > 1)) {
-						/*
-						 * GROUP PShape may contain multiple shape types. If so, return a Multi___
-						 * collection of the most numerous shape type and discard the rest.
-						 */
-						final List<Polygon> polys = new ArrayList<>();
-						final List<LineString> strings = new ArrayList<>();
-						for (int i = 0; i < flatChildren.size(); i++) {
-							final Geometry child = fromPShape(flatChildren.get(i));
-							if (child.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
-								polys.add((Polygon) child);
-							} else if (child.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
-								strings.add((LineString) child);
-							}
-						}
-						if (strings.size() > polys.size()) {
-							if (!polys.isEmpty()) {
-								System.err.println(
-										"GROUP PShape contains both polygons and strings. Ignoring " + polys.size() + " polygons.");
-							}
-							g = GEOM_FACTORY.createMultiLineString(strings.toArray(new LineString[strings.size()]));
-							break switchCase;
-						} else {
-							if (!strings.isEmpty()) {
-								System.err.println(
-										"GROUP PShape contains both polygons and strings. Ignoring " + strings.size() + " linestrings.");
-							}
-							g = GEOM_FACTORY.createMultiPolygon(polys.toArray(new Polygon[polys.size()]));
-							break switchCase;
-						}
-					} else {
-						List<Polygon> children = new ArrayList<>();
-						for (int i = 0; i < flatChildren.size(); i++) {
-							Geometry child = fromPShape(flatChildren.get(i));
-							if (child.getGeometryType().equals(Geometry.TYPENAME_POLYGON)
-									|| child.getGeometryType().equals(Geometry.TYPENAME_LINEARRING)) {
-								children.add((Polygon) child);
-							}
-						}
-						/*
-						 * NOTE since 1.2.0 Multi Polygons are no longer flattened. Methods have varying
-						 * support for multipolygons.
-						 */
-						g = GEOM_FACTORY.createMultiPolygon(children.toArray(new Polygon[children.size()]));
-						break switchCase;
-					}
-				case PShape.GEOMETRY :
-				case PShape.PATH :
-					if (shape.getKind() == PConstants.POLYGON || shape.getKind() == PConstants.PATH || shape.getKind() == 0) {
-						g = fromVertices(shape);
-					} else {
-						g = fromCreateShape(shape); // special paths (e.g. POINTS, LINES, etc.)
-					}
-					break;
-				case PShape.PRIMITIVE :
-					g = fromPrimitive(shape);
-					break;
-			}
+		switch (shape.getFamily()) {
+			case PConstants.GROUP :
+				final List<PShape> flatChildren = getChildren(shape);
+				List<Geometry> geoChildren = flatChildren.stream().map(PGS_Conversion::fromPShape).collect(Collectors.toList());
+				g = GEOM_FACTORY.buildGeometry(geoChildren);
+				break;
+			case PShape.GEOMETRY :
+			case PShape.PATH :
+				if (shape.getKind() == PConstants.POLYGON || shape.getKind() == PConstants.PATH || shape.getKind() == 0) {
+					g = fromVertices(shape);
+				} else {
+					g = fromCreateShape(shape); // special paths (e.g. POINTS, LINES, etc.)
+				}
+				break;
+			case PShape.PRIMITIVE :
+				g = fromPrimitive(shape);
+				break;
 		}
 
 		if (PRESERVE_STYLE && g != null) {
@@ -319,7 +269,7 @@ public final class PGS_Conversion {
 					return t.transform(g);
 				}
 			}
-		} catch (IllegalArgumentException | IllegalAccessException e) {
+		} catch (Exception e) {
 		}
 
 		return g;
@@ -490,10 +440,10 @@ public final class PGS_Conversion {
 				final double a = shape.getParam(2) / 2d;
 				final double b = shape.getParam(3) / 2d;
 				final double perimeter = Math.PI * (3 * (a + b) - Math.sqrt((3 * a + b) * (a + 3 * b)));
-				if ((int) (perimeter / BEZIER_SAMPLE_DISTANCE) < 4) {
+				if ((int) Math.ceil(perimeter / BEZIER_SAMPLE_DISTANCE) < 4) {
 					return GEOM_FACTORY.createPolygon();
 				}
-				shapeFactory.setNumPoints((int) (perimeter / BEZIER_SAMPLE_DISTANCE));
+				shapeFactory.setNumPoints((int) Math.ceil(perimeter / BEZIER_SAMPLE_DISTANCE));
 				shapeFactory.setCentre(new Coordinate(shape.getParam(0), shape.getParam(1)));
 				shapeFactory.setWidth(a * 2);
 				shapeFactory.setHeight(b * 2);
@@ -529,7 +479,7 @@ public final class PGS_Conversion {
 				shapeFactory.setHeight(shape.getParam(3));
 				// circumference (if it was full circle)
 				final double circumference = Math.PI * Math.max(shape.getParam(2), shape.getParam(3));
-				shapeFactory.setNumPoints((int) (circumference / BEZIER_SAMPLE_DISTANCE));
+				shapeFactory.setNumPoints((int) Math.ceil(circumference / BEZIER_SAMPLE_DISTANCE));
 				return shapeFactory.createArcPolygon(-Math.PI / 2 + shape.getParam(4), shape.getParam(5));
 			case PConstants.LINE :
 			case PConstants.POINT :
@@ -963,7 +913,7 @@ public final class PGS_Conversion {
 	 * disables stroke).
 	 * 
 	 * @param shape
-	 * @return 
+	 * @return the input object (having now been mutated)
 	 * @see #setAllStrokeColor(PShape, int, float)
 	 */
 	public static PShape setAllFillColor(PShape shape, int color) {
@@ -979,6 +929,7 @@ public final class PGS_Conversion {
 	 * Sets the stroke color for the PShape and all of its children recursively.
 	 * 
 	 * @param shape
+	 * @return the input object (having now been mutated)
 	 * @see {@link #setAllFillColor(PShape, int)}
 	 */
 	public static PShape setAllStrokeColor(PShape shape, int color, float strokeWeight) {
@@ -997,7 +948,7 @@ public final class PGS_Conversion {
 	 * and not the parent-most shape's fill color).
 	 * 
 	 * @param shape
-	 * @return 
+	 * @return the input object (having now been mutated)
 	 * @since 1.2.0
 	 */
 	public static PShape setAllStrokeToFillColor(PShape shape) {
@@ -1013,7 +964,7 @@ public final class PGS_Conversion {
 	 * the input shape.
 	 * 
 	 * @param shape
-	 * @return 
+	 * @return the input object (having now been mutated)
 	 */
 	public static PShape disableAllFill(PShape shape) {
 		getChildren(shape).forEach(child -> child.setFill(false));
@@ -1025,7 +976,7 @@ public final class PGS_Conversion {
 	 * the input shape.
 	 * 
 	 * @param shape
-	 * @return 
+	 * @return the input object (having now been mutated)
 	 */
 	public static PShape disableAllStroke(PShape shape) {
 		getChildren(shape).forEach(child -> child.setStroke(false));
@@ -1037,8 +988,8 @@ public final class PGS_Conversion {
 	 * to the shape, <b>mutating</b> the shape. This can sometimes fix a visual
 	 * problem in Processing where narrow gaps can appear between otherwise flush
 	 * shapes.
-	 * @return 
 	 * 
+	 * @return the input object (having now been mutated)
 	 * @since 1.1.3
 	 */
 	public static PShape roundVertexCoords(PShape shape) {
