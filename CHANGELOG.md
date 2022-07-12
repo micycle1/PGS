@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `WKT` and `WKB` conversion methods to `PGS_Conversion`. Converts PShapes to and from their *Well-Known Text* / *Well-Known Binary* representation.
 * `toJava2D()` and `fromJava2D()` to `PGS_Conversion`. Converts PShapes to and from Java2D/java.awt shape objects.
 * `originScale()` to `PGS_Transformation`. Scales a shape relative to the origin (0, 0).
-* `resizeByWidth()` and `resizeByHeight()` to `PGS_Transformation`. Resizes a shape to a given width/height, whilst resizing the height/width to maintain aspect ratio.
+* `resizeByWidth()` and `resizeByHeight()` to `PGS_Transformation`. Resizes a shape to a given width/height, whilst resizing the height/width to maintain the original aspect ratio.
 * A new mesh-coloring algorithm: `GENETIC`, which finds a coloring via a genetic algorithm.
 * `toGraph()` to `PGS_Conversion`. Converts a shape to a (jGraphT) graph, representing its dual-graph (this method was previously private).
 * `fromGraph()` to `PGS_Conversion`. Converts a (jGraphT) graph to a shape, using a Force-Directed placement algorithm.
@@ -31,14 +31,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `hilbertSort()` to `PGS_PointSet`. Sorts a list of points according to their location on a Hilbert curve.
 * `tangentAngle()` to `PGS_Processing`. Finds the angle a the line tangent to a shape at a certain point on its perimeter.
 * `variableBuffer()` to `PGS_Morphology`. Buffers a shape with a buffer whose distance varies along the shape's perimeter.
-* `toGraph()` and `toDualGraph()` to `PGS_Triangulation`. Converts a triangulation mesh to a (jGraphT) graph, representing either it directly, or its dual-graph.
+* `toGraph()` and `toDualGraph()` to `PGS_Triangulation`. Converts a triangulation mesh to a direct, or dual, (jGraphT) graph representation.
 * `chordalAxis()` to `PGS_Contour`. Finds the chordal axis (a type of skeleton) of a shape.
 * `tangencyPack()` to `PGS_CirclePacking`. Generates a circle packing having a pattern of tangencies specified by a triangulation.
 * Added methods for Hilbert Curve, Sierpinski Carpet, Koch Snowflake and Sierpinski Tri-Curves to `PGS_Construction`.
 * Additional method signature for `PGS_PointSet.poisson()` that accepts a number defining the size of the point set.
+* `removeHiddenLines()` to `PGS_Processing`. Removes hidden lines from a set of overlapping/occluded polyons
 
 ### Changed
-* **NOTE**: Moved hull methods from `PGS_Processing` to `PGS_Hull`.
+* **NOTE**: Moved all hull methods from `PGS_Processing` to `PGS_Hull`.
 * Renamed `partition()` to `convexPartition()`.
 * `PGS_Conversion.fromPShape()` (a major method used internally) now applies any shape affine transformations (such as `rotate()`, `scale()`, `translate()`) to the resulting geometry.
 * `earCutTriangulation(PShape)` now uses JTS' implementation which supports inputs with holes.
@@ -52,8 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_Conversion.fromPVector()` now outputs an unclosed path shape if the input vertices are unclosed (rather than always treating the input as a closed polygon).
 * `PGS_Transformation.resize()` now resizes a shape with respect to its center.
 * `PGS_Morphology.smoothGaussian()` now supports polygons with holes.
-* Algorithm used by `PGS_PointSet.poisson()`. New algorithm is faster and produces better quality point set outputs.
-* Styling methods in `PGS_Conversion()` (such as `setAllFillColor()`) now return the a reference to input (rather than being `public void`) for the purposes of method chaining.
+* Reimplemented `PGS_PointSet.poisson()`. New algorithm is faster and produces better quality point set outputs.
+* Styling methods in `PGS_Conversion()` (such as `setAllFillColor()`) now return the a reference to input (rather than being `public void`), to help method chaining.
 * GROUP PShapes having different child types (paths and polygons for instance) are now fully preserved during PShape<->Geometry conversion.
 
 ### Fixed
@@ -152,7 +153,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## **1.1.0** *(2021-06-13)*
 
 ### Added
+#### Classes
 - **`PGS_CirclePacking`** — a class for circle packings of shapes, subject to varying constraints and patterns of tangencies
+
+#### Methods
 - `closestPointPair()` to `PGS_Optimisation`. Efficiently computes the **closest** pair of points in a set of points.
 - `farthestPointPair()` to `PGS_Optimisation`. Efficiently computes the **farthest** pair of points in a set of points.
 - `chaikinCut()` to `PGS_Morphology`. Smoothes shapes via iterated corner cuts.

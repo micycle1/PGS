@@ -22,6 +22,8 @@ Library functionality is split over the following classes:
   * Methods that produce various contours from shapes: medial axes, straight skeletons, offset curves, etc.
 * `PGS_Conversion`
   * Conversion between *Processing* PShapes and *JTS* Geometries (amongst other formats)
+* `PGS_Hull`
+  * Convex and concave hulls of polygons and point sets
 * `PGS_Meshing`
   * Mesh generation (excluding triangulation) from shapes
 * `PGS_Morphology`
@@ -31,7 +33,9 @@ Library functionality is split over the following classes:
 * `PGS_PointSet`
   * Generates sets of 2D points having a variety of different distributions and constraints
 * `PGS_Processing`
-  * Methods that process a shape in some way: compute hulls, partition, slice, etc. 
+  * Methods that process a shape in some way: compute hulls, partition, slice, etc.
+* `PGS_SegmentSet`
+  * Generates sets of random non-intersecting line segments
 * `PGS_ShapeBoolean`
   * Boolean set-operations for 2D shapes
 * `PGS_ShapePredicates`
@@ -297,6 +301,35 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 </table>
 
+## *Hull*
+
+<table>
+  <tr>
+    <td align="center" valign="center" colspan="3"><b>Concave Hull</td>
+    <td align="center" valign="center"><b>Convex Hull</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/morphology/concaveHull.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/concaveHullBFS.png"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/concaveHullDFS.png"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/convexHull.png"></td>
+  </tr>
+    <tr>
+    <td align="center" valign="center" colspan="3">Concave hull of point sets via breadth-first or depth-first approaches.</td>
+    <td align="center" valign="center"></td>
+  </tr>
+
+  <tr>
+    <td align="center" valign="center"><b>Snap Hull</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/morphology/snapHull.gif"></td>
+  </tr>
+  <tr>
+    <td align="center" valign="center">A convex hull with some level of shape-feature snapping.</td>
+  </tr>
+</table>
+
 ## *Geometry Processing*
 
 <table>
@@ -334,6 +367,7 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center">Subdivide (recursively) a shape into quadrants.</td>
     <td align="center" valign="center">Partition a shape into convex polygons.</td>
     <td align="center" valign="center">Partition a shape into N equal area polygons.</td>
+    <td align="center" valign="center"></td>
   </tr>
 
   <tr>
@@ -354,35 +388,20 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
-    <td align="center" valign="center" colspan="3"><b>Concave Hull</td>
-    <td align="center" valign="center"><b>Convex Hull</td>
-  </tr>
-  <tr>
-    <td valign="top" width="25%"><img src="resources/morphology/concaveHull.gif"></td>
-    <td valign="top" width="25%"><img src="resources/morphology/concaveHullBFS.png"></td>
-    <td valign="top" width="25%"><img src="resources/morphology/concaveHullDFS.png"></td>
-    <td valign="top" width="25%"><img src="resources/morphology/convexHull.png"></td>
-  </tr>
-    <tr>
-    <td align="center" valign="center" colspan="3">Concave hull of point sets via breadth-first or depth-first approaches.</td>
-    <td align="center" valign="center"></td>
-  </tr>
-
-  <tr>
-    <td align="center" valign="center"><b>Snap Hull</td>
     <td align="center" valign="center"><b>Shape Intersection</td>
     <td align="center" valign="center" colspan="2"><b>Polygonize Lines</td>
+    <td align="center" valign="center"><b>Remove Hidden Lines</td>
   </tr>
   <tr>
-    <td valign="top" width="25%"><img src="resources/morphology/snapHull.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/shapeIntersection.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/polygonizeLines2.png"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/polygonizeLines.png"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/hiddenLinesRemoval.gif"></td>
   </tr>
     <tr>
-      <td align="center" valign="center">A convex hull with some level of shape-feature snapping.</td>
       <td align="center" valign="center">Find all points of intersection between two shapes.</td>
       <td align="center" valign="center" colspan="2">Find the polygonal faces formed by a set of intersecting line segments.</td>
+      <td align="center" valign="center">Remove linework occulted by shapes (for pen plotting)</td>
   </tr>
     <tr>
     <td align="center" valign="center"><b>Densification</td>
@@ -670,6 +689,20 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/point_set/nRooksLDS.png"></td>
     <td valign="top" width="25%"><img src="resources/point_set/hilbertSort.gif"></td>
     <td valign="top" width="25%"><img src="resources/point_set/removeWithinDistance.gif"></td>
+  </tr>
+</table>
+
+## *Segment Sets*
+
+<table>
+  <tr>
+    <td align="center" valign="center"><b>Random</td>
+    <td align="center" valign="center"><b></td>
+    <td align="center" valign="center"><b></td>
+    <td align="center" valign="center"><b></td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/point_set/random.png"></td>
   </tr>
 </table>
 
