@@ -33,6 +33,7 @@ import org.tinfour.utils.TriangleCollector;
 import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.color.RGB;
 import micycle.pgs.commons.Nullable;
+import micycle.pgs.commons.PEdge;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -308,7 +309,7 @@ public final class PGS_Triangulation {
 		if (constrain) {
 			// If geom is a point set, constrain tin using its concave hull.
 			if (g.getGeometryType().equals(Geometry.TYPENAME_MULTIPOINT)) {
-				g = fromPShape(PGS_Processing.concaveHull2(PGS_Conversion.toPVector(shape), 0.3));
+				g = fromPShape(PGS_Hull.concaveHullBFS2(PGS_Conversion.toPVector(shape), 0.3));
 			}
 			List<IConstraint> constraints = new ArrayList<>();
 			for (int n = 0; n < g.getNumGeometries(); n++) {
@@ -438,22 +439,55 @@ public final class PGS_Triangulation {
 	 * Finds the graph equivalent to a triangulation. Graph vertices are
 	 * triangulation vertices; graph edges are triangulation edges.
 	 * <p>
-	 * The output is an undirected weighted graph; edge weights are their euclidean
-	 * length of their triangulation equivalent.
+	 * The output is an undirected weighted graph of Processing primitives; edge
+	 * weights are their euclidean length of their triangulation equivalent.
 	 * 
-	 * @param triangulation         triangulation mesh
-	 * @param includePerimeterEdges whether to include edges from the trianglation's
-	 *                              perimeter in the graph
+	 * @param triangulation triangulation mesh
 	 * @return
 	 * @since 1.2.1
+	 * @see #toTinfourGraph(IIncrementalTin)
 	 * @see #toDualGraph(IIncrementalTin)
 	 */
-	public static SimpleGraph<Vertex, IQuadEdge> toGraph(IIncrementalTin triangulation, boolean includePerimeterEdges) {
+	public static SimpleGraph<PVector, PEdge> toGraph(IIncrementalTin triangulation) {
+		final SimpleGraph<PVector, PEdge> graph = new SimpleWeightedGraph<>(PEdge.class);
+		final boolean notConstrained = triangulation.getConstraints().isEmpty();
+		triangulation.edges().forEach(e -> {
+			if (isEdgeOnPerimeter(e)) {
+				return; // skip to next triangle
+			}
+			if ((notConstrained || e.isConstrained())) {
+				final IQuadEdge base = e.getBaseReference();
+				PVector a = toPVector(base.getA());
+				PVector b = toPVector(base.getB());
+				PEdge edge = new PEdge(a, b);
+				graph.addVertex(a);
+				graph.addVertex(b);
+				graph.addEdge(a, b, edge);
+				graph.setEdgeWeight(edge, edge.length());
+			}
+		});
+		return graph;
+	}
+
+	/**
+	 * Finds the graph equivalent to a triangulation. Graph vertices are
+	 * triangulation vertices; graph edges are triangulation edges.
+	 * <p>
+	 * The output is an undirected weighted graph of Tinfour primtives; edge weights
+	 * are their euclidean length of their triangulation equivalent.
+	 * 
+	 * @param triangulation triangulation mesh
+	 * @return
+	 * @since 1.2.1
+	 * @see #toGraph(IIncrementalTin)
+	 * @see #toDualGraph(IIncrementalTin)
+	 */
+	public static SimpleGraph<Vertex, IQuadEdge> toTinfourGraph(IIncrementalTin triangulation) {
 		final SimpleGraph<Vertex, IQuadEdge> graph = new SimpleWeightedGraph<>(IQuadEdge.class);
 		final boolean notConstrained = triangulation.getConstraints().isEmpty();
 		triangulation.edges().forEach(e -> {
-			if (!includePerimeterEdges && isEdgeOnPerimeter(e)) {
-				return;
+			if (isEdgeOnPerimeter(e)) {
+				return; // skip to next triangle
 			}
 			if ((notConstrained || e.isConstrained())) {
 				final IQuadEdge base = e.getBaseReference();
@@ -475,7 +509,7 @@ public final class PGS_Triangulation {
 	 * @param triangulation triangulation mesh
 	 * @return
 	 * @since 1.2.1
-	 * @see #toGraph(IIncrementalTin, boolean)
+	 * @see #toTinfourGraph(IIncrementalTin)
 	 */
 	public static SimpleGraph<SimpleTriangle, DefaultEdge> toDualGraph(IIncrementalTin triangulation) {
 		final SimpleGraph<SimpleTriangle, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);

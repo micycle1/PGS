@@ -18,7 +18,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import org.geodelivery.jap.concavehull.SnapHull;
 import org.locationtech.jts.algorithm.Angle;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
@@ -46,7 +45,6 @@ import org.locationtech.jts.noding.SegmentStringUtil;
 import org.locationtech.jts.operation.overlayng.MultiOperationOverlayNG;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
-import org.locationtech.jts.operation.union.CascadedPolygonUnion;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.shape.random.RandomPointsInGridBuilder;
 import org.tinfour.common.IConstraint;
@@ -68,8 +66,6 @@ import micycle.trapmap.TrapMap;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
-import uk.osgb.algorithm.concavehull.ConcaveHull;
-import uk.osgb.algorithm.concavehull.TriCheckerChi;
 
 /**
  * Geometry Processing -- methods that process a shape in some way: compute
@@ -215,7 +211,7 @@ public final class PGS_Processing {
 		if (from > to) {
 			final Geometry l1 = l.extractLine(length * from, length);
 			final Geometry l2 = l.extractLine(0, length * to);
-			return toPShape(PGS.GEOM_FACTORY.createLineString(
+			return toPShape(GEOM_FACTORY.createLineString(
 					Stream.concat(Arrays.stream(l1.getCoordinates()), Arrays.stream(l2.getCoordinates())).toArray(Coordinate[]::new)));
 		}
 
@@ -581,7 +577,7 @@ public final class PGS_Processing {
 	}
 
 	private static Polygon removeSmallHoles(Polygon polygon, double areaThreshold) {
-		Polygon noHolePol = PGS.GEOM_FACTORY.createPolygon(polygon.getExteriorRing());
+		Polygon noHolePol = GEOM_FACTORY.createPolygon(polygon.getExteriorRing());
 		for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
 			final LinearRing hole = polygon.getInteriorRingN(i);
 			if (hole.getArea() < areaThreshold) {
@@ -623,145 +619,9 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Computes the convex hull of multiple shapes.
+	 * Splits a shape into 4 equal (as measured be envelope area) quadrants.
 	 * 
-	 * @param shapes
-	 * @return
-	 * @see #convexHull(PShape...)
-	 */
-	public static PShape convexHull(List<PShape> shapes) {
-		Collection<Polygon> polygons = new ArrayList<>();
-		shapes.forEach(s -> polygons.add((Polygon) fromPShape(s)));
-		return toPShape(CascadedPolygonUnion.union(polygons).convexHull());
-	}
-
-	/**
-	 * Computes the convex hull of multiple shapes.
-	 * 
-	 * @param shapes varArgs
-	 * @return
-	 * @see #convexHull(List)
-	 */
-	public static PShape convexHull(PShape... shapes) {
-		return convexHull(Arrays.asList(shapes));
-	}
-
-	public static PShape concaveHullJTS(List<PVector> points, double threshold) {
-//		Geometry g = fromPShape(PGS_Conversion.toPointsPShape(points));
-		Geometry g = prepareConcaveGeometry(points);
-		org.locationtech.jts.algorithm.hull.ConcaveHull concaveHull = new org.locationtech.jts.algorithm.hull.ConcaveHull(g);
-		concaveHull.setMaximumEdgeLength(threshold);
-//		concaveHull.setMaximumEdgeLengthRatio(threshold);
-		return toPShape(concaveHull.getHull());
-	}
-
-	/**
-	 * Computes the concave hull of a point set using a breadth-first method.
-	 * 
-	 * @param points
-	 * @param threshold euclidean distance threshold
-	 * @return
-	 * @since 1.1.0
-	 * @see #concaveHullDFS(List, double)
-	 * @see #concaveHull2(List, double)
-	 */
-	public static PShape concaveHullBFS(List<PVector> points, double threshold) {
-		ConcaveHull hull = new ConcaveHull(prepareConcaveGeometry(points));
-		return toPShape(hull.getConcaveHullBFS(new TriCheckerChi(threshold), false, false).get(0));
-	}
-
-	/**
-	 * Computes the concave hull of a point set using a depth-first method. In
-	 * contrast to the BFS method, the depth-first approach produces shapes that are
-	 * more contiguous/less branching and spiral-like.
-	 * 
-	 * @param points
-	 * @param threshold euclidean distance threshold
-	 * @return
-	 * @since 1.1.0
-	 * @see #concaveHullBFS(List, double)
-	 * @see #concaveHull2(List, double)
-	 */
-	public static PShape concaveHullDFS(List<PVector> points, double threshold) {
-		ConcaveHull hull = new ConcaveHull(prepareConcaveGeometry(points));
-		return toPShape(hull.getConcaveHullDFS(new TriCheckerChi(threshold)));
-	}
-
-	/**
-	 * Computes the concave hull of a point set using a different algorithm. This
-	 * approach has a more "organic" structure compared to other concaveBFS method.
-	 * 
-	 * @param points
-	 * @param threshold 0...1 (Normalized length parameter). Setting threshold=1
-	 *                  means that no edges will be removed from the Delaunay
-	 *                  triangulation, so the resulting polygon will be the convex
-	 *                  hull. Setting threshold=0 means that all edges that can be
-	 *                  removed subject to the regularity constraint will be removed
-	 *                  (however polygons that are eroded beyond the point where
-	 *                  they provide a desirable characterization of the shape).
-	 *                  Although the optimal parameter value varies for different
-	 *                  shapes and point distributions, values of between 0.05–0.2
-	 *                  typically produce optimal or near-optimal shape
-	 *                  characterization across a wide range of point distributions.
-	 * @return
-	 * @see #concaveHullBFS(List, double)
-	 */
-	public static PShape concaveHull2(List<PVector> points, double threshold) {
-
-		/*
-		 * (from https://doi.org/10.1016/j.patcog.2008.03.023) It is more convenient to
-		 * normalize the threshold parameter with respect to a particular set of points
-		 * P by using the maximum and minimum edge lengths of the Delaunay triangulation
-		 * of P. Increasing l beyond the maximum edge length of the Delaunay
-		 * triangulation cannot reduce the number of edges that will be removed (which
-		 * will be zero anyway). Decreasing l beyond the minimum edge length of the
-		 * Delaunay triangulation cannot increase the number of edges that will be
-		 * removed.
-		 */
-
-		org.geodelivery.jap.concavehull.ConcaveHull hull = new org.geodelivery.jap.concavehull.ConcaveHull(threshold);
-
-		return toPShape(hull.transform(prepareConcaveGeometry(points)));
-	}
-
-	/**
-	 * Prepares a multipoint geometry from a list of PVectors.
-	 */
-	private static Geometry prepareConcaveGeometry(List<PVector> points) {
-		final Coordinate[] coords;
-		if (!points.get(0).equals(points.get(points.size() - 1))) {
-			coords = new Coordinate[points.size() + 1];
-		} else { // already closed
-			coords = new Coordinate[points.size()];
-		}
-
-		for (int i = 0; i < coords.length; i++) {
-			if (i >= points.size()) {
-				coords[i] = new Coordinate(points.get(0).x, points.get(0).y); // close geometry
-			} else {
-				coords[i] = new Coordinate(points.get(i).x, points.get(i).y);
-			}
-		}
-
-		return PGS.GEOM_FACTORY.createMultiPointFromCoords(coords);
-	}
-
-	/**
-	 * Computes the "snap hull" for a shape, which is a convex hull that snaps to
-	 * the shape. Adjust segment factor to change between
-	 * 
-	 * @param shape
-	 * @param segmentFactor default = 4
-	 * @return
-	 */
-	public static PShape snapHull(PShape shape, double segmentFactor) {
-		return toPShape(SnapHull.snapHull(fromPShape(shape), segmentFactor));
-	}
-
-	/**
-	 * Splits a shape into 4 equal quadrants
-	 * 
-	 * @param shape
+	 * @param shape the shape to split
 	 * @return a GROUP PShape, where each child shape is some quadrant partition of
 	 *         the original shape
 	 * @see #split(PShape, int)
@@ -797,7 +657,7 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Splits a shape into 4^(1+recursions) rectangular partitions
+	 * Splits a shape into 4^(1+recursions) rectangular partitions.
 	 * 
 	 * @param shape
 	 * @param splitDepth
@@ -978,7 +838,7 @@ public final class PGS_Processing {
 		final Geometry poly = fromPShape(shape);
 		final PreparedGeometry cache = PreparedGeometryFactory.prepare(poly);
 		final LineSegment ls = new LineSegment(p1.x, p1.y, p2.x, p2.y);
-		final LineString line = ls.toGeometry(PGS.GEOM_FACTORY);
+		final LineString line = ls.toGeometry(GEOM_FACTORY);
 		final Geometry nodedLinework = poly.getBoundary().union(line);
 		final Geometry polys = polygonize(nodedLinework);
 
@@ -1003,8 +863,8 @@ public final class PGS_Processing {
 	}
 
 	private static Polygon toGeometry(Envelope envelope) {
-		return PGS.GEOM_FACTORY.createPolygon(
-				PGS.GEOM_FACTORY.createLinearRing(new Coordinate[] { new Coordinate(envelope.getMinX(), envelope.getMinY()),
+		return GEOM_FACTORY.createPolygon(
+				GEOM_FACTORY.createLinearRing(new Coordinate[] { new Coordinate(envelope.getMinX(), envelope.getMinY()),
 						new Coordinate(envelope.getMaxX(), envelope.getMinY()), new Coordinate(envelope.getMaxX(), envelope.getMaxY()),
 						new Coordinate(envelope.getMinX(), envelope.getMaxY()), new Coordinate(envelope.getMinX(), envelope.getMinY()) }),
 				null);
