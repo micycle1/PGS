@@ -2,6 +2,7 @@ package micycle.pgs;
 
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
+import static micycle.pgs.PGS.GEOM_FACTORY;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -9,9 +10,11 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.SplittableRandom;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -20,6 +23,7 @@ import org.locationtech.jts.algorithm.Angle;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.densify.Densifier;
+import org.locationtech.jts.dissolve.LineDissolver;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
@@ -39,6 +43,8 @@ import org.locationtech.jts.noding.SegmentIntersectionDetector;
 import org.locationtech.jts.noding.SegmentIntersector;
 import org.locationtech.jts.noding.SegmentString;
 import org.locationtech.jts.noding.SegmentStringUtil;
+import org.locationtech.jts.operation.overlayng.MultiOperationOverlayNG;
+import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.operation.union.CascadedPolygonUnion;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
@@ -502,6 +508,57 @@ public final class PGS_Processing {
 			}
 		}
 		return vertices;
+	}
+
+	/**
+	 * Removes hidden lines from a set of overlapping/occluded polyons, preserving
+	 * only line segments that are visible to a human, rather than a computer (to
+	 * use as input for a pen plotter, for example).
+	 * <p>
+	 * Any overlapping lines are also removed during the operation.
+	 * <p>
+	 * Order of shape layers is important: the method will consider the last child
+	 * shape of the input to be "on top" of all other shapes (as is the case
+	 * visually).
+	 * 
+	 * @param shape a GROUP shape consisting of lineal or polygonal child shapes
+	 * @return linework (LINES PShape)
+	 * @since 1.2.1
+	 */
+	public static PShape removeHiddenLines(PShape shape) {
+		if (shape.getChildCount() == 0) {
+			return shape;
+		}
+
+		List<PShape> layers = PGS_Conversion.getChildren(shape); // visual top last
+		Collections.reverse(layers); // visual top first
+		final List<Geometry> geometries = layers.stream().map(PGS_Conversion::fromPShape).collect(Collectors.toList());
+		Geometry union = geometries.get(0); // start of cascading union
+
+		List<Geometry> culledGeometries = new ArrayList<>(geometries.size());
+		Iterator<Geometry> i = geometries.iterator();
+		culledGeometries.add(i.next());
+
+		// for each shape, subtract the union of shapes visually above it
+		while (i.hasNext()) {
+			final Geometry layer = i.next();
+			Geometry occulted; // occulted version of layer
+
+			// occulted = OverlayNG.overlay(g, union, OverlayNG.DIFFERENCE);
+			// union = OverlayNG.overlay(g, union, OverlayNG.UNION);
+
+			MultiOperationOverlayNG overlay = new MultiOperationOverlayNG(layer, union);
+			occulted = overlay.getResult(OverlayNG.DIFFERENCE);
+			union = overlay.getResult(OverlayNG.UNION);
+
+			culledGeometries.add(occulted);
+		}
+
+		Geometry dissolved = LineDissolver.dissolve(GEOM_FACTORY.createGeometryCollection(culledGeometries.toArray(new Geometry[0])));
+		PShape out = toPShape(dissolved);
+		PGS_Conversion.setAllStrokeColor(out, RGB.setAlpha(RGB.PINK, 128), 8);
+
+		return out;
 	}
 
 	/**
