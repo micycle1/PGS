@@ -11,6 +11,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Set;
+
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -24,6 +26,8 @@ import org.locationtech.jts.noding.Noder;
 import org.locationtech.jts.noding.SegmentString;
 import org.locationtech.jts.noding.snap.SnappingNoder;
 import org.locationtech.jts.operation.linemerge.LineMerger;
+import org.locationtech.jts.operation.polygonize.Polygonizer;
+
 import micycle.pgs.color.RGB;
 import micycle.pgs.commons.FastPolygonizer;
 import micycle.pgs.commons.Nullable;
@@ -53,9 +57,9 @@ final class PGS {
 	 * Create a LINES PShape, ready for vertices (shape.vertex(x, y) calls).
 	 * 
 	 * @param strokeColor  nullable (default = {@link RGB#PINK})
-	 * @param strokeCap    nullable (default = ROUND)
-	 * @param strokeWeight nullable (default = 2)
-	 * @return
+	 * @param strokeCap    nullable (default = <code>ROUND</code>)
+	 * @param strokeWeight nullable (default = <code>2</code>)
+	 * @return LINES PShape ready for vertex calls
 	 */
 	static final PShape prepareLinesPShape(@Nullable Integer strokeColor, @Nullable Integer strokeCap, @Nullable Integer strokeWeight) {
 		if (strokeColor == null) {
@@ -195,21 +199,24 @@ final class PGS {
 	/**
 	 * Polygonizes a set of edges.
 	 * 
-	 * @param edges a collection of <b>NODED</b> edges.
-	 * @return
+	 * @param edges a collection of NODED (i.e. non intersecting / must onlymeet at
+	 *              their endpoints) edges. The collection can containduplicates.
+	 * @return a GROUP PShape, where each child shape represents a polygon face
+	 *         formed by the given edges
 	 */
 	static final PShape polygonizeEdges(Collection<PEdge> edges) {
 		return FastPolygonizer.polygonize(edges);
 	}
 
 	/**
-	 * Polygonizes a set of line segments via noding.
+	 * Nodes (optional) then polygonizes a set of line segments.
 	 * 
 	 * @param segments list of segments (noded or non-noded)
 	 * @param node     whether to node the segments before polygonization. If the
 	 *                 segments constitute a conforming mesh, then set this as
 	 *                 false; otherwise true.
-	 * @return
+	 * @return a GROUP PShape, where each child shape represents a polygon face
+	 *         formed by the given edges
 	 */
 	static final PShape polygonizeSegments(Collection<SegmentString> segments, boolean node) {
 		if (node) {
@@ -223,6 +230,33 @@ final class PGS {
 		});
 		Collections.shuffle((List<?>) meshEdges);
 		return polygonizeEdges(meshEdges);
+	}
+
+	/**
+	 * Polygonizes a set of edges using JTS Polygonizer (occasionally
+	 * FastPolygonizer is not robust enough).
+	 * 
+	 * @param edges a collection of NODED (i.e. non intersecting / must onlymeet at
+	 *              their endpoints) edges. The collection can containduplicates.
+	 * @return a GROUP PShape, where each child shape represents a polygon face
+	 *         formed by the given edges
+	 */
+	@SuppressWarnings("unchecked")
+	static final PShape polygonizeEdgesRobust(Collection<PEdge> edges) {
+		final Set<PEdge> edgeSet = new HashSet<>(edges);
+		final Polygonizer polygonizer = new Polygonizer();
+		polygonizer.setCheckRingsValid(false);
+		edgeSet.forEach(ss -> {
+			/*
+			 * If the same LineString is added more than once to the polygonizer, the string
+			 * is "collapsed" and not counted as an edge. Therefore a set is used to ensure
+			 * strings are added once only to the polygonizer. A PEdge is used to determine
+			 * this (since LineString hashcode doesn't work).
+			 */
+			final LineString l = createLineString(ss.a, ss.b);
+			polygonizer.add(l);
+		});
+		return PGS_Conversion.toPShape(polygonizer.getPolygons());
 	}
 
 	/**
@@ -273,7 +307,7 @@ final class PGS {
 	 *         default!
 	 */
 	static List<PVector> fromEdges(Collection<PEdge> edges) {
-		// same as org.locationtech.jts.operation.linemerge.LineSequencer ?
+		// NOTE same as org.locationtech.jts.operation.linemerge.LineSequencer ?
 		final HashMap<PVector, HashSet<PEdge>> vertexEdges = new HashMap<>(); // map of vertex to the 2 edges that share it
 
 		/*

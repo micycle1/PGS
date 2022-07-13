@@ -10,17 +10,20 @@ import java.util.stream.IntStream;
 
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.Well19937c;
+import org.jgrapht.alg.interfaces.SpanningTreeAlgorithm;
+import org.jgrapht.alg.spanning.PrimMinimumSpanningTree;
+import org.jgrapht.graph.SimpleGraph;
+import org.tinfour.common.IIncrementalTin;
 import org.tinspin.index.kdtree.KDTree;
 
+import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.PoissonDistributionJRUS;
+import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Generates sets of 2D points having a variety of different distributions and
- * constraints.
- * <p>
- * The inclusion of this class within PGS is mainly to serve other methods that
- * take in list of points (such as triangulation).
+ * Generation of random sets of 2D points having a variety of different
+ * distributions and constraints (and associated functions).
  * 
  * @author Michael Carleton
  * @since 1.2.0
@@ -65,8 +68,8 @@ public final class PGS_PointSet {
 	 * 
 	 * @param points list of points to sort. a list requires at least 24 points to
 	 *               be sorted.
-	 * @return a sorted copy of the input list, having a different order according
-	 *         to points' Hilbert ranking
+	 * @return a sorted <b>copy</b> of the input list, having a different order
+	 *         according to points' Hilbert ranking
 	 * @since 1.2.1
 	 */
 	public static List<PVector> hilbertSort(List<PVector> points) {
@@ -419,18 +422,24 @@ public final class PGS_PointSet {
 	}
 
 	/**
-	 * Generates a poisson point set having N points.
+	 * Generates a poisson point set having N points constrained within a
+	 * rectangular region.
+	 * <p>
+	 * Poisson-disc sampling produces points that are tightly-packed, but no closer
+	 * to each other than a specified minimum distance, resulting in a more natural
+	 * and desirable pattern for many applications. This distribution is also
+	 * described as blue noise.
 	 * 
 	 * @param xMin x-coordinate of boundary minimum
 	 * @param yMin y-coordinate of boundary minimum
 	 * @param xMax x-coordinate of boundary maximum
 	 * @param yMax y-coordinate of boundary maximum
-	 * @param n target size of poisson point set
+	 * @param n    target size of poisson point set
 	 * @param seed number used to initialize the underlying pseudorandom number
 	 *             generator
 	 * @return
 	 */
-	public static List<PVector> poisson(double xMin, double yMin, double xMax, double yMax, int n, long seed) {
+	public static List<PVector> poissonN(double xMin, double yMin, double xMax, double yMax, int n, long seed) {
 		final PoissonDistributionJRUS pd = new PoissonDistributionJRUS(seed);
 		return pd.generate(xMin, yMin, xMax, yMax, n);
 	}
@@ -719,6 +728,29 @@ public final class PGS_PointSet {
 		}
 
 		return points;
+	}
+
+	/**
+	 * Computes the <i>Euclidean minimum spanning tree</i> (EMST) of a set of
+	 * points.
+	 * <p>
+	 * The EMST is a system of line segments, having only the given points as their
+	 * endpoints, whose union includes all of the points in a connected set, and
+	 * which has the minimum possible total length of any such system.
+	 * 
+	 * @param points the set of points over which to compute the EMST
+	 * @return a LINES PShape
+	 * @since 1.2.1
+	 */
+	public static PShape minimumSpanningTree(List<PVector> points) {
+		/*
+		 * The Euclidean minimum spanning tree in a plane is a subgraph of the Delaunay
+		 * triangulation.
+		 */
+		IIncrementalTin triangulation = PGS_Triangulation.delaunayTriangulationMesh(points);
+		SimpleGraph<PVector, PEdge> graph = PGS_Triangulation.toGraph(triangulation);
+		SpanningTreeAlgorithm<PEdge> st = new PrimMinimumSpanningTree<>(graph); // faster than kruskal algorithm
+		return PGS_SegmentSet.toPShape(st.getSpanningTree().getEdges());
 	}
 
 	/**

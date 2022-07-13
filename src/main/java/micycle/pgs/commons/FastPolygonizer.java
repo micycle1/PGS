@@ -149,7 +149,7 @@ public class FastPolygonizer {
 				final PShape polygon = new PShape(PShape.PATH);
 				polygon.setFill(true);
 				polygon.setStroke(true);
-				polygon.setStrokeWeight(3);
+				polygon.setStrokeWeight(4);
 				polygon.setStrokeCap(PConstants.ROUND);
 				polygon.setFill(RGB.WHITE);
 				polygon.setStroke(RGB.PINK);

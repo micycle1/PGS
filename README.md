@@ -457,16 +457,23 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center" colspan="2">Polygon faces of an <i>Urquhart Graph</i> (derived from a triangulation).</td>
     <td align="center" valign="center">Polygon faces of a <i>Gabriel Graph</i> (derived from a triangulation).</td>
   </tr>
-
   <tr>
+    <td align="center" valign="center"><b>Relative Neighbour Faces</td>
+    <td align="center" valign="center"><b>Spanner Faces</td>
     <td align="center" valign="center"><b>Centroid Quadrangulation</td>
     <td align="center" valign="center"><b>Edge Collapse Quadrangulation</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/meshing/relativeNeighbour.png"></td>
+    <td valign="top" width="25%"><img src="resources/meshing/spanner.gif"></td>
+    <td valign="top" width="25%"><img src="resources/meshing/centroidQuadrangulation.png"></td>
+    <td valign="top" width="25%"><img src="resources/meshing/ecQuadrangulation.png"></td>
+  </tr>
+  <tr>
     <td align="center" valign="center"><b>Split Quadrangulation</td>
     <td align="center" valign="center"><b>Spiral Quadrangulation</td>
   </tr>
   <tr>
-    <td valign="top" width="25%"><img src="resources/meshing/centroidQuadrangulation.png"></td>
-    <td valign="top" width="25%"><img src="resources/meshing/ecQuadrangulation.png"></td>
     <td valign="top" width="25%"><img src="resources/meshing/quadrangulation.png"></td>
     <td valign="top" width="25%"><img src="resources/meshing/spiralQuadrangulation.gif"></td>
   </tr>
@@ -682,13 +689,15 @@ Much of the functionality (but by no means all) is demonstrated below:
 
   <tr>
     <td align="center" valign="center"><b>N-Rooks LDS</td>
-    <td align="center" valign="center"><b>Hilbert Sort</td>
     <td align="center" valign="center"><b>Distance Prune</td>
+    <td align="center" valign="center"><b>Hilbert Sort</td>
+    <td align="center" valign="center"><b>EMST</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/point_set/nRooksLDS.png"></td>
-    <td valign="top" width="25%"><img src="resources/point_set/hilbertSort.gif"></td>
     <td valign="top" width="25%"><img src="resources/point_set/removeWithinDistance.gif"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/hilbertSort.gif"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/emst.png"></td>
   </tr>
 </table>
 
