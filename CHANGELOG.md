@@ -35,8 +35,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `chordalAxis()` to `PGS_Contour`. Finds the chordal axis (a type of skeleton) of a shape.
 * `tangencyPack()` to `PGS_CirclePacking`. Generates a circle packing having a pattern of tangencies specified by a triangulation.
 * Added methods for Hilbert Curve, Sierpinski Carpet, Koch Snowflake and Sierpinski Tri-Curves to `PGS_Construction`.
-* Additional method signature for `PGS_PointSet.poisson()` that accepts a number defining the size of the point set.
-* `removeHiddenLines()` to `PGS_Processing`. Removes hidden lines from a set of overlapping/occluded polyons
+* `poissonN()` to `PGS_PointSet`. Produces as Poisson distribution having exactly N points.
+* `removeHiddenLines()` to `PGS_Processing`. Removes hidden lines from a set of overlapping/occluded polygons.
+* `relativeNeighborFaces()` to `PGS_Meshing`. Finds the relative neighbour faces of a triangulation.
+* `spannerFaces()` to `PGS_Meshing`. Finds the relative neighbour faces of a greedy sparse spanner of a triangulation.
+* `minimumSpanningTree()` to `PGS_PointSet`. Finds the Euclidean minimum spanning tree of a set of points.
 
 ### Changed
 * **NOTE**: Moved all hull methods from `PGS_Processing` to `PGS_Hull`.

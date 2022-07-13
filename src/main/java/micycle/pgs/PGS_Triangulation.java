@@ -452,10 +452,10 @@ public final class PGS_Triangulation {
 		final SimpleGraph<PVector, PEdge> graph = new SimpleWeightedGraph<>(PEdge.class);
 		final boolean notConstrained = triangulation.getConstraints().isEmpty();
 		triangulation.edges().forEach(e -> {
-			if (isEdgeOnPerimeter(e)) {
-				return; // skip to next triangle
-			}
-			if ((notConstrained || e.isConstrained())) {
+//			if (isEdgeOnPerimeter(e)) {
+//				return; // skip to next triangle
+//			}
+			if (notConstrained || e.isConstrainedRegionMember()) {
 				final IQuadEdge base = e.getBaseReference();
 				PVector a = toPVector(base.getA());
 				PVector b = toPVector(base.getB());
@@ -486,10 +486,10 @@ public final class PGS_Triangulation {
 		final SimpleGraph<Vertex, IQuadEdge> graph = new SimpleWeightedGraph<>(IQuadEdge.class);
 		final boolean notConstrained = triangulation.getConstraints().isEmpty();
 		triangulation.edges().forEach(e -> {
-			if (isEdgeOnPerimeter(e)) {
-				return; // skip to next triangle
-			}
-			if ((notConstrained || e.isConstrained())) {
+//			if (isEdgeOnPerimeter(e)) {
+//				return; // skip to next triangle
+//			}
+			if ((notConstrained || e.isConstrainedRegionMember())) {
 				final IQuadEdge base = e.getBaseReference();
 				graph.addVertex(base.getA());
 				graph.addVertex(base.getB());
@@ -547,6 +547,10 @@ public final class PGS_Triangulation {
 
 	static PVector toPVector(final Vertex v) {
 		return new PVector((float) v.getX(), (float) v.getY());
+	}
+	
+	static PEdge toPEdge(final IQuadEdge e) {
+		return new PEdge(toPVector(e.getA()), toPVector(e.getB()));
 	}
 
 	/**
