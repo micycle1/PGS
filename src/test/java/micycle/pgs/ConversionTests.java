@@ -19,6 +19,7 @@ import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.PrecisionModel;
 
 import micycle.pgs.color.RGB;
+import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -68,7 +69,7 @@ class ConversionTests {
 		assertEquals(1, p.getNumInteriorRing());
 		assertEquals(shape.getVertexCount() + 2, g.getNumPoints());
 	}
-	
+
 	@Test
 	void testFromPShapeAffine() {
 		final PShape shape = new PShape(PShape.GEOMETRY);
@@ -77,7 +78,7 @@ class ConversionTests {
 		shape.vertex(10, 0);
 		shape.vertex(0, 10);
 		shape.endShape(PShape.CLOSE); // close affects rendering only -- does not append another vertex
-		
+
 		// apply affine transformations to shape
 		shape.translate(100, 100);
 		shape.scale(1.2f, 0.6f);
@@ -208,6 +209,42 @@ class ConversionTests {
 	}
 
 	@Test
+	void testToFromGeometryCollection() {
+		final PShape path = new PShape(PShape.PATH);
+		path.beginShape();
+		path.vertex(0, 0);
+		path.vertex(10, 0);
+		path.vertex(0, 10);
+		path.vertex(10, 10);
+		path.endShape(); // unclosed
+
+		final PShape polygon = new PShape(PShape.GEOMETRY);
+		polygon.beginShape();
+		polygon.vertex(0, 0);
+		polygon.vertex(10, 0);
+		polygon.vertex(0, 10);
+		polygon.endShape(PShape.CLOSE);
+
+		final PShape group = new PShape(PShape.GROUP);
+		group.addChild(path);
+		group.addChild(polygon);
+
+		// to
+		Geometry g = fromPShape(group);
+		assertEquals(Geometry.TYPENAME_GEOMETRYCOLLECTION, g.getGeometryType());
+		assertEquals(2, g.getNumGeometries());
+		assertEquals(Geometry.TYPENAME_LINESTRING, g.getGeometryN(0).getGeometryType());
+		assertEquals(Geometry.TYPENAME_POLYGON, g.getGeometryN(1).getGeometryType());
+
+		// from
+		PShape fromCollection = toPShape(g);
+		assertEquals(PConstants.GROUP, fromCollection.getFamily());
+		assertEquals(2, fromCollection.getChildCount());
+		assertTrue(PGS_ShapePredicates.equalsNorm(fromCollection.getChild(0), path));
+		assertTrue(PGS_ShapePredicates.equalsNorm(fromCollection.getChild(1), polygon));
+	}
+
+	@Test
 	void testMultiLinestringToPaths() {
 		Coordinate c1 = new Coordinate(0, 0);
 		Coordinate c2 = new Coordinate(10, 0);
@@ -313,7 +350,7 @@ class ConversionTests {
 		assertEquals(shape.getVertex(8), processed.getVertex(4));
 		assertEquals(5, processed.getVertexCount());
 	}
-	
+
 	@Test
 	void testStylePreserved() {
 		PGS_Conversion.PRESERVE_STYLE = true;
@@ -323,17 +360,17 @@ class ConversionTests {
 		shape.vertex(10, 0);
 		shape.vertex(0, 10);
 		shape.endShape(PShape.CLOSE);
-		
+
 		int col = RGB.composeColor(50, 125, 175);
 		shape.setFill(col);
 		shape.setStrokeWeight(11.11f);
 		shape.setStroke(col);
-		
+
 		PShape processed = toPShape(fromPShape(shape));
 		assertEquals(col, PGS.getPShapeFillColor(processed));
 		assertEquals(col, PGS.getPShapeStrokeColor(processed));
 		assertEquals(11.11f, PGS.getPShapeStrokeWeight(processed));
-		
+
 		final PShape path = new PShape(PShape.PATH);
 		path.beginShape();
 		path.vertex(0, 0);
@@ -341,17 +378,17 @@ class ConversionTests {
 		path.vertex(0, 10);
 		path.vertex(10, 10);
 		path.endShape(); // unclosed
-		
+
 		path.setFill(col);
 		path.setStrokeWeight(8f);
 		path.setStroke(col);
-		
+
 		processed = toPShape(fromPShape(path));
 		assertEquals(col, PGS.getPShapeFillColor(processed));
 		assertEquals(col, PGS.getPShapeStrokeColor(processed));
 		assertEquals(8f, PGS.getPShapeStrokeWeight(processed));
 	}
-	
+
 	@Test
 	void testWKTIO() {
 		final PShape shape = new PShape(PShape.GEOMETRY);
@@ -360,13 +397,13 @@ class ConversionTests {
 		shape.vertex(10, 0);
 		shape.vertex(0, 10);
 		shape.endShape(PShape.CLOSE);
-		
+
 		String wkt = PGS_Conversion.toWKT(shape);
 		PShape in = PGS_Conversion.fromWKT(wkt);
-		
+
 		assertTrue(PGS_ShapePredicates.equalsNorm(shape, in));
 	}
-	
+
 	@Test
 	void testWKBIO() {
 		final PShape shape = new PShape(PShape.GEOMETRY);
@@ -375,13 +412,13 @@ class ConversionTests {
 		shape.vertex(10, 0);
 		shape.vertex(0, 10);
 		shape.endShape(PShape.CLOSE);
-		
+
 		byte[] wkb = PGS_Conversion.toWKB(shape);
 		PShape in = PGS_Conversion.fromWKB(wkb);
-		
+
 		assertTrue(PGS_ShapePredicates.equalsNorm(shape, in));
 	}
-	
+
 	@Test
 	void testHexWKBIO() {
 		final PShape shape = new PShape(PShape.GEOMETRY);
@@ -390,13 +427,13 @@ class ConversionTests {
 		shape.vertex(10, 0);
 		shape.vertex(0, 10);
 		shape.endShape(PShape.CLOSE);
-		
+
 		String hex = PGS_Conversion.toHexWKB(shape);
 		PShape in = PGS_Conversion.fromHexWKB(hex);
-		
+
 		assertTrue(PGS_ShapePredicates.equalsNorm(shape, in));
 	}
-	
+
 	void testJava2DIO() {
 		final PShape shape = new PShape(PShape.GEOMETRY);
 		shape.beginShape();
@@ -404,10 +441,10 @@ class ConversionTests {
 		shape.vertex(10, 0);
 		shape.vertex(33, 10);
 		shape.endShape(PShape.CLOSE);
-		
+
 		Shape s = PGS_Conversion.toJava2D(shape);
 		PShape in = PGS_Conversion.fromJava2D(s);
-		
+
 		assertTrue(PGS_ShapePredicates.equalsNorm(shape, in));
 	}
 
