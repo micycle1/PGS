@@ -4,8 +4,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.jgrapht.alg.interfaces.VertexColoringAlgorithm.Coloring;
+import org.jgrapht.alg.spanning.GreedyMultiplicativeSpanner;
+import org.jgrapht.alg.util.NeighborCache;
 import org.jgrapht.graph.AbstractBaseGraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
@@ -58,6 +62,10 @@ public class PGS_Meshing {
 	 * using
 	 * {@link PGS_Triangulation#delaunayTriangulationMesh(PShape, Collection, boolean, int, boolean)
 	 * delaunayTriangulationMesh()} first and then feed it to this method.
+	 * <p>
+	 * The <i>Urquhart graph</i> is a good approximation to the
+	 * {@link #relativeNeighborFaces(IIncrementalTin, boolean) <i>relative
+	 * neighborhood</i>} graph (having only about 2% additional edges).
 	 * 
 	 * @param triangulation     a triangulation mesh
 	 * @param preservePerimeter whether to retain/preserve edges on the perimeter
@@ -157,6 +165,96 @@ public class PGS_Meshing {
 		edges.forEach(edge -> meshEdges.add(new PEdge(edge.getA().x, edge.getA().y, edge.getB().x, edge.getB().y)));
 
 		return PGS.polygonizeEdges(meshEdges);
+	}
+
+	/**
+	 * Generates a shape consisting of polygonal faces of a <i>Relative neighborhood
+	 * graph</i> (RNG).
+	 * <p>
+	 * An RNG is obtained by removing each edge E from a triangulation if any vertex
+	 * is nearer to both vertices of E than the length of E.
+	 * <p>
+	 * The RNG is a subgraph of the {@link #urquhartFaces(IIncrementalTin, boolean)
+	 * urquhart} graph, having only slightly fewer edges.
+	 * 
+	 * @param triangulation     a triangulation mesh
+	 * @param preservePerimeter whether to retain/preserve edges on the perimeter
+	 *                          even if they should be removed according to the
+	 *                          relative neighbor condition
+	 * @return
+	 * @since 1.2.1
+	 */
+	public static PShape relativeNeighborFaces(final IIncrementalTin triangulation, final boolean preservePerimeter) {
+		SimpleGraph<Vertex, IQuadEdge> graph = PGS_Triangulation.toTinfourGraph(triangulation);
+		NeighborCache<Vertex, IQuadEdge> cache = new NeighborCache<>(graph);
+
+		Set<IQuadEdge> edges = new HashSet<>(graph.edgeSet());
+
+		/*
+		 * If any vertex is nearer to both vertices of an edge, than the length of the
+		 * edge, this edge does not belong in the RNG.
+		 */
+		graph.edgeSet().forEach(e -> {
+			double l = e.getLength();
+			cache.neighborsOf(e.getA()).forEach(n -> {
+				if (Math.max(n.getDistance(e.getA()), n.getDistance(e.getB())) < l) {
+					if (!preservePerimeter || (preservePerimeter && !e.isConstrainedRegionBorder())) {
+						edges.remove(e);
+					}
+				}
+			});
+			cache.neighborsOf(e.getB()).forEach(n -> {
+				if (Math.max(n.getDistance(e.getA()), n.getDistance(e.getB())) < l) {
+					if (!preservePerimeter || (preservePerimeter && !e.isConstrainedRegionBorder())) {
+						edges.remove(e);
+					}
+				}
+			});
+		});
+
+		List<PEdge> edgesOut = edges.stream().map(PGS_Triangulation::toPEdge).collect(Collectors.toList());
+
+		if (preservePerimeter) {
+			return PGS.polygonizeEdgesRobust(edgesOut);
+		} else {
+			return PGS.polygonizeEdges(edgesOut);
+		}
+
+	}
+
+	/**
+	 * Generates a shape consisting of polygonal faces formed by edges returned by a
+	 * greedy sparse spanner applied to a triangulation.
+	 * 
+	 * @param triangulation     a triangulation mesh
+	 * @param k                 the order of the spanner. Should be at least 1.
+	 *                          Higher numbers collapse more edges resulting in
+	 *                          larger faces, until a single face remains
+	 * @param preservePerimeter whether to retain/preserve edges on the perimeter
+	 *                          even if they should be removed according to the
+	 *                          spanner condition
+	 * @return a GROUP PShape where each child shape is a single face
+	 * @since 1.2.1
+	 */
+	public static PShape spannerFaces(final IIncrementalTin triangulation, int k, final boolean preservePerimeter) {
+		SimpleGraph<PVector, PEdge> graph = PGS_Triangulation.toGraph(triangulation);
+		if (graph.edgeSet().isEmpty()) {
+			return new PShape();
+		}
+
+		k = Math.max(2, k); // min(2) since k=1 returns triangulation
+		GreedyMultiplicativeSpanner<PVector, PEdge> spanner = new GreedyMultiplicativeSpanner<>(graph, k);
+		List<PEdge> spannerEdges = spanner.getSpanner().stream().collect(Collectors.toList());
+		if (preservePerimeter) {
+			if (triangulation.getConstraints().isEmpty()) { // does not have constraints
+				spannerEdges.addAll(triangulation.getPerimeter().stream().map(PGS_Triangulation::toPEdge).collect(Collectors.toList()));
+			} else { // has constraints
+				spannerEdges.addAll(triangulation.getEdges().stream().filter(IQuadEdge::isConstrainedRegionBorder)
+						.map(PGS_Triangulation::toPEdge).collect(Collectors.toList()));
+			}
+		}
+
+		return PGS.polygonizeEdgesRobust(spannerEdges);
 	}
 
 	/**
@@ -317,8 +415,9 @@ public class PGS_Meshing {
 	}
 
 	/**
-	 * Generates a quadrangulation from a triangulation by joining triangle
-	 * centroids with those of their neighbours.
+	 * Generates a quadrangulation from a triangulation by "inverting" triangles
+	 * (for each triangle, create edges joining its centroid to each of its
+	 * vertices).
 	 * <p>
 	 * This approach tends to create a denser quad mesh than
 	 * {@link #edgeCollapseQuadrangulation(IIncrementalTin, boolean)
