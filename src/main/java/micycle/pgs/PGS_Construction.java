@@ -194,13 +194,13 @@ public class PGS_Construction {
 	/**
 	 * Creates a heart shape.
 	 * 
-	 * @param x     The x coordinate of the center of the heart
-	 * @param y     The y coordinate of the center of the heart
+	 * @param centerX     The x coordinate of the center of the heart
+	 * @param centerY     The y coordinate of the center of the heart
 	 * @param width Maximum width of the widest part of the heart
 	 * @return
 	 * @since 1.1.0
 	 */
-	public static PShape createHeart(final double x, final double y, final double width) {
+	public static PShape createHeart(final double centerX, final double centerY, final double width) {
 		// https://mathworld.wolfram.com/HeartCurve.html
 		PShape heart = new PShape(PShape.PATH);
 		heart.setFill(true);
@@ -215,7 +215,7 @@ public class PGS_Construction {
 			double vx = s * s * s;
 			double vy = 13 * Math.cos(angle) - 5 * Math.cos(2 * angle) - 2 * Math.cos(3 * angle) - Math.cos(4 * angle);
 			vy /= 17; // normalise to 1
-			heart.vertex((float) (x + vx * width / 2), (float) (y - vy * width / 2));
+			heart.vertex((float) (centerX + vx * width / 2), (float) (centerY - vy * width / 2));
 			angle += angleInc;
 		}
 

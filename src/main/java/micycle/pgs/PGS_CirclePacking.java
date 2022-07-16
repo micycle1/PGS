@@ -263,7 +263,6 @@ public final class PGS_CirclePacking {
 	/**
 	 * Generates a circle packing having a pattern of tangencies specified by a
 	 * triangulation.
-	 * 
 	 * <p>
 	 * This is an implementation of 'A circle packing algorithm' by Charles R.
 	 * Collins & Kenneth Stephenson.

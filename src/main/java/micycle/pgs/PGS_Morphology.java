@@ -140,6 +140,27 @@ public final class PGS_Morphology {
 	 * Minkowski addition a.k.a dilation
 	 * 
 	 * @return
+	/**
+	 * Computes a <i>Minkowski sum</i> (a.k.a dilation) of the two source shapes.
+	 * <p>
+	 * To instill you with intuition of what a Minkowski sum looks like, here are a
+	 * few examples:
+	 * <ul>
+	 * <li>The sum of any shape and a point is that shape translated by that point.
+	 * <li>The sum of any shape and two points is two translated (possibly
+	 * overlapping) copies of that shape.
+	 * <li>The sum of two circles is a larger circle (sum the radii) with its centre
+	 * at the sum of the centres of the smaller circles.
+	 * <li>The sum of any shape and a line is that shape swept through that line.
+	 * Think of placing your shape in sand, and dragging it along the line.
+	 * <li>Similarly, the sum of a shape and any curve is what you’d get by sweeping
+	 * the shape through the curve.
+	 * <li>The sum of two parallel lines is a longer line.
+	 * <li>For perpendicular lines, you get a square.</li>
+	 * </ul>
+	 * 
+	 * @return shape representing the Minkowski sum of source+addition
+	 * @see #minkDifference(PShape, PShape)
 	 */
 	public static PShape minkSum(PShape source, PShape addition) {
 		// produces handled errors with geometries that have straight lines (like a
@@ -194,8 +215,12 @@ public final class PGS_Morphology {
 			LineString[] rings = lri.getLinearRings();
 			LinearRing[] ringSmoothed = new LinearRing[rings.length];
 			for (int i = 0; i < rings.length; i++) {
-				ringSmoothed[i] = PGS.GEOM_FACTORY
-						.createLinearRing(GaussianLineSmoothing.get(rings[i], Math.max(sigma, 1), 1).getCoordinates());
+				Coordinate[] coords = GaussianLineSmoothing.get(rings[i], Math.max(sigma, 1), 1).getCoordinates();
+				if (coords.length > 2) {
+					ringSmoothed[i] = PGS.GEOM_FACTORY.createLinearRing(coords);
+				} else {
+					ringSmoothed[i] = PGS.GEOM_FACTORY.createLinearRing();
+				}
 			}
 
 			LinearRing[] holes = null;
