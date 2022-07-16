@@ -115,6 +115,8 @@ public final class PGS_Conversion {
 		shape.setStroke(true);
 		shape.setStroke(micycle.pgs.color.RGB.PINK);
 		shape.setStrokeWeight(4);
+		shape.setStrokeJoin(PConstants.ROUND);
+		shape.setStrokeCap(PConstants.ROUND);
 
 		switch (g.getGeometryType()) {
 			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
@@ -784,7 +786,11 @@ public final class PGS_Conversion {
 	 * @since 1.2.1
 	 */
 	public static PShape fromJava2D(Shape shape) {
-		return toPShape(ShapeReader.read(shape, BEZIER_SAMPLE_DISTANCE, GEOM_FACTORY));
+		if (shape != null) {
+			return toPShape(ShapeReader.read(shape, BEZIER_SAMPLE_DISTANCE, GEOM_FACTORY));
+		} else {
+			return new PShape();
+		}
 	}
 
 	/**
@@ -1026,8 +1032,13 @@ public final class PGS_Conversion {
 					method = PShape.class.getDeclaredMethod("copyPrimitive", PShape.class, PShape.class);
 					break;
 				case PShape.GEOMETRY :
-					copy.setFamily(PShape.GEOMETRY);
-					method = PShape.class.getDeclaredMethod("copyGeometry", PShape.class, PShape.class);
+					if (shape.getKind() == PConstants.POLYGON) { // kind = POLYGON by default
+						copy.setFamily(PShape.PATH);
+						method = PShape.class.getDeclaredMethod("copyPath", PShape.class, PShape.class);
+					} else {
+						copy.setFamily(PShape.GEOMETRY);
+						method = PShape.class.getDeclaredMethod("copyGeometry", PShape.class, PShape.class);
+					}
 					break;
 				case PShape.PATH :
 					copy.setFamily(PShape.PATH);

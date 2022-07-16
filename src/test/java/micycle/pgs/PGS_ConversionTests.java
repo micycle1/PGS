@@ -23,7 +23,7 @@ import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 
-class ConversionTests {
+class PGS_ConversionTests {
 
 	private static final GeometryFactory GEOM_FACTORY = new GeometryFactory(new PrecisionModel(PrecisionModel.FLOATING_SINGLE));
 
@@ -349,6 +349,20 @@ class ConversionTests {
 		assertEquals(shape.getVertex(6), processed.getVertex(3));
 		assertEquals(shape.getVertex(8), processed.getVertex(4));
 		assertEquals(5, processed.getVertexCount());
+	}
+	
+	@Test
+	void testCopy() {
+		PShape a = PGS_Construction.createSierpinskiCurve(0, 0, 10, 3);
+		PShape b = PGS_Construction.createHeart(0, 0, 10);
+		PShape group = PGS_Conversion.flatten(a, b);
+		
+		PShape copy = PGS_Conversion.copy(group);
+
+		assertTrue(PGS_ShapePredicates.equalsNorm(group, copy));
+		
+		copy.getChild(0).setVertex(0, -999,-999); // shouldn't change group
+		assertFalse(PGS_ShapePredicates.equalsNorm(group, copy));
 	}
 
 	@Test

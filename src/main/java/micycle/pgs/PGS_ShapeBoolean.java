@@ -33,6 +33,8 @@ public final class PGS_ShapeBoolean {
 	/**
 	 * Computes a shape representing the area which is common to both input shapes
 	 * (i.e. the shape formed by intersection of <code>a</code> and <code>b</code>).
+	 * <p>
+	 * Intersecting a polygon with a path will crop the path to the polygon.
 	 * 
 	 * @return A∩B
 	 */
@@ -80,8 +82,8 @@ public final class PGS_ShapeBoolean {
 	}
 
 	/**
-	 * Unions/flattens/merges/dissolves a mesh-like PShape (that is, a GROUP PShape whose
-	 * children represent faces that share edges) into a single shape that
+	 * Unions/flattens/merges/dissolves a mesh-like PShape (that is, a GROUP PShape
+	 * whose children represent faces that share edges) into a single shape that
 	 * represents the boundary of the mesh. This method is optimised for meshes, and
 	 * is accordingly much faster than unioning the mesh faces together using other
 	 * methods.
@@ -92,7 +94,7 @@ public final class PGS_ShapeBoolean {
 	 * @since 1.2.0
 	 */
 	public static PShape unionMesh(PShape mesh) {
-		// JTS SegmentExtractingNoder is an alternative option
+		// faster than JTS CoverageUnion
 		if (mesh.getChildCount() == 0 || mesh.getKind() != PConstants.GROUP) {
 			System.err.println("unionMesh Error: Input shape was not a GROUP shape, or had 0 children.");
 			return new PShape();
