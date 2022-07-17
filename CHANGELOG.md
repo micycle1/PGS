@@ -40,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `relativeNeighborFaces()` to `PGS_Meshing`. Finds the relative neighbour faces of a triangulation.
 * `spannerFaces()` to `PGS_Meshing`. Finds the relative neighbour faces of a greedy sparse spanner of a triangulation.
 * `minimumSpanningTree()` to `PGS_PointSet`. Finds the Euclidean minimum spanning tree of a set of points.
+* `repulsionPack()` to `PGS_CirclePacking`. Generates a circle packing of a shape via iterative pair-repulsion.
 
 ### Changed
 * **NOTE**: Moved all hull methods from `PGS_Processing` to `PGS_Hull`.

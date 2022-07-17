@@ -5,6 +5,7 @@ import static micycle.pgs.PGS_Conversion.fromPShape;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.SplittableRandom;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -16,6 +17,7 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
+import org.locationtech.jts.operation.distance.IndexedFacetDistance;
 import org.locationtech.jts.util.GeometricShapeFactory;
 import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.SimpleTriangle;
@@ -27,6 +29,7 @@ import org.tinspin.index.covertree.CoverTree;
 
 import micycle.pgs.commons.FrontChainPacker;
 import micycle.pgs.commons.MaximumInscribedCircles;
+import micycle.pgs.commons.RepulsionCirclePack;
 import micycle.pgs.commons.TangencyPack;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -88,7 +91,6 @@ public final class PGS_CirclePacking {
 	 * Generates a random circle packing of the input shape by generating random
 	 * points one-by-one and calculating the maximum radius a circle at each point
 	 * can have (such that it's tangent to its nearest circle or a shape vertex).
-	 * 
 	 * <p>
 	 * Notably, the {@code points} argument defines the number of random point
 	 * attempts (or circle attempts), and not the number of circles in the final
@@ -96,7 +98,6 @@ public final class PGS_CirclePacking {
 	 * whose nearest circle is less than minRadius distance away. In other words,
 	 * {@code points} defines the maximum number of circles the packing can have; in
 	 * practice, the packing will contain somewhat fewer circles.
-	 * 
 	 * <p>
 	 * Circles in this packing do not overlap and are contained entirely within the
 	 * shape. However, not every circle is necessarily tangent to other circles (in
@@ -283,6 +284,114 @@ public final class PGS_CirclePacking {
 	public static List<PVector> tangencyPack(IIncrementalTin triangulation, double[] boundaryRadii) {
 		TangencyPack pack = new TangencyPack(triangulation, boundaryRadii);
 		return pack.pack();
+	}
+
+	/**
+	 * Generates a random circle packing of circles with varying radii that overlap
+	 * the given shape.
+	 * <p>
+	 * Repulsion-packing involves iterative pair-repulsion, in which overlapping
+	 * circles move away from each other until there is no overlap. A packing is
+	 * first computed for the envelope of the shape, and then any circles which do
+	 * not overlap with the shape are discarded.
+	 * 
+	 * @param shape     the shape from which to generate a circle packing
+	 * @param radiusMin minimum radius of circles in the packing. the radii
+	 *                  parameters can be the same.
+	 * @param radiusMax maximum radius of circles in the packing. the radii
+	 *                  parameters can be the same.
+	 * @param seed      for initial circle positions and radii
+	 * @return A list of PVectors, each representing one circle: (.x, .y) represent
+	 *         the center point and .z represents radius.
+	 * @since 1.2.1
+	 * @see #repulsionPack(PShape, List)
+	 */
+	public static List<PVector> repulsionPack(PShape shape, double radiusMin, double radiusMax, long seed) {
+		final double rMinA = Math.max(1f, Math.min(radiusMin, radiusMax)); // actual min
+		final double rMaxA = Math.max(1f, Math.max(radiusMin, radiusMax)); // actual max
+		final Geometry g = fromPShape(shape);
+		final Envelope e = g.getEnvelopeInternal();
+
+		/*
+		 * We want spawn N circles, such that there are enough to (theoretically) cover
+		 * the envelope exactly without any overlap, assuming a packing efficiency of
+		 * ~85% (close to optimum).
+		 */
+		double totalArea = e.getArea() * 0.85;
+		/*
+		 * Average area is not a simple mean since circle area is quadratic with regards
+		 * to radius. The actual average area of circles with radii a...b is an integral
+		 * of: pi*r^2 dr from r=a to b.
+		 */
+		double avgCircleArea = ((rMaxA * rMaxA * rMaxA) - (rMinA * rMinA * rMinA));
+		avgCircleArea *= (Math.PI / (3 * (rMaxA - rMinA)));
+		int n = (int) (totalArea / avgCircleArea);
+
+		List<PVector> points = PGS_PointSet.poissonN(e.getMinX() + rMaxA, e.getMinY() + rMaxA, e.getMaxX() - rMaxA, e.getMaxY() - rMaxA, n,
+				seed);
+		SplittableRandom r = new SplittableRandom(seed);
+		points.forEach(p -> p.z = rMaxA == rMinA ? (float) rMaxA : (float) r.nextDouble(rMinA, rMaxA));
+
+		return repulsionPack(shape, points);
+	}
+
+	/**
+	 * Generates a circle packing of a shape using a given collection of
+	 * (overlapping) circles.
+	 * <p>
+	 * Circles in the input should be already bounded by the shape (since repulsion
+	 * does not push lonely circles towards the shape, but only repulses overlapping
+	 * circles); the intended input is one having circles with lots of overlap
+	 * (perhaps seeded within a small rectangle), where they may be repulsed from
+	 * each other to fill the shape.
+	 * <p>
+	 * Repulsion-packing involves iterative pair-repulsion, in which overlapping
+	 * circles move away from each other until there is no overlap. A packing is
+	 * first computed for the envelope of the shape, and then any circles which do
+	 * not overlap with the shape are discarded.
+	 * 
+	 * @param shape   the shape from which to generate a circle packing
+	 * @param circles the collection of circles to pack the shape with, specified as
+	 *                PVectors, where .z is the radius (>=1) for each circle
+	 * @return A list of PVectors, each representing one circle: (.x, .y) represent
+	 *         the center point and .z represents radius.
+	 * @since 1.2.1
+	 * @see #repulsionPack(PShape, double, double, long)
+	 */
+	public static List<PVector> repulsionPack(PShape shape, List<PVector> circles) {
+		final Geometry g = fromPShape(shape);
+		final Envelope e = g.getEnvelopeInternal();
+
+		float radiusMin = Float.MAX_VALUE;
+		float radiusMax = Float.MIN_VALUE;
+		for (PVector circle : circles) {
+			radiusMax = Math.max(1f, Math.max(radiusMax, circle.z));
+			radiusMin = Math.max(1f, Math.min(radiusMin, circle.z));
+		}
+
+		final RepulsionCirclePack packer = new RepulsionCirclePack(circles, e.getMinX() + radiusMin, e.getMaxX() - radiusMin,
+				e.getMinY() + radiusMin, e.getMaxY() - radiusMin, false);
+
+		final List<PVector> packing = packer.getPacking(); // packing result
+
+		IndexedPointInAreaLocator pointLocator;
+		if (radiusMin == radiusMax) {
+			// if every circle same radius, use faster contains check
+			pointLocator = new IndexedPointInAreaLocator(g.buffer(radiusMax));
+			packing.removeIf(p -> pointLocator.locate(PGS.coordFromPVector(p)) == Location.EXTERIOR);
+		} else {
+			pointLocator = new IndexedPointInAreaLocator(g);
+			IndexedFacetDistance distIndex = new IndexedFacetDistance(g);
+			packing.removeIf(p -> {
+				// first test whether shape contains circle center point (somewhat faster)
+				if (pointLocator.locate(PGS.coordFromPVector(p)) != Location.EXTERIOR) {
+					return false;
+				}
+				return distIndex.distance(PGS.pointFromPVector(p)) > p.z * 0.5;
+			});
+		}
+
+		return packing;
 	}
 
 	/**
