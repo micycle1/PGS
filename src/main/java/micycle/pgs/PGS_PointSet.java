@@ -10,6 +10,7 @@ import java.util.stream.IntStream;
 
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.Well19937c;
+import org.apache.commons.math3.util.Pair;
 import org.jgrapht.alg.interfaces.SpanningTreeAlgorithm;
 import org.jgrapht.alg.spanning.PrimMinimumSpanningTree;
 import org.jgrapht.graph.SimpleGraph;
@@ -63,31 +64,27 @@ public final class PGS_PointSet {
 	/**
 	 * Sorts a list of points according to the Hilbert space-filling curve to ensure
 	 * a high-degree of spatial locality in the sequence of points.
-	 * <p>
-	 * Note: this method mutates the z values of the PVectors.
 	 * 
 	 * @param points list of points to sort. a list requires at least 24 points to
 	 *               be sorted.
 	 * @return a sorted <b>copy</b> of the input list, having a different order
-	 *         according to points' Hilbert ranking
+	 *         according to points' Hilbert ranking of their (x, y) coordinate
 	 * @since 1.2.1
 	 */
 	public static List<PVector> hilbertSort(List<PVector> points) {
-		List<PVector> pointsNew = new ArrayList<>(points);
-
 		double xMin, xMax, yMin, yMax;
-		if (pointsNew.isEmpty()) {
+		if (points.isEmpty()) {
 			return points;
 		}
 
 		// find bounds
-		PVector v = pointsNew.get(0);
+		PVector v = points.get(0);
 		xMin = v.x;
 		xMax = v.x;
 		yMin = v.y;
 		yMax = v.y;
 
-		for (PVector PVector : pointsNew) {
+		for (PVector PVector : points) {
 			if (PVector.x < xMin) {
 				xMin = PVector.x;
 			} else if (PVector.x > xMax) {
@@ -105,27 +102,29 @@ public final class PGS_PointSet {
 		if (xDelta == 0 || yDelta == 0) {
 			return points;
 		}
-		if (pointsNew.size() < 24) {
+		if (points.size() < 24) {
 			return points;
 		}
 
-		double hn = Math.log(pointsNew.size()) / 0.693147180559945 / 2.0;
+		double hn = Math.log(points.size()) / 0.693147180559945 / 2.0;
 		int nHilbert = (int) Math.floor(hn + 0.5);
 		if (nHilbert < 4) {
 			nHilbert = 4;
 		}
 
-		// scale coordinates to 2^n - 1
+		// could also use SortedMap<index -> point> 
+		List<Pair<Integer, PVector>> ranks = new ArrayList<>(points.size());
 		double hScale = (1 << nHilbert) - 1.0;
-		for (PVector vh : pointsNew) {
+		// scale coordinates to 2^n - 1
+		for (PVector vh : points) {
 			int ix = (int) (hScale * (vh.x - xMin) / xDelta);
 			int iy = (int) (hScale * (vh.y - yMin) / yDelta);
-			vh.z = (xy2Hilbert(ix, iy, nHilbert));
+			ranks.add(new Pair<>(xy2Hilbert(ix, iy, nHilbert), vh));
 		}
 
-		Collections.sort(pointsNew, (o1, o2) -> Float.compare(o1.z, o2.z));
+		ranks.sort((a, b) -> Integer.compare(a.getFirst(), b.getFirst()));
 
-		return pointsNew;
+		return ranks.stream().map(Pair::getSecond).collect(Collectors.toList());
 	}
 
 	/**
