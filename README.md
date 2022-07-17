@@ -558,20 +558,23 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
+    <td align="center" valign="center" colspan="2"><b>Repulsion</td>
     <td align="center" valign="center" colspan="2"><b>Square Lattice</td>
-    <td align="center" valign="center" colspan="2"><b>Hex Lattice</td>
   </tr>
   <tr>
+    <td valign="top"><img src="resources/circle_packing/repulsion1.png"></td>
+    <td valign="top"><img src="resources/circle_packing/repulsion2.png"></td>
     <td valign="top"><img src="resources/circle_packing/squareLattice1.png"></td>
     <td valign="top"><img src="resources/circle_packing/squareLattice2.png"></td>
-    <td valign="top"><img src="resources/circle_packing/hexLattice1.png"></td>
-    <td valign="top"><img src="resources/circle_packing/hexLattice2.png"></td>
   </tr>
 
   <tr>
+    <td align="center" valign="center" colspan="2"><b>Hex Lattice</td>
     <td align="center" valign="center" colspan="2"><b>Tangency Pack</td>
   </tr>
   <tr>
+    <td valign="top"><img src="resources/circle_packing/hexLattice1.png"></td>
+    <td valign="top"><img src="resources/circle_packing/hexLattice2.png"></td>
     <td valign="top"><img src="resources/circle_packing/tangentPack.gif"></td>
     <td valign="top"><img src="resources/circle_packing/tangentPack1.png"></td>
   </tr>
