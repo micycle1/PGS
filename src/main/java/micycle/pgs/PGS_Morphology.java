@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.locationtech.jts.densify.Densifier;
+import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
@@ -23,6 +24,7 @@ import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.color.RGB;
 import micycle.pgs.commons.ChaikinCut;
 import micycle.pgs.commons.CornerRounding;
+import micycle.pgs.commons.DiscreteCurveEvolution;
 import micycle.pgs.commons.GaussianLineSmoothing;
 import micycle.pgs.commons.ShapeInterpolation;
 import processing.core.PConstants;
@@ -137,9 +139,47 @@ public final class PGS_Morphology {
 	}
 
 	/**
-	 * Minkowski addition a.k.a dilation
+	 * Simplifies a shape via <i>Discrete Curve Evolution</i>.
+	 * <p>
+	 * Discrete curve evolution involves a stepwise elimination of kinks that are
+	 * least relevant to the shape of the polygonal curve. The relevance of kinks is
+	 * intended to reflect their contribution to the overall shape of the polygonal
+	 * curve.
 	 * 
-	 * @return
+	 * @param shape          a polygonal or lineal shape. GROUP shapes are not
+	 *                       supported.
+	 * @param removeFraction the fraction of least relevant kinks/vertices to
+	 *                       remove. 0...1
+	 * @return simplifed copy of the input shape
+	 * @since 1.2.1
+	 */
+	public static PShape simplifyDCE(PShape shape, double removeFraction) {
+		removeFraction = 1 - removeFraction; // since dce class is preserve-based, not remove-based
+		Geometry g = fromPShape(shape);
+		if (g instanceof Polygon) {
+			LinearRing[] rings = new LinearRingIterator(g).getLinearRings();
+			LinearRing[] dceRings = new LinearRing[rings.length];
+			for (int i = 0; i < rings.length; i++) {
+				LinearRing ring = rings[i];
+				DiscreteCurveEvolution dce = new DiscreteCurveEvolution(
+						Math.max(4, (int) Math.round(removeFraction * ring.getNumPoints())));
+				dceRings[i] = PGS.GEOM_FACTORY.createLinearRing(dce.process(ring));
+			}
+			LinearRing[] holes = null;
+			if (dceRings.length > 1) {
+				holes = Arrays.copyOfRange(dceRings, 1, dceRings.length);
+			}
+			return toPShape(PGS.GEOM_FACTORY.createPolygon(dceRings[0], holes));
+		} else if (g instanceof LineString) {
+			LineString l = (LineString) g;
+			DiscreteCurveEvolution dce = new DiscreteCurveEvolution(Math.max(4, (int) Math.round(removeFraction * l.getNumPoints())));
+			return toPShape(PGS.GEOM_FACTORY.createLineString(dce.process(l)));
+		} else {
+			System.err.println(g.getGeometryType() + " are not supported for the simplifyDCE() method (yet).");
+			return shape;
+		}
+	}
+
 	/**
 	 * Computes a <i>Minkowski sum</i> (a.k.a dilation) of the two source shapes.
 	 * <p>
