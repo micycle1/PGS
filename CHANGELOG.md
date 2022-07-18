@@ -41,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `spannerFaces()` to `PGS_Meshing`. Finds the relative neighbour faces of a greedy sparse spanner of a triangulation.
 * `minimumSpanningTree()` to `PGS_PointSet`. Finds the Euclidean minimum spanning tree of a set of points.
 * `repulsionPack()` to `PGS_CirclePacking`. Generates a circle packing of a shape via iterative pair-repulsion.
+* `simplifyDCE()` to `PGS_Morphology`. Simplifies a shape using *Discrete Curve Evolution*.
 
 ### Changed
 * **NOTE**: Moved all hull methods from `PGS_Processing` to `PGS_Hull`.
@@ -64,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 * NPE when shapes created with `createShape()` in the P2D renderer were passed to `fromPShape()` (#55).
 * `slice()` would sometimes fail to return some rectangular slices on a concave input (and it's more robust too now).
+* Error if a GROUP shape was passed to `point(s)OnExterior()` methods.
 
 ### Removed
 * `earCutTriangulation(List<PVector> points)` from `PGS_Triangulation`.
