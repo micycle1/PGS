@@ -105,6 +105,7 @@ public final class PGS_Transformation {
 	 * @return resized copy of input shape
 	 * @since 1.2.1
 	 * @see #resizeByHeight(PShape, double)
+	 * @see #resizeByLargest(PShape, double)
 	 */
 	public static PShape resizeByWidth(PShape shape, double targetWidth) {
 		targetWidth = Math.max(targetWidth, 1e-5);
@@ -126,8 +127,9 @@ public final class PGS_Transformation {
 	 * @param shape        the shape to resize
 	 * @param targetHeight height of the output
 	 * @return resized copy of input shape
-	 * @since 1.2.1
+	 * @since 1.2.1 resized copy of input shape
 	 * @see #resizeByWidth(PShape, double)
+	 * @see #resizeByLargest(PShape, double)
 	 */
 	public static PShape resizeByHeight(PShape shape, double targetHeight) {
 		targetHeight = Math.max(targetHeight, 1e-5);
@@ -139,6 +141,30 @@ public final class PGS_Transformation {
 		AffineTransformation t = AffineTransformation.scaleInstance(targetHeight / e.getHeight(), targetHeight / e.getHeight(), c.getX(),
 				c.getY());
 		return toPShape(t.transform(geometry));
+	}
+
+	/**
+	 * Resizes a shape (based on the longest axis of its envelope) to the given size
+	 * relative to its center point.
+	 * <p>
+	 * For example, if the shape's width is larger than its height, the width is set
+	 * to <code>targetSize</code> and the height is resized to maintain the shape's
+	 * aspect ratio.
+	 * 
+	 * @param shape         the shape to resize
+	 * @param targetLargest the new length of its longest axis
+	 * @return resized copy of input shape
+	 * @since 1.2.1
+	 * @see #resizeByWidth(PShape, double)
+	 * @see #resizeByHeight(PShape, double)
+	 */
+	public static PShape resizeByMajorAxis(PShape shape, double targetSize) {
+		Envelope e = fromPShape(shape).getEnvelopeInternal();
+		if (e.getWidth() > e.getHeight()) {
+			return resizeByWidth(shape, targetSize);
+		} else {
+			return resizeByHeight(shape, targetSize);
+		}
 	}
 
 	/**
