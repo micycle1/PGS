@@ -5,7 +5,7 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
-## **1.2.1** *(2022-xx-xx)*
+## **1.3.0** *(2022-xx-xx)*
 
 ### Added
 #### Classes
@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `minimumSpanningTree()` to `PGS_PointSet`. Finds the Euclidean minimum spanning tree of a set of points.
 * `repulsionPack()` to `PGS_CirclePacking`. Generates a circle packing of a shape via iterative pair-repulsion.
 * `simplifyDCE()` to `PGS_Morphology`. Simplifies a shape using *Discrete Curve Evolution*.
+* `compoundVoronoi()` to `PGS_Voronoi`. Creates a Voronoi diagram for a set of disjoint shapes.
 
 ### Changed
 * **NOTE**: Moved all hull methods from `PGS_Processing` to `PGS_Hull`.
@@ -59,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_Transformation.resize()` now resizes a shape with respect to its center.
 * `PGS_Morphology.smoothGaussian()` now supports polygons with holes.
 * Reimplemented `PGS_PointSet.poisson()`. New algorithm is faster and produces better quality point set outputs.
-* Styling methods in `PGS_Conversion()` (such as `setAllFillColor()`) now return the a reference to input (rather than being `public void`), to help method chaining.
+* Styling methods in `PGS_Conversion()` (such as `setAllFillColor()`) now return the (mutated) input (rather than being `public void`), to help method chaining.
 * GROUP PShapes having different child types (paths and polygons for instance) are now fully preserved during PShape<->Geometry conversion.
 
 ### Fixed
@@ -70,6 +71,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 * `earCutTriangulation(List<PVector> points)` from `PGS_Triangulation`.
 * `isolinesFromGrid()` from `PGS_Contour` (dependency too large).
+* `voronoiCirclesDiagram()` from `PGS_Voronoi` (achieved by `compoundVoronoi()`).
+* `voronoiCells()` from `PGS_Voronoi` (replaced by `innerVoronoi()`).
+* `voronoiDiagram(IncrementalTin tin)` from `PGS_Voronoi`.
 
 ## **1.2.0** *(2021-12-15)*
 
