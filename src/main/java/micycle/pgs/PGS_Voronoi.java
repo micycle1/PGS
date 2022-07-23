@@ -5,44 +5,31 @@ import static micycle.pgs.PGS_Conversion.fromPShape;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
+import java.util.stream.Collectors;
 
-import org.locationtech.jts.algorithm.RobustLineIntersector;
+import org.locationtech.jts.densify.Densifier;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geomgraph.Edge;
-import org.locationtech.jts.geomgraph.EdgeIntersection;
-import org.locationtech.jts.geomgraph.index.EdgeSetIntersector;
-import org.locationtech.jts.geomgraph.index.SegmentIntersector;
-import org.locationtech.jts.geomgraph.index.SimpleMCSweepLineIntersector;
-import org.tinfour.common.IIncrementalTinNavigator;
+import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.Polygonal;
+import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.Vertex;
 import org.tinfour.standard.IncrementalTin;
+import org.tinfour.utils.HilbertSort;
 import org.tinfour.voronoi.BoundedVoronoiBuildOptions;
 import org.tinfour.voronoi.BoundedVoronoiDiagram;
 import org.tinfour.voronoi.ThiessenPolygon;
-import org.tinspin.index.PointDistanceFunction;
-import org.tinspin.index.PointEntryDist;
-import org.tinspin.index.kdtree.KDTree;
-import org.tinspin.index.rtree.Entry;
-import org.tinspin.index.rtree.RTree;
-import org.tinspin.index.rtree.RTreeIterator;
 
 import micycle.pgs.color.RGB;
-import micycle.pgs.commons.PEdge;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * 
  * Voronoi Diagrams of shapes and point sets.
  * 
  * @author Michael Carleton
@@ -54,485 +41,262 @@ public final class PGS_Voronoi {
 	}
 
 	/**
-	 * Generates a Voronoi diagram from a shape, where shape vertices are Voronoi
-	 * point sites. This method outputs the Voronoi diagram as lines.
+	 * Generates a Voronoi diagram for a single shape, where shape vertices are
+	 * voronoi point sites. In this method each voronoi cell designates the area
+	 * closest to some vertex.
+	 * <p>
+	 * Note: If the input shape is polygonal, the output is sensitive to how densely
+	 * populated lines are in the input. Consider processing a shape with
+	 * {@link micycle.pgs.PGS_Processing#densify(PShape, double)
+	 * densify(density=~10)} method first before using this method on a polygon.
 	 * 
-	 * @param shape     the shape whose vertices to use as Voronoi sites
-	 * @param constrain whether to constrain the diagram lines to the shape. When
-	 *                  true, the output includes only voronoi line segments within
-	 *                  the shape.
-	 * @return a PShape consisting of voronoi lines
-	 */
-	public static PShape voronoiDiagram(PShape shape, boolean constrain) {
-		final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, null, constrain, 0, false);
-
-		final Geometry g = fromPShape(shape);
-
-		final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();
-		options.setBounds(tin.getBounds());
-		final BoundedVoronoiDiagram v = new BoundedVoronoiDiagram(tin.getVertices(), options);
-
-		final IIncrementalTinNavigator navigator = tin.getNavigator();
-
-		final PShape voronoi = new PShape(PConstants.GROUP);
-		final PShape axis = PGS.prepareLinesPShape(RGB.PINK, PConstants.ROUND, 4);
-		final PShape lines = PGS.prepareLinesPShape(RGB.PINK, PConstants.SQUARE, 2);
-
-		if (constrain) { // constrain: include only inner voronoi line segments
-			final Coordinate[] coords = g.getCoordinates();
-
-			final SweepLineSegmentIntersection intersection = new SweepLineSegmentIntersection(coords);
-			final HashSet<Integer> seen = new HashSet<>();
-			final ArrayList<Edge> edges = new ArrayList<>();
-
-			for (ThiessenPolygon poly : v.getPolygons()) {
-				for (IQuadEdge e : poly.getEdges()) {
-					final Coordinate c1 = new Coordinate(e.getA().x, e.getA().y);
-					final Coordinate c2 = new Coordinate(e.getB().x, e.getB().y);
-					final int hash = c1.hashCode() ^ c2.hashCode(); // order-invariant hash
-					if (seen.add(hash)) { // only process unique edges
-						/*
-						 * It's a little faster to filter edges to intersection-check here by first
-						 * checking if one if its vertices is inside and the other outside the shape.
-						 * The tradeoff is that we miss segments that cross outside the shape yet both
-						 * vertices are within the shape (which can happen on very concave shapes).
-						 */
-						final boolean inA = tin.getRegionConstraint(navigator.getNeighborEdge(c1.x, c1.y)) != null;
-						final boolean inB = tin.getRegionConstraint(navigator.getNeighborEdge(c2.x, c2.y)) != null;
-						if (inA ^ inB) {
-							edges.add(new Edge(new Coordinate[] { c1, c2 }));
-						} else if (inA) { // edges are completely inside the shape (main medial axis)
-							axis.vertex((float) c1.x, (float) c1.y);
-							axis.vertex((float) c2.x, (float) c2.y);
-						}
-					}
-				}
-			}
-
-			final HashMap<Edge, Coordinate> intersections = intersection.compute(edges);
-			intersections.forEach((e, c) -> {
-				/*
-				 * When segments intersects >1 time, if it crosses a convex part, then ideally
-				 * one segment needs output -- the segment within the part; if the segment
-				 * crosses a concave part then two segments need output, where each exist inside
-				 * the shape, skipping the concave gap. For now however, lines which intersect
-				 * >1 time are ignored.
-				 */
-				if (e.isIsolated()) { // ignore lines with >1 intersection
-					final Coordinate c1 = e.getCoordinates()[0];
-					lines.vertex((float) c.x, (float) c.y);
-
-					final boolean inA = tin.getRegionConstraint(navigator.getNeighborEdge(c1.x, c1.y)) != null;
-					if (inA) {
-						lines.vertex((float) c1.x, (float) c1.y);
-					} else {
-						final Coordinate c2 = e.getCoordinates()[1];
-						lines.vertex((float) c2.x, (float) c2.y);
-					}
-				}
-			});
-			axis.endShape();
-		} else { // no constraining: display all voronoi polygons/lines
-			v.getPolygons().forEach(poly -> poly.getEdges().forEach(e -> {
-				final boolean inA = tin.getRegionConstraint(navigator.getNeighborEdge(e.getA().x, e.getA().y)) != null;
-				if (!inA) {
-					final boolean inB = tin.getRegionConstraint(navigator.getNeighborEdge(e.getB().x, e.getB().y)) != null;
-					if (!inB) {
-						lines.vertex((float) e.getA().x, (float) e.getA().y);
-						lines.vertex((float) e.getB().x, (float) e.getB().y);
-					}
-				}
-
-			}));
-		}
-		lines.endShape();
-
-		voronoi.addChild(lines);
-		voronoi.addChild(axis);
-		return voronoi;
-	}
-
-	/**
-	 * Generates a Voronoi diagram from a set of points. This method outputs the
-	 * Voronoi diagram as lines.
+	 * @param shape     a shape whose vertices to use as Voronoi sites
+	 * @param constrain whether to constrain the diagram lines to the shape (if
+	 *                  polygonal). When true, output voronoi cells are
+	 *                  cropped/constrained to the shape outline.
 	 * 
-	 * @param points    the set of points to use as Voronoi sites
-	 * @param constrain whether to constrain the diagram's lines to the concave hull
-	 *                  of the point set
-	 * @return
-	 */
-	public static PShape voronoiDiagram(Collection<PVector> points, boolean constrain) {
-		return voronoiDiagram(PGS_Conversion.toPointsPShape(points), constrain);
-	}
-
-	/**
-	 * Generates a Voronoi diagram from a triangulation object. The voronoi diagram
-	 * will use the constraints of the tin (if any).
-	 * 
-	 * @param triangulation a triangulation mesh
-	 * @return
-	 * @since 1.2.0
-	 */
-	public static PShape voronoiDiagram(IncrementalTin triangulation) {
-		final boolean constrained = !triangulation.getConstraints().isEmpty();
-		final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();
-		options.setBounds(triangulation.getBounds());
-
-		final BoundedVoronoiDiagram v = new BoundedVoronoiDiagram(triangulation.getVertices(), options);
-
-		final IIncrementalTinNavigator navigator = triangulation.getNavigator();
-		
-		Set<PEdge> edges = new HashSet<>(); // use set to draw edges once only
-
-		v.getPolygons().forEach(poly -> poly.getEdges().forEach(e -> {
-			if (!constrained) {
-				edges.add(new PEdge(e.getA().x, e.getA().y, e.getB().x, e.getB().y));
-			} else {
-				final boolean inA = triangulation.getRegionConstraint(navigator.getNeighborEdge(e.getA().x, e.getA().y)) != null;
-				if (inA) {
-					final boolean inB = triangulation.getRegionConstraint(navigator.getNeighborEdge(e.getB().x, e.getB().y)) != null;
-					if (inB) { // both points lie inside constraints, so include
-						edges.add(new PEdge(e.getA().x, e.getA().y, e.getB().x, e.getB().y));
-					}
-				}
-			}
-		}));
-
-		final PShape lines = PGS.prepareLinesPShape(RGB.PINK, PConstants.SQUARE, 2);
-		edges.forEach(e -> {
-			lines.vertex(e.a.x, e.a.y);
-			lines.vertex(e.b.x, e.b.y);
-		});
-		lines.endShape();
-
-		return lines;
-	}
-
-	/**
-	 * Generates a Voronoi diagram from a shape, where shape vertices are Voronoi
-	 * point sites. This method outputs the Voronoi diagram as polygonal cells.
-	 * 
-	 * @param shape the shape whose vertices to use as Voronoi sites
 	 * @return a GROUP PShape, where each child shape is a Voronoi cell
-	 * @see #voronoiCells(Collection)
+	 * @see #innerVoronoi(Collection)
 	 */
-	public static PShape voronoiCells(PShape shape) {
+	public static PShape innerVoronoi(final PShape shape, final boolean constrain) {
+		return innerVoronoi(shape, constrain, null);
+	}
+
+	/**
+	 * Generates a Voronoi diagram for a single shape, where shape vertices are
+	 * voronoi point sites. In this method each voronoi cell designates the area
+	 * closest to some vertex.
+	 * <p>
+	 * Note: If the input shape is polygonal, the output is sensitive to how densely
+	 * populated lines are in the input. Consider processing a shape with
+	 * {@link micycle.pgs.PGS_Processing#densify(PShape, double)
+	 * densify(density=~10)} method first before using this method on a polygon.
+	 * 
+	 * @param shape     a shape whose vertices to use as Voronoi sites
+	 * @param constrain whether to constrain the diagram lines to the shape (if
+	 *                  polygonal). When true, output voronoi cells are
+	 *                  cropped/constrained to the shape outline.
+	 * @param bounds    an array of the form [minX, minY, maxX, maxY] defining the
+	 *                  boundary of the voronoi diagram. the boundary must fully
+	 *                  contain the shape.
+	 * 
+	 * @return a GROUP PShape, where each child shape is a Voronoi cell
+	 * @see #innerVoronoi(Collection)
+	 */
+	public static PShape innerVoronoi(final PShape shape, final boolean constrain, double[] bounds) {
 		final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, null, false, 0, false);
 
-		final Envelope envelope = fromPShape(shape).getEnvelopeInternal();
+		final Geometry g = fromPShape(shape);
 		final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();
-		options.setBounds(new Rectangle2D.Double(envelope.getMinX(), envelope.getMinY(), envelope.getMaxX() - envelope.getMinX(),
-				envelope.getMaxY() - envelope.getMinY()));
+		final double x, y, w, h;
+		if (bounds == null) {
+			final Envelope envelope = g.getEnvelopeInternal();
+			x = envelope.getMinX();
+			y = envelope.getMinY();
+			w = envelope.getMaxX() - envelope.getMinX();
+			h = envelope.getMaxY() - envelope.getMinY();
+		} else {
+			x = bounds[0];
+			y = bounds[1];
+			w = bounds[2] - bounds[0];
+			h = bounds[3] - bounds[1];
+		}
+		options.setBounds(new Rectangle2D.Double(x, y, w, h));
 
 		final BoundedVoronoiDiagram v = new BoundedVoronoiDiagram(tin.getVertices(), options);
 
-		final PShape voronoi = new PShape(PConstants.GROUP);
-
-		for (ThiessenPolygon poly : v.getPolygons()) {
-			final PShape cell = new PShape(PShape.GEOMETRY);
-			cell.setFill(true);
-			cell.setFill(RGB.WHITE);
-			cell.setStroke(true);
-			cell.setStroke(RGB.PINK);
-			cell.setStrokeWeight(3);
-			cell.beginShape();
-			for (IQuadEdge e : poly.getEdges()) {
-				cell.vertex((float) e.getA().x, (float) e.getA().y);
-			}
-			cell.endShape(PShape.CLOSE);
-			voronoi.addChild(cell);
+		List<Geometry> faces = v.getPolygons().stream().map(PGS_Voronoi::toPolygon).collect(Collectors.toList());
+		if (constrain && g instanceof Polygonal) {
+			faces = faces.parallelStream().map(f -> OverlayNG.overlay(f, g, OverlayNG.INTERSECTION)).collect(Collectors.toList());
 		}
 
-		return voronoi;
+		return PGS_Conversion.toPShape(faces);
 	}
 
 	/**
-	 * Generates a Voronoi diagram from a set of points. This method outputs the
-	 * Voronoi diagram as polygonal cells.
+	 * Generates a Voronoi diagram for a set of points. In this method each voronoi
+	 * cell designates the area closest to some point.
 	 * 
 	 * @param points the set of points to use as Voronoi sites
 	 * @return a GROUP PShape, where each child shape is a Voronoi cell
-	 * @see #voronoiCells(PShape)
+	 * @see #innerVoronoi(PShape)
 	 */
-	public static PShape voronoiCells(Collection<PVector> points) {
-		return voronoiCells(PGS_Conversion.toPointsPShape(points));
+	public static PShape innerVoronoi(Collection<PVector> points) {
+		return innerVoronoi(PGS_Conversion.toPointsPShape(points), false);
 	}
 
 	/**
-	 * Generates a Voronoi diagram from circle sites (rather than point sites).
-	 * <p>
-	 * Circle sites are modelled by PVectors, where x, y correspond to the center of
-	 * the site and z corresponds to the radius of the site.
+	 * Generates a Voronoi diagram for a set of points. In this method each voronoi
+	 * cell designates the area closest to some point.
 	 * 
-	 * @param circles       list of PVectors to use as circle sites
-	 * @param circleSamples defines how many samples from each circle's
-	 *                      circumference should be used to compute the voronoi
-	 *                      diagram. 25-50 is a suitable range
-	 * @param drawBranches  whether to draw/output the branches from the coming from
-	 *                      the center of each circle
-	 * @return
+	 * @param points the set of points to use as Voronoi sites
+	 * @param bounds an array of the form [minX, minY, maxX, maxY] defining the
+	 *               boundary of the voronoi diagram. the boundary must fully
+	 *               contain the points.
+	 * @return a GROUP PShape, where each child shape is a Voronoi cell
+	 * @see #innerVoronoi(PShape)
 	 */
-	public static PShape voronoiCirclesDiagram(Collection<PVector> circles, int circleSamples, boolean drawBranches) {
-		final IncrementalTin tin = new IncrementalTin(5);
+	public static PShape innerVoronoi(Collection<PVector> points, double[] bounds) {
+		return innerVoronoi(PGS_Conversion.toPointsPShape(points), false, bounds);
+	}
 
-		final PointDistanceFunction pdf2D = (p1, p2) -> {
-			final double deltaX = p1[0] - p2[0];
-			final double deltaY = p1[1] - p2[1];
-			return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-		};
+	/**
+	 * Generates a Voronoi diagram for a set of disjoint shapes. In this method each
+	 * voronoi cell designates the area closest to some individual shape.
+	 * <p>
+	 * Note: Each geometry primitive in a <code>POINTS</code> or <code>LINES</code>
+	 * shape is treated as a distinct voronoi site (rather than a singular site
+	 * representing the full mass of points or lines).
+	 * 
+	 * @param shape a GROUP PShape consisting of any number of non-intersecting
+	 *              polygonal, lineal, or points child shapes
+	 * @return a GROUP PShape, where each child shape is a Voronoi cell, bounded by
+	 *         the envelope all shapes
+	 * @since 1.2.1
+	 * @return GROUP shape consisting of voronoi cells; each cell corresponds to an
+	 *         area around a line segment for which the closest line segment to any
+	 *         point in that area is the line segment
+	 */
+	public static PShape compoundVoronoi(PShape shape) {
+		return compoundVoronoi(shape, null);
+	}
 
-		final KDTree<PVector> sites = KDTree.create(2, pdf2D); // TODO use vpTree?
-		final List<PVector> sitesList = new ArrayList<>();
-		final double angleInc = Math.PI * 2 / circleSamples;
-		circles.forEach(c -> {
-			if (c.z >= 0) {
-				sitesList.add(c);
-				double angle = 0;
-				while (angle < Math.PI * 2) {
-					tin.add(new Vertex(c.z * Math.cos(angle) + c.x, c.z * Math.sin(angle) + c.y, 0));
-					angle += angleInc;
-				}
+	/**
+	 * Generates a Voronoi diagram for a set of disjoint shapes. In this method each
+	 * voronoi cell designates the area closest to some individual shape.
+	 * <p>
+	 * Note: Each geometry primitive in a <code>POINTS</code> or <code>LINES</code>
+	 * shape is treated as a distinct voronoi site (rather than a singular site
+	 * representing the full mass of points or lines).
+	 * 
+	 * @param shape  a GROUP PShape consisting of any number of non-intersecting
+	 *               polygonal, lineal, or points child shapes
+	 * @param bounds an array of the form [minX, minY, maxX, maxY] defining the
+	 *               boundary of the voronoi diagram. the boundary must fully
+	 *               contain the shape.
+	 * @return a GROUP PShape, where each child shape is a Voronoi cell, bounded by
+	 *         the envelope all shapes
+	 * @since 1.2.1
+	 * @return GROUP shape consisting of voronoi cells; each cell corresponds to an
+	 *         area around a line segment for which the closest line segment to any
+	 *         point in that area is the line segment
+	 */
+	public static PShape compoundVoronoi(PShape shape, double[] bounds) {
+		Geometry g = fromPShape(shape);
+		Geometry densified = Densifier.densify(g, 2);
+
+		List<Vertex> vertices = new ArrayList<>();
+		final List<List<Vertex>> segmentVertexGroups = new ArrayList<>();
+
+		for (int i = 0; i < densified.getNumGeometries(); i++) {
+			Geometry geometry = densified.getGeometryN(i);
+			List<Vertex> featureVertices;
+			switch (geometry.getGeometryType()) {
+				case Geometry.TYPENAME_LINEARRING :
+				case Geometry.TYPENAME_POLYGON :
+				case Geometry.TYPENAME_LINESTRING :
+				case Geometry.TYPENAME_POINT :
+					featureVertices = toVertex(geometry.getCoordinates());
+					if (!featureVertices.isEmpty()) {
+						segmentVertexGroups.add(featureVertices);
+						vertices.addAll(featureVertices);
+					}
+					break;
+				case Geometry.TYPENAME_MULTILINESTRING :
+				case Geometry.TYPENAME_MULTIPOINT :
+				case Geometry.TYPENAME_MULTIPOLYGON : // nested multi polygon
+					for (int j = 0; j < geometry.getNumGeometries(); j++) {
+						featureVertices = toVertex(geometry.getGeometryN(j).getCoordinates());
+						if (!featureVertices.isEmpty()) {
+							segmentVertexGroups.add(featureVertices);
+							vertices.addAll(featureVertices);
+						}
+					}
+					break;
+				default :
+					break;
 			}
-		});
-		Collections.shuffle(sitesList); // shuffle vertices for more balanced KDTree
-		sitesList.forEach(c -> sites.insert(new double[] { c.x, c.y }, c));
+		}
+
+		if (vertices.size() > 2500) {
+			HilbertSort hs = new HilbertSort();
+			hs.sort(vertices);
+		}
+		final IncrementalTin tin = new IncrementalTin(2);
+		tin.add(vertices, null); // initial triangulation
+		if (!tin.isBootstrapped()) {
+			return new PShape(); // shape probably empty
+		}
 
 		final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();
-		options.setBounds(new Rectangle2D.Double(-1000, -1000, 3000, 3000)); // should be enough
-		final BoundedVoronoiDiagram v = new BoundedVoronoiDiagram(tin.getVertices(), options);
-
-		final PShape lines = PGS.prepareLinesPShape(RGB.PINK, PConstants.SQUARE, 3);
-		final HashSet<PEdge> seen = new HashSet<>();
-		for (ThiessenPolygon poly : v.getPolygons()) {
-			for (IQuadEdge e : poly.getEdges()) {
-				final PVector a = new PVector((float) e.getA().x, (float) e.getA().y);
-				final PVector b = new PVector((float) e.getB().x, (float) e.getB().y);
-				final PEdge edge = new PEdge(a, b);
-
-				if (!seen.add(edge)) { // reduces edges to check by ~2/3rds
-					continue;
-				}
-
-				PointEntryDist<PVector> nearestSite = sites.query1NN(new double[] { e.getA().x, e.getA().y });
-
-				if (nearestSite.dist() < nearestSite.value().z) {
-					if (drawBranches && distGreater(a, b, nearestSite.value().z)) {
-						PVector intersect = PVector.sub(b, a).normalize().mult(nearestSite.value().z).add(nearestSite.value());
-						lines.vertex(b.x, b.y);
-						lines.vertex(intersect.x, intersect.y);
-					}
-					continue;
-				}
-
-				nearestSite = sites.query1NN(new double[] { e.getB().x, e.getB().y });
-				if (nearestSite.dist() < nearestSite.value().z) {
-					if (drawBranches && distGreater(a, b, nearestSite.value().z)) {
-						PVector intersect = PVector.sub(a, b).normalize().mult(nearestSite.value().z).add(nearestSite.value());
-						lines.vertex(a.x, a.y);
-						lines.vertex(intersect.x, intersect.y);
-					}
-					continue;
-				}
-
-				lines.vertex((float) e.getA().x, (float) e.getA().y);
-				lines.vertex((float) e.getB().x, (float) e.getB().y);
-			}
+		final double x, y, w, h;
+		if (bounds == null) {
+			final Envelope envelope = g.getEnvelopeInternal();
+			x = envelope.getMinX();
+			y = envelope.getMinY();
+			w = envelope.getMaxX() - envelope.getMinX();
+			h = envelope.getMaxY() - envelope.getMinY();
+		} else {
+			x = bounds[0];
+			y = bounds[1];
+			w = bounds[2] - bounds[0];
+			h = bounds[3] - bounds[1];
 		}
+		options.setBounds(new Rectangle2D.Double(x, y, w, h));
 
-		lines.endShape();
-		return lines;
-	}
+		final BoundedVoronoiDiagram voronoi = new BoundedVoronoiDiagram(tin);
 
-	private static boolean distGreater(PVector a, PVector b, float d) {
-		final double deltaX = a.x - b.x;
-		final double deltaY = a.y - b.y;
-		return deltaX * deltaX + deltaY * deltaY > (d * d);
-	}
+		// Map densified vertices to the voronoi cell they define.
+		final HashMap<Vertex, ThiessenPolygon> vertexCellMap = new HashMap<>();
+		voronoi.getPolygons().forEach(p -> vertexCellMap.put(p.getVertex(), p));
 
-	/**
-	 * Wrapper/helper class to run JTS SweepLineIntersector compute intersections
-	 * between two sets of line segments.
-	 * 
-	 * @author Michael Carleton
-	 *
-	 */
-	private static class SweepLineSegmentIntersection {
+		PShape voronoiCells = new PShape();
 
-		final List<Edge> polygonEdges;
-
-		private final EdgeSetIntersector i;
-		private final SegmentIntersector si;
-
-		/**
-		 * 
-		 * @param polygonCoords coords from polygon to test against
+		/*
+		 * There is a voronoi cell for each densified vertex. We first group densified
+		 * vertices by their source geometry and then union/dissolve the cells belonging
+		 * to each vertex group.
 		 */
-		SweepLineSegmentIntersection(Coordinate[] polygonCoords) {
-			i = new SimpleMCSweepLineIntersector();
-			si = new SegmentIntersector(new RobustLineIntersector(), true, false);
-
-			polygonEdges = new ArrayList<>();
-			polygonEdges.add(new Edge(polygonCoords)); // list of a single edge where the edge has many segments
-		}
-
-		/**
-		 * Computes intersections between the polygon and the given (disjoint) edges
-		 * 
-		 * @return A map of given edges->the coordinate on the edge that intersects.
-		 *         Only intersecting edges are contained in the map.
-		 */
-		@SuppressWarnings("unchecked")
-		HashMap<Edge, Coordinate> compute(List<Edge> edges) {
-			HashMap<Edge, Coordinate> intersections = new HashMap<>();
-			i.computeIntersections(polygonEdges, edges, si);
-			edges.forEach(e -> {
-				final Iterator<EdgeIntersection> iter2 = e.getEdgeIntersectionList().iterator();
-				if (iter2.hasNext()) {
-					intersections.put(e, iter2.next().coord); // ONLY RETURN A SINGLE INTERSECTION
-					if (iter2.hasNext()) {
-						e.setIsolated(false); // mark lines with 2 intersections to ignore later
+		segmentVertexGroups.forEach(vertexGroup -> {
+			PShape cellSegments = new PShape(PConstants.GROUP);
+			vertexGroup.forEach(segmentVertex -> {
+				ThiessenPolygon thiessenCell = vertexCellMap.get(segmentVertex);
+				if (thiessenCell != null) { // null if degenerate input
+					PShape cellSegment = new PShape(PShape.PATH);
+					cellSegment.beginShape();
+					for (IQuadEdge e : thiessenCell.getEdges()) {
+						cellSegment.vertex((float) e.getA().x, (float) e.getA().y);
 					}
+					cellSegment.endShape(PConstants.CLOSE);
+					cellSegments.addChild(cellSegment);
 				}
 			});
-			return intersections;
-		}
+			voronoiCells.addChild(PGS_ShapeBoolean.unionMesh(cellSegments));
+		});
 
+		PGS_Conversion.setAllFillColor(voronoiCells, RGB.WHITE);
+		PGS_Conversion.setAllStrokeColor(voronoiCells, RGB.PINK, 2);
+
+		return voronoiCells;
 	}
 
-	/**
-	 * Computes points of intersection between two sets of line segments. The
-	 * segment set to test against is backed by an RTree to find quickly find
-	 * possible intersecting candidates. The idea is you should insert all the
-	 * segments from one set first, then test segments from the other set as you
-	 * please (one-by-one).
-	 * 
-	 * <p>
-	 * Built to provide a much faster alternative to PTS' geometry.intersect() for
-	 * voronoi diagram cropping.
-	 * 
-	 * @author Michael Carleton
-	 * @deprecated it's a little slower than IntersectionJTS
-	 */
-	@SuppressWarnings("unused")
-	@Deprecated
-	private static class SegmentIntersection {
-
-		// TODO decide on PVectors / double[] etc
-		// TODO look into JTS HPRtree
-		private final RTree<E> rtree;
-
-		SegmentIntersection() {
-			rtree = RTree.createRStar(2);
+	private static Polygon toPolygon(ThiessenPolygon polygon) {
+		Coordinate[] coords = new Coordinate[polygon.getEdges().size() + 1];
+		int i = 0;
+		for (IQuadEdge e : polygon.getEdges()) {
+			coords[i++] = new Coordinate(e.getA().x, e.getA().y);
 		}
+		coords[i] = new Coordinate(polygon.getEdges().get(0).getA().x, polygon.getEdges().get(0).getA().y); // close polygon
+		return PGS.GEOM_FACTORY.createPolygon(coords);
+	}
 
-		/**
-		 * Inserts a segment from the set to test against
-		 */
-		public void insert(double x1, double y1, double x2, double y2) {
-			E e = new E(x1, y1, x2, y2);
-			rtree.insert(new double[] { Math.min(x1, x2), Math.min(y1, y2) }, new double[] { Math.max(x1, x2), Math.max(y1, y2) }, e);
+	private static List<Vertex> toVertex(Coordinate[] coords) {
+		final boolean closed = coords[0].equals2D(coords[coords.length - 1]) && coords.length > 1;
+		List<Vertex> vertexes = new ArrayList<>(coords.length - (closed ? 1 : 0));
+		for (int i = 0; i < coords.length - (closed ? 1 : 0); i++) {
+			Coordinate coord = coords[i];
+			vertexes.add(new Vertex(coord.x, coord.y, 0));
 		}
-
-		/**
-		 * Computes a single intersection between the provided line segment and the test
-		 * set (populated via insert()). If a point of intersection if found, this
-		 * method returns early (even if there are multiple intersections in total).
-		 * Doesn't check for co-linear points.
-		 * 
-		 * @return returns the first point of intersection; null if no intersection
-		 */
-		public PVector test(double x1, double y1, double x2, double y2) {
-			RTreeIterator<E> iterator = rtree.queryIntersect(new double[] { Math.min(x1, x2), Math.min(y1, y2) },
-					new double[] { Math.max(x1, x2), Math.max(y1, y2) });
-			while (iterator.hasNext()) {
-				Entry<E> r = iterator.next();
-				final PVector p1 = r.value().p1;
-				final PVector p2 = r.value().p2;
-				final PVector p3 = new PVector((float) x1, (float) y1);
-				final PVector p4 = new PVector((float) x2, (float) y2);
-
-				if (segmentsIntersect(p1, p2, p3, p4)) {
-					double m1 = (p2.y - p1.y) / (p2.x - p1.x);
-					double m2 = (p4.y - p3.y) / (p4.x - p3.x);
-					double b1 = p1.y - m1 * p1.x;
-					double b2 = p3.y - m2 * p3.x;
-					double x = (b2 - b1) / (m1 - m2);
-					double y = (m1 * b2 - m2 * b1) / (m1 - m2);
-					return new PVector((float) x, (float) y);
-				}
-			}
-			return null;
-		}
-
-		/**
-		 * * Computes upto two intersections between the provided line segment and the
-		 * test set (populated via insert()).
-		 * 
-		 * @return list of points that intersecting on the line segment. If there are no
-		 *         intersections, the list is empty.
-		 */
-		public List<PVector> testMultiple(double x1, double y1, double x2, double y2) {
-			RTreeIterator<E> iterator = rtree.queryIntersect(new double[] { Math.min(x1, x2), Math.min(y1, y2) },
-					new double[] { Math.max(x1, x2), Math.max(y1, y2) }); // usually no more than a few elements
-			List<PVector> intersections = new ArrayList<>();
-			while (iterator.hasNext()) {
-				Entry<E> r = iterator.next();
-				final PVector p1 = r.value().p1;
-				final PVector p2 = r.value().p2;
-				final PVector p3 = new PVector((float) x1, (float) y1);
-				final PVector p4 = new PVector((float) x2, (float) y2);
-
-				if (segmentsIntersect(p1, p2, p3, p4)) {
-					double m1 = (p2.y - p1.y) / (p2.x - p1.x);
-					double m2 = (p4.y - p3.y) / (p4.x - p3.x);
-					double b1 = p1.y - m1 * p1.x;
-					double b2 = p3.y - m2 * p3.x;
-					double x = (b2 - b1) / (m1 - m2);
-					double y = (m1 * b2 - m2 * b1) / (m1 - m2);
-					intersections.add(new PVector((float) x, (float) y));
-					if (intersections.size() == 2) {
-						// can't be more than 2 intersections in a voronoi lines diagram?
-						return intersections;
-					}
-				}
-			}
-			return intersections;
-		}
-
-		private static boolean segmentsIntersect(PVector p1, PVector p2, PVector p3, PVector p4) {
-
-			// Get the orientation of points p3 and p4 in relation
-			// to the line segment (p1, p2)
-			int o1 = orientation(p1, p2, p3);
-			int o2 = orientation(p1, p2, p4);
-			int o3 = orientation(p3, p4, p1);
-			int o4 = orientation(p3, p4, p2);
-
-			// If the points p1, p2 are on opposite sides of the infinite
-			// line formed by (p3, p4) and conversly p3, p4 are on opposite
-			// sides of the infinite line formed by (p1, p2) then there is
-			// an intersection.
-			return (o1 != o2 && o3 != o4);
-		}
-
-		// Finds the orientation of point 'c' relative to the line segment (a, b)
-		// Returns 0 if all three points are collinear.
-		// Returns -1 if 'c' is clockwise to segment (a, b), i.e right of line formed by
-		// the segment.
-		// Returns +1 if 'c' is counter clockwise to segment (a, b), i.e left of line
-		// formed by the segment.
-		private static int orientation(PVector a, PVector b, PVector c) {
-			double value = (b.y - a.y) * (c.x - b.x) - (b.x - a.x) * (c.y - b.y);
-			return (value > 0) ? -1 : +1;
-		}
-
-		private static class E {
-			final PVector p1, p2;
-
-			public E(double x1, double y1, double x2, double y2) {
-				p1 = new PVector((float) x1, (float) y1);
-				p2 = new PVector((float) x2, (float) y2);
-			}
-		}
+		return vertexes;
 	}
 }
