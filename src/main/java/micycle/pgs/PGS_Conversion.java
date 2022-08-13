@@ -348,7 +348,7 @@ public final class PGS_Conversion {
 		final int[] contourGroups = getContourGroups(rawVertexCodes);
 		final int[] vertexCodes = getVertexTypes(rawVertexCodes);
 
-		final ArrayList<ArrayList<Coordinate>> coords = new ArrayList<>(); // list of coords representing rings
+		final List<List<Coordinate>> coords = new ArrayList<>(); // list of coords representing rings
 
 		int lastGroup = -1;
 		for (int i = 0; i < shape.getVertexCount(); i++) {
@@ -380,7 +380,7 @@ public final class PGS_Conversion {
 			}
 		}
 
-		for (ArrayList<Coordinate> contour : coords) {
+		for (List<Coordinate> contour : coords) {
 			final Iterator<Coordinate> iterator = contour.iterator();
 			if (iterator.hasNext()) { // has at least one vertex
 				final List<Coordinate> contourNoDupes = new ArrayList<>(contour.size());
@@ -407,7 +407,6 @@ public final class PGS_Conversion {
 				}
 			}
 		}
-
 		final Coordinate[] outerCoords = coords.get(0).toArray(new Coordinate[coords.get(0).size()]);
 
 		if (outerCoords.length == 0) {
@@ -435,7 +434,7 @@ public final class PGS_Conversion {
 	 * POINT, LINE, TRIANGLE, QUAD, RECT, ELLIPSE, ARC, BOX, SPHERE. They do not
 	 * have directly accessible vertex data.
 	 */
-	private static Polygon fromPrimitive(PShape shape) {
+	private static Geometry fromPrimitive(PShape shape) {
 		final GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
 		switch (shape.getKind()) {
 			case PConstants.ELLIPSE :
@@ -483,8 +482,9 @@ public final class PGS_Conversion {
 				final double circumference = Math.PI * Math.max(shape.getParam(2), shape.getParam(3));
 				shapeFactory.setNumPoints((int) Math.ceil(circumference / BEZIER_SAMPLE_DISTANCE));
 				return shapeFactory.createArcPolygon(-Math.PI / 2 + shape.getParam(4), shape.getParam(5));
-			case PConstants.LINE :
 			case PConstants.POINT :
+				return GEOM_FACTORY.createPoint(new Coordinate(shape.getParam(0), shape.getParam(1)));
+			case PConstants.LINE :
 				System.err.print("Non-polygon primitives are not supported.");
 				break;
 			case PConstants.BOX :

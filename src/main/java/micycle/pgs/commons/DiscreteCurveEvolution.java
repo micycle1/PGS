@@ -10,7 +10,8 @@ import org.locationtech.jts.geom.LineString;
 import net.jafama.FastMath;
 
 /**
- *
+ * Convexity Rule for Shape Decomposition Based on Discrete Contour Evolution.
+ * 
  * @author Diego Catalano
  * @author Michael Carleton
  */
@@ -31,7 +32,7 @@ public class DiscreteCurveEvolution {
 	public DiscreteCurveEvolution(int vertices) {
 		this.vertices = vertices;
 	}
-	
+
 	public Coordinate[] process(LineString lineString) {
 		return process(lineString.getCoordinates());
 	}

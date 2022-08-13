@@ -140,7 +140,6 @@ public final class PGS_Contour {
 		 * See 'Morphological Analysis of Shapes' for CAT pruning techniques.
 		 * See 'Shape Matching By Part Alignment Using Extended Chordal Axis Transform'.
 		 */
-
 		final IIncrementalTin triangulation = PGS_Triangulation.delaunayTriangulationMesh(shape);
 		final SimpleGraph<SimpleTriangle, DefaultEdge> graph = PGS_Triangulation.toDualGraph(triangulation);
 
@@ -187,38 +186,31 @@ public final class PGS_Contour {
 					axis.vertex(midpoint2.x, midpoint2.y);
 					break;
 				case 3 : // Junction triangle (no edge in perimeter)
-//					centroid = centroid(t);
-//					final PVector c1Midpoint = midpoint(t.getEdgeA());
-//					axis.vertex(c1Midpoint.x, c1Midpoint.y);
-//					axis.vertex(centroid.x, centroid.y);
-//					final PVector c2Midpoint = midpoint(t.getEdgeB());
-//					axis.vertex(c2Midpoint.x, c2Midpoint.y);
-//					axis.vertex(centroid.x, centroid.y);
-//					final PVector c3Midpoint = midpoint(t.getEdgeC());
-//					axis.vertex(c3Midpoint.x, c3Midpoint.y);
-//					axis.vertex(centroid.x, centroid.y);
-					
-					double maxLength = t.getEdgeA().getLength();
-					IQuadEdge longest = t.getEdgeA();
-					IQuadEdge shortA = t.getEdgeB(), shortB = t.getEdgeC();
-					if (t.getEdgeB().getLength() > maxLength) {
-						maxLength = t.getEdgeB().getLength();
-						shortA = t.getEdgeA();
-						shortB = t.getEdgeC();
-						longest = t.getEdgeB();
-					}
-					if (t.getEdgeC().getLength() > maxLength) {
-						shortA = t.getEdgeA();
-						shortB = t.getEdgeB();
-						longest = t.getEdgeC();
-					}
-					final PVector midpointL = midpoint(longest);
-					final PVector midpointA = midpoint(shortA);
-					final PVector midpointB = midpoint(shortB);
-					axis.vertex(midpointA.x, midpointA.y);
-					axis.vertex(midpointL.x, midpointL.y);
-					axis.vertex(midpointB.x, midpointB.y);
-					axis.vertex(midpointL.x, midpointL.y);
+						/*
+						 * Connect the midpoints of the two shortest sides to the midpoint of the
+						 * longest side.
+						 */
+						double maxLength = t.getEdgeA().getLength();
+						IQuadEdge longest = t.getEdgeA();
+						IQuadEdge shortA = t.getEdgeB(), shortB = t.getEdgeC();
+						if (t.getEdgeB().getLength() > maxLength) {
+							maxLength = t.getEdgeB().getLength();
+							shortA = t.getEdgeA();
+							shortB = t.getEdgeC();
+							longest = t.getEdgeB();
+						}
+						if (t.getEdgeC().getLength() > maxLength) {
+							shortA = t.getEdgeA();
+							shortB = t.getEdgeB();
+							longest = t.getEdgeC();
+						}
+						final PVector midpointL = midpoint(longest);
+						final PVector midpointA = midpoint(shortA);
+						final PVector midpointB = midpoint(shortB);
+						axis.vertex(midpointA.x, midpointA.y);
+						axis.vertex(midpointL.x, midpointL.y);
+						axis.vertex(midpointB.x, midpointB.y);
+						axis.vertex(midpointL.x, midpointL.y);
 					break;
 				default :
 					break;
@@ -235,21 +227,6 @@ public final class PGS_Contour {
 		}
 
 		return toPShape(lm.getMergedLineStrings());
-	}
-
-	private static PVector midpoint(IQuadEdge e) {
-		return new PVector((float) (e.getA().x + e.getB().x) / 2, (float) (e.getA().y + e.getB().y) / 2);
-	}
-
-	private static PVector centroid(final SimpleTriangle t) {
-		final Vertex a = t.getVertexA();
-		final Vertex b = t.getVertexB();
-		final Vertex c = t.getVertexC();
-		double x = a.x + b.x + c.x;
-		x /= 3;
-		double y = a.y + b.y + c.y;
-		y /= 3;
-		return new PVector((float) x, (float) y);
 	}
 
 	/**
@@ -719,6 +696,21 @@ public final class PGS_Contour {
 		}
 
 		return parent;
+	}
+
+	private static PVector midpoint(IQuadEdge e) {
+		return new PVector((float) (e.getA().x + e.getB().x) / 2, (float) (e.getA().y + e.getB().y) / 2);
+	}
+
+	private static PVector centroid(final SimpleTriangle t) {
+		final Vertex a = t.getVertexA();
+		final Vertex b = t.getVertexB();
+		final Vertex c = t.getVertexC();
+		double x = a.x + b.x + c.x;
+		x /= 3;
+		double y = a.y + b.y + c.y;
+		y /= 3;
+		return new PVector((float) x, (float) y);
 	}
 
 	/**

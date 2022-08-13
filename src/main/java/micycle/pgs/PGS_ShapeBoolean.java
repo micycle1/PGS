@@ -95,13 +95,12 @@ public final class PGS_ShapeBoolean {
 	 */
 	public static PShape unionMesh(PShape mesh) {
 		// faster than JTS CoverageUnion
-		if (mesh.getChildCount() == 0 || mesh.getKind() != PConstants.GROUP) {
-			System.err.println("unionMesh Error: Input shape was not a GROUP shape, or had 0 children.");
-			return new PShape();
+		if (mesh.getChildCount() < 2 || mesh.getKind() != PConstants.GROUP) {
+			return mesh;
 		}
 
 		final Set<PEdge> allEdges = PGS.makeHashSet(mesh.getChildCount() * 3);
-		final Set<PEdge> duplicateEdges = PGS.makeHashSet(allEdges.size());
+		final List<PEdge> duplicateEdges = new ArrayList<>(allEdges.size());
 
 		/*
 		 * Compute set of unique edges belonging to the mesh (this set is equivalent to

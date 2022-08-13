@@ -313,6 +313,7 @@ public final class PGS_Morphology {
 		ratio /= 2; // constrain to 0...0.5
 		PShape cut = ChaikinCut.chaikin(shape, (float) ratio, iterations);
 		PGS_Conversion.setAllFillColor(cut, RGB.WHITE);
+		PGS_Conversion.setAllStrokeColor(cut, RGB.PINK, 3);
 		return cut;
 	}
 
@@ -421,7 +422,7 @@ public final class PGS_Morphology {
 	 * @return
 	 */
 	public static PShape fieldWarp(PShape shape, double magnitude, double noiseScale, double time, boolean densify, int noiseSeed) {
-		float scale = (float) noiseScale * 500f;
+		float scale = Math.max(1, (float) noiseScale * 500f);
 		final boolean pointsShape = shape.getKind() == PConstants.POINTS;
 
 		final PShape copy;
@@ -453,7 +454,6 @@ public final class PGS_Morphology {
 		if (pointsShape) {
 			return copy;
 		} else {
-
 			if (copy.getChildCount() == 1) {
 				return toPShape(GeometryFixer.fix(fromPShape(copy.getChild(0))));
 			} else {
