@@ -31,7 +31,7 @@ void setup() {
 }
 
 void draw() {
-  fill(palette[0], 50);
+  fill(palette[0], 100);
   rect(0, 0, width, height);
 
   if (millis() - time > 2000) { // change letter every 2s

@@ -103,7 +103,9 @@ public final class PGS_Processing {
 	 * Extracts a point from the perimeter (exterior) of the shape at a given
 	 * fraction around its perimeter.
 	 * 
-	 * @param shape
+	 * @param shape          a lineal or polygonal shape. If the input is a GROUP
+	 *                       shape, a single point will be extracted from its first
+	 *                       child.
 	 * @param distance       0...1 around shape perimeter; or -1...0 (other
 	 *                       direction)
 	 * @param offsetDistance perpendicular offset distance, where 0 is exactly on
@@ -117,7 +119,10 @@ public final class PGS_Processing {
 		distance %= 1;
 
 		Geometry g = fromPShape(shape);
-		if (!g.getGeometryType().equals(Geometry.TYPENAME_LINEARRING) && !g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
+		if (g instanceof Polygonal) {
+			if (g.getGeometryType().equals(Geometry.TYPENAME_MULTIPOLYGON)) {
+				g = g.getGeometryN(0);
+			}
 			g = ((Polygon) g).getExteriorRing();
 		}
 		LengthIndexedLine l = new LengthIndexedLine(g);
@@ -130,7 +135,9 @@ public final class PGS_Processing {
 	 * Extracts many points from the perimeter (faster than calling other method
 	 * lots)
 	 * 
-	 * @param shape
+	 * @param shape          a lineal or polygonal shape. If the input is a GROUP
+	 *                       shape, a single point will be extracted from its first
+	 *                       child.
 	 * @param points         number of points to return; evenly distibuted around
 	 *                       the perimeter of the shape
 	 * @param offsetDistance offset distance along a line perpendicular to the
@@ -145,7 +152,10 @@ public final class PGS_Processing {
 		ArrayList<PVector> coords = new ArrayList<>(points);
 
 		Geometry g = fromPShape(shape);
-		if (!g.getGeometryType().equals(Geometry.TYPENAME_LINEARRING) && !g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
+		if (g instanceof Polygonal) {
+			if (g.getGeometryType().equals(Geometry.TYPENAME_MULTIPOLYGON)) {
+				g = g.getGeometryN(0);
+			}
 			g = ((Polygon) g).getExteriorRing();
 		}
 		LengthIndexedLine l = new LengthIndexedLine(g);
@@ -162,7 +172,9 @@ public final class PGS_Processing {
 	 * Generates a list of points that lie on the exterior/perimeter of the given
 	 * shape.
 	 * 
-	 * @param shape
+	 * @param shape              a lineal or polygonal shape. If the input is a
+	 *                           GROUP shape, a single point will be extracted from
+	 *                           its first child.
 	 * @param interPointDistance distance between each exterior point
 	 * @param offsetDistance
 	 * @return
@@ -170,15 +182,14 @@ public final class PGS_Processing {
 	public static List<PVector> pointsOnExterior(PShape shape, double interPointDistance, double offsetDistance) {
 		// TODO points on holes
 		Geometry g = fromPShape(shape);
-		if (!g.getGeometryType().equals(Geometry.TYPENAME_LINEARRING) && !g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
+		if (g instanceof Polygonal) {
+			if (g.getGeometryType().equals(Geometry.TYPENAME_MULTIPOLYGON)) {
+				g = g.getGeometryN(0);
+			}
 			g = ((Polygon) g).getExteriorRing();
 		}
 		LengthIndexedLine l = new LengthIndexedLine(g);
 
-		if (interPointDistance > l.getEndIndex()) {
-			System.err.println("Interpoint length greater than shape length");
-			return new ArrayList<>();
-		}
 		final int points = (int) Math.round(l.getEndIndex() / interPointDistance);
 
 		ArrayList<PVector> coords = new ArrayList<>(points);
@@ -367,7 +378,8 @@ public final class PGS_Processing {
 	public static List<PVector> generateRandomPoints(PShape shape, int points, long seed) {
 		final ArrayList<PVector> randomPoints = new ArrayList<>(points); // random points out
 
-		final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, null, true, 0, false);
+		final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape);
+		final boolean constrained = !tin.getConstraints().isEmpty();
 		final double totalArea = StreamSupport.stream(tin.getConstraints().spliterator(), false)
 				.mapToDouble(c -> ((PolygonConstraint) c).getArea()).sum();
 
@@ -376,14 +388,14 @@ public final class PGS_Processing {
 		final double[] largestArea = new double[1];
 
 		final SplittableRandom r = new SplittableRandom(seed);
-
 		TriangleCollector.visitSimpleTriangles(tin, triangle -> {
 			final IConstraint constraint = triangle.getContainingRegion();
-			if (constraint != null && constraint.definesConstrainedRegion()) {
+			if (!constrained || (constraint != null && constraint.definesConstrainedRegion())) {
 				final Vertex a = triangle.getVertexA();
 				final Vertex b = triangle.getVertexB();
 				final Vertex c = triangle.getVertexC();
 
+				// TODO more robust area (dense input produces slivers)
 				final double triangleArea = 0.5 * ((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y));
 				if (triangleArea > largestArea[0]) {
 					largestTriangle[0] = triangle;
@@ -650,36 +662,36 @@ public final class PGS_Processing {
 
 		List<Geometry> next = new ArrayList<>(); // add to when recursion depth reached
 
-		Noder noder =  new SnappingNoder(1e-7);
-		
+		Noder noder = new SnappingNoder(1e-7);
+
 		int depth = 0;
 		while (depth < splitDepth) {
 			while (!stack.isEmpty()) {
 				final Geometry slice = stack.pop();
 				final Envelope envelope = slice.getEnvelopeInternal();
-				
+
 				final double minX = envelope.getMinX();
 				final double maxX = envelope.getMaxX();
 				final double midX = minX + (maxX - minX) / 2.0;
 				final double minY = envelope.getMinY();
 				final double maxY = envelope.getMaxY();
 				final double midY = minY + (maxY - minY) / 2.0;
-				
+
 				Envelope llEnv = new Envelope(minX, midX, minY, midY);
 				Envelope lrEnv = new Envelope(midX, maxX, minY, midY);
 				Envelope ulEnv = new Envelope(minX, midX, midY, maxY);
 				Envelope urEnv = new Envelope(midX, maxX, midY, maxY);
-				
+
 				Geometry UL = OverlayNG.overlay(slice, toGeometry(ulEnv), OverlayNG.INTERSECTION, noder);
 				Geometry UR = OverlayNG.overlay(slice, toGeometry(urEnv), OverlayNG.INTERSECTION, noder);
 				Geometry LL = OverlayNG.overlay(slice, toGeometry(llEnv), OverlayNG.INTERSECTION, noder);
 				Geometry LR = OverlayNG.overlay(slice, toGeometry(lrEnv), OverlayNG.INTERSECTION, noder);
-				
+
 				next.add(UL);
 				next.add(UR);
 				next.add(LL);
 				next.add(LR);
-				
+
 			}
 			depth++;
 			stack.addAll(next);

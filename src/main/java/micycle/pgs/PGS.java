@@ -308,7 +308,8 @@ final class PGS {
 	 */
 	static List<PVector> fromEdges(Collection<PEdge> edges) {
 		// NOTE same as org.locationtech.jts.operation.linemerge.LineSequencer ?
-		final HashMap<PVector, HashSet<PEdge>> vertexEdges = new HashMap<>(); // map of vertex to the 2 edges that share it
+		// map of vertex to the 2 edges that share it
+		final HashMap<PVector, HashSet<PEdge>> vertexEdges = new HashMap<>((int) ((edges.size()) / 0.75 + 1));
 
 		/*
 		 * Build up map of vertex->edge to later find edges sharing a given vertex in
@@ -332,7 +333,7 @@ final class PGS {
 			}
 		}
 
-		ArrayList<PVector> vertices = new ArrayList<>(edges.size() + 1); // boundary vertices
+		List<PVector> vertices = new ArrayList<>(edges.size() + 1); // boundary vertices
 
 		// begin by choosing a random edge
 		final PEdge startingEdge = edges.iterator().next();
@@ -343,7 +344,7 @@ final class PGS {
 
 		while (vertices.size() < edges.size()) {
 			final PVector lastVertex = vertices.get(vertices.size() - 1);
-			HashSet<PEdge> connectedEdges = vertexEdges.get(lastVertex);
+			Set<PEdge> connectedEdges = vertexEdges.get(lastVertex);
 
 			if (connectedEdges.isEmpty()) {
 				/*

@@ -24,6 +24,7 @@ public enum Palette {
 		COMMIT(new String[] { "#563d7c", "#0096d8", "#f4e361", "#f24679" }),
 		CONNECTION(new String[] { "#f24358", "#f2a643", "#f2e343", "#43f278", "#43a0f2", "#c343f2" }),
 		CUBE(new String[] { "#fde200", "#ef2626", "#5600ae", "#713df5" }),
+		CUBE_DARK(new String[] { "#d6d1b4", "#bab397", "#44473f", "#292e2a" }),
 		DATA(new String[] { "#f9f9f9", "#ff0000", "#0000ff" }),
 		EDIT(new String[] { "#1c1c1c", "#f47a9d", "#f4ea7a", "#f2f2f2" }),
 		ESCAPE(new String[] { "#f3e17e", "#dd483c", "#4b8a5f", "#0d150b", "#faf8e2" }),
