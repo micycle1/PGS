@@ -14,6 +14,8 @@ import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.util.GeometryFixer;
+import org.locationtech.jts.operation.buffer.BufferOp;
+import org.locationtech.jts.operation.buffer.BufferParameters;
 import org.locationtech.jts.operation.buffer.VariableBuffer;
 import org.locationtech.jts.shape.CubicBezierCurve;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
@@ -21,6 +23,7 @@ import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.simplify.VWSimplifier;
 
 import micycle.pgs.PGS.LinearRingIterator;
+import micycle.pgs.PGS_Contour.OffsetStyle;
 import micycle.pgs.color.RGB;
 import micycle.pgs.commons.ChaikinCut;
 import micycle.pgs.commons.CornerRounding;
@@ -49,14 +52,34 @@ public final class PGS_Morphology {
 	}
 
 	/**
-	 * Computes a buffer area around the shape, having the given buffer width.
+	 * Computes a rounded buffer area around the shape, having the given buffer
+	 * width.
 	 * 
 	 * @param shape
 	 * @param buffer extent/width of the buffer (which may be positive or negative)
-	 * @return a polygonal shape representing the buffer region (which may beempty)
+	 * @return a polygonal shape representing the buffer region (which may be empty)
+	 * @see #buffer(PShape, double, OffsetStyle)
 	 */
 	public static PShape buffer(PShape shape, double buffer) {
 		return toPShape(fromPShape(shape).buffer(buffer, 8));
+	}
+
+	/**
+	 * Computes a buffer area around the shape, having the given buffer width and
+	 * buffer style (either round, miter, bevel).
+	 * 
+	 * @param shape
+	 * @param buffer extent/width of the buffer (which may be positive or negative)
+	 * @return a polygonal shape representing the buffer region (which may be empty)
+	 * @see #buffer(PShape, double)
+	 * @since 1.2.1
+	 */
+	public static PShape buffer(PShape shape, double buffer, OffsetStyle bufferStyle) {
+		Geometry g = fromPShape(shape);
+		BufferParameters bufParams = new BufferParameters(8, BufferParameters.CAP_FLAT, bufferStyle.style,
+				BufferParameters.DEFAULT_MITRE_LIMIT);
+		BufferOp b = new BufferOp(g, bufParams);
+		return toPShape(b.getResultGeometry(buffer));
 	}
 
 	/**

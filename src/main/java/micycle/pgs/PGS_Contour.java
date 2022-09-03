@@ -186,31 +186,31 @@ public final class PGS_Contour {
 					axis.vertex(midpoint2.x, midpoint2.y);
 					break;
 				case 3 : // Junction triangle (no edge in perimeter)
-						/*
-						 * Connect the midpoints of the two shortest sides to the midpoint of the
-						 * longest side.
-						 */
-						double maxLength = t.getEdgeA().getLength();
-						IQuadEdge longest = t.getEdgeA();
-						IQuadEdge shortA = t.getEdgeB(), shortB = t.getEdgeC();
-						if (t.getEdgeB().getLength() > maxLength) {
-							maxLength = t.getEdgeB().getLength();
-							shortA = t.getEdgeA();
-							shortB = t.getEdgeC();
-							longest = t.getEdgeB();
-						}
-						if (t.getEdgeC().getLength() > maxLength) {
-							shortA = t.getEdgeA();
-							shortB = t.getEdgeB();
-							longest = t.getEdgeC();
-						}
-						final PVector midpointL = midpoint(longest);
-						final PVector midpointA = midpoint(shortA);
-						final PVector midpointB = midpoint(shortB);
-						axis.vertex(midpointA.x, midpointA.y);
-						axis.vertex(midpointL.x, midpointL.y);
-						axis.vertex(midpointB.x, midpointB.y);
-						axis.vertex(midpointL.x, midpointL.y);
+					/*
+					 * Connect the midpoints of the two shortest sides to the midpoint of the
+					 * longest side.
+					 */
+					double maxLength = t.getEdgeA().getLength();
+					IQuadEdge longest = t.getEdgeA();
+					IQuadEdge shortA = t.getEdgeB(), shortB = t.getEdgeC();
+					if (t.getEdgeB().getLength() > maxLength) {
+						maxLength = t.getEdgeB().getLength();
+						shortA = t.getEdgeA();
+						shortB = t.getEdgeC();
+						longest = t.getEdgeB();
+					}
+					if (t.getEdgeC().getLength() > maxLength) {
+						shortA = t.getEdgeA();
+						shortB = t.getEdgeB();
+						longest = t.getEdgeC();
+					}
+					final PVector midpointL = midpoint(longest);
+					final PVector midpointA = midpoint(shortA);
+					final PVector midpointB = midpoint(shortB);
+					axis.vertex(midpointA.x, midpointA.y);
+					axis.vertex(midpointL.x, midpointL.y);
+					axis.vertex(midpointB.x, midpointB.y);
+					axis.vertex(midpointL.x, midpointL.y);
 					break;
 				default :
 					break;
@@ -616,7 +616,7 @@ public final class PGS_Contour {
 
 		MITER(BufferParameters.JOIN_MITRE), BEVEL(BufferParameters.JOIN_BEVEL), ROUND(BufferParameters.JOIN_ROUND);
 
-		private final int style;
+		final int style;
 
 		private OffsetStyle(int style) {
 			this.style = style;
@@ -628,8 +628,10 @@ public final class PGS_Contour {
 	 * they collapse.
 	 *
 	 * @param shape   a single polygon or multipolygon (GROUP PShape)
-	 * @param spacing Spacing between successive offset curves. Should be >=1.
-	 * @return A GROUP PShape, where each child shape is one curve
+	 * @param spacing spacing between successive offset curves. Should be >=1.
+	 * @param style   specifies the curve join style (BEVEL, MITER, ROUND) to use
+	 * @return A GROUP PShape, where each child shape is a single curve shape, or a
+	 *         GROUP shape of curves created at the same step
 	 * @see #offsetCurvesOutward(PShape, OffsetStyle, double, int)
 	 */
 	public static PShape offsetCurvesInward(PShape shape, OffsetStyle style, double spacing) {
@@ -637,12 +639,29 @@ public final class PGS_Contour {
 	}
 
 	/**
-	 * Produces offset curves that emanate outwards from the shape.
+	 * Produces N inwards offset curves from the shape.
 	 *
 	 * @param shape   a single polygon or multipolygon (GROUP PShape)
-	 * @param spacing Spacing between successive offset curves. Should be >=1.
-	 * @param curves  number of offset curves (including the original shape outline)
-	 * @return A GROUP PShape, where each child shape is one curve
+	 * @param spacing spacing between successive offset curves. Should be >=1.
+	 * @param style   specifies the curve join style (BEVEL, MITER, ROUND) to use
+	 * @return A GROUP PShape, where each child shape is a single curve shape, or a
+	 *         GROUP shape of curves created at the same step
+	 * @see #offsetCurvesOutward(PShape, OffsetStyle, double, int)
+	 */
+	public static PShape offsetCurvesInward(PShape shape, OffsetStyle style, double spacing, int curves) {
+		return offsetCurves(shape, style, spacing, curves, false);
+	}
+
+	/**
+	 * Produces N offset curves that emanate outwards from the shape.
+	 *
+	 * @param shape   a single polygon or multipolygon (GROUP PShape)
+	 * @param spacing spacing between successive offset curves. Should be >=1.
+	 * @param curves  the number of offset curves to create (including the original
+	 *                shape outline)
+	 * @param style   specifies the curve join style (BEVEL, MITER, ROUND) to use
+	 * @return A GROUP PShape, where each child shape is a single curve shape, or a
+	 *         GROUP shape of curves created at the same step
 	 * @see #offsetCurvesInward(PShape, OffsetStyle, double)
 	 */
 	public static PShape offsetCurvesOutward(PShape shape, OffsetStyle style, double spacing, final int curves) {
@@ -668,29 +687,30 @@ public final class PGS_Contour {
 
 		final PShape parent = new PShape(PConstants.GROUP);
 		int currentCurves = 0;
-		while ((outwards && currentCurves < curves) || (!outwards && !g.isEmpty())) {
-			// current geometry's ring(s) to PATH PShape(s)
-			for (LinearRing ring : new LinearRingIterator(g)) { // iterate over rings individually
-				final Coordinate[] coords = ring.getCoordinates();
-				PShape lines = new PShape(PShape.PATH);
-				lines.setStroke(true);
-				lines.setStrokeWeight(2);
-				lines.setStroke(RGB.PINK);
-				lines.beginShape();
-
-				for (int i = 0; i < coords.length; i++) {
-					Coordinate coord = coords[i];
-					lines.vertex((float) coord.x, (float) coord.y);
+		while ((outwards && currentCurves < curves) || (!outwards && !g.isEmpty() && curves == 0)
+				|| (!outwards && currentCurves < curves)) {
+			LinearRing[] rings = new LinearRingIterator(g).getLinearRings();
+			if (rings.length == 1) {
+				PShape curve = toPShape(rings[0]);
+				curve.setFill(false);
+				curve.setStrokeWeight(2);
+				parent.addChild(curve);
+			} else if (rings.length > 1) { // curves created at the same step are grouped together
+				PShape curveParent = new PShape(PConstants.GROUP);
+				for (LinearRing ring : rings) {
+					PShape curve = toPShape(ring);
+					curve.setFill(false);
+					curve.setStrokeWeight(2);
+					curveParent.addChild(curve);
 				}
-				lines.endShape();
-				parent.addChild(lines);
+				parent.addChild(curveParent);
 			}
 
 			BufferOp b = new BufferOp(g, bufParams);
 			g = b.getResultGeometry(spacing);
 			if (style != OffsetStyle.MITER) {
 				// simplify because rounded buffers produce LOADS of dense vertices
-				g = DouglasPeuckerSimplifier.simplify(g, outwards ? 0.1 : 0.5);
+				g = DouglasPeuckerSimplifier.simplify(g, 0.05);
 			}
 			currentCurves++;
 		}

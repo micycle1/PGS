@@ -43,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `repulsionPack()` to `PGS_CirclePacking`. Generates a circle packing of a shape via iterative pair-repulsion.
 * `simplifyDCE()` to `PGS_Morphology`. Simplifies a shape using *Discrete Curve Evolution*.
 * `compoundVoronoi()` to `PGS_Voronoi`. Creates a Voronoi diagram for a set of disjoint shapes.
+* Additional method signature for `buffer()` that accepts a buffer style parameter.
+* Additional method signature for `offsetCurvesInward()` that accepts a curves number parameter.
 
 ### Changed
 * **NOTE**: Moved all hull methods from `PGS_Processing` to `PGS_Hull`.
