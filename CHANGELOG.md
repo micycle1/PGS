@@ -45,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `compoundVoronoi()` to `PGS_Voronoi`. Creates a Voronoi diagram for a set of disjoint shapes.
 * Additional method signature for `buffer()` that accepts a buffer style parameter.
 * Additional method signature for `offsetCurvesInward()` that accepts a curves number parameter.
+* `intersectMesh()` and `subtractMesh()` to `PGS_ShapeBoolean`. Performs the associated boolean operations on mesh-like shapes, preserving individual faces during the operation (rather than dissolving remaining elements).
 
 ### Changed
 * **NOTE**: Moved all hull methods from `PGS_Processing` to `PGS_Hull`.

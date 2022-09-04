@@ -7,9 +7,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
-
+import java.util.stream.Collectors;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.prep.PreparedGeometry;
+import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.util.GeometricShapeFactory;
@@ -34,7 +37,13 @@ public final class PGS_ShapeBoolean {
 	 * Computes a shape representing the area which is common to both input shapes
 	 * (i.e. the shape formed by intersection of <code>a</code> and <code>b</code>).
 	 * <p>
-	 * Intersecting a polygon with a path will crop the path to the polygon.
+	 * Note: Intersecting a polygon with a path/linestring will crop the path to the
+	 * polygon.
+	 * <p>
+	 * Note: The intersecting parts of faces of a mesh-like shape will be collapsed
+	 * into a single area during intersection. To intersect such a shape and
+	 * preserve how each face is intersected individually, use
+	 * {@link #intersectMesh(PShape, PShape) intersectMesh()}.
 	 * 
 	 * @return A∩B
 	 */
@@ -42,6 +51,72 @@ public final class PGS_ShapeBoolean {
 		PShape out = toPShape(OverlayNG.overlay(fromPShape(a), fromPShape(b), OverlayNG.INTERSECTION));
 //		PGS_Conversion.setAllFillColor(out, Blending.add(getPShapeFillColor(a), getPShapeFillColor(b)));
 		return out;
+	}
+
+	/**
+	 * Intersects a mesh-like shape / polygonal coverage with a polygonal area,
+	 * preserving individual faces/features of the mesh during the operation.
+	 * <p>
+	 * When a mesh-like shape / polygonal coverage is intersected with a whole
+	 * polygon using {@link #intersect(PShape, PShape) intersect(a, b)}, the result
+	 * is a <b>single</b> polygon comprising the combined/dissolved area of all
+	 * intersecting mesh faces. Sometimes this behaviour is desired whereas other
+	 * times it is not -- this method can be used to preserve how each face is
+	 * intersected individually.
+	 * <p>
+	 * Using this method is faster than calling {@link #intersect(PShape, PShape)
+	 * intersect(a, b)} repeatedly on every face of a mesh-like shape
+	 * <code>a</code>.
+	 * 
+	 * @param mesh a mesh-like GROUP shape
+	 * @param area a polygonal shape
+	 * @return a GROUP shape, where each child shape is the union of one mesh face
+	 *         and the area
+	 * @since 1.2.1
+	 */
+	public static PShape intersectMesh(PShape mesh, PShape area) {
+		final Geometry g = fromPShape(area);
+		final PreparedGeometry cache = PreparedGeometryFactory.prepare(g);
+		// @formatter:off
+		List<Geometry> faces = PGS_Conversion.getChildren(mesh).parallelStream()
+				.map(PGS_Conversion::fromPShape)
+				.map(f -> cache.containsProperly(f) ? f : OverlayNG.overlay(f, g, OverlayNG.INTERSECTION))
+				.collect(Collectors.toList());
+		// @formatter:on
+		return PGS_Conversion.toPShape(faces);
+	}
+
+	/**
+	 * Subtracts a polygonal area from a mesh-like shape / polygonal coverage,
+	 * preserving individual faces/features of the mesh during the operation.
+	 * <p>
+	 * When polygon is subtracted from a mesh-like shape / polygonal coverage using
+	 * {@link #subtract(PShape, PShape) subtract(a, b)}, the result is a
+	 * <b>single</b> polygon comprising the combined/dissolved area of all remaining
+	 * mesh face parts. Sometimes this behaviour is desired whereas other times it
+	 * is not -- this method can be used to preserve how each face is subtracted
+	 * from individually.
+	 * <p>
+	 * Using this method is faster than calling {@link #subtract(PShape, PShape)
+	 * subtract(a, b)} repeatedly on every face of a mesh-like shape <code>a</code>.
+	 * 
+	 * @param mesh a mesh-like GROUP shape
+	 * @param area a polygonal shape
+	 * @return a GROUP shape, where each child shape is the subtraction of the area
+	 *         from one mesh face
+	 * @since 1.2.1
+	 */
+	public static PShape subtractMesh(PShape mesh, PShape area) {
+		final Geometry g = fromPShape(area);
+		final PreparedGeometry cache = PreparedGeometryFactory.prepare(g);
+		// @formatter:off
+		List<Geometry> faces = PGS_Conversion.getChildren(mesh).parallelStream()
+				.map(PGS_Conversion::fromPShape)
+				.map(f -> cache.containsProperly(f) ? null : OverlayNG.overlay(f, g, OverlayNG.DIFFERENCE))
+				.filter(Objects::nonNull)
+				.collect(Collectors.toList());
+		// @formatter:on
+		return PGS_Conversion.toPShape(faces);
 	}
 
 	/**
@@ -138,8 +213,8 @@ public final class PGS_ShapeBoolean {
 	}
 
 	/**
-	 * Subtract is the opposite of Union. Subtract removes the area of a shape b
-	 * from the base shape a. A.k.a "difference".
+	 * Subtract is the opposite of Union. Subtract removes the area of shape
+	 * <code>b</code> from a base shape <code>a</code>. A.k.a "difference".
 	 * 
 	 * @return shape A - shape B
 	 */
@@ -157,7 +232,8 @@ public final class PGS_ShapeBoolean {
 	}
 
 	/**
-	 * Computes the shape's complement (or inverse) against a plane.
+	 * Computes the shape's complement (or inverse) against a plane having the given
+	 * dimensions.
 	 * 
 	 * @param shape
 	 * @param width  width of the rectangle plane to subtract shape from
