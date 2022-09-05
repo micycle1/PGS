@@ -287,9 +287,11 @@ Much of the functionality (but by no means all) is demonstrated below:
 
   <tr>
     <td align="center" valign="center"><b>Variable Buffer</td>
+    <td align="center" valign="center"><b>Eliminate Slivers</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/morphology/variableBuffer.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/slivers.gif"></td>
   </tr>
 </table>
 

@@ -6,6 +6,7 @@ import static micycle.pgs.PGS_Conversion.toPShape;
 import java.util.Arrays;
 import java.util.List;
 
+import org.locationtech.jts.algorithm.hull.ConcaveHullOfPolygons;
 import org.locationtech.jts.densify.Densifier;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
@@ -17,6 +18,7 @@ import org.locationtech.jts.geom.util.GeometryFixer;
 import org.locationtech.jts.operation.buffer.BufferOp;
 import org.locationtech.jts.operation.buffer.BufferParameters;
 import org.locationtech.jts.operation.buffer.VariableBuffer;
+import org.locationtech.jts.operation.overlay.snap.GeometrySnapper;
 import org.locationtech.jts.shape.CubicBezierCurve;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
@@ -102,16 +104,78 @@ public final class PGS_Morphology {
 	}
 
 	/**
-	 * Applies a negative followed by a positive buffer (in a single operation). The
-	 * effect of which is Small edges are removed, while the general structure of
-	 * the shape is preserved. This process is known as "opening" in computer
-	 * vision.
+	 * Applies a negative followed by a positive buffer (in a single operation), the
+	 * effect of which is small edges/islands are removed, while the general
+	 * structure of the shape is preserved.
+	 * <p>
+	 * This operation is known as "opening" in computer vision.
 	 * 
-	 * @param shape
+	 * @param shape  polygonal shape
+	 * @param buffer a positive number
 	 * @return
+	 * @see #dilationErosion(PShape, double)
 	 */
 	public static PShape erosionDilation(PShape shape, double buffer) {
 		return toPShape(fromPShape(shape).buffer(-buffer).buffer(buffer));
+	}
+
+	/**
+	 * Applies a positive followed by a negative buffer (in a single operation), the
+	 * effect of which is small holes and gaps are filled in, while the general
+	 * structure of the shape is preserved.
+	 * <p>
+	 * This operation is known as "closing" in computer vision.
+	 * 
+	 * @param shape  polygonal shape
+	 * @param buffer a positive number
+	 * @return
+	 * @since 1.2.1
+	 * @see #erosionDilation(PShape, double)
+	 */
+	public static PShape dilationErosion(PShape shape, double buffer) {
+		return toPShape(fromPShape(shape).buffer(buffer).buffer(-buffer));
+	}
+
+	/**
+	 * Removes narrow areas ("slivers") from a shape while preserving the geometry
+	 * of the remaining parts.
+	 * <p>
+	 * This operation is similar to {@link #erosionDilation(PShape, double)
+	 * erosionDilation()}, but better preserves the original geometry of remaining
+	 * parts.
+	 * <p>
+	 * If the input is a single polygon and if when removing slivers, a multipolygon
+	 * is produced, further processing occurs within the method to repair it back
+	 * into a single polygon.
+	 * 
+	 * @param shape     polygonal shape
+	 * @param threshold width threshold (probably no more than 10); parts narrower
+	 *                  than this are eliminated
+	 * @return a copy of the input shape having narrow areas/parts removed
+	 * @since 1.2.1
+	 */
+	public static PShape eliminateSlivers(PShape shape, double threshold) {
+		threshold = Math.max(threshold, 1e-5);
+		Geometry g = fromPShape(shape);
+		boolean multi = g.getNumGeometries() > 1;
+		Geometry snapped = GeometrySnapper.snapToSelf(g, threshold, true);
+		Geometry out = snapped;
+		if (!multi && snapped.getNumGeometries() > 1) {
+			ConcaveHullOfPolygons chp = new ConcaveHullOfPolygons(snapped);
+			chp.setTight(true);
+			chp.setHolesAllowed(false);
+
+			double ratio = 0.02;
+			try {
+				do { // pick lowest ratio such that a single polygon is returned
+					chp.setMaximumEdgeLengthRatio(ratio);
+					out = chp.getHull();
+					ratio += 0.01;
+				} while (out.getNumGeometries() > 1);
+			} catch (Exception e) { // catch "Unable to find a convex corner"
+			}
+		}
+		return toPShape(out); // better on smaller thresholds
 	}
 
 	/**
@@ -169,12 +233,13 @@ public final class PGS_Morphology {
 	 * intended to reflect their contribution to the overall shape of the polygonal
 	 * curve.
 	 * 
-	 * @param shape          a polygonal or lineal shape. GROUP shapes are not
-	 *                       supported.
-	 * @param removeFraction the fraction of least relevant kinks/vertices to
-	 *                       remove. 0...1
+	 * @param shape          a polygonal (can include holes) or lineal shape. GROUP
+	 *                       shapes are not supported.
+	 * @param removeFraction the fraction of least relevant kinks/vertices to remove
+	 *                       (per ring). 0...1
 	 * @return simplifed copy of the input shape
 	 * @since 1.2.1
+	 * @see PGS_Morphology#simplifyDCE(PShape, int)
 	 */
 	public static PShape simplifyDCE(PShape shape, double removeFraction) {
 		removeFraction = 1 - removeFraction; // since dce class is preserve-based, not remove-based
@@ -196,6 +261,48 @@ public final class PGS_Morphology {
 		} else if (g instanceof LineString) {
 			LineString l = (LineString) g;
 			DiscreteCurveEvolution dce = new DiscreteCurveEvolution(Math.max(4, (int) Math.round(removeFraction * l.getNumPoints())));
+			return toPShape(PGS.GEOM_FACTORY.createLineString(dce.process(l)));
+		} else {
+			System.err.println(g.getGeometryType() + " are not supported for the simplifyDCE() method (yet).");
+			return shape;
+		}
+	}
+
+	/**
+	 * Simplifies a shape via <i>Discrete Curve Evolution</i>.
+	 * <p>
+	 * Discrete curve evolution involves a stepwise elimination of kinks that are
+	 * least relevant to the shape of the polygonal curve. The relevance of kinks is
+	 * intended to reflect their contribution to the overall shape of the polygonal
+	 * curve.
+	 * 
+	 * @param shape             a polygonal (can include holes) or lineal shape.
+	 *                          GROUP shapes are not supported.
+	 * @param targetNumVertices the number of vertices that should remain/be
+	 *                          preserved in <b>each ring</b> of the input
+	 * @return simplifed copy of the input shape
+	 * @since 1.2.1
+	 * @see #simplifyDCE(PShape, double)
+	 */
+	public static PShape simplifyDCE(PShape shape, int targetNumVertices) {
+		targetNumVertices += 1; // as to not count the closing vertex in the number
+		Geometry g = fromPShape(shape);
+		if (g instanceof Polygon) {
+			LinearRing[] rings = new LinearRingIterator(g).getLinearRings();
+			LinearRing[] dceRings = new LinearRing[rings.length];
+			for (int i = 0; i < rings.length; i++) {
+				LinearRing ring = rings[i];
+				DiscreteCurveEvolution dce = new DiscreteCurveEvolution(Math.max(4, targetNumVertices));
+				dceRings[i] = PGS.GEOM_FACTORY.createLinearRing(dce.process(ring));
+			}
+			LinearRing[] holes = null;
+			if (dceRings.length > 1) {
+				holes = Arrays.copyOfRange(dceRings, 1, dceRings.length);
+			}
+			return toPShape(PGS.GEOM_FACTORY.createPolygon(dceRings[0], holes));
+		} else if (g instanceof LineString) {
+			LineString l = (LineString) g;
+			DiscreteCurveEvolution dce = new DiscreteCurveEvolution(Math.max(4, targetNumVertices));
 			return toPShape(PGS.GEOM_FACTORY.createLineString(dce.process(l)));
 		} else {
 			System.err.println(g.getGeometryType() + " are not supported for the simplifyDCE() method (yet).");
