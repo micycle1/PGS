@@ -46,6 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Additional method signature for `buffer()` that accepts a buffer style parameter.
 * Additional method signature for `offsetCurvesInward()` that accepts a curves number parameter.
 * `intersectMesh()` and `subtractMesh()` to `PGS_ShapeBoolean`. Performs the associated boolean operations on mesh-like shapes, preserving individual faces during the operation (rather than dissolving remaining elements).
+* `dilationErosion()` to `PGS_Morphology`. Applies a positive followed by a negative buffer (in a single operation).
+* `eliminateSlivers()` to `PGS_Morphology`. Removes narrow areas ("slivers") from a shape.
 
 ### Changed
 * **NOTE**: Moved all hull methods from `PGS_Processing` to `PGS_Hull`.
