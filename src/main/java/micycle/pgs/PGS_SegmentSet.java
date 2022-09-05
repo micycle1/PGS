@@ -19,6 +19,7 @@ import micycle.pgs.color.RGB;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
 import net.jafama.FastMath;
+import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -281,11 +282,79 @@ public class PGS_SegmentSet {
 	}
 
 	/**
+	 * Generates a set of N straight parallel segments, centered on a given point.
+	 * 
+	 * @param centerX  the x coordinate of the center of the segments arrangment
+	 * @param centerY  the y coordinate of the center of the segments arrangment
+	 * @param length   length of each segment
+	 * @param spacing  distance between successive segments
+	 * @param rotation angle in radians, where 0 is parallel to x-axis (horizontal)
+	 * @param n        number of segments to generate. if odd then the middle
+	 *                 segment lies on the center point; if even, then the first two
+	 *                 segments are spaced evenly from the center point
+	 * @return
+	 */
+	public static List<PEdge> parallelSegments(double centerX, double centerY, double length, double d, double angle, int n) {
+		List<PEdge> edges = new ArrayList<>(n);
+		if (n < 1) {
+			return edges;
+		}
+		PVector center = new PVector((float) centerX, (float) centerY);
+
+		float dx = (float) (Math.cos(angle + PConstants.HALF_PI) * d);
+		float dy = (float) (Math.sin(angle + PConstants.HALF_PI) * d);
+		float cos = (float) Math.cos(angle);
+		float sin = (float) Math.sin(angle);
+		float l = (float) length;
+
+		int i;
+
+		float offX = 0, offY = 0;
+		if (n % 2 == 1) { // odd number
+			PVector a = center.copy().add(new PVector(cos * l, sin * l));
+			PVector b = center.copy().add(new PVector(cos * -l, sin * -l));
+			edges.add(new PEdge(a, b));
+			i = 1;
+		} else {
+			// half the distance for first two if no middle
+			dx /= 2;
+			dy /= 2;
+			i = 1;
+			PVector a = PVector.add(center, new PVector(dx * i, dy * i));
+			PVector b = PVector.add(a, new PVector(cos * l, sin * l));
+			a.add(cos * -l, sin * -l);
+			edges.add(new PEdge(a, b));
+			a = PVector.add(center, new PVector(dx * -i, dy * -i));
+			b = PVector.add(a, new PVector(cos * l, sin * l));
+			a.add(cos * -l, sin * -l);
+			edges.add(new PEdge(a, b));
+			i = 2;
+			dx *= 2;
+			dy *= 2;
+			offX = dx / 2;
+			offY = dy / 2;
+		}
+
+		for (; i < 1 + (n / 2); i++) {
+			PVector a = PVector.add(center, new PVector(dx * i - offX, dy * i - offY));
+			PVector b = PVector.add(a, new PVector(cos * l, sin * l));
+			a.add(cos * -l, sin * -l);
+			edges.add(new PEdge(a, b));
+
+			a = PVector.add(center, new PVector(dx * -i + offX, dy * -i + offY));
+			b = PVector.add(a, new PVector(cos * l, sin * l));
+			a.add(cos * -l, sin * -l);
+			edges.add(new PEdge(a, b));
+		}
+		return edges;
+	}
+
+	/**
 	 * Converts a collection of {@link micycle.pgs.commons.PEdge PEdges} into a
 	 * <code>LINES</code> shape.
 	 * 
 	 * @param segments collection of segments
-	 * @return shape representing segments
+	 * @return <code>LINES</code> shape representing segments
 	 */
 	public static PShape toPShape(Collection<PEdge> segments) {
 		return toPShape(segments, null, null, 4);
