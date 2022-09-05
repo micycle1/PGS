@@ -725,6 +725,12 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/segment_set/stochastic.gif"></td>
     <td valign="top" width="25%"><img src="resources/segment_set/noded.gif"></td>
   </tr>
+  <tr>
+    <td align="center" valign="center"><b>Parallel</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/segment_set/parallel.gif"></td>
+  </tr>
 </table>
 
 ## *Tiling & Subdivision*
