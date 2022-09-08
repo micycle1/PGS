@@ -288,10 +288,12 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Variable Buffer</td>
     <td align="center" valign="center"><b>Eliminate Slivers</td>
+    <td align="center" valign="center"><b>Precision Reduction</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/morphology/variableBuffer.gif"></td>
     <td valign="top" width="25%"><img src="resources/morphology/slivers.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/reducePrecision.gif"></td>
   </tr>
 </table>
 
@@ -300,13 +302,13 @@ Much of the functionality (but by no means all) is demonstrated below:
 <table>
   <tr>
     <td align="center" valign="center" colspan="3"><b>Concave Hull</td>
-    <td align="center" valign="center"><b>Convex Hull</td>
+    <td align="center" valign="center"><b>Convex Hull of Polygons</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/morphology/concaveHull.gif"></td>
     <td valign="top" width="25%"><img src="resources/morphology/concaveHullBFS.png"></td>
     <td valign="top" width="25%"><img src="resources/morphology/concaveHullDFS.png"></td>
-    <td valign="top" width="25%"><img src="resources/morphology/convexHull.png"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/polyHull.gif"></td>
   </tr>
     <tr>
     <td align="center" valign="center" colspan="3">Concave hull of point sets via breadth-first or depth-first approaches.</td>
@@ -314,13 +316,15 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
+    <td align="center" valign="center"><b>Convex Hull</td>
     <td align="center" valign="center"><b>Snap Hull</td>
   </tr>
   <tr>
+    <td valign="top" width="25%"><img src="resources/morphology/convexHull.png"></td>
     <td valign="top" width="25%"><img src="resources/morphology/snapHull.gif"></td>
   </tr>
   <tr>
-    <td align="center" valign="center">A convex hull with some level of shape-feature snapping.</td>
+    <td align="center" valign="center">A variable-convexity hull.</td>
   </tr>
 </table>
 
