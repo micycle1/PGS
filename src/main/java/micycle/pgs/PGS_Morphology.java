@@ -14,11 +14,13 @@ import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.PrecisionModel;
 import org.locationtech.jts.geom.util.GeometryFixer;
 import org.locationtech.jts.operation.buffer.BufferOp;
 import org.locationtech.jts.operation.buffer.BufferParameters;
 import org.locationtech.jts.operation.buffer.VariableBuffer;
 import org.locationtech.jts.operation.overlay.snap.GeometrySnapper;
+import org.locationtech.jts.precision.GeometryPrecisionReducer;
 import org.locationtech.jts.shape.CubicBezierCurve;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
@@ -659,6 +661,21 @@ public final class PGS_Morphology {
 			System.err.println("morph() accepts holeless single polygons only (for now).");
 			return from;
 		}
+	}
+
+	/**
+	 * Reduces the precision of a shape, whilst ensuring the output shape is valid.
+	 * <p>
+	 * This method effectively rounds vertices to the nearest value given by
+	 * <code>precision</code>.
+	 * 
+	 * @param shape     shape to reduce
+	 * @param precision the exact grid size with which to round shape vertices. shoule be non-zero and positive
+	 * @return reduced copy of input
+	 * @since 1.2.1
+	 */
+	public static PShape reducePrecision(PShape shape, double precision) {
+		return toPShape(GeometryPrecisionReducer.reduce(fromPShape(shape), new PrecisionModel(-Math.max(Math.abs(precision), 1e-10))));
 	}
 
 }

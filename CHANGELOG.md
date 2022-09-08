@@ -48,12 +48,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `intersectMesh()` and `subtractMesh()` to `PGS_ShapeBoolean`. Performs the associated boolean operations on mesh-like shapes, preserving individual faces during the operation (rather than dissolving remaining elements).
 * `dilationErosion()` to `PGS_Morphology`. Applies a positive followed by a negative buffer (in a single operation).
 * `eliminateSlivers()` to `PGS_Morphology`. Removes narrow areas ("slivers") from a shape.
+* `reducePrecision()` to `PGS_Morphology`. Reduces the precision of a shape, whilst ensuring the output shape is valid.
 
 ### Changed
 * **NOTE**: Moved all hull methods from `PGS_Processing` to `PGS_Hull`.
 * Renamed `partition()` to `convexPartition()`.
 * `PGS_Conversion.fromPShape()` (a major method used internally) now applies any shape affine transformations (such as `rotate()`, `scale()`, `translate()`) to the resulting geometry.
-* `earCutTriangulation(PShape)` now uses JTS' implementation which supports inputs with holes.
+* `earCutTriangulation()` now uses JTS' implementation which supports inputs with holes.
 * `PGS_Morphology.smoothGaussian()` now uses a higher default resolution.
 * `PGS_Contour.straightSkeleton()` now supports multi-polygonal inputs and outputs faces (in addition to bones and branches, as before).
 * `PGS_Contour.straightSkeleton()` uses a different implementation that is ~50x faster!
@@ -67,6 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Reimplemented `PGS_PointSet.poisson()`. New algorithm is faster and produces better quality point set outputs.
 * Styling methods in `PGS_Conversion()` (such as `setAllFillColor()`) now return the (mutated) input (rather than being `public void`), to help method chaining.
 * GROUP PShapes having different child types (paths and polygons for instance) are now fully preserved during PShape<->Geometry conversion.
+* `snapHull()` now uses a JTS-based implementation which improves the range of output and meaningfulness of the snap parameter (now 0...1).
 
 ### Fixed
 * NPE when shapes created with `createShape()` in the P2D renderer were passed to `fromPShape()` (#55).
