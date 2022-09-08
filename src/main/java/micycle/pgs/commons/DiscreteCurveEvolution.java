@@ -39,7 +39,8 @@ public class DiscreteCurveEvolution {
 
 	public Coordinate[] process(Coordinate[] coords) {
 		if (vertices > coords.length) {
-			throw new IllegalArgumentException("Number of points left must be higher than number of the shape.");
+			vertices = Math.min(coords.length, vertices);
+//			throw new IllegalArgumentException("Number of points left must be higher than number of the shape.");
 		}
 
 		List<Complex> complex = new ArrayList<>();

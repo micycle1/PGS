@@ -1,8 +1,8 @@
 package micycle.pgs;
 
+import static micycle.pgs.PGS.GEOM_FACTORY;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
-import static micycle.pgs.PGS.GEOM_FACTORY;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -265,8 +265,8 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Computes all <b>points</b> of intersection between the <b>edges</b> of two
-	 * shapes.
+	 * Computes all <b>points</b> of intersection between the <b>perimeter</b> of
+	 * two shapes.
 	 * <p>
 	 * NOTE: This method shouldn't be confused with
 	 * {@link micycle.pgs.PGS_ShapeBoolean#intersect(PShape, PShape)
@@ -285,6 +285,7 @@ public final class PGS_Processing {
 		final SegmentIntersectionDetector sid = new SegmentIntersectionDetector();
 
 		mci.process(SegmentStringUtil.extractSegmentStrings(fromPShape(b)), new SegmentIntersector() {
+			@Override
 			public void processIntersections(SegmentString e0, int segIndex0, SegmentString e1, int segIndex1) {
 				sid.processIntersections(e0, segIndex0, e1, segIndex1);
 				if (sid.getIntersection() != null) {
@@ -292,6 +293,7 @@ public final class PGS_Processing {
 				}
 			}
 
+			@Override
 			public boolean isDone() {
 				return false;
 			}
@@ -522,9 +524,9 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Removes hidden lines from a set of overlapping/occluded polyons, preserving
-	 * only line segments that are visible to a human, rather than a computer (to
-	 * use as input for a pen plotter, for example).
+	 * Removes overlap between polygons contained in a GROUP shape, preserving only
+	 * line segments that are visible to a human, rather than a computer (to use as
+	 * input for a pen plotter, for example).
 	 * <p>
 	 * Any overlapping lines are also removed during the operation.
 	 * <p>
@@ -533,7 +535,7 @@ public final class PGS_Processing {
 	 * visually).
 	 * 
 	 * @param shape a GROUP shape consisting of lineal or polygonal child shapes
-	 * @return linework (LINES PShape)
+	 * @return linework of the overlapping input (LINES PShape)
 	 * @since 1.2.1
 	 */
 	public static PShape removeHiddenLines(PShape shape) {
@@ -553,13 +555,8 @@ public final class PGS_Processing {
 		// for each shape, subtract the union of shapes visually above it
 		while (i.hasNext()) {
 			final Geometry layer = i.next();
-			Geometry occulted; // occulted version of layer
-
-			// occulted = OverlayNG.overlay(g, union, OverlayNG.DIFFERENCE);
-			// union = OverlayNG.overlay(g, union, OverlayNG.UNION);
-
 			MultiOperationOverlayNG overlay = new MultiOperationOverlayNG(layer, union);
-			occulted = overlay.getResult(OverlayNG.DIFFERENCE);
+			Geometry occulted = overlay.getResult(OverlayNG.DIFFERENCE); // occulted version of layer
 			union = overlay.getResult(OverlayNG.UNION);
 
 			culledGeometries.add(occulted);
