@@ -87,39 +87,6 @@ public final class PGS_ShapeBoolean {
 	}
 
 	/**
-	 * Subtracts a polygonal area from a mesh-like shape / polygonal coverage,
-	 * preserving individual faces/features of the mesh during the operation.
-	 * <p>
-	 * When polygon is subtracted from a mesh-like shape / polygonal coverage using
-	 * {@link #subtract(PShape, PShape) subtract(a, b)}, the result is a
-	 * <b>single</b> polygon comprising the combined/dissolved area of all remaining
-	 * mesh face parts. Sometimes this behaviour is desired whereas other times it
-	 * is not -- this method can be used to preserve how each face is subtracted
-	 * from individually.
-	 * <p>
-	 * Using this method is faster than calling {@link #subtract(PShape, PShape)
-	 * subtract(a, b)} repeatedly on every face of a mesh-like shape <code>a</code>.
-	 * 
-	 * @param mesh a mesh-like GROUP shape
-	 * @param area a polygonal shape
-	 * @return a GROUP shape, where each child shape is the subtraction of the area
-	 *         from one mesh face
-	 * @since 1.2.1
-	 */
-	public static PShape subtractMesh(PShape mesh, PShape area) {
-		final Geometry g = fromPShape(area);
-		final PreparedGeometry cache = PreparedGeometryFactory.prepare(g);
-		// @formatter:off
-		List<Geometry> faces = PGS_Conversion.getChildren(mesh).parallelStream()
-				.map(PGS_Conversion::fromPShape)
-				.map(f -> cache.containsProperly(f) ? null : OverlayNG.overlay(f, g, OverlayNG.DIFFERENCE))
-				.filter(Objects::nonNull)
-				.collect(Collectors.toList());
-		// @formatter:on
-		return PGS_Conversion.toPShape(faces);
-	}
-
-	/**
 	 * "Glues" shapes together so they become a single combined shape with the sum
 	 * of its areas.
 	 * 
@@ -220,6 +187,39 @@ public final class PGS_ShapeBoolean {
 	 */
 	public static PShape subtract(PShape a, PShape b) {
 		return toPShape(OverlayNG.overlay(fromPShape(a), fromPShape(b), OverlayNG.DIFFERENCE));
+	}
+
+	/**
+	 * Subtracts a polygonal area from a mesh-like shape / polygonal coverage,
+	 * preserving individual faces/features of the mesh during the operation.
+	 * <p>
+	 * When polygon is subtracted from a mesh-like shape / polygonal coverage using
+	 * {@link #subtract(PShape, PShape) subtract(a, b)}, the result is a
+	 * <b>single</b> polygon comprising the combined/dissolved area of all remaining
+	 * mesh face parts. Sometimes this behaviour is desired whereas other times it
+	 * is not -- this method can be used to preserve how each face is subtracted
+	 * from individually.
+	 * <p>
+	 * Using this method is faster than calling {@link #subtract(PShape, PShape)
+	 * subtract(a, b)} repeatedly on every face of a mesh-like shape <code>a</code>.
+	 * 
+	 * @param mesh a mesh-like GROUP shape
+	 * @param area a polygonal shape
+	 * @return a GROUP shape, where each child shape is the subtraction of the area
+	 *         from one mesh face
+	 * @since 1.2.1
+	 */
+	public static PShape subtractMesh(PShape mesh, PShape area) {
+		final Geometry g = fromPShape(area);
+		final PreparedGeometry cache = PreparedGeometryFactory.prepare(g);
+		// @formatter:off
+		List<Geometry> faces = PGS_Conversion.getChildren(mesh).parallelStream()
+				.map(PGS_Conversion::fromPShape)
+				.map(f -> cache.containsProperly(f) ? null : OverlayNG.overlay(f, g, OverlayNG.DIFFERENCE))
+				.filter(Objects::nonNull)
+				.collect(Collectors.toList());
+		// @formatter:on
+		return PGS_Conversion.toPShape(faces);
 	}
 
 	/**

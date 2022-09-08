@@ -866,10 +866,10 @@ public final class PGS_Conversion {
 	/**
 	 * Recurses a GROUP PShape, finding all of its non-GROUP child PShapes.
 	 * <p>
-	 * This method differs from PShape.getChildren(): that method will return GROUP
-	 * child shapes, whereas this method will recurse such shapes, returing their
-	 * non-group children (in other words, this method explores the whole tree of
-	 * shapes, returning non-group shapes only).
+	 * This method differs from <code>PShape.getChildren()</code>: that method will
+	 * return GROUP child shapes, whereas this method will recurse such shapes,
+	 * returing their non-group children (in other words, this method explores the
+	 * whole tree of shapes, returning non-group shapes only).
 	 * 
 	 * @param shape
 	 * @return a list of non-GROUP PShapes
