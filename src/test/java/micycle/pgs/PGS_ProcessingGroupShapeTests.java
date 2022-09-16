@@ -62,13 +62,6 @@ class PGS_ProcessingGroupShapeTests {
 	}
 	
 	@Test
-	void test_PGS_Processing_snapHull() {
-		assumeTrue(GROUP_SHAPE.getChildCount() == 2);
-		PShape out = PGS_Hull.snapHull(GROUP_SHAPE, 4);
-		assertEquals(2, out.getChildCount());
-	}
-	
-	@Test
 	void test_PGS_Processing_convexPartition() {
 		assumeTrue(GROUP_SHAPE.getChildCount() == 2);
 		PShape out = PGS_Processing.convexPartition(GROUP_SHAPE);
