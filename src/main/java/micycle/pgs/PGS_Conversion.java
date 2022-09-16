@@ -35,9 +35,12 @@ import org.jgrapht.alg.util.NeighborCache;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 import org.jgrapht.graph.SimpleWeightedGraph;
+import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.awt.ShapeReader;
 import org.locationtech.jts.awt.ShapeWriter;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateArrays;
+import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
@@ -348,7 +351,7 @@ public final class PGS_Conversion {
 		final int[] contourGroups = getContourGroups(rawVertexCodes);
 		final int[] vertexCodes = getVertexTypes(rawVertexCodes);
 
-		final List<List<Coordinate>> coords = new ArrayList<>(); // list of coords representing rings
+		final List<CoordinateList> coords = new ArrayList<>(); // list of coords representing rings/contours
 
 		int lastGroup = -1;
 		for (int i = 0; i < shape.getVertexCount(); i++) {
@@ -357,7 +360,7 @@ public final class PGS_Conversion {
 					lastGroup = 0;
 				}
 				lastGroup = contourGroups[i];
-				coords.add(new ArrayList<>());
+				coords.add(new CoordinateList());
 			}
 
 			/**
@@ -366,48 +369,27 @@ public final class PGS_Conversion {
 			switch (vertexCodes[i]) { // VERTEX, BEZIER_VERTEX, CURVE_VERTEX, or BREAK
 				case QUADRATIC_VERTEX :
 					coords.get(lastGroup).addAll(getQuadraticBezierPoints(shape.getVertex(i - 1), shape.getVertex(i),
-							shape.getVertex(i + 1), BEZIER_SAMPLE_DISTANCE));
+							shape.getVertex(i + 1), BEZIER_SAMPLE_DISTANCE), false);
 					i += 1;
 					continue;
 				case BEZIER_VERTEX : // aka cubic bezier
 					coords.get(lastGroup).addAll(getCubicBezierPoints(shape.getVertex(i - 1), shape.getVertex(i), shape.getVertex(i + 1),
-							shape.getVertex(i + 2), BEZIER_SAMPLE_DISTANCE));
+							shape.getVertex(i + 2), BEZIER_SAMPLE_DISTANCE), false);
 					i += 2;
 					continue;
 				default : // VERTEX
-					coords.get(lastGroup).add(coordFromPVector(shape.getVertex(i)));
+					coords.get(lastGroup).add(coordFromPVector(shape.getVertex(i)), false);
 					break;
 			}
 		}
 
-		for (List<Coordinate> contour : coords) {
-			final Iterator<Coordinate> iterator = contour.iterator();
-			if (iterator.hasNext()) { // has at least one vertex
-				final List<Coordinate> contourNoDupes = new ArrayList<>(contour.size());
-				Coordinate previous = iterator.next();
-				contourNoDupes.add(previous);
-
-				/*
-				 * Remove consecutive duplicate coordinates
-				 */
-				while (iterator.hasNext()) {
-					Coordinate current = iterator.next();
-					if (!current.equals2D(previous)) {
-						contourNoDupes.add(current);
-					}
-					previous = current;
-				}
-
-				// mutate contour list
-				contour.clear();
-				contour.addAll(contourNoDupes);
-
-				if (!contour.get(0).equals2D(contour.get(contour.size() - 1)) && shape.isClosed()) {
-					contour.add(contour.get(0)); // close LinearRing: "points of LinearRing must form a closed linestring"
-				}
+		coords.forEach(contour -> {
+			if (shape.isClosed()) {
+				contour.closeRing();
 			}
-		}
-		final Coordinate[] outerCoords = coords.get(0).toArray(new Coordinate[coords.get(0).size()]);
+		});
+
+		final Coordinate[] outerCoords = coords.get(0).toCoordinateArray();
 
 		if (outerCoords.length == 0) {
 			return GEOM_FACTORY.createPolygon(); // empty polygon
@@ -419,7 +401,7 @@ public final class PGS_Conversion {
 			LinearRing outer = GEOM_FACTORY.createLinearRing(outerCoords); // should always be valid
 			LinearRing[] holes = new LinearRing[coords.size() - 1]; // Create linear ring for each hole in the shape
 			for (int j = 1; j < coords.size(); j++) {
-				final Coordinate[] innerCoords = coords.get(j).toArray(new Coordinate[coords.get(j).size()]);
+				final Coordinate[] innerCoords = coords.get(j).toCoordinateArray();
 				holes[j - 1] = GEOM_FACTORY.createLinearRing(innerCoords);
 			}
 			return GEOM_FACTORY.createPolygon(outer, holes);
@@ -1159,9 +1141,10 @@ public final class PGS_Conversion {
 	 * @return list of points along curve
 	 */
 	private static List<Coordinate> getQuadraticBezierPoints(PVector start, PVector controlPoint, PVector end, float sampleDistance) {
-		List<Coordinate> coords = new ArrayList<>();
+		final List<Coordinate> coords;
 
 		if (start.dist(end) <= sampleDistance) {
+			coords = new ArrayList<>(2);
 			coords.add(coordFromPVector(start));
 			coords.add(coordFromPVector(end));
 			return coords;
@@ -1169,6 +1152,7 @@ public final class PGS_Conversion {
 
 		final float length = bezierLengthQuadratic(start, controlPoint, end);
 		final int samples = (int) Math.ceil(length / sampleDistance); // sample every x unit length (approximately)
+		coords = new ArrayList<>(samples);
 
 		coords.add(coordFromPVector(start));
 		for (int j = 1; j < samples; j++) { // start at 1 -- don't sample at t=0
@@ -1219,9 +1203,10 @@ public final class PGS_Conversion {
 	 */
 	private static List<Coordinate> getCubicBezierPoints(PVector start, PVector controlPoint1, PVector controlPoint2, PVector end,
 			float sampleDistance) {
-		List<Coordinate> coords = new ArrayList<>();
+		final List<Coordinate> coords;
 
 		if (start.dist(end) <= sampleDistance) {
+			coords = new ArrayList<>(2);
 			coords.add(coordFromPVector(start));
 			coords.add(coordFromPVector(end));
 			return coords;
@@ -1229,6 +1214,7 @@ public final class PGS_Conversion {
 
 		final float length = bezierLengthCubic(start, controlPoint1, controlPoint2, end);
 		final int samples = (int) Math.ceil(length / sampleDistance); // sample every x unit length (approximately)
+		coords = new ArrayList<>(samples);
 
 		coords.add(coordFromPVector(start));
 		for (int j = 1; j < samples; j++) { // start at 1 -- don't sample at t=0
