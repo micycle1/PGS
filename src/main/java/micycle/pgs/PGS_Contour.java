@@ -50,6 +50,7 @@ import org.twak.utils.collections.LoopL;
 import kendzi.math.geometry.skeleton.SkeletonConfiguration;
 import kendzi.math.geometry.skeleton.SkeletonOutput;
 import micycle.medialAxis.MedialAxis;
+import micycle.medialAxis.MedialAxis.MedialDisk;
 import micycle.pgs.PGS.GeometryIterator;
 import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.color.RGB;
@@ -60,7 +61,6 @@ import processing.core.PVector;
 
 /**
  * Methods for producing different kinds of shape contours.
- *
  * <p>
  * A 2D contour is a closed sequence (a cycle) of 3 or more connected 2D
  * oriented straight line segments called contour edges. The endpoints of the
@@ -607,6 +607,37 @@ public final class PGS_Contour {
 		}
 
 		return isolines;
+	}
+
+	/**
+	 * Generates a contour map based on a distance field of a shape.
+	 * <p>
+	 * A distance field maps each point within the shape to the shortest distance
+	 * between that point and the shape boundary.
+	 * 
+	 * @param shape   polygonal shape
+	 * @param spacing distance represented by successive contour lines
+	 * @return GROUP shape, where each child is a closed contour line or contour
+	 *         line partition
+	 * @since 1.2.1
+	 */
+	public static PShape distanceField(PShape shape, double spacing) {
+		Geometry g = fromPShape(shape);
+		MedialAxis m = new MedialAxis(g);
+
+		List<PVector> disks = new ArrayList<>();
+		double min = Double.POSITIVE_INFINITY;
+		double max = Double.NEGATIVE_INFINITY;
+		for (MedialDisk d : m.getDisks()) {
+			disks.add(new PVector((float) d.position.x, (float) d.position.y, (float) d.distance));
+			min = Math.min(d.distance, min);
+			max = Math.max(d.distance, max);
+		}
+
+		PShape out = PGS_Conversion.flatten(PGS_Contour.isolines(disks, spacing, min, max).keySet());
+		PShape i = PGS_ShapeBoolean.intersect(shape, out);
+		PGS_Conversion.disableAllFill(i); // since some shapes may be polygons
+		return i;
 	}
 
 	/**

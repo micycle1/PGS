@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `dilationErosion()` to `PGS_Morphology`. Applies a positive followed by a negative buffer (in a single operation).
 * `eliminateSlivers()` to `PGS_Morphology`. Removes narrow areas ("slivers") from a shape.
 * `reducePrecision()` to `PGS_Morphology`. Reduces the precision of a shape, whilst ensuring the output shape is valid.
+* `distanceField()` to `PGS_Contour`. Generates a contour map based on a distance field of a shape.
 
 ### Changed
 * **NOTE**: Moved all hull methods from `PGS_Processing` to `PGS_Hull`.
