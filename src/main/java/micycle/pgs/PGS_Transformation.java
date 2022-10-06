@@ -61,10 +61,10 @@ public final class PGS_Transformation {
 	}
 
 	/**
-	 * Scales the shape relative to the origin (0,0).
+	 * Scales a shape relative to the origin (0,0).
 	 * 
 	 * @param shape
-	 * @param scale cale factor
+	 * @param scale scale factor
 	 * @return
 	 * @since 1.2.1
 	 */
@@ -226,10 +226,10 @@ public final class PGS_Transformation {
 	/**
 	 * Translates a shape by the given coordinates.
 	 * 
-	 * @param shape
-	 * @param x
-	 * @param y
-	 * @return translated copy
+	 * @param shape shape to translate
+	 * @param x     the value to translate by in the x direction
+	 * @param y     the value to translate by in the x direction
+	 * @return translated copy of input
 	 */
 	public static PShape translate(PShape shape, double x, double y) {
 		Geometry g = fromPShape(shape);
@@ -238,20 +238,80 @@ public final class PGS_Transformation {
 	}
 
 	/**
-	 * Translates a shape such that its centroid is equivalent to the given
+	 * Translates a shape such that its <b>centroid</b> is equivalent to the given
 	 * coordinates.
 	 * 
-	 * @param shape
+	 * @param shape shape to translate
 	 * @param x     target centroid X
 	 * @param y     target centroid Y
 	 * @return translated shape
+	 * @deprecated Use {@link #translateCentroidTo(PShape, double, double)
+	 *             translateCentroidTo()} instead.
 	 */
 	public static PShape translateTo(PShape shape, double x, double y) {
+		return translateCentroidTo(shape, x, y);
+	}
+
+	/**
+	 * Translates a shape such that its <b>centroid</b> is equivalent to the given
+	 * coordinates.
+	 * <p>
+	 * The centroid of a polygon corresponds to its "center of mass".
+	 * 
+	 * @param shape shape to translate
+	 * @param x     target centroid X
+	 * @param y     target centroid Y
+	 * @return translated shape
+	 * @since 1.2.1 (superceeds {@link #translateTo(PShape, double, double)
+	 *        translateTo()}
+	 */
+	public static PShape translateCentroidTo(PShape shape, double x, double y) {
 		Geometry g = fromPShape(shape);
 		Point c = g.getCentroid();
 		double translateX = x - c.getX();
 		double translateY = y - c.getY();
 		AffineTransformation t = AffineTransformation.translationInstance(translateX, translateY);
+		return toPShape(t.transform(g));
+	}
+
+	/**
+	 * Translates a shape such that the <b>centroid</b> of its <b>bounding box</b>
+	 * is equivalent to the given coordinates. This method differs a little from
+	 * {@link #translateTo(PShape, double, double) translateTo()} because that uses
+	 * center of shape's "mass", whereas this is visual center (however both are
+	 * usually similar, if not identical).
+	 * 
+	 * @param shape shape to translate
+	 * @param x     the x-coordinate of new position of the shape's bounding box
+	 *              centroid point
+	 * @param y     the y-coordinate of new position of the shape's bounding box
+	 *              centroid point
+	 * @return translated shape
+	 * @since 1.2.1
+	 */
+	public static PShape translateEnvelopeTo(PShape shape, double x, double y) {
+		Geometry g = fromPShape(shape);
+		Point c = g.getEnvelope().getCentroid();
+		double translateX = x - c.getX();
+		double translateY = y - c.getY();
+		AffineTransformation t = AffineTransformation.translationInstance(translateX, translateY);
+		return toPShape(t.transform(g));
+	}
+
+	/**
+	 * Translates a shape such that the <b>upper-left corner</b> of its bounding box
+	 * is equivalent to the given coordinates.
+	 * 
+	 * @param shape shape to translate
+	 * @param x
+	 * @param y
+	 * @return translated shape
+	 * @since 1.2.1
+	 */
+	public static PShape translateCornerTo(PShape shape, double x, double y) {
+		Geometry g = fromPShape(shape);
+		final Envelope e = g.getEnvelopeInternal();
+		AffineTransformation t = AffineTransformation.translationInstance(x - e.getMinX(), y - e.getMinY());
 		return toPShape(t.transform(g));
 	}
 
@@ -270,7 +330,11 @@ public final class PGS_Transformation {
 	}
 
 	/**
-	 * Calculate a Homothetic Transformation of the shape.
+	 * Calculates a Homothetic Transformation of a shape.
+	 * <p>
+	 * A Homothetic Transformation is a special geometric transformation that
+	 * enlarges or shrinks geometries by a scale factor that is the same in all
+	 * directions according to a centric point.
 	 * 
 	 * @param shape  shape input
 	 * @param center coordinate of the center/origin position of the operation
@@ -280,11 +344,12 @@ public final class PGS_Transformation {
 	public static PShape homotheticTransformation(PShape shape, PVector center, double scaleX, double scaleY) {
 		Polygon geom = (Polygon) fromPShape(shape);
 
-		// external contour
+		// exterior contour
 		Coordinate[] coord = geom.getExteriorRing().getCoordinates();
 		Coordinate[] coord_ = new Coordinate[coord.length];
-		for (int i = 0; i < coord.length; i++)
+		for (int i = 0; i < coord.length; i++) {
 			coord_[i] = new Coordinate(center.x + scaleX * (coord[i].x - center.x), center.y + scaleY * (coord[i].y - center.y));
+		}
 		LinearRing lr = geom.getFactory().createLinearRing(coord_);
 
 		// holes
@@ -292,9 +357,10 @@ public final class PGS_Transformation {
 		for (int j = 0; j < geom.getNumInteriorRing(); j++) {
 			Coordinate[] hole_coord = geom.getInteriorRingN(j).getCoordinates();
 			Coordinate[] hole_coord_ = new Coordinate[hole_coord.length];
-			for (int i = 0; i < hole_coord.length; i++)
+			for (int i = 0; i < hole_coord.length; i++) {
 				hole_coord_[i] = new Coordinate(center.x + scaleY * (hole_coord[i].x - center.x),
 						center.y + scaleY * (hole_coord[i].y - center.y));
+			}
 			holes[j] = geom.getFactory().createLinearRing(hole_coord_);
 		}
 		return toPShape(PGS.GEOM_FACTORY.createPolygon(lr, holes));
@@ -303,9 +369,9 @@ public final class PGS_Transformation {
 	/**
 	 * Rotates a shape around a given point.
 	 * 
-	 * @param shape
-	 * @param point
-	 * @param angle
+	 * @param shape the shape to tranform/rotate
+	 * @param point rotation point
+	 * @param angle the rotation angle, in radians
 	 * @return
 	 * @see #rotateAroundCenter(PShape, double)
 	 */
@@ -347,7 +413,7 @@ public final class PGS_Transformation {
 	 * Flips the shape horizontally based on a line given by its Y location.
 	 * 
 	 * @param shape
-	 * @param y
+	 * @param y     y-coordinate of horizontal reflection line
 	 * @return
 	 */
 	public static PShape flipHorizontal(PShape shape, double y) {
@@ -372,7 +438,7 @@ public final class PGS_Transformation {
 	 * Flips the shape vertically based on a line given by its X location.
 	 * 
 	 * @param shape
-	 * @param x
+	 * @param x     x-coordinate of vertical reflection line
 	 * @return
 	 */
 	public static PShape flipVertical(PShape shape, double x) {
