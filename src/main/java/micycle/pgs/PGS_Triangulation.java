@@ -5,6 +5,7 @@ import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -287,12 +288,15 @@ public final class PGS_Triangulation {
 			final ArrayList<Vertex> refinementVertices = new ArrayList<>();
 
 			/*
-			 * A possible optimisation is to recursely split within each triangle upto the
-			 * refinement depth (in one pass), so perform many less location checks. Another
-			 * is to rasterise the PShape and check pixel[] array. TODO See 'sqrt(3)
-			 * Subdivision' by Leif Kobbelt
+			 * All vertices must be added to Tin before constraints are added (hence the
+			 * need for pointLocator, since visitSimpleTriangles() visits triangles that lie
+			 * outside the shape at this stage.
 			 */
 			for (int i = 0; i < refinements; i++) {
+				/*
+				 * Must be iterated like this so that triangles to refine are delaunay at each
+				 * stage (rather than recurse the original triangles).
+				 */
 				refinementVertices.clear();
 				TriangleCollector.visitSimpleTriangles(tin, t -> {
 					if (t.getArea() > 50) { // don't refine small triangles
@@ -313,31 +317,34 @@ public final class PGS_Triangulation {
 			}
 			List<IConstraint> constraints = new ArrayList<>();
 			for (int n = 0; n < g.getNumGeometries(); n++) {
-				boolean hole = false;
+				boolean exterior = true;
 
 				LinearRingIterator lri = new LinearRingIterator(g.getGeometryN(n));
 				for (LinearRing ring : lri) {
-					ArrayList<Vertex> points = new ArrayList<>();
-					Coordinate[] c = ring.getCoordinates();
+					final List<Vertex> points = new ArrayList<>();
+					final Coordinate[] c = ring.getCoordinates();
 					if (c.length == 0) {
+						exterior = false;
 						continue;
 					}
-					if (Orientation.isCCW(c) && !hole) {
-						for (int i = 0; i < c.length; i++) {
-							points.add(new Vertex(c[i].x, c[i].y, 0));
-						}
-					} else {
-						// holes are CW; region to keep lies to left the of constraints
-						for (int i = c.length - 1; i >= 0; i--) {
-							points.add(new Vertex(c[i].x, c[i].y, 0));
-						}
+
+					for (int i = 0; i < c.length; i++) {
+						points.add(new Vertex(c[i].x, c[i].y, 0));
+					}
+					/*
+					 * In Tinfour, the shape exterior must be CCW and the holes must be CW. This is
+					 * true for most PShapes, but some shapes (like those created from fonts) may
+					 * have the rings orientated the other way, which needs to be corrected.
+					 */
+					if ((exterior && !Orientation.isCCWArea(c)) || (!exterior && Orientation.isCCWArea(c))) {
+						Collections.reverse(points);
 					}
 					constraints.add(new PolygonConstraint(points));
-					hole = true; // all rings except the first are holes
+					exterior = false;
 				}
 			}
 			if (!constraints.isEmpty()) {
-				tin.addConstraints(constraints, pretty); // true/false is negligible?
+				tin.addConstraints(constraints, pretty);
 			}
 		}
 
@@ -548,7 +555,7 @@ public final class PGS_Triangulation {
 	static PVector toPVector(final Vertex v) {
 		return new PVector((float) v.getX(), (float) v.getY());
 	}
-	
+
 	static PEdge toPEdge(final IQuadEdge e) {
 		return new PEdge(toPVector(e.getA()), toPVector(e.getB()));
 	}
