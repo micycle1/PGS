@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `toJava2D()` and `fromJava2D()` to `PGS_Conversion`. Converts PShapes to and from Java2D/java.awt shape objects.
 * `originScale()` to `PGS_Transformation`. Scales a shape relative to the origin (0, 0).
 * `resizeByWidth()` and `resizeByHeight()` to `PGS_Transformation`. Resizes a shape to a given width/height, whilst resizing the height/width to maintain the original aspect ratio.
+* `resizeByMajorAxis()` to `PGS_Transformation`. Resizes a shape (based on the longest axis of its envelope) to a given size.
+* `translateEnvelopeTo()` and `translateCornerTo()` to `PGS_Transformation`. These methods translate a shape based on its envelope.
 * A new mesh-coloring algorithm: `GENETIC`, which finds a coloring via a genetic algorithm.
 * `toGraph()` to `PGS_Conversion`. Converts a shape to a (jGraphT) graph, representing its dual-graph (this method was previously private).
 * `fromGraph()` to `PGS_Conversion`. Converts a (jGraphT) graph to a shape, using a Force-Directed placement algorithm.
@@ -50,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `eliminateSlivers()` to `PGS_Morphology`. Removes narrow areas ("slivers") from a shape.
 * `reducePrecision()` to `PGS_Morphology`. Reduces the precision of a shape, whilst ensuring the output shape is valid.
 * `distanceField()` to `PGS_Contour`. Generates a contour map based on a distance field of a shape.
+* `hatchSubdivision()` to `PGS_Tiling`. Randomly subdivides the plane into equal-width strips having varying lengths.
 
 ### Changed
 * **NOTE**: Moved all hull methods from `PGS_Processing` to `PGS_Hull`.
@@ -75,6 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * NPE when shapes created with `createShape()` in the P2D renderer were passed to `fromPShape()` (#55).
 * `slice()` would sometimes fail to return some rectangular slices on a concave input (and it's more robust too now).
 * Error if a GROUP shape was passed to `point(s)OnExterior()` methods.
+* Triangulation methods now respect holes on shapes whose vertices wind opposite to convention (such as letter shapes created from `PFonts`).
 
 ### Removed
 * `earCutTriangulation(List<PVector> points)` from `PGS_Triangulation`.

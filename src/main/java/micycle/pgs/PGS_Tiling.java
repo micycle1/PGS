@@ -6,6 +6,7 @@ import java.util.SplittableRandom;
 
 import micycle.pgs.color.RGB;
 import micycle.pgs.commons.DoyleSpiral;
+import micycle.pgs.commons.HatchTiling;
 import micycle.pgs.commons.PenroseTiling;
 import micycle.pgs.commons.RectangularSubdivision;
 import micycle.pgs.commons.TriangleSubdivision;
@@ -17,9 +18,9 @@ import processing.core.PVector;
  * Tiling, tessellation and subdivision of the plane using periodic or
  * non-periodic geometric shapes.
  * <p>
- * A tiling is created when a collection of plane figures (tileCount) fills a plane
- * such that no gaps occur between the tileCount and no two tileCount overlap each
- * other.
+ * A tiling is created when a collection of plane figures (tileCount) fills a
+ * plane such that no gaps occur between the tileCount and no two tileCount
+ * overlap each other.
  * 
  * @author Michael Carleton
  * @since 1.2.0
@@ -38,12 +39,10 @@ public final class PGS_Tiling {
 	 * @param height   height of the quad subdivision plane
 	 * @param maxDepth maximum number of subdivisions (recursion depth)
 	 * @return a GROUP PShape, where each child shape is a face of the subdivision
-	 * @see #rectSubdivsion(double, double, int, long) seeded rectSubdivsion()
+	 * @see #rectSubdivision(double, double, int, long) seeded rectSubdivsion()
 	 */
-	public static PShape rectSubdivsion(double width, double height, int maxDepth) {
-		final RectangularSubdivision rectangularSubdivision = new RectangularSubdivision(width, height, maxDepth,
-				System.currentTimeMillis());
-		return rectangularSubdivision.divide();
+	public static PShape rectSubdivision(double width, double height, int maxDepth) {
+		return rectSubdivision(width, height, maxDepth, System.currentTimeMillis());
 	}
 
 	/**
@@ -54,9 +53,10 @@ public final class PGS_Tiling {
 	 * @param maxDepth maximum number of subdivisions (recursion depth)
 	 * @param seed     the random seed
 	 * @return a GROUP PShape, where each child shape is a face of the subdivision
-	 * @see #rectSubdivsion(double, double, int) non-seeded rectSubdivsion()
+	 * @see #rectSubdivision(double, double, int) non-seeded rectSubdivsion()
 	 */
-	public static PShape rectSubdivsion(double width, double height, int maxDepth, long seed) {
+	public static PShape rectSubdivision(double width, double height, int maxDepth, long seed) {
+		maxDepth++; // so that given depth==0 returns non-divided square
 		final RectangularSubdivision rectangularSubdivision = new RectangularSubdivision(width, height, maxDepth, seed);
 		return rectangularSubdivision.divide();
 	}
@@ -68,12 +68,11 @@ public final class PGS_Tiling {
 	 * @param height   height of the subdivision plane
 	 * @param maxDepth maximum number of subdivisions (recursion depth)
 	 * @return a GROUP PShape, where each child shape is a face of the subdivision
-	 * @see #triangleSubdivsion(double, double, int, long) seeded
+	 * @see #triangleSubdivision(double, double, int, long) seeded
 	 *      triangleSubdivsion()
 	 */
-	public static PShape triangleSubdivsion(double width, double height, int maxDepth) {
-		final TriangleSubdivision subdivision = new TriangleSubdivision(width, height, maxDepth, System.currentTimeMillis());
-		return subdivision.divide();
+	public static PShape triangleSubdivision(double width, double height, int maxDepth) {
+		return triangleSubdivision(width, height, maxDepth, System.currentTimeMillis());
 	}
 
 	/**
@@ -84,10 +83,11 @@ public final class PGS_Tiling {
 	 * @param maxDepth maximum number of subdivisions (recursion depth)
 	 * @param seed     the random seed
 	 * @return a GROUP PShape, where each child shape is a face of the subdivision
-	 * @see PGS_Tiling#triangleSubdivsion(double, double, int) non-seeded
+	 * @see PGS_Tiling#triangleSubdivision(double, double, int) non-seeded
 	 *      triangleSubdivision()
 	 */
-	public static PShape triangleSubdivsion(double width, double height, int maxDepth, long seed) {
+	public static PShape triangleSubdivision(double width, double height, int maxDepth, long seed) {
+		maxDepth++; // so that given depth==0 returns non-divided triangle
 		final TriangleSubdivision subdivision = new TriangleSubdivision(width, height, maxDepth, seed);
 		return subdivision.divide();
 	}
@@ -134,6 +134,24 @@ public final class PGS_Tiling {
 		PGS_Conversion.setAllFillColor(divisions, RGB.WHITE);
 		PGS_Conversion.setAllStrokeColor(divisions, RGB.PINK, 2);
 		return divisions;
+	}
+
+	/**
+	 * Randomly subdivides the plane into equal-width strips having varying lengths.
+	 * 
+	 * @param width      width of the subdivision plane
+	 * @param height     height of the subdivision plane
+	 * @param gridCountX horizontal grid count
+	 * @param gridCountY vertical grid count
+	 * @param seed       the random seed
+	 * @return a GROUP PShape, where each child shape is a face of the subdivision
+	 * @since 1.2.1
+	 */
+	public static PShape hatchSubdivision(double width, double height, int gridCountX, int gridCountY, long seed) {
+		final HatchTiling ht = new HatchTiling((int) width, (int) height, gridCountX, gridCountY);
+		PShape tiling = ht.getTiling(seed);
+		PGS_Conversion.setAllStrokeColor(tiling, RGB.PINK, 4);
+		return tiling;
 	}
 
 	/**
