@@ -756,23 +756,29 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center"><b>Random Quad Subdivision</td>
     <td align="center" valign="center"><b>Random Rect Subdivision</td>
     <td align="center" valign="center"><b>Random Triangle Subdivision</td>
-    <td align="center" valign="center"><b>Islamic Tiling</td>
+    <td align="center" valign="center"><b>Hatch Subdivision</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/tiling/randomSubdivision.png"></td>
     <td valign="top" width="25%"><img src="resources/tiling/rectSubdivision.png"></td>
     <td valign="top" width="25%"><img src="resources/tiling/triangleSubdivision.png"></td>
-    <td valign="top" width="25%"><img src="resources/tiling/islamic.png"></td>
+    <td valign="top" width="25%"><img src="resources/tiling/hatchSubdivision.png"></td>
   </tr>
   <tr>
+    <td align="center" valign="center"><b>Islamic Tiling</td>
     <td align="center" valign="center" colspan="2"><b>Doyle Spiral</td>
     <td align="center" valign="center"><b>Hexagon Tiling</td>
-    <td align="center" valign="center"><b>Penrose Tiling</td>
   </tr>
   <tr>
+    <td valign="top" width="25%"><img src="resources/tiling/islamic.png"></td>
     <td valign="top" width="25%"><img src="resources/tiling/doyeSpiral1.png"></td>
     <td valign="top" width="25%"><img src="resources/tiling/doyeSpiral2.png"></td>
     <td valign="top" width="25%"><img src="resources/tiling/hex.png"></td>
+  </tr>
+  <tr>
+    <td align="center" valign="center"><b>Penrose Tiling</td>
+  </tr>
+  <tr>
     <td valign="top" width="25%"><img src="resources/tiling/penrose.png"></td>
   </tr>
 </table>
