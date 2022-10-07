@@ -471,10 +471,10 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center"><b>Triangulation Dual</td>
   </tr>
   <tr>
-    <td valign="top" width="25%"><img src="resources/triangulation/urquhart1.png"></td>
-    <td valign="top" width="25%"><img src="resources/triangulation/urquhart2.png"></td>
-    <td valign="top" width="25%"><img src="resources/triangulation/gabriel1.png"></td>
-    <td valign="top" width="25%"><img src="resources/triangulation/triangulationDual.png"></td>
+    <td valign="top" width="25%"><img src="resources/meshing/urquhart1.png"></td>
+    <td valign="top" width="25%"><img src="resources/meshing/urquhart2.png"></td>
+    <td valign="top" width="25%"><img src="resources/meshing/gabriel1.png"></td>
+    <td valign="top" width="25%"><img src="resources/meshing/triangulationDual.png"></td>
   </tr>
   <tr>
     <td align="center" valign="center" colspan="2">Polygon faces of an <i>Urquhart Graph</i> (derived from a triangulation).</td>
@@ -511,8 +511,8 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center" colspan="2"><b>Maximum Inscribed Rectangle</td>
   </tr>
   <tr>
-    <td valign="top"><img src="resources/pgs/inscribedCircle.gif"></td>
-    <td valign="top"><img src="resources/pgs/minimumBoundingRectangle.png"></td>
+    <td valign="top"><img src="resources/optimisation/inscribedCircle.gif"></td>
+    <td valign="top"><img src="resources/optimisation/minimumBoundingRectangle.png"></td>
     <td valign="top"><img src="resources/optimisation/mir.png"></td>
     <td valign="top" ><img src="resources/optimisation/mir2.png"></td>
   </tr>
@@ -522,7 +522,7 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center" colspan="2"><b>Minimum Bounding Ellipse</td>
   </tr>
   <tr>
-    <td valign="top"><img src="resources/pgs/minimumBoundingCircle.png"></td>
+    <td valign="top"><img src="resources/optimisation/minimumBoundingCircle.png"></td>
     <td valign="top"><img src="resources/optimisation/mbc2.png"></td>
     <td valign="top"><img src="resources/optimisation/mbe1.png"></td>
     <td valign="top" ><img src="resources/optimisation/mbe2.png"></td>
@@ -535,7 +535,7 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/optimisation/mbt.png"></td>
-    <td valign="top" width="25%"><img src="resources/geometry_processing/envelope.png"></td>
+    <td valign="top" width="25%"><img src="resources/optimisation/envelope.png"></td>
     <td valign="top"><img src="resources/optimisation/apollonius1.gif"></td>
     <td valign="top"><img src="resources/optimisation/apollonius2.gif"></td>
   </tr>
