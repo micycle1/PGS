@@ -9,6 +9,7 @@ import micycle.pgs.commons.DoyleSpiral;
 import micycle.pgs.commons.HatchTiling;
 import micycle.pgs.commons.PenroseTiling;
 import micycle.pgs.commons.RectangularSubdivision;
+import micycle.pgs.commons.SquareTriangleTiling;
 import micycle.pgs.commons.TriangleSubdivision;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -268,6 +269,22 @@ public final class PGS_Tiling {
 	public static PShape penroseTiling(double centerX, double centerY, final double radius, final int steps) {
 		final PenroseTiling pr = new PenroseTiling(centerX, centerY, radius, steps);
 		return PGS.polygonizeEdges(pr.getEdges());
+	}
+
+	/**
+	 * Generates a non-periodic tiling, comprising squares and equilateral
+	 * triangles.
+	 * 
+	 * @param width    width of the tiling plane
+	 * @param height   height of the tiling plane
+	 * @param tileSize diameter of each tile
+	 * @param seed     the random seed
+	 * @return a GROUP PShape, where each child shape is a tile of the tiling
+	 * @since 1.2.1
+	 */
+	public static PShape squareTriangleTiling(double width, double height, double tileSize, long seed) {
+		final SquareTriangleTiling stt = new SquareTriangleTiling(width, height, tileSize);
+		return stt.getTiling(seed);
 	}
 
 	/**
