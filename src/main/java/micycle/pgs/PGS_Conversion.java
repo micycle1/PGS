@@ -426,7 +426,7 @@ public final class PGS_Conversion {
 					final Coordinate[] innerCoords = contours.get(j).toCoordinateArray();
 					holes[j - 1] = GEOM_FACTORY.createLinearRing(innerCoords);
 				}
-				return GEOM_FACTORY.createPolygon(outer, null);
+				return GEOM_FACTORY.createPolygon(outer, holes);
 			}
 		} else { // not closed
 			return GEOM_FACTORY.createLineString(outerCoords);
