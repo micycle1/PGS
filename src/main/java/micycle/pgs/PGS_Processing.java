@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -35,6 +36,7 @@ import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.Polygonal;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
+import org.locationtech.jts.geom.util.GeometryFixer;
 import org.locationtech.jts.geom.util.LineStringExtracter;
 import org.locationtech.jts.linearref.LengthIndexedLine;
 import org.locationtech.jts.noding.MCIndexSegmentSetMutualIntersector;
@@ -654,25 +656,24 @@ public final class PGS_Processing {
 	public static PShape split(final PShape shape, int splitDepth) {
 		// https://stackoverflow.com/questions/64252638/how-to-split-a-jts-polygon
 		splitDepth = Math.max(0, splitDepth);
-		ArrayDeque<Geometry> stack = new ArrayDeque<>();
+		Deque<Geometry> stack = new ArrayDeque<>();
 		stack.add(fromPShape(shape));
 
 		List<Geometry> next = new ArrayList<>(); // add to when recursion depth reached
 
-		Noder noder = new SnappingNoder(1e-7);
-
+		Noder noder = new SnappingNoder(1e-11);
 		int depth = 0;
 		while (depth < splitDepth) {
 			while (!stack.isEmpty()) {
-				final Geometry slice = stack.pop();
+				final Geometry slice = GeometryFixer.fix(stack.pop());
 				final Envelope envelope = slice.getEnvelopeInternal();
 
 				final double minX = envelope.getMinX();
 				final double maxX = envelope.getMaxX();
-				final double midX = minX + (maxX - minX) / 2.0;
+				final double midX = minX + envelope.getWidth() / 2.0;
 				final double minY = envelope.getMinY();
 				final double maxY = envelope.getMaxY();
-				final double midY = minY + (maxY - minY) / 2.0;
+				final double midY = minY + envelope.getHeight() / 2.0;
 
 				Envelope llEnv = new Envelope(minX, midX, minY, midY);
 				Envelope lrEnv = new Envelope(midX, maxX, minY, midY);
@@ -684,10 +685,19 @@ public final class PGS_Processing {
 				Geometry LL = OverlayNG.overlay(slice, toGeometry(llEnv), OverlayNG.INTERSECTION, noder);
 				Geometry LR = OverlayNG.overlay(slice, toGeometry(lrEnv), OverlayNG.INTERSECTION, noder);
 
-				next.add(UL);
-				next.add(UR);
-				next.add(LL);
-				next.add(LR);
+				// Geometries may not be polygonal; in which case, do not include in output.
+				if (UL instanceof Polygonal && !UL.isEmpty()) {
+					next.add(UL);
+				}
+				if (UR instanceof Polygonal && !UR.isEmpty()) {
+					next.add(UR);
+				}
+				if (LL instanceof Polygonal && !LL.isEmpty()) {
+					next.add(LL);
+				}
+				if (LR instanceof Polygonal && !LR.isEmpty()) {
+					next.add(LR);
+				}
 
 			}
 			depth++;
@@ -697,12 +707,7 @@ public final class PGS_Processing {
 
 		final PShape partitions = new PShape(PConstants.GROUP);
 		stack.forEach(g -> {
-			/*
-			 * Geometries may not be polygonal; in which case, do not include in output.
-			 */
-			if (g instanceof Polygonal && !g.isEmpty()) {
-				partitions.addChild(toPShape(g));
-			}
+			partitions.addChild(toPShape(g));
 		});
 		return partitions;
 	}
