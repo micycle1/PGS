@@ -12,6 +12,7 @@ import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.operation.buffer.BufferParameters;
 import org.locationtech.jts.operation.linemerge.LineMerger;
 import org.locationtech.jts.shape.GeometricShapeBuilder;
 import org.locationtech.jts.shape.fractal.HilbertCurveBuilder;
@@ -59,8 +60,8 @@ public class PGS_Construction {
 	 *      dimensions
 	 */
 	public static PShape createRandomPolygon(int n, double maxWidth, double maxHeight) {
-		return PGS_Transformation.translateTo(PGS_Conversion.fromPVector(RandomPolygon.generateRandomConvexPolygon(n, maxWidth, maxHeight)),
-				maxWidth / 2, maxHeight / 2);
+		return PGS_Transformation.translateEnvelopeTo(
+				PGS_Conversion.fromPVector(RandomPolygon.generateRandomConvexPolygon(n, maxWidth, maxHeight)), maxWidth / 2, maxHeight / 2);
 	}
 
 	/**
@@ -78,22 +79,26 @@ public class PGS_Construction {
 	}
 
 	/**
-	 * Creates a supercircle PShape.
+	 * Creates a supercircle shape.
 	 * 
-	 * @param x      centre point X
-	 * @param y      centre point Y
+	 * @param centerX centre point X
+	 * @param centerY centre point Y
 	 * @param width
 	 * @param height
-	 * @param power  circularity of super circle. Values less than 1 create
-	 *               star-like shapes; power=1 is a square;
+	 * @param power   circularity of super circle. Values less than 1 create
+	 *                star-like shapes; power=1 is a square;
 	 * @return
 	 */
-	public static PShape createSupercircle(double x, double y, double width, double height, double power) {
+	public static PShape createSupercircle(double centerX, double centerY, double width, double height, double power) {
 		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-		shapeFactory.setNumPoints(PGS.SHAPE_SAMPLES);
-		shapeFactory.setCentre(new Coordinate(x, y));
+		shapeFactory.setCentre(new Coordinate(centerX, centerY));
 		shapeFactory.setWidth(width);
 		shapeFactory.setHeight(height);
+
+		final double outerC = Math.PI * 2 * Math.max(width, height) / 2;
+		final int samples = (int) Math.max(PGS.SHAPE_SAMPLES, Math.ceil(outerC / BufferParameters.DEFAULT_QUADRANT_SEGMENTS));
+		shapeFactory.setNumPoints(samples);
+
 		return toPShape(shapeFactory.createSupercircle(power));
 	}
 
@@ -150,42 +155,57 @@ public class PGS_Construction {
 	}
 
 	/**
-	 * Creates an elliptical arc polygon. The polygon is formed from the specified
-	 * arc of an ellipse and the two radii connecting the endpoints to the centre of
-	 * the ellipse.
+	 * Creates an elliptical arc polygon (a slice of a circle). The polygon is
+	 * formed from the specified arc of an ellipse and the two radii connecting the
+	 * endpoints to the centre of the ellipse.
 	 * 
-	 * @param x           centre point X
-	 * @param y           centre point Y
+	 * @param centerX     centre point X
+	 * @param centerY     centre point Y
 	 * @param width
 	 * @param height
 	 * @param orientation start angle/orientation in radians (where 0 is 12 o'clock)
 	 * @param angle       size of the arc angle in radians
 	 * @return
 	 */
-	public static PShape createArc(double x, double y, double width, double height, double orientation, double angle) {
+	public static PShape createArc(double centerX, double centerY, double width, double height, double orientation, double angle) {
+		if (angle == 0) {
+			return new PShape();
+		}
 		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-		shapeFactory.setNumPoints(PGS.SHAPE_SAMPLES);
-		shapeFactory.setCentre(new Coordinate(x, y));
+		shapeFactory.setCentre(new Coordinate(centerX, centerY));
 		shapeFactory.setWidth(width);
 		shapeFactory.setHeight(height);
-		return toPShape(shapeFactory.createArcPolygon(-Math.PI / 2 + orientation, angle));
+
+		final double outerC = Math.min(Math.PI * 2, angle) * Math.max(width, height) / 2;
+		final int samples = (int) Math.max(PGS.SHAPE_SAMPLES, Math.ceil(outerC / BufferParameters.DEFAULT_QUADRANT_SEGMENTS));
+		shapeFactory.setNumPoints(samples);
+
+		PShape out;
+		if (angle >= PConstants.TWO_PI) {
+			out = toPShape(shapeFactory.createCircle());
+		} else {
+			out = toPShape(shapeFactory.createArcPolygon(-Math.PI / 2 + orientation, angle));
+		}
+
+		out.setStroke(false);
+		return out;
 	}
 
 	/**
-	 * Creates a star shape.
+	 * Creates a star shape, having a specified number of rays.
 	 * 
-	 * @param x           The x coordinate of the center
-	 * @param y           The y coordinate of the center
-	 * @param numRays     The number of rays that the star should have
+	 * @param centerX     The x coordinate of the center
+	 * @param centerY     The y coordinate of the center
+	 * @param numRays     The number of rays the star has
 	 * @param innerRadius The inner radius of the star
 	 * @param outerRadius The outer radius of the star
 	 * @param roundness   A roundness value between 0.0 and 1.0, for the inner and
 	 *                    outer corners of the star.
 	 * @return The star shape
 	 */
-	public static PShape createStar(double x, double y, int numRays, double innerRadius, double outerRadius, double roundness) {
+	public static PShape createStar(double centerX, double centerY, int numRays, double innerRadius, double outerRadius, double roundness) {
 		roundness = Math.max(Math.min(1, roundness), 0);
-		final PShape shape = Star.createStarShape(x, y, innerRadius, outerRadius, numRays, roundness);
+		final PShape shape = Star.createStarShape(centerX, centerY, innerRadius, outerRadius, numRays, roundness);
 		shape.setFill(true);
 		shape.setFill(255);
 		return shape;
@@ -194,9 +214,9 @@ public class PGS_Construction {
 	/**
 	 * Creates a heart shape.
 	 * 
-	 * @param centerX     The x coordinate of the center of the heart
-	 * @param centerY     The y coordinate of the center of the heart
-	 * @param width Maximum width of the widest part of the heart
+	 * @param centerX The x coordinate of the center of the heart
+	 * @param centerY The y coordinate of the center of the heart
+	 * @param width   Maximum width of the widest part of the heart
 	 * @return
 	 * @since 1.1.0
 	 */
@@ -226,22 +246,22 @@ public class PGS_Construction {
 	/**
 	 * Creates a joined ring (a "donut") shape.
 	 * 
-	 * @param x           the x coordinate of the center
-	 * @param y           the y coordinate of the center
+	 * @param centerX     the x coordinate of the center
+	 * @param centerY     the y coordinate of the center
 	 * @param outerRadius radius of ring exterior
 	 * @param innerRadius radius of ring hole
 	 * @return the ring shape
 	 * @since 1.1.3
 	 */
-	public static PShape createRing(double x, double y, double outerRadius, double innerRadius) {
-		return createRing(x, y, outerRadius, innerRadius, 0, PConstants.TWO_PI);
+	public static PShape createRing(double centerX, double centerY, double outerRadius, double innerRadius) {
+		return createRing(centerX, centerY, outerRadius, innerRadius, 0, PConstants.TWO_PI);
 	}
 
 	/**
 	 * Creates an (un)joined ring shape.
 	 * 
-	 * @param x           the x coordinate of the center
-	 * @param y           the y coordinate of the center
+	 * @param centerX     the x coordinate of the center
+	 * @param centerY     the y coordinate of the center
 	 * @param outerRadius radius of ring exterior
 	 * @param innerRadius radius of ring hole
 	 * @param orientation start angle/orientation in radians (where 0 is 12 o'clock)
@@ -249,18 +269,24 @@ public class PGS_Construction {
 	 * @return the ring shape
 	 * @since 1.1.3
 	 */
-	public static PShape createRing(double x, double y, double outerRadius, double innerRadius, double orientation, double angle) {
+	public static PShape createRing(double centerX, double centerY, double outerRadius, double innerRadius, double orientation,
+			double angle) {
 		final double outerR = Math.max(outerRadius, innerRadius);
 		final double innerR = Math.min(outerRadius, innerRadius);
 
+		final double outerC = Math.min(Math.PI * 2, angle) * outerR;
+		final int outerSamples = (int) Math.max(PGS.SHAPE_SAMPLES, Math.ceil(outerC / BufferParameters.DEFAULT_QUADRANT_SEGMENTS));
+		final double innerC = Math.min(Math.PI * 2, angle) * innerR;
+		final int innerSamples = (int) Math.max(PGS.SHAPE_SAMPLES, Math.ceil(innerC / BufferParameters.DEFAULT_QUADRANT_SEGMENTS));
+
 		final GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
-		shapeFactory.setNumPoints(48);
-		shapeFactory.setCentre(new Coordinate(x, y));
+		shapeFactory.setNumPoints(outerSamples);
+		shapeFactory.setCentre(new Coordinate(centerX, centerY));
 		shapeFactory.setWidth(outerR * 2);
 		shapeFactory.setHeight(outerR * 2);
 
 		final Geometry outer;
-		if (angle > PConstants.TWO_PI - 0.001) {
+		if (angle > PConstants.TWO_PI - 1e-5) {
 			outer = shapeFactory.createCircle();
 		} else {
 			outer = shapeFactory.createArcPolygon(-Math.PI / 2 + orientation, angle);
@@ -268,9 +294,12 @@ public class PGS_Construction {
 
 		shapeFactory.setWidth(innerR * 2);
 		shapeFactory.setHeight(innerR * 2);
+		shapeFactory.setNumPoints(innerSamples);
 		final Geometry inner = shapeFactory.createCircle();
 
-		return toPShape(outer.difference(inner));
+		PShape out = toPShape(outer.difference(inner));
+		out.setStroke(false);
+		return out;
 	}
 
 	/**
