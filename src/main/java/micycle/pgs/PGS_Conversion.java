@@ -3,10 +3,10 @@ package micycle.pgs;
 import static micycle.pgs.PGS.GEOM_FACTORY;
 import static micycle.pgs.PGS.coordFromPVector;
 import static micycle.pgs.color.RGB.decomposeclrRGB;
-import static processing.core.PConstants.GROUP;
-import static processing.core.PConstants.QUADRATIC_VERTEX;
 import static processing.core.PConstants.BEZIER_VERTEX;
 import static processing.core.PConstants.CURVE_VERTEX;
+import static processing.core.PConstants.GROUP;
+import static processing.core.PConstants.QUADRATIC_VERTEX;
 
 import java.awt.Shape;
 import java.lang.reflect.Field;
@@ -16,9 +16,9 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -39,7 +39,6 @@ import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.awt.ShapeReader;
 import org.locationtech.jts.awt.ShapeWriter;
 import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.CoordinateArrays;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
@@ -71,7 +70,10 @@ import processing.core.PVector;
  * Notably, JTS geometries do not support bezier curves so any bezier curves are
  * finely subdivided into straight linestrings during <code>PShape</code> -> JTS
  * <code>Geometry</code> conversion.
- * 
+ * <p>
+ * This class features 2 boolean flags that affect conversion that you may wish
+ * to look at: {@link #PRESERVE_STYLE} and {@link #HANDLE_MULTICONTOUR}.
+ *
  * @author Michael Carleton
  *
  */
@@ -81,11 +83,29 @@ public final class PGS_Conversion {
 	private static final float BEZIER_SAMPLE_DISTANCE = 2;
 	private static Field MATRIX_FIELD;
 	/**
-	 * Boolean flag that affects whether a PShape's style (fillColor, strokeColor,
-	 * strokeWidth) is preserved during PShape->Geometry->PShape conversion (i.e.
-	 * when <code>toPShape(fromPShape(myPShape))</code> is called). Default = true.
+	 * A boolean flag that affects whether a PShape's style (fillColor, strokeColor,
+	 * strokeWidth) is preserved during <code>PShape->Geometry->PShape</code>
+	 * conversion (i.e. when <code>toPShape(fromPShape(myPShape))</code> is called).
+	 * Default = <code>true</code>.
 	 */
 	public static boolean PRESERVE_STYLE = true;
+	/**
+	 * A boolean flag that enables a subroutine during {@link #fromPShape(PShape)
+	 * fromPShape()} conversion to properly convert <b>single</b> PShapes that
+	 * consist of multiple contours that in turn represent multiple distinct shapes.
+	 * When <code>false</code>, {@link #fromPShape(PShape) fromPShape()} assumes
+	 * that in shapes having multiple contours, every contour beyond the first
+	 * represents a hole, which is generally sufficient.
+	 * <p>
+	 * This feature is off by default because it introduces some overhead as polygon
+	 * rings orientation must be determined (amongst other such stuff), and is
+	 * rarely needed (unless one is working with fonts, I have found). Default =
+	 * <code>false</code>.
+	 * <p>
+	 * See <a href="https://github.com/micycle1/PGS/issues/67">github</a> for more
+	 * information.
+	 */
+	public static boolean HANDLE_MULTICONTOUR = false;
 
 	static {
 		try {
@@ -103,7 +123,7 @@ public final class PGS_Conversion {
 	 * Converts a JTS Geometry to an equivalent PShape. MultiGeometries (collections
 	 * of geometries) become GROUP PShapes containing the appropriate children
 	 * PShapes.
-	 * 
+	 *
 	 * @param g JTS geometry to convert
 	 * @return
 	 */
@@ -186,8 +206,7 @@ public final class PGS_Conversion {
 				shape.setFill(false);
 				shape.setStrokeCap(PConstants.ROUND);
 				shape.beginShape(PConstants.POINTS);
-				for (int i = 0; i < coords.length; i++) {
-					final Coordinate coord = coords[i];
+				for (final Coordinate coord : coords) {
 					shape.vertex((float) coord.x, (float) coord.y);
 				}
 				shape.endShape();
@@ -231,7 +250,7 @@ public final class PGS_Conversion {
 	 * <p>
 	 * PShapes with bezier curves are sampled at regular intervals (in which case
 	 * the resulting geometry will have more vertices than the input PShape).
-	 * 
+	 *
 	 * @param shape
 	 * @return a JTS Geometry equivalent to the input PShape
 	 */
@@ -283,7 +302,7 @@ public final class PGS_Conversion {
 	/**
 	 * Converts a PShape made via beginShape(KIND), where KIND is not POLYGON, to
 	 * its equivalent JTS Geometry.
-	 * 
+	 *
 	 * @param shape
 	 * @return
 	 */
@@ -351,7 +370,7 @@ public final class PGS_Conversion {
 		final int[] contourGroups = getContourGroups(rawVertexCodes);
 		final int[] vertexCodes = getVertexTypes(rawVertexCodes);
 
-		final List<CoordinateList> coords = new ArrayList<>(); // list of coords representing rings/contours
+		final List<CoordinateList> contours = new ArrayList<>(); // list of coords representing rings/contours
 
 		int lastGroup = -1;
 		for (int i = 0; i < shape.getVertexCount(); i++) {
@@ -360,7 +379,7 @@ public final class PGS_Conversion {
 					lastGroup = 0;
 				}
 				lastGroup = contourGroups[i];
-				coords.add(new CoordinateList());
+				contours.add(new CoordinateList());
 			}
 
 			/**
@@ -368,28 +387,28 @@ public final class PGS_Conversion {
 			 */
 			switch (vertexCodes[i]) { // VERTEX, BEZIER_VERTEX, CURVE_VERTEX, or BREAK
 				case QUADRATIC_VERTEX :
-					coords.get(lastGroup).addAll(getQuadraticBezierPoints(shape.getVertex(i - 1), shape.getVertex(i),
+					contours.get(lastGroup).addAll(getQuadraticBezierPoints(shape.getVertex(i - 1), shape.getVertex(i),
 							shape.getVertex(i + 1), BEZIER_SAMPLE_DISTANCE), false);
 					i += 1;
 					continue;
 				case BEZIER_VERTEX : // aka cubic bezier
-					coords.get(lastGroup).addAll(getCubicBezierPoints(shape.getVertex(i - 1), shape.getVertex(i), shape.getVertex(i + 1),
+					contours.get(lastGroup).addAll(getCubicBezierPoints(shape.getVertex(i - 1), shape.getVertex(i), shape.getVertex(i + 1),
 							shape.getVertex(i + 2), BEZIER_SAMPLE_DISTANCE), false);
 					i += 2;
 					continue;
 				default : // VERTEX
-					coords.get(lastGroup).add(coordFromPVector(shape.getVertex(i)), false);
+					contours.get(lastGroup).add(coordFromPVector(shape.getVertex(i)), false);
 					break;
 			}
 		}
 
-		coords.forEach(contour -> {
+		contours.forEach(contour -> {
 			if (shape.isClosed()) {
 				contour.closeRing();
 			}
 		});
 
-		final Coordinate[] outerCoords = coords.get(0).toCoordinateArray();
+		final Coordinate[] outerCoords = contours.get(0).toCoordinateArray();
 
 		if (outerCoords.length == 0) {
 			return GEOM_FACTORY.createPolygon(); // empty polygon
@@ -398,15 +417,157 @@ public final class PGS_Conversion {
 		} else if (outerCoords.length == 2) {
 			return GEOM_FACTORY.createLineString(outerCoords);
 		} else if (shape.isClosed()) { // closed geometry or path
-			LinearRing outer = GEOM_FACTORY.createLinearRing(outerCoords); // should always be valid
-			LinearRing[] holes = new LinearRing[coords.size() - 1]; // Create linear ring for each hole in the shape
-			for (int j = 1; j < coords.size(); j++) {
-				final Coordinate[] innerCoords = coords.get(j).toCoordinateArray();
-				holes[j - 1] = GEOM_FACTORY.createLinearRing(innerCoords);
+			if (HANDLE_MULTICONTOUR) { // handle single shapes that *may* represent multiple shapes over many contours
+				return fromMultiContourShape(contours, false, false);
+			} else { // assume all contours beyond the first represent holes
+				LinearRing outer = GEOM_FACTORY.createLinearRing(outerCoords); // should always be valid
+				LinearRing[] holes = new LinearRing[contours.size() - 1]; // Create linear ring for each hole in the shape
+				for (int j = 1; j < contours.size(); j++) {
+					final Coordinate[] innerCoords = contours.get(j).toCoordinateArray();
+					holes[j - 1] = GEOM_FACTORY.createLinearRing(innerCoords);
+				}
+				return GEOM_FACTORY.createPolygon(outer, null);
 			}
-			return GEOM_FACTORY.createPolygon(outer, holes);
 		} else { // not closed
 			return GEOM_FACTORY.createLineString(outerCoords);
+		}
+	}
+
+	/**
+	 * Converts a single PShape, which <i>***may***</i> have multiple contours that
+	 * represent multiple polygons (and may even contain nested polygons with holes)
+	 * into its valid JTS representation.
+	 * <p>
+	 * This kind of shape is not possible to produce from JTS (since multiple
+	 * polygons will always be represented as standalone objects within a
+	 * MultiGeometry, leading to a GROUP shape), but Processing allows single PATH
+	 * PShapes to have multiple contour groups, and thus represent multiple polygons
+	 * despite being a "single" shape.
+	 * <p>
+	 * Since the PShape has no information about which contours represent holes, and
+	 * nor any information about which contours should be grouped together to
+	 * represent the same shapes, this must be determined within this method.
+	 * 
+	 * @param contours list of contours/rings. The contour at index==0 must be a
+	 *                 polygonal and is assumed to be an exterior ring.
+	 * @param sort     whether to sort the contours by orientation (clockwise
+	 *                 contours first), which can fix tricky cases
+	 * @param reverse  whether to reverse the contour collection, which can fix
+	 *                 tricky cases
+	 * @return Polygon or MultiPolygon
+	 */
+	private static Geometry fromMultiContourShape(List<CoordinateList> contours, boolean sort, boolean reverse) {
+		if (reverse) {
+			Collections.reverse(contours);
+		}
+		if (sort) {
+			contours.sort((a, b) -> {
+				boolean aCW = !Orientation.isCCWArea(a.toCoordinateArray());
+				boolean bCW = !Orientation.isCCWArea(b.toCoordinateArray());
+				if (aCW == bCW) {
+					return 0;
+				} else if (aCW && !bCW) {
+					return -1;
+				} else {
+					return 1;
+				}
+			});
+		}
+		if (contours.isEmpty()) {
+			return GEOM_FACTORY.createPolygon();
+		} else if (contours.size() == 1) {
+			return GEOM_FACTORY.createPolygon(contours.get(0).toCoordinateArray());
+		} else {
+			boolean previousRingIsCCW = false;
+			boolean previousRingIsHole = false;
+
+			/*
+			 * Each list entry (ring group) holds the exterior polygon ring at index 0,
+			 * followed by any number of hole rings. Created rings follow JTS expected
+			 * orientation: clockwise as polygon exterior ring orientation; anti-clockwise
+			 * for holes.
+			 */
+			final List<List<LinearRing>> polygonRingGroups = new ArrayList<>();
+
+			/*
+			 * Ideally, the hole that succeeds a polygon exterior would belong to that
+			 * exterior. However, sometimes contours in valid PShapes aren't ordered in this
+			 * fashion: it is possible to have four contours: a,b,1,2; where the exteriors
+			 * (a & b) are followed by two holes (1 & 2), where hole 1 belongs to a and hole
+			 * 2 belongs to b. Hence (to be really thorough), we must check that a hole is
+			 * actually contained by the last contour, otherwise we associate it with the
+			 * first exterior (working backwards) that contains it.
+			 */
+			for (int j = 0; j < contours.size(); j++) {
+				final Coordinate[] contourCoords = contours.get(j).toCoordinateArray();
+				LinearRing ring;
+				/*
+				 * Measure contour orientation to determine whether the contour represents a
+				 * hole (orientated opposite to previous polygon exterior) or a polygon exterior
+				 * (orientated in same direction to previous contour).
+				 */
+				final boolean ringIsCCW = Orientation.isCCWArea(contourCoords);
+				final boolean switched = previousRingIsCCW != ringIsCCW;
+				previousRingIsCCW = ringIsCCW;
+
+				if (((switched && !previousRingIsHole) || (!switched && previousRingIsHole)) && j > 0) { // this ring is hole
+					if (switched) {
+						previousRingIsHole = true;
+					}
+
+					/*
+					 * Find exterior that contains the hole (usually is most recent one).
+					 */
+					ring = GEOM_FACTORY.createLinearRing(contours.get(j).toCoordinateArray(ringIsCCW));
+					int checkContainsPolygonIndex = polygonRingGroups.size() - 1;
+					while (checkContainsPolygonIndex >= 0
+							&& !GEOM_FACTORY.createPolygon(polygonRingGroups.get(checkContainsPolygonIndex).get(0)).contains(ring)) {
+						checkContainsPolygonIndex--;
+					}
+					if (checkContainsPolygonIndex >= 0) {
+						polygonRingGroups.get(checkContainsPolygonIndex).add(ring);
+					} else {
+						if (!sort) {
+							if (!reverse) {
+								// retry and reverse contours, which can fix some cases
+								return fromMultiContourShape(contours, false, true);
+							}
+							// retry and sort by orientation, which can fix some cases (assuming CW exterior
+							// rings)
+							return fromMultiContourShape(contours, true, false);
+						} else {
+							System.err.println(String.format(
+									"PGS_Conversion Error: Shape contour #%s was identified as a hole but no existing exterior rings contained it.",
+									j));
+						}
+					}
+				} else { // this ring is new polygon (or explictly contour #1)
+					ring = GEOM_FACTORY.createLinearRing(contours.get(j).toCoordinateArray(!ringIsCCW));
+					if (previousRingIsHole) {
+						previousRingIsHole = false;
+					}
+					polygonRingGroups.add(new ArrayList<>());
+					polygonRingGroups.get(polygonRingGroups.size() - 1).add(ring);
+				}
+			}
+
+			/*
+			 * Convert each ring group to their representative polygon.
+			 */
+			final List<Polygon> polygons = new ArrayList<>();
+			polygonRingGroups.forEach(perPolygonRings -> {
+				LinearRing[] holes = null;
+				if (perPolygonRings.size() > 1) { // has holes
+					holes = perPolygonRings.subList(1, perPolygonRings.size()).toArray(new LinearRing[0]);
+				}
+				polygons.add(GEOM_FACTORY.createPolygon(perPolygonRings.get(0), holes));
+			});
+
+			if (polygons.size() > 1) {
+				return GEOM_FACTORY.createMultiPolygon(polygons.toArray(new Polygon[0]));
+			} else {
+				return polygons.get(0);
+			}
 		}
 	}
 
@@ -482,7 +643,7 @@ public final class PGS_Conversion {
 
 	/**
 	 * Transforms a list of points into a POINTS PShape.
-	 * 
+	 *
 	 * @since 1.2.0
 	 */
 	public static final PShape toPointsPShape(Collection<PVector> points) {
@@ -492,7 +653,7 @@ public final class PGS_Conversion {
 		shape.setStroke(true);
 		shape.setStroke(micycle.pgs.color.RGB.WHITE);
 		shape.setStrokeWeight(5);
-		shape.beginShape(PShape.POINTS);
+		shape.beginShape(PConstants.POINTS);
 		points.forEach(p -> shape.vertex(p.x, p.y));
 		shape.endShape();
 		return shape;
@@ -501,7 +662,7 @@ public final class PGS_Conversion {
 	/**
 	 * Returns the vertices of a PShape as an <b>unclosed</b> list of PVector
 	 * coordinates.
-	 * 
+	 *
 	 * @param shape a non-GROUP PShape
 	 * @return
 	 */
@@ -524,7 +685,7 @@ public final class PGS_Conversion {
 	 * Converts a shape into a simple graph; graph vertices represent shape
 	 * vertices, and graph edges represent shape edges (formed from adjacent
 	 * vertices in polygonal shapes).
-	 * 
+	 *
 	 * @param shape the shape to convert
 	 * @return graph representation of the input shape
 	 * @since 1.2.1
@@ -558,7 +719,7 @@ public final class PGS_Conversion {
 	 * <p>
 	 * The output is a rather abstract representation of the input graph, and not a
 	 * geometric equivalent (unlike most other conversion methods in the class).
-	 * 
+	 *
 	 * @param <V>                 any vertex type
 	 * @param <E>                 any edge type
 	 * @param graph               the graph whose edges and vertices to lay out
@@ -605,13 +766,13 @@ public final class PGS_Conversion {
 	 * <p>
 	 * The output is a <i>dual graph</i> of the input; it has a vertex for each face
 	 * (PShape) of the input, and an edge for each pair of faces that are adjacent.
-	 * 
+	 *
 	 * @param mesh a GROUP PShape, whose children constitute the polygonal faces of
 	 *             a <b>conforming mesh</b>. A conforming mesh consists of adjacent
 	 *             cells that not only share edges, but every pair of shared edges
 	 *             are identical (having the same coordinates) (such as a
 	 *             triangulation).
-	 * 
+	 *
 	 * @return the dual graph of the input mesh; an undirected graph containing no
 	 *         graph loops or multiple edges.
 	 * @since 1.2.1
@@ -656,7 +817,7 @@ public final class PGS_Conversion {
 	 * Writes the <i>Well-Known Text</i> representation of a shape. The
 	 * <i>Well-Known Text</i> format is defined in the OGC Simple Features
 	 * Specification for SQL.
-	 * 
+	 *
 	 * @param shape shape to process
 	 * @return a Geometry Tagged Text string
 	 * @since 1.2.1
@@ -671,7 +832,7 @@ public final class PGS_Conversion {
 
 	/**
 	 * Converts a geometry in <i>Well-Known Text</i> format into a PShape.
-	 * 
+	 *
 	 * @param textRepresentation one or more Geometry Tagged Text strings, separated
 	 *                           by whitespace
 	 * @return a PShape specified by the text
@@ -692,7 +853,7 @@ public final class PGS_Conversion {
 	/**
 	 * Writes a shape into <i>Well-Known Binary</i> format. The WKB format is
 	 * specified in the OGC <i>Simple Features for SQL specification</i></a>.
-	 * 
+	 *
 	 * @param shape shape to process
 	 * @return WKB byte representation of shape
 	 * @since 1.2.1
@@ -706,7 +867,7 @@ public final class PGS_Conversion {
 
 	/**
 	 * Converts a geometry in <i>Well-Known Binary</i> format into a PShape.
-	 * 
+	 *
 	 * @param shapeWKB byte representation of shape to process
 	 * @return a PShape specified by the WKB
 	 * @since 1.2.1
@@ -724,7 +885,7 @@ public final class PGS_Conversion {
 	/**
 	 * Writes a shape into the hexadecimal string representation of its
 	 * <i>Well-Known Binary</i> format.
-	 * 
+	 *
 	 * @param shape shape to process
 	 * @return hexadecimal string representation of shape WKB
 	 * @since 1.2.1
@@ -736,7 +897,7 @@ public final class PGS_Conversion {
 
 	/**
 	 * Converts a geometry in <i>Well-Known Binary</i> hex format into a PShape.
-	 * 
+	 *
 	 * @param shapeWKB hex string WKB representation of shape to process
 	 * @return a PShape specified by the WKB
 	 * @since 1.2.1
@@ -748,7 +909,7 @@ public final class PGS_Conversion {
 
 	/**
 	 * Creates a Java2D/java.awt Shape representing a PShape.
-	 * 
+	 *
 	 * @param shape the PShape to convert
 	 * @return a Java2D shape representing the PShape
 	 * @since 1.2.1
@@ -762,7 +923,7 @@ public final class PGS_Conversion {
 	 * <p>
 	 * If the shape contains bezier components (such as <code>CubicCurve2D</code>,
 	 * these are decomposed into straight-line segments in the output.
-	 * 
+	 *
 	 * @param shape the Java2D shape to convert
 	 * @return a PShape representing the Java2D shape
 	 * @since 1.2.1
@@ -780,7 +941,7 @@ public final class PGS_Conversion {
 	 * (first and last vertices are the same), the vertices are interpreted as a
 	 * closed polygon (having no holes); if the list is unclosed, they are treated
 	 * as a linestring.
-	 * 
+	 *
 	 * @param vertices list of (un)closed shape vertices
 	 * @return a PATH PShape (either open linestring or closed polygon)
 	 * @see #fromPVector(PVector...)
@@ -813,7 +974,7 @@ public final class PGS_Conversion {
 	/**
 	 * Generates a simple closed polygon (assumes no holes) from the list of
 	 * vertices (varargs).
-	 * 
+	 *
 	 * @param vertices list of (un)closed shape vertices
 	 * @see #fromPVector(List)
 	 */
@@ -824,7 +985,7 @@ public final class PGS_Conversion {
 	/**
 	 * Flattens a collection of PShapes into a single GROUP PShape which has the
 	 * input shapes as its children.
-	 * 
+	 *
 	 * @since 1.2.0
 	 * @see #flatten(PShape...)
 	 */
@@ -837,7 +998,7 @@ public final class PGS_Conversion {
 	/**
 	 * Flattens a collection of PShapes into a single GROUP PShape which has the
 	 * input shapes as its children.
-	 * 
+	 *
 	 * @since 1.2.1
 	 * @see #flatten(Collection)
 	 */
@@ -846,13 +1007,15 @@ public final class PGS_Conversion {
 	}
 
 	/**
-	 * Recurses a GROUP PShape, finding all of its non-GROUP child PShapes.
+	 * Recurses a GROUP PShape, finding <b>all</b> of its non-GROUP child PShapes.
 	 * <p>
-	 * This method differs from <code>PShape.getChildren()</code>: that method will
-	 * return GROUP child shapes, whereas this method will recurse such shapes,
-	 * returing their non-group children (in other words, this method explores the
-	 * whole tree of shapes, returning non-group shapes only).
 	 * 
+	 * Note: this method differs from {@link processing.core.PShape#getChildren()
+	 * PShape.getChildren()}. That method will return GROUP child shapes, whereas
+	 * this method will recurse such shapes, returing their non-group children (in
+	 * other words, this method explores the whole tree of shapes, returning
+	 * non-group shapes only).
+	 *
 	 * @param shape
 	 * @return a list of non-GROUP PShapes
 	 * @since 1.2.0
@@ -886,7 +1049,7 @@ public final class PGS_Conversion {
 
 	/**
 	 * Creates a single GROUP shape whose children shapes are the list given.
-	 * 
+	 *
 	 * @param children
 	 * @return a GROUP PShape consisting of the given children
 	 */
@@ -899,7 +1062,7 @@ public final class PGS_Conversion {
 	/**
 	 * Sets the fill color for the PShape and all of its children recursively (and
 	 * disables stroke).
-	 * 
+	 *
 	 * @param shape
 	 * @return the input object (having now been mutated)
 	 * @see #setAllStrokeColor(PShape, int, float)
@@ -915,16 +1078,16 @@ public final class PGS_Conversion {
 
 	/**
 	 * Sets the stroke color for the PShape and all of its children recursively.
-	 * 
+	 *
 	 * @param shape
 	 * @return the input object (having now been mutated)
 	 * @see {@link #setAllFillColor(PShape, int)}
 	 */
-	public static PShape setAllStrokeColor(PShape shape, int color, float strokeWeight) {
+	public static PShape setAllStrokeColor(PShape shape, int color, double strokeWeight) {
 		getChildren(shape).forEach(child -> {
 			child.setStroke(true);
 			child.setStroke(color);
-			child.setStrokeWeight(strokeWeight);
+			child.setStrokeWeight((float) strokeWeight);
 		});
 		return shape;
 	}
@@ -934,7 +1097,7 @@ public final class PGS_Conversion {
 	 * descendent shapes individually (that is, each child shape belonging to the
 	 * shape (if any) will have its stroke color set to <b>its own fill color</b>,
 	 * and not the parent-most shape's fill color).
-	 * 
+	 *
 	 * @param shape
 	 * @return the input object (having now been mutated)
 	 * @since 1.2.0
@@ -948,9 +1111,29 @@ public final class PGS_Conversion {
 	}
 
 	/**
+	 * Sets the stroke color equal to the fill color, and the strokeWeight to the
+	 * specified value, for the PShape and all of its descendent shapes individually
+	 * (that is, each child shape belonging to the shape (if any) will have its
+	 * stroke color set to <b>its own fill color</b>, and not the parent-most
+	 * shape's fill color).
+	 *
+	 * @param shape
+	 * @return the input object (having now been mutated)
+	 * @since 1.2.1
+	 */
+	public static PShape setAllStrokeToFillColor(PShape shape, double strokeWeight) {
+		getChildren(shape).forEach(child -> {
+			child.setStroke(true);
+			child.setStrokeWeight((float) strokeWeight);
+			child.setStroke(PGS.getPShapeFillColor(child));
+		});
+		return shape;
+	}
+
+	/**
 	 * Calls setFill(false) on a PShape and all its children. This method mutates
 	 * the input shape.
-	 * 
+	 *
 	 * @param shape
 	 * @return the input object (having now been mutated)
 	 */
@@ -962,7 +1145,7 @@ public final class PGS_Conversion {
 	/**
 	 * Calls setStroke(false) on a PShape and all its children. This method mutates
 	 * the input shape.
-	 * 
+	 *
 	 * @param shape
 	 * @return the input object (having now been mutated)
 	 */
@@ -976,7 +1159,7 @@ public final class PGS_Conversion {
 	 * to the shape, <b>mutating</b> the shape. This can sometimes fix a visual
 	 * problem in Processing where narrow gaps can appear between otherwise flush
 	 * shapes.
-	 * 
+	 *
 	 * @return the input object (having now been mutated)
 	 * @since 1.1.3
 	 */
@@ -993,7 +1176,7 @@ public final class PGS_Conversion {
 	/**
 	 * Produces a deep copy / clone of the input shape. Handles GROUP, PRIMITIVE,
 	 * GEOMETRY and PATH PShapes.
-	 * 
+	 *
 	 * @param shape the PShape to copy
 	 * @return a deep copy of the given shape
 	 * @since 1.2.0
@@ -1041,7 +1224,7 @@ public final class PGS_Conversion {
 
 	/**
 	 * For every vertexcode, store the group (i.e. hole) it belongs to.
-	 * 
+	 *
 	 * @param vertexCodes
 	 * @return
 	 */
@@ -1091,7 +1274,7 @@ public final class PGS_Conversion {
 
 	/**
 	 * Basically getVertexCodes, but returns the vertex type for every vertex
-	 * 
+	 *
 	 * @param shape
 	 * @return
 	 */
@@ -1099,8 +1282,7 @@ public final class PGS_Conversion {
 
 		List<Integer> codes = new ArrayList<>(rawVertexCodes.length);
 
-		for (int i = 0; i < rawVertexCodes.length; i++) {
-			int vertexCode = rawVertexCodes[i];
+		for (int vertexCode : rawVertexCodes) {
 			switch (vertexCode) {
 				case PConstants.VERTEX :
 					codes.add(PConstants.VERTEX);
@@ -1137,7 +1319,7 @@ public final class PGS_Conversion {
 	/**
 	 * Subdivide/interpolate/discretise along a quadratic bezier curve, given by its
 	 * start, end and control points
-	 * 
+	 *
 	 * @return list of points along curve
 	 */
 	private static List<Coordinate> getQuadraticBezierPoints(PVector start, PVector controlPoint, PVector end, float sampleDistance) {
@@ -1165,7 +1347,7 @@ public final class PGS_Conversion {
 	}
 
 	/**
-	 * 
+	 *
 	 * @param start
 	 * @param controlPoint
 	 * @param end
@@ -1184,7 +1366,7 @@ public final class PGS_Conversion {
 	 * endpoints (the length of the chord) and the perimeter of the control polygon.
 	 * For a quadratic Bézier, 2/3 the first + 1/3 the second is a reasonably good
 	 * estimate.
-	 * 
+	 *
 	 * @return
 	 */
 	private static float bezierLengthQuadratic(PVector start, PVector controlPoint, PVector end) {
@@ -1197,7 +1379,7 @@ public final class PGS_Conversion {
 
 	/**
 	 * Generates a list of samples of a cubic bezier curve.
-	 * 
+	 *
 	 * @param sampleDistance distance between successive samples on the curve
 	 * @return
 	 */
@@ -1236,7 +1418,7 @@ public final class PGS_Conversion {
 	 * Approximate bezier length using Gravesen's approach. The insight is that the
 	 * actual bezier length is always somewhere between the distance between the
 	 * endpoints (the length of the chord) and the perimeter of the control polygon.
-	 * 
+	 *
 	 * @return
 	 */
 	private static float bezierLengthCubic(PVector start, PVector controlPoint1, PVector controlPoint2, PVector end) {
@@ -1287,7 +1469,7 @@ public final class PGS_Conversion {
 
 		/**
 		 * Apply this shapedata to a given PShape.
-		 * 
+		 *
 		 * @param other
 		 */
 		void applyTo(PShape other) {
