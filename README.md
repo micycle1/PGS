@@ -637,24 +637,24 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center"><b>Random Convex Polygon</td>
     <td align="center" valign="center"><b>Heart</td>
     <td align="center" valign="center"><b>Ring</td>
-    <td align="center" valign="center"><b>Linear Spiral</td>
+    <td align="center" valign="center"><b>Arc</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/pgs/randomPolygon.gif"></td>
     <td valign="top" width="25%"><img src="resources/pgs/heart.png"></td>
     <td valign="top" width="25%"><img src="resources/pgs/ring.gif"></td>
-    <td valign="top" width="25%"><img src="resources/pgs/spiral.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/arc.gif"></td>
   </tr>
   <tr>
+    <td align="center" valign="center"><b>Linear Spiral</td>
     <td align="center" valign="center"><b>Fermat Spiral</td>
     <td align="center" valign="center"><b>Rectangular Spiral</td>
-    <td align="center" valign="center"><b>Koch Snowflake</td>
     <td align="center" valign="center"><b>Hilbert Curve</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/pgs/fermatSpiral.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/spiral.gif"></td>
     <td valign="top" width="25%"><img src="resources/pgs/rectSpiral.gif"></td>
-    <td valign="top" width="25%"><img src="resources/pgs/kochSnowflake.gif"></td>
     <td valign="top" width="25%"><img src="resources/pgs/hilbertCurve.gif"></td>
   </tr>
   <tr>
@@ -668,6 +668,12 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/pgs/sierpinskiCurve.gif"></td>
     <td valign="top" width="25%"><img src="resources/pgs/sierpinskiThreeSteps.gif"></td>
     <td valign="top" width="25%"><img src="resources/pgs/sierpinskiFourSteps.gif"></td>
+  </tr>
+  <tr>
+    <td align="center" valign="center"><b>Koch Snowflake</td>
+  </tr>
+    <td valign="top" width="25%"><img src="resources/pgs/kochSnowflake.gif"></td>
+  <tr>
   </tr>
 </table>
 
