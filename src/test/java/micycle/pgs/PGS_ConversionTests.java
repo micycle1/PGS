@@ -3,11 +3,10 @@ package micycle.pgs;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.Shape;
-
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
@@ -488,6 +487,36 @@ class PGS_ConversionTests {
 		String hex = PGS_Conversion.toHexWKB(shape);
 		PShape in = PGS_Conversion.fromHexWKB(hex);
 
+		assertTrue(PGS_ShapePredicates.equalsNorm(shape, in));
+	}
+	
+	@Test
+	void testEncodedPolylineIO() {
+		final PShape shape = new PShape(PShape.GEOMETRY);
+		shape.beginShape();
+		shape.vertex(0, 0);
+		shape.vertex(10, 0);
+		shape.vertex(0, 11);
+		shape.endShape(PShape.CLOSE);
+		
+		String encoding = PGS_Conversion.toEncodedPolyline(shape);
+		PShape in = PGS_Conversion.fromEncodedPolyline(encoding);
+		
+		assertTrue(PGS_ShapePredicates.equalsNorm(shape, in));
+	}
+	
+	@Test
+	void testGeoJSONIO() {
+		final PShape shape = new PShape(PShape.GEOMETRY);
+		shape.beginShape();
+		shape.vertex(0, 0);
+		shape.vertex(10.1f, 0);
+		shape.vertex(0, 10.7f);
+		shape.endShape(PShape.CLOSE);
+		
+		String json = PGS_Conversion.toGeoJSON(shape);
+		PShape in = PGS_Conversion.fromGeoJSON(json);
+		
 		assertTrue(PGS_ShapePredicates.equalsNorm(shape, in));
 	}
 

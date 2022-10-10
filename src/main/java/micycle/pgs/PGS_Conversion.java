@@ -9,6 +9,9 @@ import static processing.core.PConstants.GROUP;
 import static processing.core.PConstants.QUADRATIC_VERTEX;
 
 import java.awt.Shape;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -51,8 +54,14 @@ import org.locationtech.jts.io.WKBReader;
 import org.locationtech.jts.io.WKBWriter;
 import org.locationtech.jts.io.WKTReader;
 import org.locationtech.jts.io.WKTWriter;
+import org.locationtech.jts.io.geojson.GeoJsonReader;
+import org.locationtech.jts.io.geojson.GeoJsonWriter;
 import org.locationtech.jts.util.GeometricShapeFactory;
+import org.scoutant.polyline.PolylineDecoder;
 
+import it.rambow.master.javautils.PolylineEncoder;
+import it.rambow.master.javautils.Track;
+import it.rambow.master.javautils.Trackpoint;
 import micycle.pgs.commons.PEdge;
 import processing.core.PConstants;
 import processing.core.PMatrix;
@@ -905,6 +914,79 @@ public final class PGS_Conversion {
 	 */
 	public static PShape fromHexWKB(String shapeWKB) {
 		return fromWKB(WKBReader.hexToBytes(shapeWKB));
+	}
+
+	/**
+	 * Writes a <b>single holeless</b> shape into the string representation of its
+	 * Google <i>Encoded Polyline</i> format.
+	 * 
+	 * @param shape single (holeless) polygon or line
+	 * @return
+	 * @since 1.3.0
+	 */
+	public static String toEncodedPolyline(PShape shape) {
+		Track line = new Track();
+		toPVector(shape).forEach(p -> line.addTrackpoint(new Trackpoint(p.x, p.y)));
+		line.addTrackpoint(line.getTrackpoints().get(0)); // close
+		// PolylineEncoder.createEncodings() writes to console, so supress that...
+		PrintStream old = System.out;
+		System.setOut(new PrintStream(new OutputStream() {
+			public void write(int b) throws IOException {
+			}
+		}));
+		String encoding = (String) PolylineEncoder.createEncodings(line, 0, 1).get("encodedPoints");
+		System.setOut(old);
+		return encoding;
+	}
+
+	/**
+	 * Converts a geometry in <i>Encoded Polyline</i> format into a PShape.
+	 * 
+	 * @param encodedPolyline an encoded polyline string representing a shape
+	 * @return a PShape represented by the encoded polyline string
+	 * @since 1.3.0
+	 */
+	public static PShape fromEncodedPolyline(String encodedPolyline) {
+		PolylineDecoder decoder = new PolylineDecoder();
+		CoordinateList coords = new CoordinateList();
+
+		decoder.decode(encodedPolyline).forEach(p -> {
+			double x = p.getLat();
+			double y = p.getLng();
+			coords.add(new Coordinate(x, y));
+		});
+
+		return toPShape(GEOM_FACTORY.createLineString(coords.toCoordinateArray()));
+	}
+
+	/**
+	 * Writes a shape into the string representation of its <i>GeoJSON</i> format.
+	 * 
+	 * @param shape
+	 * @return json JSON string
+	 * @since 1.3.0
+	 */
+	public static String toGeoJSON(PShape shape) {
+		final GeoJsonWriter writer = new GeoJsonWriter(1);
+		writer.setForceCCW(true);
+		return writer.write(fromPShape(shape));
+	}
+
+	/**
+	 * Converts a GeoJSON representation of a shape into its PShape counterpart.
+	 * 
+	 * @param json GeoJSON string
+	 * @return PShape represented by the GeoJSON
+	 * @since 1.3.0
+	 */
+	public static PShape fromGeoJSON(String json) {
+		final GeoJsonReader reader = new GeoJsonReader(GEOM_FACTORY);
+		try {
+			return toPShape(reader.read(json));
+		} catch (ParseException e) {
+			System.err.println("Error occurred when converting json to shape.");
+			return new PShape();
+		}
 	}
 
 	/**
