@@ -69,7 +69,7 @@ public final class PGS_PointSet {
 	 *               be sorted.
 	 * @return a sorted <b>copy</b> of the input list, having a different order
 	 *         according to points' Hilbert ranking of their (x, y) coordinate
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static List<PVector> hilbertSort(List<PVector> points) {
 		double xMin, xMax, yMin, yMax;
@@ -739,7 +739,7 @@ public final class PGS_PointSet {
 	 * 
 	 * @param points the set of points over which to compute the EMST
 	 * @return a LINES PShape
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape minimumSpanningTree(List<PVector> points) {
 		/*

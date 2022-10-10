@@ -307,6 +307,49 @@ class PGS_ConversionTests {
 			assertTrue(pointsAreEqual(g.getCoordinates()[i], shape.getVertex(i)));
 		}
 	}
+	
+	@Test
+	void testMultiContour() {
+		final PShape shape = new PShape(PShape.PATH); // shape with 2 nested items, each having hole
+		shape.beginShape();
+		shape.vertex(0, 0); // a
+		shape.vertex(12, 0);
+		shape.vertex(12, 12);
+		shape.vertex(0, 12);
+		shape.beginContour(); // a hole
+		shape.vertex(2, 2);
+		shape.vertex(2, 10);
+		shape.vertex(10, 10);
+		shape.vertex(10, 2);
+		shape.endContour();
+		shape.beginContour(); // b
+		shape.vertex(4, 4);
+		shape.vertex(8, 4);
+		shape.vertex(8, 8);
+		shape.vertex(4, 8);
+		shape.endContour();
+		shape.beginContour(); // b hole
+		shape.vertex(5, 5);
+		shape.vertex(5, 7);
+		shape.vertex(7, 7);
+		shape.vertex(7, 5);
+		shape.endContour();
+		shape.endShape(PConstants.CLOSE);
+		
+		PGS_Conversion.HANDLE_MULTICONTOUR = true;
+		Geometry g = fromPShape(shape);
+		PGS_Conversion.HANDLE_MULTICONTOUR = false;
+		
+		assertEquals(2, g.getNumGeometries());
+		Polygon a = (Polygon) g.getGeometryN(0);
+		Polygon b = (Polygon) g.getGeometryN(1);
+		assertEquals(1, a.getNumInteriorRing()); // each polygon has hole
+		assertEquals(1, b.getNumInteriorRing()); // each polygon has hole
+		
+		// note backwards conversion is formatted differently to input 
+		assertEquals(PShape.GROUP, toPShape(g).getFamily());
+		assertEquals(2, toPShape(g).getChildCount()); 
+	}
 
 	@Test
 	void testVertexRounding() {

@@ -182,7 +182,7 @@ public class PGS_Meshing {
 	 *                          even if they should be removed according to the
 	 *                          relative neighbor condition
 	 * @return
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape relativeNeighborFaces(final IIncrementalTin triangulation, final boolean preservePerimeter) {
 		SimpleGraph<Vertex, IQuadEdge> graph = PGS_Triangulation.toTinfourGraph(triangulation);
@@ -234,7 +234,7 @@ public class PGS_Meshing {
 	 *                          even if they should be removed according to the
 	 *                          spanner condition
 	 * @return a GROUP PShape where each child shape is a single face
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape spannerFaces(final IIncrementalTin triangulation, int k, final boolean preservePerimeter) {
 		SimpleGraph<PVector, PEdge> graph = PGS_Triangulation.toGraph(triangulation);

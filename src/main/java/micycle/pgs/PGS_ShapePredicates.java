@@ -138,7 +138,7 @@ public final class PGS_ShapePredicates {
 	 * @param point      the query point
 	 * @return the child shape that contains the query point, or null if no child
 	 *         shape contains the point
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape findContainingShape(PShape groupShape, PVector point) {
 		if (groupShape.getKind() != PConstants.GROUP) { // handle non-mesh shape
@@ -357,7 +357,7 @@ public final class PGS_ShapePredicates {
 	 * 
 	 * @param shape polygonal shape
 	 * @return an angle in the range [0, 2PI]
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static double maximumInteriorAngle(PShape shape) {
 		final CoordinateList coords = new CoordinateList(fromPShape(shape).getCoordinates());
@@ -385,7 +385,7 @@ public final class PGS_ShapePredicates {
 	 * @param a shape a
 	 * @param b shape b
 	 * @return true if both shapes have identical structure and point values.
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @see #equalsNorm(PShape, PShape)
 	 * @see #equalsTopo(PShape, PShape)
 	 */
@@ -402,7 +402,7 @@ public final class PGS_ShapePredicates {
 	 * @param a shape a
 	 * @param b shape b
 	 * @return true the shapes are exactly equal in their normalized form
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @see #equalsExact(PShape, PShape)
 	 * @see #equalsTopo(PShape, PShape)
 	 */
@@ -419,7 +419,7 @@ public final class PGS_ShapePredicates {
 	 * @param a shape a
 	 * @param b shape b
 	 * @return true if the two shapes are topologically equal
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @see #equalsExact(PShape, PShape)
 	 * @see #equalsTopo(PShape, PShape)
 	 */

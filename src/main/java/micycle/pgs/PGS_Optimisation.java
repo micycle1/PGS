@@ -120,7 +120,7 @@ public final class PGS_Optimisation {
 	 *              true, processing is ~6 times faster but potentially a little
 	 *              inaccurate
 	 * @return a rectangle shape
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @see #maximumInscribedRectangle(PShape) maximumInscribedRectangle() -- the
 	 *      largest rectangle of arbitrary orientation
 	 */
@@ -330,7 +330,7 @@ public final class PGS_Optimisation {
 	 * @param mesh group shape
 	 * @return a copy of the input shape, having the same faces/child shapes in a
 	 *         different order
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape hilbertSortFaces(PShape mesh) {
 		Map<PVector, PShape> map = new HashMap<>(mesh.getChildCount());

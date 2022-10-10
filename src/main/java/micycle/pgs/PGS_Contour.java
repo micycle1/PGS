@@ -130,7 +130,7 @@ public final class PGS_Contour {
 	 * @param shape polygonal shape
 	 * @return a GROUP PShape, where each group is a single maximum-length line
 	 *         segment (possibly >2 vertices)
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	@SuppressWarnings("unchecked")
 	public static PShape chordalAxis(PShape shape) {
@@ -266,7 +266,7 @@ public final class PGS_Contour {
 	 */
 	private static PShape straightSkeleton(Polygon polygon) {
 		/*
-		 * Kenzi implementation (since PGS 1.2.1) is much faster (~50x!) but can fail on
+		 * Kenzi implementation (since PGS 1.3.0) is much faster (~50x!) but can fail on
 		 * more complicated inputs. Therefore try Kenzi implementation first, but fall
 		 * back to Twak implementation if it fails.
 		 */
@@ -619,7 +619,7 @@ public final class PGS_Contour {
 	 * @param spacing distance represented by successive contour lines
 	 * @return GROUP shape, where each child is a closed contour line or contour
 	 *         line partition
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape distanceField(PShape shape, double spacing) {
 		Geometry g = fromPShape(shape);

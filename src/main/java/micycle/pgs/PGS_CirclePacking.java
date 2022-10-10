@@ -279,7 +279,7 @@ public final class PGS_CirclePacking {
 	 * @return A list of PVectors, each representing one circle: (.x, .y) represent
 	 *         the center point and .z represents radius. The packing is centered on
 	 *         (0, 0) by default.
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static List<PVector> tangencyPack(IIncrementalTin triangulation, double[] boundaryRadii) {
 		TangencyPack pack = new TangencyPack(triangulation, boundaryRadii);
@@ -303,7 +303,7 @@ public final class PGS_CirclePacking {
 	 * @param seed      for initial circle positions and radii
 	 * @return A list of PVectors, each representing one circle: (.x, .y) represent
 	 *         the center point and .z represents radius.
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @see #repulsionPack(PShape, List)
 	 */
 	public static List<PVector> repulsionPack(PShape shape, double radiusMin, double radiusMax, long seed) {
@@ -355,7 +355,7 @@ public final class PGS_CirclePacking {
 	 *                PVectors, where .z is the radius (>=1) for each circle
 	 * @return A list of PVectors, each representing one circle: (.x, .y) represent
 	 *         the center point and .z represents radius.
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @see #repulsionPack(PShape, double, double, long)
 	 */
 	public static List<PVector> repulsionPack(PShape shape, List<PVector> circles) {

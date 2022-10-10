@@ -688,7 +688,7 @@ public final class PGS_Conversion {
 	 *
 	 * @param shape the shape to convert
 	 * @return graph representation of the input shape
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @see #toDualGraph(PShape)
 	 */
 	public static SimpleGraph<PVector, PEdge> toGraph(PShape shape) {
@@ -730,7 +730,7 @@ public final class PGS_Conversion {
 	 * @return a GROUP PShape consisting of 2 children; child 0 is the linework
 	 *         (LINES) depicting edges and child 1 is the points (POINTS) depicting
 	 *         vertices. The bounds of the layout are anchored at (0, 0);
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static <V, E> PShape fromGraph(SimpleGraph<V, E> graph, double normalizationFactor, double boundsX, double boundsY) {
 		normalizationFactor = Math.min(Math.max(normalizationFactor, 0.001), 1);
@@ -775,7 +775,7 @@ public final class PGS_Conversion {
 	 *
 	 * @return the dual graph of the input mesh; an undirected graph containing no
 	 *         graph loops or multiple edges.
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @see #toGraph(PShape)
 	 */
 	public static SimpleGraph<PShape, DefaultEdge> toDualGraph(PShape mesh) {
@@ -820,7 +820,7 @@ public final class PGS_Conversion {
 	 *
 	 * @param shape shape to process
 	 * @return a Geometry Tagged Text string
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @see #fromWKT(String)
 	 */
 	public static String toWKT(PShape shape) {
@@ -836,7 +836,7 @@ public final class PGS_Conversion {
 	 * @param textRepresentation one or more Geometry Tagged Text strings, separated
 	 *                           by whitespace
 	 * @return a PShape specified by the text
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @see #toWKT(PShape)
 	 */
 	public static PShape fromWKT(String textRepresentation) {
@@ -856,7 +856,7 @@ public final class PGS_Conversion {
 	 *
 	 * @param shape shape to process
 	 * @return WKB byte representation of shape
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @see #fromWKB(byte[])
 	 * @see #toHexWKB(PShape)
 	 */
@@ -870,7 +870,7 @@ public final class PGS_Conversion {
 	 *
 	 * @param shapeWKB byte representation of shape to process
 	 * @return a PShape specified by the WKB
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @see #toWKB(PShape)
 	 */
 	public static PShape fromWKB(byte[] shapeWKB) {
@@ -888,7 +888,7 @@ public final class PGS_Conversion {
 	 *
 	 * @param shape shape to process
 	 * @return hexadecimal string representation of shape WKB
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @see #toWKB(PShape)
 	 */
 	public static String toHexWKB(PShape shape) {
@@ -900,7 +900,7 @@ public final class PGS_Conversion {
 	 *
 	 * @param shapeWKB hex string WKB representation of shape to process
 	 * @return a PShape specified by the WKB
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @see #toWKB(PShape)
 	 */
 	public static PShape fromHexWKB(String shapeWKB) {
@@ -912,7 +912,7 @@ public final class PGS_Conversion {
 	 *
 	 * @param shape the PShape to convert
 	 * @return a Java2D shape representing the PShape
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static Shape toJava2D(PShape shape) {
 		return new ShapeWriter().toShape(fromPShape(shape));
@@ -926,7 +926,7 @@ public final class PGS_Conversion {
 	 *
 	 * @param shape the Java2D shape to convert
 	 * @return a PShape representing the Java2D shape
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape fromJava2D(Shape shape) {
 		if (shape != null) {
@@ -999,7 +999,7 @@ public final class PGS_Conversion {
 	 * Flattens a collection of PShapes into a single GROUP PShape which has the
 	 * input shapes as its children.
 	 *
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @see #flatten(Collection)
 	 */
 	public static PShape flatten(PShape... shapes) {
@@ -1119,7 +1119,7 @@ public final class PGS_Conversion {
 	 *
 	 * @param shape
 	 * @return the input object (having now been mutated)
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape setAllStrokeToFillColor(PShape shape, double strokeWeight) {
 		getChildren(shape).forEach(child -> {

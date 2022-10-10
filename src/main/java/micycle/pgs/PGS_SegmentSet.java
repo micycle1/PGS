@@ -33,7 +33,7 @@ import processing.core.PVector;
  * toPShape(Collection<PEdge>)}.
  * 
  * @author Michael Carleton
- * @since 1.2.1
+ * @since 1.3.0
  */
 public class PGS_SegmentSet {
 

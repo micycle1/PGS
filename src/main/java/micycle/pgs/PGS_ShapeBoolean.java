@@ -65,14 +65,14 @@ public final class PGS_ShapeBoolean {
 	 * intersected individually.
 	 * <p>
 	 * Using this method is faster than calling {@link #intersect(PShape, PShape)
-	 * intersect(a, b)} repeatedly on every face of a mesh-like shape
-	 * <code>a</code>.
+	 * intersect(a, b)} repeatedly for every face of a mesh-like shape
+	 * <code>a</code> against an area <code>b</code>.
 	 * 
 	 * @param mesh a mesh-like GROUP shape
 	 * @param area a polygonal shape
 	 * @return a GROUP shape, where each child shape is the union of one mesh face
 	 *         and the area
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape intersectMesh(PShape mesh, PShape area) {
 		final Geometry g = fromPShape(area);
@@ -207,7 +207,7 @@ public final class PGS_ShapeBoolean {
 	 * @param area a polygonal shape
 	 * @return a GROUP shape, where each child shape is the subtraction of the area
 	 *         from one mesh face
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape subtractMesh(PShape mesh, PShape area) {
 		final Geometry g = fromPShape(area);
