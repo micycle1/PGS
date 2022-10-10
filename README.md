@@ -297,12 +297,10 @@ Much of the functionality (but by no means all) is demonstrated below:
 
   <tr>
     <td align="center" valign="center"><b>Variable Buffer</td>
-    <td align="center" valign="center"><b>Eliminate Slivers</td>
     <td align="center" valign="center"><b>Precision Reduction</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/morphology/variableBuffer.gif"></td>
-    <td valign="top" width="25%"><img src="resources/morphology/slivers.gif"></td>
     <td valign="top" width="25%"><img src="resources/morphology/reducePrecision.gif"></td>
   </tr>
 </table>
@@ -414,10 +412,14 @@ Much of the functionality (but by no means all) is demonstrated below:
     <tr>
     <td align="center" valign="center"><b>Densification</td>
     <td align="center" valign="center"><b>Tangent Angle</td>
+    <td align="center" valign="center"><b>Eliminate Slivers</td>
+    <td align="center" valign="center"><b>Clean Coverage</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/geometry_processing/densify.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/tangentAngle.png"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/slivers.gif"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/cleanCoverage.gif"></td>
   </tr>
 </table>
 

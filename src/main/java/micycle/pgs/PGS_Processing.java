@@ -21,6 +21,7 @@ import java.util.stream.StreamSupport;
 
 import org.locationtech.jts.algorithm.Angle;
 import org.locationtech.jts.algorithm.Orientation;
+import org.locationtech.jts.algorithm.hull.ConcaveHullOfPolygons;
 import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.densify.Densifier;
 import org.locationtech.jts.dissolve.LineDissolver;
@@ -47,6 +48,7 @@ import org.locationtech.jts.noding.SegmentIntersector;
 import org.locationtech.jts.noding.SegmentString;
 import org.locationtech.jts.noding.SegmentStringUtil;
 import org.locationtech.jts.noding.snap.SnappingNoder;
+import org.locationtech.jts.operation.overlay.snap.GeometrySnapper;
 import org.locationtech.jts.operation.overlayng.MultiOperationOverlayNG;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
@@ -58,6 +60,13 @@ import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
 import org.tinfour.standard.IncrementalTin;
 import org.tinfour.utils.TriangleCollector;
+
+import com.vividsolutions.jcs.conflate.coverage.CoverageCleaner;
+import com.vividsolutions.jcs.conflate.coverage.CoverageCleaner.Parameters;
+import com.vividsolutions.jump.feature.FeatureCollection;
+import com.vividsolutions.jump.feature.FeatureDatasetFactory;
+import com.vividsolutions.jump.feature.FeatureUtil;
+import com.vividsolutions.jump.task.DummyTaskMonitor;
 
 import de.incentergy.geometry.impl.RandomPolygonSplitter;
 import micycle.balaban.BalabanSolver;
@@ -858,6 +867,86 @@ public final class PGS_Processing {
 		slices.addChild(toPShape(UnaryUnionOp.union(leftSlices)));
 		slices.addChild(toPShape(UnaryUnionOp.union(rightSlices)));
 		return slices;
+	}
+
+	/**
+	 * Removes narrow areas ("slivers") from a shape while preserving the geometry
+	 * of the remaining parts.
+	 * <p>
+	 * This operation is similar to
+	 * {@link PGS_Morphology#erosionDilation(PShape, double) erosionDilation()}, but
+	 * better preserves the original geometry of remaining parts.
+	 * <p>
+	 * If the input is a single polygon and if when removing slivers, a multipolygon
+	 * is produced, further processing occurs within the method to repair it back
+	 * into a single polygon.
+	 * 
+	 * @param shape     polygonal shape
+	 * @param threshold width threshold (probably no more than 10); parts narrower
+	 *                  than this are eliminated
+	 * @return a copy of the input shape having narrow areas/parts removed
+	 * @since 1.2.1
+	 */
+	public static PShape eliminateSlivers(PShape shape, double threshold) {
+		threshold = Math.max(threshold, 1e-5);
+		Geometry g = fromPShape(shape);
+		boolean multi = g.getNumGeometries() > 1;
+		Geometry snapped = GeometrySnapper.snapToSelf(g, threshold, true);
+		Geometry out = snapped;
+		if (!multi && snapped.getNumGeometries() > 1) {
+			ConcaveHullOfPolygons chp = new ConcaveHullOfPolygons(snapped);
+			chp.setTight(true);
+			chp.setHolesAllowed(false);
+
+			double ratio = 0.02;
+			try {
+				do { // pick lowest ratio such that a single polygon is returned
+					chp.setMaximumEdgeLengthRatio(ratio);
+					out = chp.getHull();
+					ratio += 0.01;
+				} while (out.getNumGeometries() > 1);
+			} catch (Exception e) { // catch "Unable to find a convex corner"
+			}
+		}
+		return toPShape(out); // better on smaller thresholds
+	}
+
+	/**
+	 * Removes gaps and overlaps from meshes/polygon collections that are intended
+	 * to satisfy the following conditions:
+	 * <ul>
+	 * <li>Vector-clean - edges between neighbouring polygons must either be
+	 * identical or intersect only at endpoints.</li>
+	 * <li>Non-overlapping - No two polygons may overlap. Equivalently, polygons
+	 * must be interior-disjoint.</li>
+	 * </ul>
+	 * <p>
+	 * It may not always be possible to perfectly clean the input.
+	 * <p>
+	 * While this method is intended to be used to fix malformed coverages, it can
+	 * be used to snap collections of disparate polygons together.
+	 * 
+	 * @param coverage          a GROUP shape, consisting of the polygonal faces to
+	 *                          clean
+	 * @param distanceTolerance the distance below which segments and vertices are
+	 *                          considered to match
+	 * @param angleTolerance    the maximum angle difference between matching
+	 *                          segments, in degrees
+	 * @return GROUP shape whose child polygons satisfy a (hopefully) valid coverage
+	 * @since 1.2.1
+	 */
+	public static PShape cleanCoverage(PShape coverage, double distanceTolerance, double angleTolerance) {
+		final List<Geometry> geometries = PGS_Conversion.getChildren(coverage).stream().map(PGS_Conversion::fromPShape)
+				.collect(Collectors.toList());
+		final FeatureCollection features = FeatureDatasetFactory.createFromGeometry(geometries);
+
+		final CoverageCleaner cc = new CoverageCleaner(features, new DummyTaskMonitor());
+		cc.process(new Parameters(distanceTolerance, angleTolerance));
+
+		final List<Geometry> cleanedGeometries = FeatureUtil.toGeometries(cc.getUpdatedFeatures().getFeatures());
+		final PShape out = PGS_Conversion.toPShape(cleanedGeometries);
+		PGS_Conversion.setAllStrokeColor(out, RGB.PINK, 2);
+		return out;
 	}
 
 	private static Polygon toGeometry(Envelope envelope) {
