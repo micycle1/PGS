@@ -22,7 +22,7 @@ import uk.osgb.algorithm.concavehull.TriCheckerChi;
  * sets.
  * 
  * @author Michael Carleton
- * @since 1.2.1
+ * @since 1.3.0
  */
 public class PGS_Hull {
 
@@ -35,7 +35,7 @@ public class PGS_Hull {
 	 * 
 	 * @param points a collection of points
 	 * @return the minimum-area convex polygon containing the points
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape convexHull(Collection<PVector> points) {
 		return toPShape(fromPShape(PGS_Conversion.toPointsPShape(points)).convexHull());
@@ -47,7 +47,7 @@ public class PGS_Hull {
 	 * 
 	 * @param shape a concave shape
 	 * @return the minimum-area convex polygon containing the input's vertices
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape convexHull(PShape shape) {
 		return toPShape(fromPShape(shape).convexHull());
@@ -64,7 +64,7 @@ public class PGS_Hull {
 	 * @param tight     sets whether the boundary of the hull polygon is kept tight
 	 *                  to precisely the outer edges of the input polygons
 	 * @return concave hull of the input shapes
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape concaveHull(PShape shapeSet, double concavity, boolean tight) {
 		Geometry g = PGS_Conversion.fromPShape(shapeSet);

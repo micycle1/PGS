@@ -435,7 +435,7 @@ public final class PGS_Triangulation {
 	 * @param shape shape whose vertices to triangulate
 	 * @return a GROUP PShape, where each child shape is one triangle
 	 * @since 1.1.0
-	 * @since Supports holes since 1.2.1
+	 * @since Supports holes since 1.3.0
 	 */
 	public static PShape earCutTriangulation(PShape shape) {
 		PolygonTriangulator pt = new PolygonTriangulator(fromPShape(shape));
@@ -451,7 +451,7 @@ public final class PGS_Triangulation {
 	 * 
 	 * @param triangulation triangulation mesh
 	 * @return
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @see #toTinfourGraph(IIncrementalTin)
 	 * @see #toDualGraph(IIncrementalTin)
 	 */
@@ -485,7 +485,7 @@ public final class PGS_Triangulation {
 	 * 
 	 * @param triangulation triangulation mesh
 	 * @return
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @see #toGraph(IIncrementalTin)
 	 * @see #toDualGraph(IIncrementalTin)
 	 */
@@ -515,7 +515,7 @@ public final class PGS_Triangulation {
 	 * 
 	 * @param triangulation triangulation mesh
 	 * @return
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @see #toTinfourGraph(IIncrementalTin)
 	 */
 	public static SimpleGraph<SimpleTriangle, DefaultEdge> toDualGraph(IIncrementalTin triangulation) {

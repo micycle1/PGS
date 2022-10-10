@@ -146,7 +146,7 @@ public final class PGS_Tiling {
 	 * @param gridCountY vertical grid count
 	 * @param seed       the random seed
 	 * @return a GROUP PShape, where each child shape is a face of the subdivision
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape hatchSubdivision(double width, double height, int gridCountX, int gridCountY, long seed) {
 		final HatchTiling ht = new HatchTiling((int) width, (int) height, gridCountX, gridCountY);
@@ -280,7 +280,7 @@ public final class PGS_Tiling {
 	 * @param tileSize diameter of each tile
 	 * @param seed     the random seed
 	 * @return a GROUP PShape, where each child shape is a tile of the tiling
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape squareTriangleTiling(double width, double height, double tileSize, long seed) {
 		final SquareTriangleTiling stt = new SquareTriangleTiling(width, height, tileSize);

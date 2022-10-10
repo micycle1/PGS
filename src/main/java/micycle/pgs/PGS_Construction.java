@@ -412,7 +412,7 @@ public class PGS_Construction {
 	 * @param height  height of outer-most coil
 	 * @param spacing the distance between successive coils
 	 * @return a stroked PATH PShape
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape createRectangularSpiral(float x, float y, float width, float height, float spacing) {
 		float xx = -width / 2;
@@ -510,7 +510,7 @@ public class PGS_Construction {
 	 * @param height pixel height of the curve
 	 * @param order  order of the hilbert curve. should be at least 0
 	 * @return a stroked PATH PShape, anchored at (0, 0)
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape createHilbertCurve(double width, double height, int order) {
 		final GeometricShapeBuilder builder = new HilbertCurveBuilder(PGS.GEOM_FACTORY);
@@ -531,7 +531,7 @@ public class PGS_Construction {
 	 * @param order  the number of recursive subdivisions (at least 0, probably no
 	 *               more than 5)
 	 * @return carpet shape, anchored at (0, 0)
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape createSierpinskiCarpet(double width, double height, int order) {
 		final GeometricShapeBuilder builder = new SierpinskiCarpetBuilder(PGS.GEOM_FACTORY);
@@ -550,7 +550,7 @@ public class PGS_Construction {
 	 * @param height pixel width of the curve's envelope
 	 * @param order  the number of recursive subdivisions (at least 0)
 	 * @return snowflake shape, whose envelope is anchored at (0, 0)
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape createKochSnowflake(double width, double height, int order) {
 		order++; //
@@ -574,7 +574,7 @@ public class PGS_Construction {
 	 * @param width pixel width of the curve's envelope
 	 * @param order the number of recursive subdivisions (at least 1)
 	 * @return curve shape, anchored at (0, 0)
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape createSierpinskiTriCurve(SierpinskiTriCurveType type, double width, int order) {
 		SpaceFillingCurve fractal;

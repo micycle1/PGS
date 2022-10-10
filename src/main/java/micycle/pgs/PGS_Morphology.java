@@ -77,7 +77,7 @@ public final class PGS_Morphology {
 	 * @param buffer extent/width of the buffer (which may be positive or negative)
 	 * @return a polygonal shape representing the buffer region (which may be empty)
 	 * @see #buffer(PShape, double)
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape buffer(PShape shape, double buffer, OffsetStyle bufferStyle) {
 		Geometry g = fromPShape(shape);
@@ -96,7 +96,7 @@ public final class PGS_Morphology {
 	 * @param endDistance   the terminating buffer amount
 	 * @return a polygonal shape representing the variable buffer region (which may
 	 *         beempty)
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape variableBuffer(PShape shape, double startDistance, double endDistance) {
 		Geometry g = fromPShape(shape);
@@ -132,7 +132,7 @@ public final class PGS_Morphology {
 	 * @param shape  polygonal shape
 	 * @param buffer a positive number
 	 * @return
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @see #erosionDilation(PShape, double)
 	 */
 	public static PShape dilationErosion(PShape shape, double buffer) {
@@ -199,7 +199,7 @@ public final class PGS_Morphology {
 	 * @param removeFraction the fraction of least relevant kinks/vertices to remove
 	 *                       (per ring). 0...1
 	 * @return simplifed copy of the input shape
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @see PGS_Morphology#simplifyDCE(PShape, int)
 	 */
 	public static PShape simplifyDCE(PShape shape, double removeFraction) {
@@ -242,7 +242,7 @@ public final class PGS_Morphology {
 	 * @param targetNumVertices the number of vertices that should remain/be
 	 *                          preserved in <b>each ring</b> of the input
 	 * @return simplifed copy of the input shape
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @see #simplifyDCE(PShape, double)
 	 */
 	public static PShape simplifyDCE(PShape shape, int targetNumVertices) {
@@ -472,7 +472,7 @@ public final class PGS_Morphology {
 	 * @param phase     sine wave phase. corresponds to the fraction (0...1) around
 	 *                  the shape perimeter where the wave starts (0 displacement).
 	 * @return
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape sineWarp(PShape shape, double magnitude, int frequency, double phase) {
 		Geometry g = fromPShape(shape);
@@ -637,7 +637,7 @@ public final class PGS_Morphology {
 	 *               2
 	 * @return a GROUP PShape, where each child shape is a frame from the
 	 *         interpolation
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @see #interpolate(PShape, PShape, double)
 	 */
 	public static PShape interpolate(PShape from, PShape to, int frames) {
@@ -667,7 +667,7 @@ public final class PGS_Morphology {
 	 * @param precision the exact grid size with which to round shape vertices.
 	 *                  shoule be non-zero and positive
 	 * @return reduced copy of input
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape reducePrecision(PShape shape, double precision) {
 		return toPShape(GeometryPrecisionReducer.reduce(fromPShape(shape), new PrecisionModel(-Math.max(Math.abs(precision), 1e-10))));

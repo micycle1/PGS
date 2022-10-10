@@ -255,7 +255,7 @@ public final class PGS_Processing {
 	 * @return the normalized angle (in radians) that a line tangent to the
 	 *         perimeter of the shape at the given position makes with the positive
 	 *         x-axis, where 0 is north.
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static double tangentAngle(PShape shape, double distanceFraction) {
 		distanceFraction %= 1;
@@ -547,7 +547,7 @@ public final class PGS_Processing {
 	 * 
 	 * @param shape a GROUP shape consisting of lineal or polygonal child shapes
 	 * @return linework of the overlapping input (LINES PShape)
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape removeHiddenLines(PShape shape) {
 		if (shape.getChildCount() == 0) {
@@ -757,7 +757,7 @@ public final class PGS_Processing {
 	 *                more precisely equal partitions. The tradeoff here is
 	 *                computation time vs partition quality
 	 * @return a GROUP PShape, whose child shapes are partitions of the original
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape equalPartition(final PShape shape, final int parts, boolean precise) {
 		final Geometry g = fromPShape(shape);
@@ -784,7 +784,7 @@ public final class PGS_Processing {
 	 * 
 	 * @param shape a polygonal or a GROUP shape
 	 * @return a GROUP PShape comprising of trapezoid child shapes
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape trapezoidPartition(PShape shape) {
 		final PShape trapezoids = new PShape(PConstants.GROUP);
@@ -885,7 +885,7 @@ public final class PGS_Processing {
 	 * @param threshold width threshold (probably no more than 10); parts narrower
 	 *                  than this are eliminated
 	 * @return a copy of the input shape having narrow areas/parts removed
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape eliminateSlivers(PShape shape, double threshold) {
 		threshold = Math.max(threshold, 1e-5);
@@ -933,7 +933,7 @@ public final class PGS_Processing {
 	 * @param angleTolerance    the maximum angle difference between matching
 	 *                          segments, in degrees
 	 * @return GROUP shape whose child polygons satisfy a (hopefully) valid coverage
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape cleanCoverage(PShape coverage, double distanceTolerance, double angleTolerance) {
 		final List<Geometry> geometries = PGS_Conversion.getChildren(coverage).stream().map(PGS_Conversion::fromPShape)

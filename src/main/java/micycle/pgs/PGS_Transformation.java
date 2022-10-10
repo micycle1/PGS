@@ -66,7 +66,7 @@ public final class PGS_Transformation {
 	 * @param shape
 	 * @param scale scale factor
 	 * @return
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape originScale(PShape shape, double scale) {
 		Geometry g = fromPShape(shape);
@@ -103,7 +103,7 @@ public final class PGS_Transformation {
 	 * @param shape       the shape to resize
 	 * @param targetWidth width of the output
 	 * @return resized copy of input shape
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @see #resizeByHeight(PShape, double)
 	 * @see #resizeByLargest(PShape, double)
 	 */
@@ -127,7 +127,7 @@ public final class PGS_Transformation {
 	 * @param shape        the shape to resize
 	 * @param targetHeight height of the output
 	 * @return resized copy of input shape
-	 * @since 1.2.1 resized copy of input shape
+	 * @since 1.3.0 resized copy of input shape
 	 * @see #resizeByWidth(PShape, double)
 	 * @see #resizeByLargest(PShape, double)
 	 */
@@ -154,7 +154,7 @@ public final class PGS_Transformation {
 	 * @param shape         the shape to resize
 	 * @param targetLargest the new length of its longest axis
 	 * @return resized copy of input shape
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @see #resizeByWidth(PShape, double)
 	 * @see #resizeByHeight(PShape, double)
 	 */
@@ -262,7 +262,7 @@ public final class PGS_Transformation {
 	 * @param x     target centroid X
 	 * @param y     target centroid Y
 	 * @return translated shape
-	 * @since 1.2.1 (superceeds {@link #translateTo(PShape, double, double)
+	 * @since 1.3.0 (superceeds {@link #translateTo(PShape, double, double)
 	 *        translateTo()}
 	 */
 	public static PShape translateCentroidTo(PShape shape, double x, double y) {
@@ -287,7 +287,7 @@ public final class PGS_Transformation {
 	 * @param y     the y-coordinate of new position of the shape's bounding box
 	 *              centroid point
 	 * @return translated shape
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape translateEnvelopeTo(PShape shape, double x, double y) {
 		Geometry g = fromPShape(shape);
@@ -306,7 +306,7 @@ public final class PGS_Transformation {
 	 * @param x
 	 * @param y
 	 * @return translated shape
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 */
 	public static PShape translateCornerTo(PShape shape, double x, double y) {
 		Geometry g = fromPShape(shape);

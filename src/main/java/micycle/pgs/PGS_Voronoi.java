@@ -152,7 +152,7 @@ public final class PGS_Voronoi {
 	 *              polygonal, lineal, or points child shapes
 	 * @return a GROUP PShape, where each child shape is a Voronoi cell, bounded by
 	 *         the envelope all shapes
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @return GROUP shape consisting of voronoi cells; each cell corresponds to an
 	 *         area around a line segment for which the closest line segment to any
 	 *         point in that area is the line segment
@@ -176,7 +176,7 @@ public final class PGS_Voronoi {
 	 *               contain the shape.
 	 * @return a GROUP PShape, where each child shape is a Voronoi cell, bounded by
 	 *         the envelope all shapes
-	 * @since 1.2.1
+	 * @since 1.3.0
 	 * @return GROUP shape consisting of voronoi cells; each cell corresponds to an
 	 *         area around a line segment for which the closest line segment to any
 	 *         point in that area is the line segment
