@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `trapezoidPartition()` to `PGS_Processing`. Partitions a shape into axis-aligned trazepoids.
 * `fromChildren()` to `PGS_Conversion`. Creates a single GROUP parent shape from a list of child shapes.
 * `WKT` and `WKB` conversion methods to `PGS_Conversion`. Converts PShapes to and from their *Well-Known Text* / *Well-Known Binary* representation.
+* `Encoded Polyline` conversion methods to `PGS_Conversion`. Converts PShapes to and from a Google Encoded Polyline representation.
+* `GeoJSON` conversion methods to `PGS_Conversion`. Converts PShapes to and from a GeoJSON representation.
 * `toJava2D()` and `fromJava2D()` to `PGS_Conversion`. Converts PShapes to and from Java2D/java.awt shape objects.
 * `originScale()` to `PGS_Transformation`. Scales a shape relative to the origin (0, 0).
 * `resizeByWidth()` and `resizeByHeight()` to `PGS_Transformation`. Resizes a shape to a given width/height, whilst resizing the height/width to maintain the original aspect ratio.
