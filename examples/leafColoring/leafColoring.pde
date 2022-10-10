@@ -15,7 +15,7 @@ void setup() {
   leaf = new PShapeSVG(parseXML(leafSVG));
   leaf = PGS_Transformation.scale(leaf, 1.4 * 1.6f);
   leaf = PGS_Transformation.rotateAroundCenter(leaf, -0.6f);
-  leaf = PGS_Transformation.translateTo(leaf, width / 2f, height / 2f);
+  leaf = PGS_Transformation.translateCentroidTo(leaf, width / 2f, height / 2f);
   leaf = PGS_Morphology.simplify(leaf, 1);
 
   meshShape = meshColorShape(leaf);

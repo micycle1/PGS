@@ -10,9 +10,9 @@ void setup() {
   smooth();
 
   List<PVector> randomPoints = PGS_PointSet.poisson(30, 30, width - 30, height - 30, 40);
-  polygon = PGS_Processing.concaveHullBFS(randomPoints, 25);
+  polygon = PGS_Hull.concaveHullBFS(randomPoints, 0.1);
 
-  PShape partitions = PGS_Processing.partition(polygon);
+  PShape partitions = PGS_Processing.convexPartition(polygon);
   subPartitions = new ArrayList<PShape>();
   for (PShape p : partitions.getChildren()) {
     PShape split = PGS_Processing.split(p);

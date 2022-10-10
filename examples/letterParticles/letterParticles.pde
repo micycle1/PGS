@@ -52,7 +52,7 @@ void letterParticles(float density) {
 
   PGS_PointSet.prunePointsWithinDistance(warped, density).forEach(p -> {
     var character = PGS_Transformation.resizeByMajorAxis(letter, map(noise.uniformNoise(p.x / 50, p.y / 50), 0, 1, 15, 45));
-    character = PGS_Transformation.translateTo(character, p.x, p.y);
+    character = PGS_Transformation.translateCentroidTo(character, p.x, p.y);
     character = PGS_Transformation.rotate(character, p, map(noise.uniformNoise((p.x + 1337) / 50, (p.y + 1337) / 50), 0, 1, -PI / 3, PI / 3));
     character.setFill(palette[ceil(noise.uniformNoise(p.x / 350, p.y / 350) * (palette.length - 2) + 0.5f)]);
     shape(character);
@@ -66,7 +66,7 @@ void changeLetter() {
   palette = Palette.values()[(int) random(Palette.values().length)].intValue();
 
   char c = (char) ((int) (random(1000)) % ('z'-'0') + '0'); // random lower case char
-  letter = PGS_Transformation.translateTo(font.getShape(c), width / 2, height / 2);
+  letter = PGS_Transformation.translateCentroidTo(font.getShape(c), width / 2, height / 2);
   letter = toPShape(GeometryFixer.fix(fromPShape(letter))); // holes are malformed
   if (letter.getVertexCount() == 0) {
     changeLetter();
