@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `hatchSubdivision()` to `PGS_Tiling`. Randomly subdivides the plane into equal-width strips having varying lengths.
 * `squareTriangleTiling()` to `PGS_Tiling`. Generates a non-periodic tiling, comprising squares and equilateral triangles.
 * `cleanCoverage()` to `PGS_Processing`. Removes gaps and overlaps from meshes/polygon collections.
+* `sineWarp()` to `PGS_Morphology`. Warps/perturbs a shape by displacing vertices according to a sine wave following the perimeter.
 
 ### Changed
 * **NOTE**: Moved all hull methods from `PGS_Processing` to `PGS_Hull`.

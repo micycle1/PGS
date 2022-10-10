@@ -8,13 +8,16 @@ import java.util.List;
 
 import org.locationtech.jts.densify.Densifier;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.Polygonal;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.locationtech.jts.geom.util.GeometryFixer;
+import org.locationtech.jts.linearref.LengthIndexedLine;
 import org.locationtech.jts.operation.buffer.BufferOp;
 import org.locationtech.jts.operation.buffer.BufferParameters;
 import org.locationtech.jts.operation.buffer.VariableBuffer;
@@ -63,7 +66,7 @@ public final class PGS_Morphology {
 	 * @see #buffer(PShape, double, OffsetStyle)
 	 */
 	public static PShape buffer(PShape shape, double buffer) {
-		return toPShape(fromPShape(shape).buffer(buffer, 8));
+		return toPShape(fromPShape(shape).buffer(buffer, BufferParameters.DEFAULT_QUADRANT_SEGMENTS));
 	}
 
 	/**
@@ -78,8 +81,8 @@ public final class PGS_Morphology {
 	 */
 	public static PShape buffer(PShape shape, double buffer, OffsetStyle bufferStyle) {
 		Geometry g = fromPShape(shape);
-		BufferParameters bufParams = new BufferParameters(8, BufferParameters.CAP_FLAT, bufferStyle.style,
-				BufferParameters.DEFAULT_MITRE_LIMIT);
+		BufferParameters bufParams = new BufferParameters(BufferParameters.DEFAULT_QUADRANT_SEGMENTS, BufferParameters.CAP_FLAT,
+				bufferStyle.style, BufferParameters.DEFAULT_MITRE_LIMIT);
 		BufferOp b = new BufferOp(g, bufParams);
 		return toPShape(b.getResultGeometry(buffer));
 	}
@@ -458,9 +461,45 @@ public final class PGS_Morphology {
 	}
 
 	/**
+	 * Warps/perturbs a shape by displacing vertices (both positively and
+	 * negatively) according to the magnitude of a sine wave which follows the shape
+	 * perimeter at some frequency.
+	 * 
+	 * @param shape     single polygonal shape
+	 * @param magnitude maxiumum perpendicular displacement along the shape
+	 *                  perimeter
+	 * @param frequency sine wave frequency
+	 * @param phase     sine wave phase. corresponds to the fraction (0...1) around
+	 *                  the shape perimeter where the wave starts (0 displacement).
+	 * @return
+	 * @since 1.2.1
+	 */
+	public static PShape sineWarp(PShape shape, double magnitude, int frequency, double phase) {
+		Geometry g = fromPShape(shape);
+		if (g instanceof Polygonal) {
+			if (g.getGeometryType().equals(Geometry.TYPENAME_MULTIPOLYGON)) {
+				g = g.getGeometryN(0);
+			}
+			g = ((Polygon) g).getExteriorRing();
+		}
+		final LengthIndexedLine l = new LengthIndexedLine(g);
+		final double length = l.getEndIndex(); // perimeter length
+		final CoordinateList coords = new CoordinateList();
+
+		for (double distance = 0; distance < length; distance++) {
+			final Coordinate coord = l.extractPoint(distance,
+					Math.sin(Math.PI * 2 * frequency * distance / length + (Math.PI * 2 * phase)) * magnitude);
+			coords.add(coord);
+		}
+		coords.closeRing();
+
+		Geometry out = GeometryFixer.fix(PGS.GEOM_FACTORY.createPolygon(coords.toCoordinateArray()));
+		return PGS_Conversion.toPShape(out);
+	}
+
+	/**
 	 * Warps/perturbs a shape by displacing vertices according to a 2D noise vector
 	 * field.
-	 * 
 	 * <p>
 	 * Inputs may be densified before warping.
 	 * 
@@ -486,9 +525,8 @@ public final class PGS_Morphology {
 	/**
 	 * Warps/perturbs a shape by displacing vertices according to a 2D noise vector
 	 * field.
-	 * 
 	 * <p>
-	 * Inputs may be densified before warping.
+	 * Inputs may be densified before warping for more finely-grained warping.
 	 * 
 	 * @param shape      a polygonal shape
 	 * @param magnitude  magnitude of the displacement (acting as noise value
@@ -626,7 +664,8 @@ public final class PGS_Morphology {
 	 * <code>precision</code>.
 	 * 
 	 * @param shape     shape to reduce
-	 * @param precision the exact grid size with which to round shape vertices. shoule be non-zero and positive
+	 * @param precision the exact grid size with which to round shape vertices.
+	 *                  shoule be non-zero and positive
 	 * @return reduced copy of input
 	 * @since 1.2.1
 	 */
