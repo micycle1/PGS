@@ -94,7 +94,7 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-shade-plugin</artifactId>
-						<version>3.3.0</version>
+						<version>3.4.0</version>
 						<configuration>
 							<createDependencyReducedPom>false</createDependencyReducedPom>
 							<minimizeJar>true</minimizeJar>
@@ -104,11 +104,15 @@
 									<excludes>
 										<exclude>META-INF/**</exclude>
 										<exclude>**/*.png</exclude>
+										<exclude>**/*.txt</exclude>
+										<exclude>**/*.ttf</exclude>
 										<exclude>**/*.svg</exclude>
 										<exclude>**/*.gif</exclude>
 										<exclude>**/*.jpg</exclude>
 										<exclude>**/*.properties</exclude>
 										<exclude>processing/**</exclude>
+										<exclude>org/w3c/**</exclude>
+										<exclude>japplemenubar/**</exclude>
 									</excludes>
 								</filter>
 							</filters>
@@ -194,10 +198,6 @@
 				<enabled>true</enabled>
 			</snapshots>
 		</repository>
-		<repository>
-			<id>clojars</id>
-			<url>https://clojars.org/repo/</url>
-		</repository>
 	</repositories>
 
 	<dependencies>
@@ -211,7 +211,7 @@
 		<dependency>
 			<groupId>org.locationtech.jts</groupId>
 			<artifactId>jts-core</artifactId>
-			<version>1.19.0</version>
+			<version>1.20.0-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.twak</groupId>
@@ -315,6 +315,11 @@
 			<groupId>net.jafama</groupId>
 			<artifactId>jafama</artifactId>
 			<version>2.3.2</version>
+		</dependency>
+		<dependency>
+			<groupId>com.github.micycle1</groupId>
+			<artifactId>jump-topology-extension</artifactId>
+			<version>7b4b81d9f8</version>
 		</dependency>
 	</dependencies>
 

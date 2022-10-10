@@ -49,11 +49,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Additional method signature for `offsetCurvesInward()` that accepts a curves number parameter.
 * `intersectMesh()` and `subtractMesh()` to `PGS_ShapeBoolean`. Performs the associated boolean operations on mesh-like shapes, preserving individual faces during the operation (rather than dissolving remaining elements).
 * `dilationErosion()` to `PGS_Morphology`. Applies a positive followed by a negative buffer (in a single operation).
-* `eliminateSlivers()` to `PGS_Morphology`. Removes narrow areas ("slivers") from a shape.
+* `eliminateSlivers()` to `PGS_Processing`. Removes narrow areas ("slivers") from a shape.
 * `reducePrecision()` to `PGS_Morphology`. Reduces the precision of a shape, whilst ensuring the output shape is valid.
 * `distanceField()` to `PGS_Contour`. Generates a contour map based on a distance field of a shape.
 * `hatchSubdivision()` to `PGS_Tiling`. Randomly subdivides the plane into equal-width strips having varying lengths.
 * `squareTriangleTiling()` to `PGS_Tiling`. Generates a non-periodic tiling, comprising squares and equilateral triangles.
+* `cleanCoverage()` to `PGS_Processing`. Removes gaps and overlaps from meshes/polygon collections.
 
 ### Changed
 * **NOTE**: Moved all hull methods from `PGS_Processing` to `PGS_Hull`.
@@ -80,6 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `slice()` would sometimes fail to return some rectangular slices on a concave input (and it's more robust too now).
 * Error if a GROUP shape was passed to `point(s)OnExterior()` methods.
 * Triangulation methods now respect holes on shapes whose vertices wind opposite to convention (such as letter shapes created from `PFonts`).
+* `fromPShape()` now properly converts singular shapes consisting of multiple contours that in turn represent multiple polygons (#67). (Note boolean flag `HANDLE_MULTICONTOUR` should be toggled to enabled this feature).
 
 ### Removed
 * `earCutTriangulation(List<PVector> points)` from `PGS_Triangulation`.

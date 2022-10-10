@@ -6,7 +6,6 @@ import static micycle.pgs.PGS_Conversion.toPShape;
 import java.util.Arrays;
 import java.util.List;
 
-import org.locationtech.jts.algorithm.hull.ConcaveHullOfPolygons;
 import org.locationtech.jts.densify.Densifier;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
@@ -19,7 +18,6 @@ import org.locationtech.jts.geom.util.GeometryFixer;
 import org.locationtech.jts.operation.buffer.BufferOp;
 import org.locationtech.jts.operation.buffer.BufferParameters;
 import org.locationtech.jts.operation.buffer.VariableBuffer;
-import org.locationtech.jts.operation.overlay.snap.GeometrySnapper;
 import org.locationtech.jts.precision.GeometryPrecisionReducer;
 import org.locationtech.jts.shape.CubicBezierCurve;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
@@ -136,48 +134,6 @@ public final class PGS_Morphology {
 	 */
 	public static PShape dilationErosion(PShape shape, double buffer) {
 		return toPShape(fromPShape(shape).buffer(buffer).buffer(-buffer));
-	}
-
-	/**
-	 * Removes narrow areas ("slivers") from a shape while preserving the geometry
-	 * of the remaining parts.
-	 * <p>
-	 * This operation is similar to {@link #erosionDilation(PShape, double)
-	 * erosionDilation()}, but better preserves the original geometry of remaining
-	 * parts.
-	 * <p>
-	 * If the input is a single polygon and if when removing slivers, a multipolygon
-	 * is produced, further processing occurs within the method to repair it back
-	 * into a single polygon.
-	 * 
-	 * @param shape     polygonal shape
-	 * @param threshold width threshold (probably no more than 10); parts narrower
-	 *                  than this are eliminated
-	 * @return a copy of the input shape having narrow areas/parts removed
-	 * @since 1.2.1
-	 */
-	public static PShape eliminateSlivers(PShape shape, double threshold) {
-		threshold = Math.max(threshold, 1e-5);
-		Geometry g = fromPShape(shape);
-		boolean multi = g.getNumGeometries() > 1;
-		Geometry snapped = GeometrySnapper.snapToSelf(g, threshold, true);
-		Geometry out = snapped;
-		if (!multi && snapped.getNumGeometries() > 1) {
-			ConcaveHullOfPolygons chp = new ConcaveHullOfPolygons(snapped);
-			chp.setTight(true);
-			chp.setHolesAllowed(false);
-
-			double ratio = 0.02;
-			try {
-				do { // pick lowest ratio such that a single polygon is returned
-					chp.setMaximumEdgeLengthRatio(ratio);
-					out = chp.getHull();
-					ratio += 0.01;
-				} while (out.getNumGeometries() > 1);
-			} catch (Exception e) { // catch "Unable to find a convex corner"
-			}
-		}
-		return toPShape(out); // better on smaller thresholds
 	}
 
 	/**
