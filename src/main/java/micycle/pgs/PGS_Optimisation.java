@@ -6,7 +6,10 @@ import static micycle.pgs.PGS_Construction.createEllipse;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.locationtech.jts.algorithm.MinimumBoundingCircle;
 import org.locationtech.jts.algorithm.MinimumDiameter;
@@ -317,6 +320,27 @@ public final class PGS_Optimisation {
 		out.add(fpp.either());
 		out.add(fpp.other());
 		return out;
+	}
+
+	/**
+	 * Sorts the faces/child shapes of a GROUP shape according to hilbert curve
+	 * index of each face's centroid coordinate. This ensures that nearby faces have
+	 * a similar index in the list of children.
+	 * 
+	 * @param mesh group shape
+	 * @return a copy of the input shape, having the same faces/child shapes in a
+	 *         different order
+	 * @since 1.2.1
+	 */
+	public static PShape hilbertSortFaces(PShape mesh) {
+		Map<PVector, PShape> map = new HashMap<>(mesh.getChildCount());
+		PGS_Conversion.getChildren(mesh).forEach(child -> {
+			PVector centroid = PGS_ShapePredicates.centroid(child);
+			map.put(centroid, child);
+		});
+
+		List<PVector> points = new ArrayList<>(map.keySet());
+		return PGS_Conversion.flatten(PGS_PointSet.hilbertSort(points).stream().map(map::get).collect(Collectors.toList()));
 	}
 
 	/**

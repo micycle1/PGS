@@ -56,6 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `squareTriangleTiling()` to `PGS_Tiling`. Generates a non-periodic tiling, comprising squares and equilateral triangles.
 * `cleanCoverage()` to `PGS_Processing`. Removes gaps and overlaps from meshes/polygon collections.
 * `sineWarp()` to `PGS_Morphology`. Warps/perturbs a shape by displacing vertices according to a sine wave following the perimeter.
+* `hilbertSortFaces()` to `PGS_Optimisation`. Sorts the faces of a GROUP shape according to hilbert curve index of each face's centroid coordinate.
 
 ### Changed
 * **NOTE**: Moved all hull methods from `PGS_Processing` to `PGS_Hull`.
