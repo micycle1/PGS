@@ -16,13 +16,13 @@ void setup() {
   center = new PVector(width/2, height/2);
 
   List<PVector> randomPoints = PGS_PointSet.poisson(30, 30, width - 30, height - 30, 15,1337);
-  polygon = PGS_Processing.concaveHull2(randomPoints, 0);
+  polygon = PGS_Hull.concaveHullBFS2(randomPoints, 0);
 
   polygon.setFill(false);
   polygon.setStroke(color(1));
   polygon.setStrokeWeight(3);
 
-  PShape partitions = PGS_Processing.partition(polygon);
+  PShape partitions = PGS_Processing.convexPartition(polygon);
   subPartitions = new ArrayList<PShape>();
   for (PShape p : partitions.getChildren()) {
     PShape split = PGS_Processing.split(p);
@@ -47,7 +47,7 @@ void draw() {
 
   for (int i = 0; i < outer.getChildCount(); i++) {
     try {
-      PShape p = PGS_Voronoi.voronoiDiagram(outer.getChild(i), true);
+      PShape p = PGS_Voronoi.innerVoronoi(outer.getChild(i), true);
       PGS_Conversion.setAllStrokeColor(p, color(i / ((float) outer.getChildCount() - 1), 1, 1), 2);
       shape(p);
     }

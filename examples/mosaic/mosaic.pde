@@ -44,14 +44,14 @@ ArrayList<PVector> randomPoints(int n, int buffer, float xMin, float xMax, float
 }
 
 PShape prepareFaces(ArrayList<PVector> points) {
-  PShape hull = PGS_Processing.concaveHull2(points, random(0.15, 0.3));
+  PShape hull = PGS_Hull.concaveHullBFS2(points, random(0.15, 0.3));
   IncrementalTin mesh = PGS_Triangulation.delaunayTriangulationMesh(hull, points, true, random(1) > 0.5 ? 0 : random(1) > 0.25 ? 1 : 2, true);
 
   PShape faces;
   if (random(1) > 0.2) {
-    faces = PGS_Triangulation.urquhartFaces(mesh, true);
+    faces = PGS_Meshing.urquhartFaces(mesh, true);
   } else {
-    faces = PGS_Triangulation.gabrielFaces(mesh, true);
+    faces = PGS_Meshing.gabrielFaces(mesh, true);
   }
 
 

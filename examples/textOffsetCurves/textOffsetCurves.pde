@@ -6,7 +6,7 @@ PShape pgs;
 PFont font;
 
 void setup() {
-  size(800, 800, FX2D);
+  size(1000, 1000, FX2D);
   smooth();
   colorMode(HSB, 1, 1, 1, 1);
   font = createFont(PFont.list()[(int) random(PFont.list().length)], 300, true);
@@ -45,7 +45,7 @@ void prepareText() {
   pgs.addChild(g);
   pgs.addChild(s);
 
-  pgs = PGS_Transformation.translateTo(pgs, width/2f, height/2f);
+  pgs = PGS_Transformation.translateEnvelopeTo(pgs, width/2f, height/2f);
   PGS_Conversion.setAllFillColor(pgs, color(0.5f, 0, 1));
 }
 

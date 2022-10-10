@@ -1,3 +1,4 @@
+import processing.javafx.*;
 import micycle.pgs.*;
 import java.util.List;
 
@@ -21,9 +22,9 @@ void draw() {
     PShape offsetCurves;
 
     if (inward) {
-      offsetCurves = PGS_Contour.offsetCurvesInward(shape, PGS_Contour.OffsetStyle.MITER, map(mouseX, 0, width, 10, 30));
+      offsetCurves = PGS_Contour.offsetCurvesInward(shape, PGS_Contour.OffsetStyle.ROUND, map(mouseX, 0, width, 10, 30));
     } else {
-      offsetCurves = PGS_Contour.offsetCurvesOutward(shape, PGS_Contour.OffsetStyle.MITER, map(mouseX, 0, width, 10, 30), 20);
+      offsetCurves = PGS_Contour.offsetCurvesOutward(shape, PGS_Contour.OffsetStyle.ROUND, map(mouseX, 0, width, 10, 30), 20);
     }
 
     colorMode(HSB, 1);
