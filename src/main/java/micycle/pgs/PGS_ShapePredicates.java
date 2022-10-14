@@ -19,6 +19,7 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
+
 import micycle.trapmap.TrapMap;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -198,8 +199,8 @@ public final class PGS_ShapePredicates {
 	 * @param b shape B
 	 * @return
 	 */
-	public static float distance(PShape a, PShape b) {
-		return (float) fromPShape(a).distance(fromPShape(b));
+	public static double distance(PShape a, PShape b) {
+		return fromPShape(a).distance(fromPShape(b));
 	}
 
 	/**
@@ -208,8 +209,8 @@ public final class PGS_ShapePredicates {
 	 * @param shape
 	 * @return
 	 */
-	public static float area(PShape shape) {
-		return (float) fromPShape(shape).getArea();
+	public static double area(PShape shape) {
+		return fromPShape(shape).getArea();
 	}
 
 	/**
@@ -219,9 +220,9 @@ public final class PGS_ShapePredicates {
 	 * @param shape
 	 * @return Density value. A rectangular shape will have a value of 1.
 	 */
-	public static float density(PShape shape) {
+	public static double density(PShape shape) {
 		Geometry g = fromPShape(shape);
-		return (float) (g.getArea() / g.getEnvelope().getArea());
+		return (g.getArea() / g.getEnvelope().getArea());
 	}
 
 	/**
@@ -242,23 +243,23 @@ public final class PGS_ShapePredicates {
 	/**
 	 * Computes the horizontal width of a shape (the width of its bounding-box).
 	 */
-	public static float width(PShape shape) {
-		return (float) fromPShape(shape).getEnvelopeInternal().getWidth();
+	public static double width(PShape shape) {
+		return fromPShape(shape).getEnvelopeInternal().getWidth();
 	}
 
 	/**
 	 * Computes the vertical height of a shape (the height of its bounding-box).
 	 */
-	public static float height(PShape shape) {
-		return (float) fromPShape(shape).getEnvelopeInternal().getHeight();
+	public static double height(PShape shape) {
+		return fromPShape(shape).getEnvelopeInternal().getHeight();
 	}
 
 	/**
 	 * Returns the length of a shape. Linear shapes return their length; areal
 	 * shapes (polygons) return their perimeter.
 	 */
-	public static float length(PShape shape) {
-		return (float) fromPShape(shape).getLength();
+	public static double length(PShape shape) {
+		return fromPShape(shape).getLength();
 	}
 
 	/**
@@ -270,7 +271,7 @@ public final class PGS_ShapePredicates {
 	 * @return
 	 * @since 1.1.3
 	 */
-	public static float diameter(PShape shape) {
+	public static double diameter(PShape shape) {
 		List<PVector> farPoints = PGS_Optimisation.farthestPointPair(PGS_Conversion.toPVector(shape));
 		return farPoints.get(0).dist(farPoints.get(1));
 	}
@@ -283,10 +284,10 @@ public final class PGS_ShapePredicates {
 	 * @param shape
 	 * @return
 	 */
-	public static float circularity(PShape shape) {
+	public static double circularity(PShape shape) {
 		final Polygon poly = (Polygon) fromPShape(shape);
 		final double length = poly.getBoundary().getLength();
-		return (float) (4 * PConstants.PI * poly.getArea() / (length * length));
+		return (4 * PConstants.PI * poly.getArea() / (length * length));
 	}
 
 	/**
@@ -298,9 +299,33 @@ public final class PGS_ShapePredicates {
 	 * @param b second shape
 	 * @return the value of the similarity measure, in [0.0, 1.0]
 	 */
-	public static float similarity(PShape a, PShape b) {
+	public static double similarity(PShape a, PShape b) {
 		HausdorffSimilarityMeasure sm = new HausdorffSimilarityMeasure();
-		return (float) sm.measure(fromPShape(a), fromPShape(b));
+		return sm.measure(fromPShape(a), fromPShape(b));
+	}
+
+	/**
+	 * Measures the degree of <b>mutual overlap</b> between two shapes.
+	 * <p>
+	 * This metric aggregates how much each shape is overlapped (fractional),
+	 * weighted by its respective area.
+	 * 
+	 * @param a first shape
+	 * @param b second shape
+	 * @return overlap metric, in [0.0, 1.0]
+	 * @since 1.3.0
+	 */
+	public static double overlap(PShape a, PShape b) {
+		Geometry g1 = fromPShape(a);
+		Geometry g2 = fromPShape(b);
+		Geometry overlap = g1.intersection(g2);
+		double a1 = g1.getArea();
+		double a2 = g2.getArea();
+		double total = a1 + a2;
+		double aOverlap = overlap.getArea();
+		double w1 = a1 / total;
+		double w2 = a2 / total;
+		return w1 * (aOverlap / a1) + w2 * (aOverlap / a2);
 	}
 
 	/**

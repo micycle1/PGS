@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `fromGraph()` to `PGS_Conversion`. Converts a (jGraphT) graph to a shape, using a Force-Directed placement algorithm.
 * `sphericity()`, `elongation()` and `maximumInteriorAngle()` to `PGS_ShapePredicates`.
 * `findContainingShape()` to `PGS_ShapePredicates`. Finds the child shape in a GROUP shape that contains a query point.
+* `overlap()` to `PGS_ShapePredicates`. Measures the degree of mutual overlap between two shapes.
 * `equalsExact()`, `equalsNorm()` and `equalsTopo()` to `PGS_ShapePredicates`. These methods test for equality between two shapes according to different criteria.
 * `createRectangularSpiral()` to `PGS_Construction`. Creates a rectangular-shaped spiral.
 * `largestEmptyCircle()` to `PGS_Optimisation`. Finds the largest empty circle in a set of obstacle geometries.
@@ -79,6 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Styling methods in `PGS_Conversion()` (such as `setAllFillColor()`) now return the (mutated) input (rather than being `public void`), to help method chaining.
 * GROUP PShapes having different child types (paths and polygons for instance) are now fully preserved during PShape<->Geometry conversion.
 * `snapHull()` now uses a JTS-based implementation which improves the range of output and meaningfulness of the snap parameter (now 0...1).
+* All methods in `PGS_ShapePredicates()` now output `double`.
 
 ### Fixed
 * NPE when shapes created with `createShape()` in the P2D renderer were passed to `fromPShape()` (#55).
