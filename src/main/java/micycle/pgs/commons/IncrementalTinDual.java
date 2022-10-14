@@ -138,8 +138,8 @@ public class IncrementalTinDual {
 	private PShape dualFace(IQuadEdge edge) {
 		// Use TreeSet to order face vertices by angle compared to central vertex.
 		final Set<Vertex> faceVertices = new TreeSet<>((o1, o2) -> {
-			final double a1 = atan2Quick(o1.y - edge.getA().y, o1.x - edge.getA().x);
-			final double a2 = atan2Quick(o2.y - edge.getA().y, o2.x - edge.getA().x);
+			final double a1 = FastAtan2.atan2(o1.y - edge.getA().y, o1.x - edge.getA().x);
+			final double a2 = FastAtan2.atan2(o2.y - edge.getA().y, o2.x - edge.getA().x);
 			return a1 > a2 ? 1 : -1;
 		});
 
@@ -181,27 +181,6 @@ public class IncrementalTinDual {
 		double y = a.y + b.y + c.y;
 		y /= 3;
 		return new Vertex(x, y, 0);
-	}
-
-	private static double atan2Quick(final double y, final double x) {
-		final double THREE_QRTR_PI = Math.PI * 0.75;
-		final double QRTR_PI = Math.PI * 0.25;
-
-		double r, angle;
-		final double abs_y = Math.abs(y) + 1e-10f; // kludge to prevent 0/0 condition
-
-		if (x < 0.0f) {
-			r = (x + abs_y) / (abs_y - x); // (3)
-			angle = THREE_QRTR_PI; // (4)
-		} else {
-			r = (x - abs_y) / (x + abs_y); // (1)
-			angle = QRTR_PI; // (2)
-		}
-		angle += (0.1963f * r * r - 0.9817f) * r; // (2 | 4)
-		if (y < 0.0f)
-			return (-angle); // negate if in quad III or IV
-		else
-			return (angle);
 	}
 
 	public class DualEdge {

@@ -192,7 +192,7 @@ public class FastPolygonizer {
 			this.a = a;
 			this.b = b;
 			PVector vector = PVector.sub(b, a);
-			angle = atan2Quick(vector.y, vector.x);
+			angle = FastAtan2.atan2(vector.y, vector.x);
 		}
 
 		@Override
@@ -215,28 +215,6 @@ public class FastPolygonizer {
 		@Override
 		public String toString() {
 			return a.toString() + " -> " + b.toString();
-		}
-
-		private static double atan2Quick(final double y, final double x) {
-			final double THREE_QRTR_PI = Math.PI * 0.75;
-			final double QRTR_PI = Math.PI * 0.25;
-
-			double r, angle;
-			final double abs_y = Math.abs(y) + 1e-10f; // kludge to prevent 0/0 condition
-
-			if (x < 0.0f) {
-				r = (x + abs_y) / (abs_y - x); // (3)
-				angle = THREE_QRTR_PI; // (4)
-			} else {
-				r = (x - abs_y) / (x + abs_y); // (1)
-				angle = QRTR_PI; // (2)
-			}
-			angle += (0.1963f * r * r - 0.9817f) * r; // (2 | 4)
-			if (y < 0.0f) {
-				return (-angle); // negate if in quad III or IV
-			} else {
-				return (angle);
-			}
 		}
 
 	}
