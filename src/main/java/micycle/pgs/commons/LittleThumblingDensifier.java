@@ -130,7 +130,7 @@ class LittleThumblingDensifier {
 				Coordinate c0 = pts[i], c1 = pts[i + 1];
 				dTot = c0.distance(c1);
 				if (d <= dTot)
-					a = Math.atan2(c1.y - c0.y, c1.x - c0.x);
+					a = FastAtan2.atan2(c1.y - c0.y, c1.x - c0.x);
 				while (d <= dTot) {
 					// use LineSegment.pointAlong instead ?
 					Coordinate c = new Coordinate(c0.x + d * Math.cos(a), c0.y + d * Math.sin(a));

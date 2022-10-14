@@ -16,8 +16,6 @@ import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.Vertex;
 
-import com.github.xmunkki.fixpoint.Fixed64;
-
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import micycle.pgs.PGS_Triangulation;
@@ -458,7 +456,8 @@ public class TangencyPack {
 	private static double tangentAngleFast(final double rx, final double ry, final double rz) {
 		final double x = (ry * rz) / ((rx + ry) * (rx + rz));
 		// return 2 * Fixed64.ToDouble(Fixed64.Asin(Fixed64.FromDouble(Math.sqrt(x))));
-		return 2 * Fixed64.ToDouble(Fixed64.Atan(Fixed64.FromDouble(Math.sqrt(x) / (Math.sqrt(1 - x)))));
+		// return 2 * Fixed64.ToDouble(Fixed64.Atan(Fixed64.FromDouble(Math.sqrt(x) / (Math.sqrt(1 - x)))));
+		return 0;
 	}
 
 	private static class RadialComparator implements Comparator<Vertex> {
@@ -491,8 +490,8 @@ public class TangencyPack {
 			double dyq = q.y - o.y;
 
 			int result = 0;
-			double alph = FastMath.atan2(dxp, dyp);
-			double beta = FastMath.atan2(dxq, dyq);
+			double alph = FastAtan2.atan2(dxp, dyp);
+			double beta = FastAtan2.atan2(dxq, dyq);
 			if (alph < beta) {
 				result = -1;
 			}

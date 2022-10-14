@@ -307,19 +307,14 @@
 			<version>8.5.8</version>
 		</dependency>
 		<dependency>
-			<groupId>com.github.micycle1</groupId>
-			<artifactId>FixPoint4j</artifactId>
-			<version>0.3</version>
-		</dependency>
-		<dependency>
 			<groupId>net.jafama</groupId>
 			<artifactId>jafama</artifactId>
 			<version>2.3.2</version>
 		</dependency>
 		<dependency>
-			<groupId>com.github.micycle1</groupId>
-			<artifactId>jump-topology-extension</artifactId>
-			<version>7b4b81d9f8</version>
+			<groupId>com.github.openjump-gis</groupId>
+			<artifactId>topology-extension</artifactId>
+			<version>f41ae6744c</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.scoutant</groupId>

@@ -147,7 +147,7 @@ public final class CornerRounding {
 	 * @return float θ in radians.
 	 */
 	private static float angleBetween(PVector tail, PVector head) {
-		float a = PApplet.atan2(tail.y - head.y, tail.x - head.x);
+		float a = FastAtan2.atan2(tail.y - head.y, tail.x - head.x);
 		if (a < 0) {
 			a += PConstants.TWO_PI;
 		}

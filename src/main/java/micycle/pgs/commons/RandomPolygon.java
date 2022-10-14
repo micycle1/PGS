@@ -94,7 +94,7 @@ public class RandomPolygon {
 		}
 
 		// Sort the vectors by angle
-		Collections.sort(vec, Comparator.comparingDouble(v -> Math.atan2(v.y, v.x)));
+		Collections.sort(vec, Comparator.comparingDouble(v -> FastAtan2.atan2(v.y, v.x)));
 
 		// Lay them end-to-end
 		double x = 0, y = 0;
