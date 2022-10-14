@@ -86,6 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Error if a GROUP shape was passed to `point(s)OnExterior()` methods.
 * Triangulation methods now respect holes on shapes whose vertices wind opposite to convention (such as letter shapes created from `PFonts`).
 * `fromPShape()` now properly converts singular shapes consisting of multiple contours that in turn represent multiple polygons (#67). (Note boolean flag `HANDLE_MULTICONTOUR` should be toggled to enabled this feature).
+* Conversion error with shapes created via `createShape(TRIANGLE)`.
 
 ### Removed
 * `earCutTriangulation(List<PVector> points)` from `PGS_Triangulation`.

@@ -331,6 +331,14 @@ public final class PGS_Conversion {
 					lines[i] = GEOM_FACTORY.createLineString(new Coordinate[] { c1, c2 });
 				}
 				return GEOM_FACTORY.createMultiLineString(lines);
+			case PConstants.TRIANGLE :
+				final Coordinate[] triangle = new Coordinate[3 + 1];
+				final Coordinate a = PGS.coordFromPVector(shape.getVertex(0));
+				triangle[0] = a;
+				triangle[1] = PGS.coordFromPVector(shape.getVertex(1));
+				triangle[2] = PGS.coordFromPVector(shape.getVertex(2));
+				triangle[3] = a.copy();
+				return GEOM_FACTORY.createPolygon(triangle);
 			case PConstants.TRIANGLES :
 				final Polygon[] triangles = new Polygon[shape.getVertexCount() / 3];
 				for (int i = 0; i < triangles.length; i++) {
