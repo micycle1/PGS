@@ -314,7 +314,7 @@
 		<dependency>
 			<groupId>com.github.openjump-gis</groupId>
 			<artifactId>topology-extension</artifactId>
-			<version>f41ae6744c</version>
+			<version>2.0.3</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.scoutant</groupId>
