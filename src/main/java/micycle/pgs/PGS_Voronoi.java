@@ -16,6 +16,7 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.Polygonal;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
+import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.Vertex;
 import org.tinfour.standard.IncrementalTin;
@@ -84,7 +85,7 @@ public final class PGS_Voronoi {
 	 * @see #innerVoronoi(Collection)
 	 */
 	public static PShape innerVoronoi(final PShape shape, final boolean constrain, double[] bounds) {
-		final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, null, false, 0, false);
+		final IIncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, null, false, 0, false);
 
 		final Geometry g = fromPShape(shape);
 		final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();

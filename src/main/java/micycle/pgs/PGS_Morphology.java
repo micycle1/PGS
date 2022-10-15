@@ -273,6 +273,8 @@ public final class PGS_Morphology {
 
 	/**
 	 * Computes a <i>Minkowski sum</i> (a.k.a dilation) of the two source shapes.
+	 * The <code>addition</code> shape should probably be centered on (0,0) for best
+	 * results.
 	 * <p>
 	 * To instill you with intuition of what a Minkowski sum looks like, here are a
 	 * few examples:
@@ -302,7 +304,8 @@ public final class PGS_Morphology {
 
 	/**
 	 * Computes a <i>Minkowski difference</i> (a.k.a erosion) of the two source
-	 * shapes.
+	 * shapes. The <code>subtract</code> shape should probably be centered on (0,0)
+	 * for best results.
 	 * 
 	 * @return shape representing the Minkowski difference of source-subtract
 	 * @see #minkSum(PShape, PShape)

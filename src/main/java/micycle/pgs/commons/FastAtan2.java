@@ -65,8 +65,7 @@ public final class FastAtan2 {
 	}
 
 	/**
-	 * Maximum absolute error of 0.01 rad (~0.57º). ~8% faster than
-	 * {@link #atan2Fast(double, double)}.
+	 * Maximum absolute error of 0.01 rad (~0.57º).
 	 */
 	private static double atan2b(final double y, final double x) {
 		// http://dspguru.com/dsp/tricks/fixed-point-atan2-with-self-normalization/
