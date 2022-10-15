@@ -59,7 +59,6 @@ import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.PolygonConstraint;
 import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
-import org.tinfour.standard.IncrementalTin;
 import org.tinfour.utils.TriangleCollector;
 
 import com.vividsolutions.jcs.conflate.coverage.CoverageCleaner;

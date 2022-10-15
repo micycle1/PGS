@@ -49,7 +49,6 @@ public final class PGS_ShapeBoolean {
 	 */
 	public static PShape intersect(PShape a, PShape b) {
 		PShape out = toPShape(OverlayNG.overlay(fromPShape(a), fromPShape(b), OverlayNG.INTERSECTION));
-//		PGS_Conversion.setAllFillColor(out, Blending.add(getPShapeFillColor(a), getPShapeFillColor(b)));
 		return out;
 	}
 
