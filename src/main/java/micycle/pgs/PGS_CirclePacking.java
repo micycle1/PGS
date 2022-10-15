@@ -22,7 +22,6 @@ import org.locationtech.jts.util.GeometricShapeFactory;
 import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
-import org.tinfour.standard.IncrementalTin;
 import org.tinspin.index.PointDistanceFunction;
 import org.tinspin.index.PointEntryDist;
 import org.tinspin.index.covertree.CoverTree;
