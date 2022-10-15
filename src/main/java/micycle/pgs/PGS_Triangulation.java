@@ -21,6 +21,7 @@ import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Location;
+import org.locationtech.jts.geom.Polygonal;
 import org.locationtech.jts.triangulate.polygon.PolygonTriangulator;
 import org.tinfour.common.IConstraint;
 import org.tinfour.common.IIncrementalTin;
@@ -94,7 +95,7 @@ public final class PGS_Triangulation {
 	 */
 	public static PShape delaunayTriangulation(PShape shape, @Nullable Collection<PVector> steinerPoints, boolean constrain,
 			int refinements, boolean pretty) {
-		final IncrementalTin tin = delaunayTriangulationMesh(shape, steinerPoints, constrain, refinements, pretty);
+		final IIncrementalTin tin = delaunayTriangulationMesh(shape, steinerPoints, constrain, refinements, pretty);
 
 		final PShape triangulation = new PShape(PConstants.GROUP);
 
@@ -108,7 +109,7 @@ public final class PGS_Triangulation {
 			triangulation.addChild(triangle);
 		};
 
-		if (constrain) {
+		if (constrain && !tin.getConstraints().isEmpty()) {
 			TriangleCollector.visitTrianglesConstrained(tin, triangleVertexConsumer);
 		} else {
 			TriangleCollector.visitTriangles(tin, triangleVertexConsumer);
@@ -182,7 +183,7 @@ public final class PGS_Triangulation {
 	 */
 	public static List<PVector> delaunayTriangulationPoints(PShape shape, @Nullable Collection<PVector> steinerPoints, boolean constrain,
 			int refinements, boolean pretty) {
-		final IncrementalTin tin = delaunayTriangulationMesh(shape, steinerPoints, constrain, refinements, pretty);
+		final IIncrementalTin tin = delaunayTriangulationMesh(shape, steinerPoints, constrain, refinements, pretty);
 
 		final ArrayList<PVector> triangles = new ArrayList<>();
 		final Consumer<Vertex[]> triangleVertexConsumer = t -> {
@@ -224,7 +225,7 @@ public final class PGS_Triangulation {
 	 * @return Triangulated Irregular Network object (mesh)
 	 * @see #delaunayTriangulationMesh(PShape, Collection, boolean, int, boolean)
 	 */
-	public static IncrementalTin delaunayTriangulationMesh(PShape shape) {
+	public static IIncrementalTin delaunayTriangulationMesh(PShape shape) {
 		return delaunayTriangulationMesh(shape, null, true, 0, true);
 	}
 
@@ -262,7 +263,7 @@ public final class PGS_Triangulation {
 	 * @see #delaunayTriangulation(PShape, Collection, boolean, int, boolean)
 	 * @see #delaunayTriangulationPoints(PShape, Collection, boolean, int, boolean)
 	 */
-	public static IncrementalTin delaunayTriangulationMesh(@Nullable PShape shape, @Nullable Collection<PVector> steinerPoints,
+	public static IIncrementalTin delaunayTriangulationMesh(@Nullable PShape shape, @Nullable Collection<PVector> steinerPoints,
 			boolean constrain, int refinements, boolean pretty) {
 		Geometry g = shape == null ? PGS.GEOM_FACTORY.createEmpty(2) : fromPShape(shape);
 		final IncrementalTin tin = new IncrementalTin(10);
@@ -319,28 +320,30 @@ public final class PGS_Triangulation {
 			for (int n = 0; n < g.getNumGeometries(); n++) {
 				boolean exterior = true;
 
-				LinearRingIterator lri = new LinearRingIterator(g.getGeometryN(n));
-				for (LinearRing ring : lri) {
-					final List<Vertex> points = new ArrayList<>();
-					final Coordinate[] c = ring.getCoordinates();
-					if (c.length == 0) {
-						exterior = false;
-						continue;
-					}
+				if (g instanceof Polygonal) {
+					LinearRingIterator lri = new LinearRingIterator(g.getGeometryN(n));
+					for (LinearRing ring : lri) {
+						final List<Vertex> points = new ArrayList<>();
+						final Coordinate[] c = ring.getCoordinates();
+						if (c.length == 0) {
+							exterior = false;
+							continue;
+						}
 
-					for (int i = 0; i < c.length; i++) {
-						points.add(new Vertex(c[i].x, c[i].y, 0));
+						for (int i = 0; i < c.length; i++) {
+							points.add(new Vertex(c[i].x, c[i].y, 0));
+						}
+						/*
+						 * In Tinfour, the shape exterior must be CCW and the holes must be CW. This is
+						 * true for most PShapes, but some shapes (like those created from fonts) may
+						 * have the rings orientated the other way, which needs to be corrected.
+						 */
+						if ((exterior && !Orientation.isCCWArea(c)) || (!exterior && Orientation.isCCWArea(c))) {
+							Collections.reverse(points);
+						}
+						constraints.add(new PolygonConstraint(points));
+						exterior = false;
 					}
-					/*
-					 * In Tinfour, the shape exterior must be CCW and the holes must be CW. This is
-					 * true for most PShapes, but some shapes (like those created from fonts) may
-					 * have the rings orientated the other way, which needs to be corrected.
-					 */
-					if ((exterior && !Orientation.isCCWArea(c)) || (!exterior && Orientation.isCCWArea(c))) {
-						Collections.reverse(points);
-					}
-					constraints.add(new PolygonConstraint(points));
-					exterior = false;
 				}
 			}
 			if (!constraints.isEmpty()) {
@@ -362,7 +365,7 @@ public final class PGS_Triangulation {
 	 * @see #delaunayTriangulationMesh(PShape, Collection, boolean, int, boolean)
 	 * @since 1.1.0
 	 */
-	public static IncrementalTin delaunayTriangulationMesh(Collection<PVector> points) {
+	public static IIncrementalTin delaunayTriangulationMesh(Collection<PVector> points) {
 		return delaunayTriangulationMesh(null, points, false, 0, false);
 	}
 
@@ -381,7 +384,7 @@ public final class PGS_Triangulation {
 		final List<PVector> poissonPoints = PGS_PointSet.poisson(e.getMinX(), e.getMinY(), e.getMinX() + e.getWidth(),
 				e.getMinY() + e.getHeight(), spacing, 0);
 
-		final IncrementalTin tin = delaunayTriangulationMesh(shape, poissonPoints, true, 0, false);
+		final IIncrementalTin tin = delaunayTriangulationMesh(shape, poissonPoints, true, 0, false);
 
 		final PShape triangulation = new PShape(PConstants.GROUP);
 
@@ -417,7 +420,7 @@ public final class PGS_Triangulation {
 		final List<PVector> poissonPoints = PGS_PointSet.poisson(e.getMinX(), e.getMinY(), e.getMinX() + e.getWidth(),
 				e.getMinY() + e.getHeight(), spacing, 0);
 
-		final IncrementalTin tin = delaunayTriangulationMesh(shape, poissonPoints, true, 0, false);
+		final IIncrementalTin tin = delaunayTriangulationMesh(shape, poissonPoints, true, 0, false);
 
 		final ArrayList<PVector> triangles = new ArrayList<>();
 		TriangleCollector.visitTrianglesConstrained(tin, t -> {
@@ -561,7 +564,7 @@ public final class PGS_Triangulation {
 	}
 
 	/**
-	 * Tests to see if an edge or its dual is on the perimeter.
+	 * Determines whether an edge or its dual is on the perimeter.
 	 *
 	 * @param edge a valid instance
 	 * @return true if the edge is on the perimeter; otherwise, false.

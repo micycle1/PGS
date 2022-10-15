@@ -55,6 +55,7 @@ import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.shape.random.RandomPointsInGridBuilder;
 import org.tinfour.common.IConstraint;
+import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.PolygonConstraint;
 import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
@@ -391,7 +392,7 @@ public final class PGS_Processing {
 	public static List<PVector> generateRandomPoints(PShape shape, int points, long seed) {
 		final ArrayList<PVector> randomPoints = new ArrayList<>(points); // random points out
 
-		final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape);
+		final IIncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape);
 		final boolean constrained = !tin.getConstraints().isEmpty();
 		final double totalArea = StreamSupport.stream(tin.getConstraints().spliterator(), false)
 				.mapToDouble(c -> ((PolygonConstraint) c).getArea()).sum();

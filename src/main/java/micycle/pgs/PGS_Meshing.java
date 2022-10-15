@@ -19,6 +19,7 @@ import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.index.strtree.STRtree;
+import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.tinfour.common.IConstraint;
 import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.IQuadEdge;
@@ -29,7 +30,6 @@ import org.tinspin.index.PointIndex;
 import org.tinspin.index.kdtree.KDTree;
 
 import micycle.pgs.color.RGB;
-import micycle.pgs.commons.ClipperPGS;
 import micycle.pgs.commons.IncrementalTinDual;
 import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.RLFColoring;
@@ -518,7 +518,7 @@ public class PGS_Meshing {
 			for (Polygon m : matches) {
 				try {
 					// PGS_ShapePredicates.overlap() inlined here
-					Geometry overlap = ClipperPGS.intersectPolygons(m, g);
+					Geometry overlap = OverlayNG.overlay(m, g, OverlayNG.INTERSECTION);
 					double a1 = g.getArea();
 					double a2 = m.getArea();
 					double total = a1 + a2;
@@ -527,7 +527,7 @@ public class PGS_Meshing {
 					double w2 = a2 / total;
 
 					double similarity = w1 * (aOverlap / a1) + w2 * (aOverlap / a2);
-					if (similarity > 0.33) { // magic constant, unsure what the best value is
+					if (similarity > 0.2) { // magic constant, unsure what the best value is
 						return false; // is hole; keep=false
 					}
 				} catch (Exception e) { // catch occasional noded error

@@ -82,7 +82,7 @@ public final class PGS_CirclePacking {
 	 */
 	public static List<PVector> trinscribedPack(PShape shape, int points, int refinements) {
 		final List<PVector> steinerPoints = PGS_Processing.generateRandomPoints(shape, points);
-		final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, steinerPoints, true, refinements, true);
+		final IIncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, steinerPoints, true, refinements, true);
 		return StreamSupport.stream(tin.triangles().spliterator(), false).filter(filterBorderTriangles).map(t -> inCircle(t))
 				.collect(Collectors.toList());
 	}
@@ -123,7 +123,7 @@ public final class PGS_CirclePacking {
 
 		List<PVector> steinerPoints = PGS_Processing.generateRandomPoints(shape, points);
 		if (triangulatePoints) {
-			final IncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, steinerPoints, true, 1, true);
+			final IIncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, steinerPoints, true, 1, true);
 			steinerPoints = StreamSupport.stream(tin.triangles().spliterator(), false).filter(filterBorderTriangles)
 					.map(PGS_CirclePacking::centroid).collect(Collectors.toList());
 		}
