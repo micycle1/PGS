@@ -13,6 +13,12 @@ import org.jgrapht.alg.util.NeighborCache;
 import org.jgrapht.graph.AbstractBaseGraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
+import org.locationtech.jts.algorithm.Orientation;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateList;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.index.strtree.STRtree;
 import org.tinfour.common.IConstraint;
 import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.IQuadEdge;
@@ -23,6 +29,7 @@ import org.tinspin.index.PointIndex;
 import org.tinspin.index.kdtree.KDTree;
 
 import micycle.pgs.color.RGB;
+import micycle.pgs.commons.ClipperPGS;
 import micycle.pgs.commons.IncrementalTinDual;
 import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.RLFColoring;
@@ -411,7 +418,12 @@ public class PGS_Meshing {
 			}
 		});
 
-		return PGS.polygonizeEdges(meshEdges);
+		PShape quads = PGS.polygonizeEdges(meshEdges);
+		if (triangulation.getConstraints().size() < 2) { // assume constraint 1 is the boundary (not a hole)
+			return quads;
+		} else {
+			return removeHoles(quads, triangulation);
+		}
 	}
 
 	/**
@@ -454,7 +466,79 @@ public class PGS_Meshing {
 			});
 		}
 
-		return PGS.polygonizeEdges(edges);
+		final PShape quads = PGS.polygonizeEdges(edges);
+		if (triangulation.getConstraints().size() < 2) { // assume constraint 1 is the boundary (not a hole)
+			return quads;
+		} else {
+			return removeHoles(quads, triangulation);
+		}
+	}
+
+	/**
+	 * Removes (what should be) holes from a polygonized quadrangulation.
+	 * <p>
+	 * When the polygonizer is applied to the collapsed triangles of a
+	 * triangulation, it cannot determine which collapsed regions represent holes in
+	 * the quadrangulation and will consequently fill them in. The subroutine below
+	 * restores holes/topology, detecting which polygonized face(s) are original
+	 * holes. Note the geometry of the original hole/constraint and its associated
+	 * polygonized face are different, since quads are polygonized, not triangles
+	 * (hence an overlap metric is used to match candidates).
+	 * 
+	 * @param faces         faces of the quadrangulation
+	 * @param triangulation
+	 * @return
+	 */
+	private static PShape removeHoles(PShape faces, IIncrementalTin triangulation) {
+		List<IConstraint> holes = new ArrayList<>(triangulation.getConstraints()); // copy list
+		holes = holes.subList(1, holes.size()); // slice off perimeter constraint (not a hole)
+
+		STRtree tree = new STRtree();
+		holes.stream().map(constraint -> constraint.getVertices()).iterator().forEachRemaining(vertices -> {
+			CoordinateList coords = new CoordinateList(); // coords of constraint
+			vertices.forEach(v -> coords.add(new Coordinate(v.x, v.y)));
+			coords.closeRing();
+
+			if (!Orientation.isCCWArea(coords.toCoordinateArray())) { // triangulation holes are CW
+				Polygon polygon = PGS.GEOM_FACTORY.createPolygon(coords.toCoordinateArray());
+				tree.insert(polygon.getEnvelopeInternal(), polygon);
+			}
+		});
+
+		List<PShape> nonHoles = PGS_Conversion.getChildren(faces).parallelStream().filter(quad -> {
+			/*
+			 * If quad overlaps with a hole detect whether it *is* that hole via Hausdorff
+			 * Similarity.
+			 */
+			final Geometry g = PGS_Conversion.fromPShape(quad);
+
+			@SuppressWarnings("unchecked")
+			List<Polygon> matches = tree.query(g.getEnvelopeInternal());
+
+			for (Polygon m : matches) {
+				try {
+					// PGS_ShapePredicates.overlap() inlined here
+					Geometry overlap = ClipperPGS.intersectPolygons(m, g);
+					double a1 = g.getArea();
+					double a2 = m.getArea();
+					double total = a1 + a2;
+					double aOverlap = overlap.getArea();
+					double w1 = a1 / total;
+					double w2 = a2 / total;
+
+					double similarity = w1 * (aOverlap / a1) + w2 * (aOverlap / a2);
+					if (similarity > 0.33) { // magic constant, unsure what the best value is
+						return false; // is hole; keep=false
+					}
+				} catch (Exception e) { // catch occasional noded error
+					continue;
+				}
+
+			}
+			return true; // is not hole; keep=true
+		}).collect(Collectors.toList());
+
+		return PGS_Conversion.flatten(nonHoles);
 	}
 
 	/**
