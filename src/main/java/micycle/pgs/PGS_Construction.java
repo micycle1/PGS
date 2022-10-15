@@ -12,6 +12,7 @@ import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.util.GeometryFixer;
 import org.locationtech.jts.operation.buffer.BufferParameters;
 import org.locationtech.jts.operation.linemerge.LineMerger;
 import org.locationtech.jts.shape.GeometricShapeBuilder;
@@ -29,6 +30,7 @@ import micycle.spacefillingcurves.SierpinskiFourSteps;
 import micycle.spacefillingcurves.SierpinskiTenSteps;
 import micycle.spacefillingcurves.SierpinskiThreeSteps;
 import micycle.spacefillingcurves.SpaceFillingCurve;
+import net.jafama.FastMath;
 import processing.core.PConstants;
 import processing.core.PShape;
 
@@ -107,6 +109,17 @@ public class PGS_Construction {
 	 * is a simple 2D analytical expression allowing to draw a wide variety of
 	 * geometric and natural shapes (starfish, petals, snowflakes) by choosing
 	 * suitable values relevant to few parameters.
+	 * <ul>
+	 * <li>As the n's are kept equal but reduced the form becomes increasingly
+	 * pinched.</li>
+	 * <li>If n1 is slightly larger than n2 and n3 then bloated forms result.</li>
+	 * <li>Polygonal shapes are achieved with very large values of n1 and large but
+	 * equal values for n2 and n3.</li>
+	 * <li>Asymmetric forms can be created by using different values for the
+	 * n's.</li>
+	 * <li>Smooth starfish shapes result from smaller values of n1 than the n2 and
+	 * n3.</li>
+	 * </ul>
 	 * 
 	 * @param centerX centre point X
 	 * @param centerY centre point Y
@@ -132,11 +145,11 @@ public class PGS_Construction {
 			double r;
 			double t1, t2;
 
-			t1 = Math.cos(m * angle / 4);
+			t1 = FastMath.cos(m * angle / 4);
 			t1 = Math.abs(t1);
 			t1 = Math.pow(t1, n2);
 
-			t2 = Math.sin(m * angle / 4);
+			t2 = FastMath.sin(m * angle / 4);
 			t2 = Math.abs(t2);
 			t2 = Math.pow(t2, n3);
 
@@ -144,7 +157,7 @@ public class PGS_Construction {
 			if (Math.abs(r) != 0) {
 				r *= radius; // multiply r (0...1) by (max) radius
 //				r = radius/r;
-				shape.vertex((float) (centerX + r * Math.cos(angle)), (float) (centerY + r * Math.sin(angle)));
+				shape.vertex((float) (centerX + r * FastMath.cos(angle)), (float) (centerY + r * FastMath.sin(angle)));
 			}
 
 			angle += angleInc;
@@ -212,6 +225,53 @@ public class PGS_Construction {
 	}
 
 	/**
+	 * Creates a "blob"-like shape.
+	 * <p>
+	 * In order for the shape to not self intersect a + b should be less than 1.
+	 * 
+	 * @param centerX The x coordinate of the center
+	 * @param centerY The y coordinate of the center
+	 * @param maxWidth
+	 * @param a blob parameter. a + b should be less than 1
+	 * @param b blob parameter.a + b should be less than 1
+	 * @param c blob parameter
+	 * @param d blob parameter
+	 * @return
+	 * @since 1.3.0
+	 */
+	public static PShape createBlobbie(double centerX, double centerY, double maxWidth, double a, double b, double c, double d) {
+		// http://paulbourke.net/geometry/blobbie/
+		final double cirumference = 2 * Math.PI * maxWidth / 2;
+		final int samples = (int) (cirumference / 2); // 1 point every 2 distance
+		double dt = Math.PI * 2 / samples;
+
+		final CoordinateList blobbieCoords = new CoordinateList();
+
+		for (int i = 0; i <= samples; i++) {
+			final double theta = i * dt;
+			final double r = maxWidth / 2 * (1 + a * FastMath.cos(2 * theta + c) + b * FastMath.cos(3 * theta + d));
+
+			// polar to cartesian
+			double x = r * FastMath.cos(theta) + centerX;
+			double y = r * FastMath.sin(theta) + centerY;
+			blobbieCoords.add(new Coordinate(x, y), false);
+		}
+		blobbieCoords.closeRing();
+
+		if (blobbieCoords.size() > 1) {
+			Geometry g = PGS.GEOM_FACTORY.createPolygon(blobbieCoords.toCoordinateArray());
+			if (a + b > 1) {
+				g = GeometryFixer.fix(g); // fix self intersection
+			}
+			PShape blob = PGS_Conversion.toPShape(g);
+			blob.setStroke(false);
+			return blob;
+		} else {
+			return new PShape();
+		}
+	}
+
+	/**
 	 * Creates a heart shape.
 	 * 
 	 * @param centerX The x coordinate of the center of the heart
@@ -231,9 +291,9 @@ public class PGS_Construction {
 		final double angleInc = Math.PI * 2 / points;
 		double angle = 0;
 		while (angle < Math.PI * 2) {
-			final double s = Math.sin(angle);
+			final double s = FastMath.sin(angle);
 			double vx = s * s * s;
-			double vy = 13 * Math.cos(angle) - 5 * Math.cos(2 * angle) - 2 * Math.cos(3 * angle) - Math.cos(4 * angle);
+			double vy = 13 * FastMath.cos(angle) - 5 * FastMath.cos(2 * angle) - 2 * FastMath.cos(3 * angle) - FastMath.cos(4 * angle);
 			vy /= 17; // normalise to 1
 			heart.vertex((float) (centerX + vx * width / 2), (float) (centerY - vy * width / 2));
 			angle += angleInc;
@@ -336,8 +396,8 @@ public class PGS_Construction {
 			final double away = awayStep * theta; // How far away from center
 			final double around = direction * theta + rotation; // How far around the center
 			// Convert 'around' and 'away' to X and Y.
-			double x = centerX + Math.cos(around) * away;
-			double y = centerY + Math.sin(around) * away;
+			double x = centerX + FastMath.cos(around) * away;
+			double y = centerY + FastMath.sin(around) * away;
 			coords.add(new Coordinate(x, y), false);
 
 			double delta = (-2 * away + Math.sqrt(4 * away * away + 8 * awayStep * chord)) / (2 * awayStep);
@@ -382,12 +442,12 @@ public class PGS_Construction {
 			final double r = Math.sqrt(theta) * z; // Specific to made a Fermat Spiral.
 
 			// polar to cartesian
-			double x = r * Math.cos(theta) + centerX;
-			double y = r * Math.sin(theta) + centerY;
+			double x = r * FastMath.cos(theta) + centerX;
+			double y = r * FastMath.sin(theta) + centerY;
 			yin.add(new Coordinate(x, y), false);
 
-			x = -r * Math.cos(theta) + centerX;
-			y = -r * Math.sin(theta) + centerY;
+			x = -r * FastMath.cos(theta) + centerX;
+			y = -r * FastMath.sin(theta) + centerY;
 			yang.add(new Coordinate(x, y), false);
 		}
 

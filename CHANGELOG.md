@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `overlap()` to `PGS_ShapePredicates`. Measures the degree of mutual overlap between two shapes.
 * `equalsExact()`, `equalsNorm()` and `equalsTopo()` to `PGS_ShapePredicates`. These methods test for equality between two shapes according to different criteria.
 * `createRectangularSpiral()` to `PGS_Construction`. Creates a rectangular-shaped spiral.
+* `createBlobbie()` to `PGS_Construction`. Creates a "blob"-like shape.
 * `largestEmptyCircle()` to `PGS_Optimisation`. Finds the largest empty circle in a set of obstacle geometries.
 * `hilbertSort()` to `PGS_PointSet`. Sorts a list of points according to their location on a Hilbert curve.
 * `tangentAngle()` to `PGS_Processing`. Finds the angle a the line tangent to a shape at a certain point on its perimeter.

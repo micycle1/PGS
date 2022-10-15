@@ -681,8 +681,10 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
   <tr>
     <td align="center" valign="center"><b>Koch Snowflake</td>
+    <td align="center" valign="center"><b>Blobbie</td>
   </tr>
     <td valign="top" width="25%"><img src="resources/pgs/kochSnowflake.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/blobbie.gif"></td>
   <tr>
   </tr>
 </table>
