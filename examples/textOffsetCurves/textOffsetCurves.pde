@@ -33,8 +33,8 @@ void prepareText() {
   PShape p = font.getShape('P');
   PShape g = font.getShape('G');
   PShape s = font.getShape('S');
-  float pWidth = PGS_ShapePredicates.width(p);
-  float gWidth = PGS_ShapePredicates.width(g);
+  double pWidth = PGS_ShapePredicates.width(p);
+  double gWidth = PGS_ShapePredicates.width(g);
   p = PGS_Morphology.fieldWarp(p, 50, 0.6, frameCount*0.01, false, 81);
   g = PGS_Transformation.translate(g, pWidth + 30, 0);
   g = PGS_Morphology.fieldWarp(g, 60, 0.75, frameCount*0.01, false, 1337);
