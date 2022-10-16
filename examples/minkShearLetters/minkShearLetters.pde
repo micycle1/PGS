@@ -1,6 +1,7 @@
 // This example demos: medial axis, mink sum, shear, intersection
 import micycle.pgs.*;
 import java.util.List;
+import processing.javafx.*;
 
 Letter l1, l2;
 
@@ -21,7 +22,7 @@ void draw() {
     l2.update();
 
     PShape mink = PGS_Morphology.minkSum(l1.letter, l2.letter);
-    mink = PGS_Transformation.translateTo(mink, (l1.pos.x+l2.pos.x) / 2, (l1.pos.y+l2.pos.y) / 2);
+    mink = PGS_Transformation.translateCentroidTo(mink, (l1.pos.x+l2.pos.x) / 2, (l1.pos.y+l2.pos.y) / 2);
     shape(mink);
 
     shape(l1.letter);
