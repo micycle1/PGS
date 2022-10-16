@@ -278,6 +278,20 @@ public final class PGS_Tiling {
 	 * @param width    width of the tiling plane
 	 * @param height   height of the tiling plane
 	 * @param tileSize diameter of each tile
+	 * @return a GROUP PShape, where each child shape is a tile of the tiling
+	 * @since 1.3.0
+	 */
+	public static PShape squareTriangleTiling(double width, double height, double tileSize) {
+		return squareTriangleTiling(width, height, tileSize, System.currentTimeMillis());
+	}
+
+	/**
+	 * Generates a non-periodic tiling, comprising squares and equilateral
+	 * triangles, having a given seed.
+	 * 
+	 * @param width    width of the tiling plane
+	 * @param height   height of the tiling plane
+	 * @param tileSize diameter of each tile
 	 * @param seed     the random seed
 	 * @return a GROUP PShape, where each child shape is a tile of the tiling
 	 * @since 1.3.0

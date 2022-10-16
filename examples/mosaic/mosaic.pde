@@ -2,9 +2,9 @@ import processing.javafx.*;
 import micycle.pgs.*;
 import micycle.uniformnoise.UniformNoise;
 import java.util.List;
-import org.tinfour.standard.IncrementalTin;
+import org.tinfour.common.IIncrementalTin;
 
-ArrayList<PShape> shapes;
+List<PShape> shapes;
 UniformNoise noise;
 
 void setup() {
@@ -29,23 +29,18 @@ void draw() {
 
 void run() {
   shapes = new ArrayList<PShape>();
-  shapes.add(prepareFaces(randomPoints(round(random(150, 350)), 5, 0, width/2, 0, height/2)));
-  shapes.add(prepareFaces(randomPoints(round(random(150, 350)), 5, width/2, width, 0, height/2)));
-  shapes.add(prepareFaces(randomPoints(round(random(150, 350)), 5, 0, width/2, height/2, height)));
-  shapes.add(prepareFaces(randomPoints(round(random(150, 350)), 5, width/2, width, height/2, height)));
+  long seed = System.currentTimeMillis();
+  float gutter = 5;
+
+  shapes.add(prepareFaces(PGS_PointSet.random(0+gutter, 0+gutter, width/2-gutter, height/2-gutter, round(random(150, 350)), seed)));
+  shapes.add(prepareFaces(PGS_PointSet.random(0+gutter, height/2+gutter, width/2-gutter, height-gutter, round(random(150, 350)), seed+1)));
+  shapes.add(prepareFaces(PGS_PointSet.random(width/2+gutter, 0+gutter, width-gutter, height/2-gutter, round(random(150, 350)), seed+2)));
+  shapes.add(prepareFaces(PGS_PointSet.random(width/2+gutter, height/2+gutter, width-gutter, height-gutter, round(random(150, 350)), seed+3)));
 }
 
-ArrayList<PVector> randomPoints(int n, int buffer, float xMin, float xMax, float yMin, float yMax) {
-  ArrayList<PVector> randomPoints = new ArrayList<PVector>();
-  for (int i = 0; i < n; i++) {
-    randomPoints.add(new PVector(random(xMin + buffer, xMax - buffer), random(yMin+buffer, yMax - buffer)));
-  }
-  return randomPoints;
-}
-
-PShape prepareFaces(ArrayList<PVector> points) {
-  PShape hull = PGS_Hull.concaveHullBFS2(points, random(0.15, 0.3));
-  IncrementalTin mesh = PGS_Triangulation.delaunayTriangulationMesh(hull, points, true, random(1) > 0.5 ? 0 : random(1) > 0.25 ? 1 : 2, true);
+PShape prepareFaces(List<PVector> points) {
+  PShape hull = PGS_Hull.concaveHullBFS(points, random(0.25, 0.5));
+  IIncrementalTin mesh = PGS_Triangulation.delaunayTriangulationMesh(hull, points, true, random(1) > 0.5 ? 0 : random(1) > 0.25 ? 1 : 2, true);
 
   PShape faces;
   if (random(1) > 0.2) {
