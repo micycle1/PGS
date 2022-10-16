@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.SplittableRandom;
+import java.util.stream.Collectors;
 
 import org.jgrapht.alg.interfaces.MatchingAlgorithm;
 import org.jgrapht.alg.matching.blossom.v5.KolmogorovWeightedPerfectMatching;
@@ -16,6 +17,7 @@ import org.locationtech.jts.noding.SegmentString;
 import org.tinfour.common.IIncrementalTin;
 
 import micycle.pgs.color.RGB;
+import micycle.pgs.commons.FastAtan2;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
 import net.jafama.FastMath;
@@ -382,6 +384,53 @@ public class PGS_SegmentSet {
 		return lines;
 	}
 
+	/**
+	 * Removes segments having a length less than the given length from a collection
+	 * of segmensts.
+	 * 
+	 * @param segments  list of segments to filter
+	 * @param minLength the minimum segment length to keep
+	 * @return a filtered copy of input collection
+	 */
+	public static List<PEdge> filterByMinLength(List<PEdge> segments, double minLength) {
+		return segments.stream().filter(s -> s.length() >= minLength).collect(Collectors.toList());
+	}
+
+	/**
+	 * Removes segments having a length either less than some fraction or more than
+	 * <code>1/fraction</code> of the mean segment length from a collection of
+	 * segments.
+	 * <p>
+	 * This method can be used to homogenise a segment set.
+	 * 
+	 * @param segments list of segments to filter
+	 * @param fraction fraction of mean length to keep segments
+	 * @return a filtered copy of input collection
+	 */
+	public static List<PEdge> filterByAverageLength(List<PEdge> segments, double fraction) {
+		final double lenAvg = segments.stream().mapToDouble(PEdge::length).average().orElse(0);
+		return segments.stream().filter(e -> e.length() > fraction * lenAvg && e.length() < 1 / fraction * lenAvg)
+				.collect(Collectors.toList());
+	}
+
+	/**
+	 * Removes axis-aligned (horizontal and vertical) segments (within a given angle
+	 * tolerance) from a collection of segments.
+	 * 
+	 * @param segments   list of segments to filter
+	 * @param angleDelta angle tolerance, in radians
+	 * @return a filtered copy of the input where axis-aligned segments have been
+	 *         removed
+	 */
+	public static List<PEdge> filterAxisAligned(List<PEdge> segments, double angleDelta) {
+		List<PEdge> filtered = new ArrayList<>(segments);
+		filtered.removeIf(s -> {
+			double angle = Math.abs(FastAtan2.atan2(s.b.y - s.a.y, s.b.x - s.a.x)) % (Math.PI / 2);
+			return (angle + angleDelta > Math.PI / 2 || angle - angleDelta < 0);
+		});
+		return filtered;
+	}
+
 	private static List<PEdge> toPEdges(List<LineSegment> segments) {
 		List<PEdge> edges = new ArrayList<>(segments.size());
 		segments.forEach(s -> {
@@ -391,7 +440,6 @@ public class PGS_SegmentSet {
 
 		return edges;
 	}
-	
 
 	private static boolean ccw(Coordinate A, Coordinate B, Coordinate C) {
 		return (C.y - A.y) * (B.x - A.x) > (B.y - A.y) * (C.x - A.x);
