@@ -60,6 +60,10 @@ All examples are dynamic and/or interactive. Shown below are merely screenshots.
 
 <img src="../resources/examples/textOffsetCurves.png" alt="" width="500"/>
 
+## tilePulse
+
+<img src="../resources/examples/tilePulse.png" alt="" width="500"/>
+
 ## triangulate
 
 <img src="../resources/examples/triangulate.png" alt="" width="500"/>
