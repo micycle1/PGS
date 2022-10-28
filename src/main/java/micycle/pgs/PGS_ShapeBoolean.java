@@ -6,9 +6,10 @@ import static micycle.pgs.PGS_Conversion.toPShape;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
@@ -140,12 +141,13 @@ public final class PGS_ShapeBoolean {
 			return mesh;
 		}
 
-		final Set<PEdge> allEdges = PGS.makeHashSet(mesh.getChildCount() * 3);
-		final List<PEdge> duplicateEdges = new ArrayList<>(allEdges.size());
+		Map<PEdge, Integer> edges = new HashMap<>(mesh.getChildCount() * 3);
+
+		final List<PEdge> allEdges;
 
 		/*
 		 * Compute set of unique edges belonging to the mesh (this set is equivalent to
-		 * the boundary); ignore edges if they are seen more than once.
+		 * the boundary).
 		 */
 		for (PShape child : mesh.getChildren()) {
 			for (int i = 0; i < child.getVertexCount(); i++) {
@@ -153,17 +155,12 @@ public final class PGS_ShapeBoolean {
 				final PVector b = child.getVertex((i + 1) % child.getVertexCount());
 				if (!a.equals(b)) {
 					PEdge edge = new PEdge(a, b);
-					if (!allEdges.add(edge)) { // could use a bag collection here
-						duplicateEdges.add(edge);
-					}
+					edges.merge(edge, 1, Integer::sum);
 				}
 			}
 		}
 
-		allEdges.removeAll(duplicateEdges); // allEdges now contains boundary edges only
-		if (allEdges.isEmpty()) {
-			return new PShape();
-		}
+		allEdges = edges.entrySet().stream().filter(e -> e.getValue() == 1).map(e -> e.getKey()).collect(Collectors.toList());
 
 		/*
 		 * Now find a sequential/winding order for the vertices of the boundary. The
