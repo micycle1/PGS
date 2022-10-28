@@ -4,6 +4,7 @@ import static micycle.pgs.PGS.GEOM_FACTORY;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
 
+import java.awt.geom.Rectangle2D;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,6 +20,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import org.apache.commons.math3.ml.clustering.CentroidCluster;
+import org.apache.commons.math3.ml.clustering.Clusterable;
+import org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer;
 import org.locationtech.jts.algorithm.Angle;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.algorithm.hull.ConcaveHullOfPolygons;
@@ -60,6 +64,8 @@ import org.tinfour.common.PolygonConstraint;
 import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
 import org.tinfour.utils.TriangleCollector;
+import org.tinfour.voronoi.BoundedVoronoiBuildOptions;
+import org.tinfour.voronoi.BoundedVoronoiDiagram;
 
 import com.vividsolutions.jcs.conflate.coverage.CoverageCleaner;
 import com.vividsolutions.jcs.conflate.coverage.CoverageCleaner.Parameters;
@@ -68,7 +74,6 @@ import com.vividsolutions.jump.feature.FeatureDatasetFactory;
 import com.vividsolutions.jump.feature.FeatureUtil;
 import com.vividsolutions.jump.task.DummyTaskMonitor;
 
-import de.incentergy.geometry.impl.RandomPolygonSplitter;
 import micycle.balaban.BalabanSolver;
 import micycle.balaban.Point;
 import micycle.balaban.Segment;
@@ -748,30 +753,47 @@ public final class PGS_Processing {
 
 	/**
 	 * Partitions a shape into N approximately equal-area polygonal cells.
-	 * <p>
-	 * This method produces a voronoi-like output.
 	 * 
-	 * @param shape   a polygonal (non-group, no holes) shape
-	 * @param parts   number of roughly equal area partitons to create
-	 * @param precise whether to use a subroutine that partitions the shape into
-	 *                more precisely equal partitions. The tradeoff here is
-	 *                computation time vs partition quality
+	 * @param shape a polygonal (non-group, no holes) shape to partition
+	 * @param parts number of roughly equal area partitons to create
 	 * @return a GROUP PShape, whose child shapes are partitions of the original
 	 * @since 1.3.0
 	 */
-	public static PShape equalPartition(final PShape shape, final int parts, boolean precise) {
+	@SuppressWarnings("unchecked")
+	public static PShape equalPartition(final PShape shape, final int parts) {
 		final Geometry g = fromPShape(shape);
-		if (g.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
-			RandomPolygonSplitter splitter = new RandomPolygonSplitter();
-			List<? extends Geometry> partitions;
-			if (precise) {
-				partitions = splitter.split((Polygon) g, parts, 10000, 3);
-			} else {
-				partitions = splitter.split((Polygon) g, parts, 2000, 5);
-			}
-			return toPShape(partitions);
+		if (g instanceof Polygonal) {
+			final Envelope e = g.getEnvelopeInternal();
+
+			int samples = (int) (e.getArea() / 100); // sample every ~10 units in x and y axes
+
+			final List<PVector> samplePoints = PGS_Processing.generateRandomGridPoints(shape, samples, false, 0.8);
+			KMeansPlusPlusClusterer<Clusterable> clusterer = new KMeansPlusPlusClusterer<>(parts, 20);
+			List<? extends Clusterable> cl = samplePoints.stream().map(p -> (Clusterable) () -> new double[] { p.x, p.y })
+					.collect(Collectors.toList());
+			List<CentroidCluster<Clusterable>> clusters = clusterer.cluster((Collection<Clusterable>) cl);
+			List<Vertex> vertices = new ArrayList<>();
+			clusters.forEach(c -> {
+				double[] p = c.getCenter().getPoint();
+				vertices.add(new Vertex(p[0], p[1], 0));
+			});
+
+			double x = e.getMinX();
+			double y = e.getMinY();
+			double w = e.getMaxX() - e.getMinX();
+			double h = e.getMaxY() - e.getMinY();
+
+			final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();
+			options.setBounds(new Rectangle2D.Double(x, y, w, h));
+
+			final BoundedVoronoiDiagram v = new BoundedVoronoiDiagram(vertices, options);
+			List<Geometry> faces = v.getPolygons().stream().map(PGS_Voronoi::toPolygon).collect(Collectors.toList());
+
+			faces = faces.parallelStream().map(f -> OverlayNG.overlay(f, g, OverlayNG.INTERSECTION)).collect(Collectors.toList());
+
+			return PGS_Conversion.toPShape(faces);
 		} else {
-			System.err.println("equalPartition(): Input shape is not a polygon.");
+			System.err.println("equalPartition(): Input shape is not polygonal.");
 			return shape;
 		}
 	}
@@ -950,11 +972,10 @@ public final class PGS_Processing {
 	}
 
 	private static Polygon toGeometry(Envelope envelope) {
-		return GEOM_FACTORY.createPolygon(
-				GEOM_FACTORY.createLinearRing(new Coordinate[] { new Coordinate(envelope.getMinX(), envelope.getMinY()),
+		return GEOM_FACTORY
+				.createPolygon(GEOM_FACTORY.createLinearRing(new Coordinate[] { new Coordinate(envelope.getMinX(), envelope.getMinY()),
 						new Coordinate(envelope.getMaxX(), envelope.getMinY()), new Coordinate(envelope.getMaxX(), envelope.getMaxY()),
-						new Coordinate(envelope.getMinX(), envelope.getMaxY()), new Coordinate(envelope.getMinX(), envelope.getMinY()) }),
-				null);
+						new Coordinate(envelope.getMinX(), envelope.getMaxY()), new Coordinate(envelope.getMinX(), envelope.getMinY()) }));
 	}
 
 	/**

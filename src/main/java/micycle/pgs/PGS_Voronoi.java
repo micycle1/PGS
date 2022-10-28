@@ -16,7 +16,6 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.Polygonal;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
-import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.Vertex;
 import org.tinfour.standard.IncrementalTin;
@@ -85,17 +84,21 @@ public final class PGS_Voronoi {
 	 * @see #innerVoronoi(Collection)
 	 */
 	public static PShape innerVoronoi(final PShape shape, final boolean constrain, double[] bounds) {
-		final IIncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, null, false, 0, false);
-
 		final Geometry g = fromPShape(shape);
+		final List<Vertex> vertices = new ArrayList<>();
+		final Coordinate[] coords = g.getCoordinates();
+		for (int i = 0; i < coords.length; i++) {
+			vertices.add(new Vertex(coords[i].x, coords[i].y, 0, i));
+		}
+
 		final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();
 		final double x, y, w, h;
 		if (bounds == null) {
 			final Envelope envelope = g.getEnvelopeInternal();
 			x = envelope.getMinX();
 			y = envelope.getMinY();
-			w = envelope.getMaxX() - envelope.getMinX();
-			h = envelope.getMaxY() - envelope.getMinY();
+			w = envelope.getWidth();
+			h = envelope.getHeight();
 		} else {
 			x = bounds[0];
 			y = bounds[1];
@@ -104,7 +107,7 @@ public final class PGS_Voronoi {
 		}
 		options.setBounds(new Rectangle2D.Double(x, y, w, h));
 
-		final BoundedVoronoiDiagram v = new BoundedVoronoiDiagram(tin.getVertices(), options);
+		final BoundedVoronoiDiagram v = new BoundedVoronoiDiagram(vertices, options);
 
 		List<Geometry> faces = v.getPolygons().stream().map(PGS_Voronoi::toPolygon).collect(Collectors.toList());
 		if (constrain && g instanceof Polygonal) {
@@ -251,14 +254,12 @@ public final class PGS_Voronoi {
 		final HashMap<Vertex, ThiessenPolygon> vertexCellMap = new HashMap<>();
 		voronoi.getPolygons().forEach(p -> vertexCellMap.put(p.getVertex(), p));
 
-		PShape voronoiCells = new PShape();
-
 		/*
 		 * There is a voronoi cell for each densified vertex. We first group densified
 		 * vertices by their source geometry and then union/dissolve the cells belonging
 		 * to each vertex group.
 		 */
-		segmentVertexGroups.forEach(vertexGroup -> {
+		final List<PShape> faces = segmentVertexGroups.parallelStream().map(vertexGroup -> {
 			PShape cellSegments = new PShape(PConstants.GROUP);
 			vertexGroup.forEach(segmentVertex -> {
 				ThiessenPolygon thiessenCell = vertexCellMap.get(segmentVertex);
@@ -272,16 +273,17 @@ public final class PGS_Voronoi {
 					cellSegments.addChild(cellSegment);
 				}
 			});
-			voronoiCells.addChild(PGS_ShapeBoolean.unionMesh(cellSegments));
-		});
+			return PGS_ShapeBoolean.unionMesh(cellSegments);
+		}).collect(Collectors.toList());
 
+		PShape voronoiCells = PGS_Conversion.flatten(faces);
 		PGS_Conversion.setAllFillColor(voronoiCells, RGB.WHITE);
 		PGS_Conversion.setAllStrokeColor(voronoiCells, RGB.PINK, 2);
 
 		return voronoiCells;
 	}
 
-	private static Polygon toPolygon(ThiessenPolygon polygon) {
+	static Polygon toPolygon(ThiessenPolygon polygon) {
 		Coordinate[] coords = new Coordinate[polygon.getEdges().size() + 1];
 		int i = 0;
 		for (IQuadEdge e : polygon.getEdges()) {

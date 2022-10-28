@@ -5,6 +5,20 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
+## **1.3.0** *(2022-xx-xx)*
+
+### Added
+*  
+
+### Changed
+* Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).
+  
+### Fixed
+*
+
+### Removed
+*
+
 ## **1.3.0** *(2022-10-20)*
 
 ### Added
