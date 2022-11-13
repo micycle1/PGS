@@ -1,14 +1,13 @@
 package micycle.pgs.commons;
 
 import java.util.Collections;
-
+import java.util.Random;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.LinearRing;
-import org.locationtech.jts.linearref.LengthIndexedLine;
 
 /**
  * Best-guess interpolation between any two linear rings.
@@ -25,6 +24,8 @@ public class ShapeInterpolation {
 	 * Break-up single polygon to interpolate with a multipolygon.
 	 * See https://github.com/veltman/openvis/blob/master/README.md
 	 * See 'Guaranteed intersection-free polygon morphing'
+	 * See CGAl Shape Deformation: https://doc.cgal.org/latest/Barycentric_coordinates_2/index.html#title10
+	 * https://homepages.inf.ed.ac.uk/tkomura/cav/presentation14_2018.pdf
 	 * RAP C++ : https://github.com/catherinetaylor2/Shape_Interpolation/blob/master/rigid_interp.cpp
 	 * and https://github.com/deliagander/ARAPShapeInterpolation
 	 */
@@ -44,42 +45,33 @@ public class ShapeInterpolation {
 		}
 
 		// find the "smaller" ring (as measured by number of vertices)
-		LinearRing smaller, bigger;
+		CoordinateList smaller, bigger;
 		boolean smallerIsTo = false;
 		if (from.getNumPoints() > to.getNumPoints()) {
-			bigger = from;
-			smaller = to;
+			bigger = new CoordinateList(from.getCoordinates(), false);
+			smaller = new CoordinateList(to.getCoordinates(), false);
 			smallerIsTo = true;
 		} else {
-			bigger = to;
-			smaller = from;
+			bigger = new CoordinateList(to.getCoordinates(), false);
+			smaller = new CoordinateList(from.getCoordinates(), false);
 		}
 
-		CoordinateList smallerLine, biggerLine;
-		if (from.getNumPoints() == to.getNumPoints()) {
-			// don't attempt to densify if same number of points
-			smallerLine = new CoordinateList(smaller.getCoordinates());
-			smallerLine.remove(smallerLine.size() - 1); // remove closing vertex
-		} else {
-			/*
-			 * Sample the ring that has fewer vertices N times (in this case each new edge
-			 * is the same length). An alternative approach would be to split existing edges
-			 * (starting with the longest) until it has N vertices.
-			 */
-			final LengthIndexedLine l = new LengthIndexedLine(smaller);
-			smallerLine = new CoordinateList(); // densified version of smaller
+		bigger.closeRing(); // ensure closed
+		smaller.closeRing(); // ensure closed
+		smaller.remove(smaller.size() - 1); // unclose (to be closed later, after array rotation)
+		bigger.remove(bigger.size() - 1); // unclose (to be closed later, after array rotation)
 
-			int n = bigger.getNumPoints() - 1; // don't count closed vertex
-			final double length = l.getEndIndex(); // perimeter length
-			for (int i = 0; i < n; i++) {
-				double index = i / (n - 1d);
-				smallerLine.add(l.extractPoint(index * length));
-			}
+		final int diff = bigger.size() - smaller.size();
+		Random r = new Random(1337);
+		for (int i = 0; i < diff; i++) {
+			int index = r.nextInt(smaller.size() - 1);
+			Coordinate a = smaller.get(index);
+			Coordinate c = smaller.get(index + 1);
+			Coordinate b = new Coordinate((a.x + c.x) / 2, (a.y + c.y) / 2); // midpoint
+			smaller.add(index + 1, b); // insert b between a and c (shift c onwards right)
 		}
 
-		biggerLine = new CoordinateList(bigger.getCoordinates(), true);
-		biggerLine.remove(biggerLine.size() - 1); // remove closing vertex
-		int n = biggerLine.size(); // number of coords (unclosed)
+		final int n = bigger.size(); // number of coords (unclosed)
 
 		int bestOffset = 0;
 		double min = Double.MAX_VALUE;
@@ -92,7 +84,7 @@ public class ShapeInterpolation {
 			double sumOfSquares = 0;
 
 			for (int i = 0; i < n; i++) {
-				sumOfSquares += distSq(smallerLine.get((offset + i) % n), biggerLine.get(i));
+				sumOfSquares += distSq(smaller.get((offset + i) % n), bigger.get(i));
 			}
 
 			if (sumOfSquares < min) {
@@ -105,17 +97,17 @@ public class ShapeInterpolation {
 		}
 
 		if (bestOffset != 0) {
-			Collections.rotate(smallerLine, -bestOffset);
+			Collections.rotate(smaller, -bestOffset);
 		}
 
-		smallerLine.closeRing();
-		biggerLine.closeRing();
+		smaller.closeRing();
+		bigger.closeRing();
 		if (smallerIsTo) {
-			this.to = smallerLine;
-			this.from = biggerLine;
+			this.to = smaller;
+			this.from = bigger;
 		} else {
-			this.from = smallerLine;
-			this.to = biggerLine;
+			this.from = smaller;
+			this.to = bigger;
 		}
 	}
 
@@ -132,6 +124,7 @@ public class ShapeInterpolation {
 	}
 
 	private static double distSq(Coordinate a, Coordinate b) {
+		// dont use Coordinate.distance() because it uses Math.hypot() (slower!)
 		double dx = a.x - b.x;
 		double dy = a.y - b.y;
 		return (dx * dx + dy * dy);
