@@ -79,25 +79,6 @@ public class PGS_Hull {
 	}
 
 	/**
-	 * Computes the concave hull of a point set using a breadth-first method.
-	 * 
-	 * @param points
-	 * @param threshold euclidean distance threshold
-	 * @return
-	 * @since 1.1.0
-	 * @see #concaveHullDFS(List, double)
-	 * @see #concaveHullBFS2(List, double)
-	 */
-	public static PShape concaveHullBFS(List<PVector> points, double concavity) {
-		concavity *= concavity; // square to make output change more linearly as concavity goes 0...1
-		// Geometry g = fromPShape(PGS_Conversion.toPointsPShape(points));
-		Geometry g = prepareConcaveGeometry(points);
-		org.locationtech.jts.algorithm.hull.ConcaveHull concaveHull = new org.locationtech.jts.algorithm.hull.ConcaveHull(g);
-		concaveHull.setMaximumEdgeLengthRatio(concavity);
-		return toPShape(concaveHull.getHull());
-	}
-
-	/**
 	 * Computes the concave hull of a point set using a depth-first method. In
 	 * contrast to the BFS method, the depth-first approach produces shapes that are
 	 * more contiguous/less branching and spiral-like.
@@ -115,6 +96,28 @@ public class PGS_Hull {
 		threshold *= closestList.get(0).dist(closestList.get(1));
 		ConcaveHull hull = new ConcaveHull(prepareConcaveGeometry(points));
 		return toPShape(hull.getConcaveHullDFS(new TriCheckerChi(threshold)));
+	}
+
+	/**
+	 * Computes the concave hull of a point set using a breadth-first method.
+	 * 
+	 * @param points
+	 * @param edgeLengthRatio Sets the target maximum edge length ratio for the
+	 *                        concave hull. The edge length ratio is a fraction of
+	 *                        the difference between the longest and shortest edge
+	 *                        lengths in the Delaunay Triangulation of the input
+	 *                        points. It is a value in the range 0 to 1.
+	 * @return
+	 * @since 1.1.0
+	 * @see #concaveHullDFS(List, double)
+	 * @see #concaveHullBFS2(List, double)
+	 */
+	public static PShape concaveHullBFS(List<PVector> points, double edgeLengthRatio) {
+		edgeLengthRatio *= edgeLengthRatio; // square to make output change more linearly as concavity goes 0...1
+		Geometry g = prepareConcaveGeometry(points);
+		org.locationtech.jts.algorithm.hull.ConcaveHull concaveHull = new org.locationtech.jts.algorithm.hull.ConcaveHull(g);
+		concaveHull.setMaximumEdgeLengthRatio(edgeLengthRatio);
+		return toPShape(concaveHull.getHull());
 	}
 
 	/**
