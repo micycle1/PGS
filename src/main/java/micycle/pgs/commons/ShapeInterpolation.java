@@ -1,7 +1,8 @@
 package micycle.pgs.commons;
 
 import java.util.Collections;
-import java.util.Random;
+import java.util.SplittableRandom;
+
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
@@ -62,7 +63,7 @@ public class ShapeInterpolation {
 		bigger.remove(bigger.size() - 1); // unclose (to be closed later, after array rotation)
 
 		final int diff = bigger.size() - smaller.size();
-		Random r = new Random(1337);
+		SplittableRandom r = new SplittableRandom(1337);
 		for (int i = 0; i < diff; i++) {
 			int index = r.nextInt(smaller.size() - 1);
 			Coordinate a = smaller.get(index);

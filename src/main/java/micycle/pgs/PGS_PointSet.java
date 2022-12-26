@@ -3,7 +3,6 @@ package micycle.pgs;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 import java.util.SplittableRandom;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -17,6 +16,7 @@ import org.jgrapht.graph.SimpleGraph;
 import org.tinfour.common.IIncrementalTin;
 import org.tinspin.index.kdtree.KDTree;
 
+import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.PoissonDistributionJRUS;
 import processing.core.PShape;
@@ -711,7 +711,7 @@ public final class PGS_PointSet {
 		final double h = yMax - yMin;
 
 		final List<Integer> rookPositions = IntStream.range(0, n).boxed().collect(Collectors.toList());
-		Collections.shuffle(rookPositions, new Random(seed));
+		Collections.shuffle(rookPositions, new XoRoShiRo128PlusRandom(seed));
 
 		final float offset = 1.0f / (n * 2);
 

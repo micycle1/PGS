@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -62,6 +61,7 @@ import org.scoutant.polyline.PolylineDecoder;
 import it.rambow.master.javautils.PolylineEncoder;
 import it.rambow.master.javautils.Track;
 import it.rambow.master.javautils.Trackpoint;
+import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import micycle.pgs.commons.PEdge;
 import processing.core.PConstants;
 import processing.core.PMatrix;
@@ -752,7 +752,7 @@ public final class PGS_Conversion {
 	public static <V, E> PShape fromGraph(SimpleGraph<V, E> graph, double normalizationFactor, double boundsX, double boundsY) {
 		normalizationFactor = Math.min(Math.max(normalizationFactor, 0.001), 1);
 		LayoutAlgorithm2D<V, E> layout;
-		layout = new IndexedFRLayoutAlgorithm2D<>(50, 0.7, normalizationFactor, new Random(1337));
+		layout = new IndexedFRLayoutAlgorithm2D<>(50, 0.7, normalizationFactor, new XoRoShiRo128PlusRandom(1337));
 		LayoutModel2D<V> model = new MapLayoutModel2D<>(new Box2D(boundsX, boundsY));
 		layout.layout(graph, model);
 

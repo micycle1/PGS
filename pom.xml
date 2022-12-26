@@ -316,6 +316,11 @@
 			<artifactId>polyline-decoder</artifactId>
 			<version>5b6f55fc1a</version>
 		</dependency>
+		<dependency>
+			<groupId>it.unimi.dsi</groupId>
+			<artifactId>dsiutils</artifactId>
+			<version>2.7.2</version>
+		</dependency>
 	</dependencies>
 
 </project>

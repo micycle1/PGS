@@ -17,6 +17,7 @@ import org.locationtech.jts.noding.NodedSegmentString;
 import org.locationtech.jts.noding.SegmentString;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 
+import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import micycle.pgs.commons.PEdge;
 import processing.core.PShape;
 
@@ -97,7 +98,7 @@ class FastPolygonizerTests {
 	@SuppressWarnings("unchecked")
 	@Test
 	void testRobustnessRandomly() {
-		Random r = new Random(1337);
+		Random r = new XoRoShiRo128PlusRandom(0);
 		for (int k = 0; k < 100; k++) {
 			List<SegmentString> segmentStrings = new ArrayList<>(111 + k);
 			for (int i = 0; i < 111 + k; i++) {

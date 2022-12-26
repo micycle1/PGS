@@ -3,9 +3,9 @@ package micycle.pgs.commons;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 import java.util.SplittableRandom;
 
+import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import processing.core.PVector;
 
 /**
@@ -116,7 +116,7 @@ public final class PoissonDistributionJRUS {
 		double radius2 = (Math.sqrt(0.5) * ((xmax - xmin) * (ymax - ymin))) / n;
 		double radius = Math.sqrt(radius2);
 		List<PVector> pointz = generate(xmin, ymin, xmax, ymax, radius, 11);
-		Collections.shuffle(pointz, new Random(1337));
+		Collections.shuffle(pointz, new XoRoShiRo128PlusRandom(1337));
 		return pointz.subList(0, Math.min(pointz.size(), n)); // use min() in case undershoot
 	}
 

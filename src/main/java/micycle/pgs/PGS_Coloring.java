@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
 import org.jgrapht.alg.color.ColorRefinementAlgorithm;
 import org.jgrapht.alg.color.LargestDegreeFirstColoring;
@@ -16,6 +15,7 @@ import org.jgrapht.graph.AbstractBaseGraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.locationtech.jts.noding.SegmentString;
 
+import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import micycle.pgs.color.RGB;
 import micycle.pgs.commons.GeneticColoring;
 import micycle.pgs.commons.RLFColoring;
@@ -231,7 +231,7 @@ public final class PGS_Coloring {
 
 		switch (coloringAlgorithm) {
 			case RANDOM : // randomly ordered sequential
-				coloring = new RandomGreedyColoring<>(graph, new Random()).getColoring();
+				coloring = new RandomGreedyColoring<>(graph, new XoRoShiRo128PlusRandom()).getColoring();
 				break;
 			case SMALLEST_DEGREE_LAST :
 				coloring = new SmallestDegreeLastColoring<>(graph).getColoring();
