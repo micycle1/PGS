@@ -1,117 +1,169 @@
 package micycle.pgs.commons;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
-import org.apache.commons.math3.complex.Complex;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.LineString;
 
 import net.jafama.FastMath;
 
 /**
- * Convexity Rule for Shape Decomposition Based on Discrete Contour Evolution.
+ * Discrete Curve Evolution simplifies polygonal curves, neglecting minor
+ * distortions while preserving perceptual appearance. The main idea of the
+ * process is a stepwise elimination of kinks (vertex where consecutive line
+ * segments meet) that are least relevant to the shape of the polygonal curve.
+ * The relevance of kinks is intended to reflect their contribution to the
+ * overall shape of the polygonal curve.
+ * <p>
+ * The shape relevance of every kink can be defined by the turn angle and the
+ * lengths of the neighboring line segments; tthe larger both the relative
+ * lengths and the turn angle of a kink, the greater is its contribution to the
+ * shape of a curve.
  * 
- * @author Diego Catalano
  * @author Michael Carleton
  */
 public class DiscreteCurveEvolution {
 
-	// from github.com/DiegoCatalano/Catalano-Framework/
+	/*-
+	 * Relevance measure was lifted from github.com/DiegoCatalano/Catalano-Framework,
+	 * which implements 'Convexity Rule for Shape Decomposition Based on Discrete
+	 * Contour Evolution'.
+	 * This implementation uses doubly-linked coordinates + ordered set for better 
+	 * time complexity (nlogn vs n^2).
+	 */
 
-	private int vertices;
-
-	public DiscreteCurveEvolution() {
-		this(20);
-	}
+	private int vertexPreserveCount;
 
 	/**
 	 * 
 	 * @param vertices the number of vertices to preserve
 	 */
 	public DiscreteCurveEvolution(int vertices) {
-		this.vertices = vertices;
+		this.vertexPreserveCount = vertices;
 	}
 
+	/**
+	 * 
+	 * @param lineString a closed or unclosed LineString
+	 * @return
+	 */
 	public Coordinate[] process(LineString lineString) {
 		return process(lineString.getCoordinates());
 	}
 
 	public Coordinate[] process(Coordinate[] coords) {
-		if (vertices > coords.length) {
-			vertices = Math.min(coords.length, vertices);
-//			throw new IllegalArgumentException("Number of points left must be higher than number of the shape.");
+		boolean closed = coords[0].equals2D(coords[coords.length - 1]);
+		int vertexRemoveCount = Math.min(coords.length - vertexPreserveCount, coords.length - (closed ? 4 : 2));
+
+		/*
+		 * Create linked coordinates, then link each one to its neighbours once all have
+		 * been instantiated.
+		 */
+		final List<LinkedCoordinate> linkedCoords = Arrays.asList(coords).stream().map(c -> new LinkedCoordinate(c))
+				.collect(Collectors.toList());
+		for (int i = 0; i < linkedCoords.size(); i++) {
+			LinkedCoordinate prev = linkedCoords.get(i == 0 ? linkedCoords.size() - 1 : i - 1);
+			LinkedCoordinate next = linkedCoords.get(i == linkedCoords.size() - 1 ? 0 : i + 1);
+			linkedCoords.get(i).assignLinks(prev, next);
 		}
 
-		List<Complex> complex = new ArrayList<>();
-		for (int i = 0; i < coords.length; i++) {
-			complex.add(new Complex(coords[i].x, coords[i].y));
+		if (!closed) { // unlink start and end if coords are unclosed
+			linkedCoords.get(0).markAsStart();
+			linkedCoords.get(linkedCoords.size() - 1).markAsEnd();
 		}
 
-		for (int i = 0; i < coords.length - vertices; i++) {
-			double[] angleMeasure = angle(complex);
-			int index = minIndex(angleMeasure);
-			complex.remove(index);
+		/*
+		 * The first element of the treeset is always the LinkedCoordinate having the
+		 * least relevance. When it is removed, its neighbors must also be removed,
+		 * re-linked then re-inserted with their new relevance values.
+		 */
+		final TreeSet<LinkedCoordinate> t = new TreeSet<>(linkedCoords);
+		for (int i = 0; i < vertexRemoveCount; i++) {
+			LinkedCoordinate removed = t.pollFirst();
+			LinkedCoordinate previous = removed.prev;
+			LinkedCoordinate next = removed.next;
+			t.remove(previous); // temporarily remove prev coordinate
+			t.remove(next); // temporarily remove next coordinate
+			previous.relinkToNext(next); // mutually link prev and next (and recompute relevance)
+			t.add(previous); // re-add (with new relevance score)
+			t.add(next); // re-add (with new relevance score)
 		}
 
-		Coordinate[] newShape = new Coordinate[complex.size()];
+		CoordinateList output = new CoordinateList();
 
-		for (int i = 0; i < complex.size(); i++) {
-			newShape[i] = new Coordinate(complex.get(i).getReal(), complex.get(i).getImaginary());
+		LinkedCoordinate first = closed ? t.first() : linkedCoords.get(0);
+		LinkedCoordinate current = first;
+		do {
+			output.add(current.c);
+		} while ((current = current.next) != first && current != null);
+		if (closed) {
+			output.closeRing();
 		}
 
-		return newShape;
+		return output.toCoordinateArray();
 	}
 
-	private double[] angle(List<Complex> z) {
-		int n = z.size();
-		double max = -Double.MAX_VALUE;
+	/**
+	 * Models a "kink".
+	 */
+	private static class LinkedCoordinate implements Comparable<LinkedCoordinate> {
 
-		double[] his = new double[n];
-		for (int j = 1; j < n - 1; j++) {
-			Complex c = z.get(j - 1).subtract(z.get(j + 1));
-			double lm = magnitude(c);
+		final Coordinate c;
+		LinkedCoordinate prev, next;
+		double relevance;
 
-			c = z.get(j).subtract(z.get(j + 1));
-			double lr = magnitude(c);
+		public LinkedCoordinate(Coordinate c) {
+			this.c = c;
+		}
 
-			c = z.get(j - 1).subtract(z.get(j));
-			double ll = magnitude(c);
+		void assignLinks(LinkedCoordinate prev, LinkedCoordinate next) {
+			this.prev = prev;
+			this.next = next;
+			computeRelevance();
+		}
 
-			double alpha = FastMath.acos((lr * lr + ll * ll - lm * lm) / (2 * lr * ll));
+		void markAsStart() {
+			this.prev = null;
+			relevance = Double.MAX_VALUE / 2;
+		}
 
-			// turning angle (0-180)
-			double a = 180 - alpha * 180 / Math.PI;
+		void markAsEnd() {
+			this.next = null;
+			relevance = Double.MAX_VALUE;
+		}
 
-			// the original relevance measure
-			his[j] = a * lr * ll / (lr + ll);
+		void relinkToNext(LinkedCoordinate newNext) {
+			this.next = newNext; // link me to other
+			next.prev = this; // link other to me
 
-			if (his[j] > max) {
-				max = his[j];
+			this.computeRelevance();
+			newNext.computeRelevance();
+		}
+
+		void computeRelevance() {
+			if (prev == null || next == null) {
+				relevance = prev == null ? Double.MAX_VALUE / 2 : Double.MAX_VALUE;
+				return;
 			}
+			double uv = prev.c.distance(c);
+			double vw = c.distance(next.c);
+			double uw = prev.c.distance(next.c);
+
+			double alpha = FastMath.acos((vw * vw + uv * uv - uw * uw) / (2 * vw * uv));
+
+			double a = 180 - alpha * 180 / Math.PI; // turning angle (0-180)
+			relevance = a * vw * uv / (vw + uv);
 		}
 
-		his[0] = max;
-		his[n - 1] = max;
-
-		return his;
-	}
-
-	private static double magnitude(Complex c) {
-		return Math.sqrt(c.getReal() * c.getReal() + c.getImaginary() * c.getImaginary());
-	}
-
-	private static int minIndex(double[] matrix) {
-		int index = 0;
-		double min = Double.MAX_VALUE;
-		for (int i = 0; i < matrix.length; i++) {
-			double currentValue = Math.min(min, matrix[i]);
-			if (currentValue < min) {
-				min = currentValue;
-				index = i;
-			}
+		@Override
+		public int compareTo(LinkedCoordinate o) {
+			return Double.compare(this.relevance, o.relevance);
 		}
-		return index;
+
 	}
 
 }

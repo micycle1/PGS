@@ -210,8 +210,7 @@ public final class PGS_Morphology {
 			LinearRing[] dceRings = new LinearRing[rings.length];
 			for (int i = 0; i < rings.length; i++) {
 				LinearRing ring = rings[i];
-				DiscreteCurveEvolution dce = new DiscreteCurveEvolution(
-						Math.max(4, (int) Math.round(removeFraction * ring.getNumPoints())));
+				DiscreteCurveEvolution dce = new DiscreteCurveEvolution((int) Math.round(removeFraction * ring.getNumPoints()));
 				dceRings[i] = PGS.GEOM_FACTORY.createLinearRing(dce.process(ring));
 			}
 			LinearRing[] holes = null;
@@ -221,7 +220,7 @@ public final class PGS_Morphology {
 			return toPShape(PGS.GEOM_FACTORY.createPolygon(dceRings[0], holes));
 		} else if (g instanceof LineString) {
 			LineString l = (LineString) g;
-			DiscreteCurveEvolution dce = new DiscreteCurveEvolution(Math.max(4, (int) Math.round(removeFraction * l.getNumPoints())));
+			DiscreteCurveEvolution dce = new DiscreteCurveEvolution((int) Math.round(removeFraction * l.getNumPoints()));
 			return toPShape(PGS.GEOM_FACTORY.createLineString(dce.process(l)));
 		} else {
 			System.err.println(g.getGeometryType() + " are not supported for the simplifyDCE() method (yet).");
@@ -246,14 +245,14 @@ public final class PGS_Morphology {
 	 * @see #simplifyDCE(PShape, double)
 	 */
 	public static PShape simplifyDCE(PShape shape, int targetNumVertices) {
-		targetNumVertices += 1; // as to not count the closing vertex in the number
 		Geometry g = fromPShape(shape);
 		if (g instanceof Polygon) {
+			targetNumVertices += 1; // as to not count the closing vertex in the number
 			LinearRing[] rings = new LinearRingIterator(g).getLinearRings();
 			LinearRing[] dceRings = new LinearRing[rings.length];
 			for (int i = 0; i < rings.length; i++) {
 				LinearRing ring = rings[i];
-				DiscreteCurveEvolution dce = new DiscreteCurveEvolution(Math.max(4, targetNumVertices));
+				DiscreteCurveEvolution dce = new DiscreteCurveEvolution(targetNumVertices);
 				dceRings[i] = PGS.GEOM_FACTORY.createLinearRing(dce.process(ring));
 			}
 			LinearRing[] holes = null;
@@ -263,7 +262,7 @@ public final class PGS_Morphology {
 			return toPShape(PGS.GEOM_FACTORY.createPolygon(dceRings[0], holes));
 		} else if (g instanceof LineString) {
 			LineString l = (LineString) g;
-			DiscreteCurveEvolution dce = new DiscreteCurveEvolution(Math.max(4, targetNumVertices));
+			DiscreteCurveEvolution dce = new DiscreteCurveEvolution(targetNumVertices);
 			return toPShape(PGS.GEOM_FACTORY.createLineString(dce.process(l)));
 		} else {
 			System.err.println(g.getGeometryType() + " are not supported for the simplifyDCE() method (yet).");
