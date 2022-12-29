@@ -9,6 +9,7 @@ import java.util.stream.IntStream;
 
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.Well19937c;
+import org.apache.commons.math3.util.FastMath;
 import org.apache.commons.math3.util.Pair;
 import org.jgrapht.alg.interfaces.SpanningTreeAlgorithm;
 import org.jgrapht.alg.spanning.PrimMinimumSpanningTree;
@@ -42,6 +43,9 @@ public final class PGS_PointSet {
 	/**
 	 * Returns a filtered copy of the input, containing no points that are within
 	 * the <code>distanceTolerance</code> of each other.
+	 * <p>
+	 * This method can be used to convert a random point set into a blue-noise-like
+	 * (poisson) point set.
 	 * 
 	 * @param points            list of points to filter
 	 * @param distanceTolerance a point that is within this distance of a previously
@@ -53,7 +57,7 @@ public final class PGS_PointSet {
 		final List<PVector> newPoints = new ArrayList<>();
 		for (PVector p : points) {
 			final double[] coords = new double[] { p.x, p.y };
-			if (tree.getNodeCount() == 0 || tree.query1NN(coords).dist() > distanceTolerance) {
+			if (tree.size() == 0 || tree.query1NN(coords).dist() > distanceTolerance) {
 				tree.insert(coords, p);
 				newPoints.add(p);
 			}
@@ -727,6 +731,76 @@ public final class PGS_PointSet {
 		}
 
 		return points;
+	}
+
+	/**
+	 * Generates a 2D set of deterministic stratified points (bounded by a
+	 * rectangle) from the Sobol low discrepancy sequence (LDS).
+	 * <p>
+	 * A Sobol sequence is a low-discrepancy sequence with the property that for all
+	 * values of N,its subsequence (x1, ... xN) has a low discrepancy. It can be
+	 * used to generate pseudo-randompoints in a space S, which are
+	 * equi-distributed.
+	 * 
+	 * @param xMin x-coordinate of boundary minimum
+	 * @param yMin y-coordinate of boundary minimum
+	 * @param xMax x-coordinate of boundary maximum
+	 * @param yMax y-coordinate of boundary maximum
+	 * @param n    number of points to generate
+	 * @since 1.3.1
+	 * @return
+	 */
+	public static List<PVector> sobolLDS(double xMin, double yMin, double xMax, double yMax, int n) {
+		final double w = xMax - xMin;
+		final double h = yMax - yMin;
+		final int dimension = 2;
+		final int BITS = 52;
+		final double SCALE = FastMath.pow(2, BITS);
+		final long[][] direction = new long[dimension][BITS + 1];
+		final long[] x = new long[dimension];
+		final int[] m = new int[] { 0, 1 };
+		final int a = 0;
+		final int s = m.length - 1;
+
+		for (int i = 1; i <= BITS; i++) {
+			direction[0][i] = 1l << (BITS - i);
+		}
+
+		// init direction vector
+		final int d = 1;
+		for (int i = 1; i <= s; i++) {
+			direction[d][i] = ((long) m[i]) << (BITS - i);
+		}
+		for (int i = s + 1; i <= BITS; i++) {
+			direction[d][i] = direction[d][i - s] ^ (direction[d][i - s] >> s);
+			for (int k = 1; k <= s - 1; k++) {
+				direction[d][i] ^= ((a >> (s - 1 - k)) & 1) * direction[d][i - k];
+			}
+		}
+
+		List<PVector> output = new ArrayList<>(n);
+		for (int i = 1; i < n; i++) {
+
+			// find the index c of the rightmost 0
+			int c = 1;
+			int value = i - 1;
+			while ((value & 1) == 1) {
+				value >>= 1;
+				c++;
+			}
+
+			x[0] ^= direction[0][c];
+			x[1] ^= direction[1][c];
+			double vX = x[0] / SCALE;
+			vX *= w;
+			vX += xMin;
+			double vY = x[1] / SCALE;
+			vY *= h;
+			vY += yMin;
+			output.add(new PVector((float) vX, (float) vY));
+		}
+
+		return output;
 	}
 
 	/**

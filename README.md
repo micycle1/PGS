@@ -732,15 +732,21 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
+    <td align="center" valign="center"><b>Sobol LDS</td>
     <td align="center" valign="center"><b>N-Rooks LDS</td>
     <td align="center" valign="center"><b>Distance Prune</td>
     <td align="center" valign="center"><b>Hilbert Sort</td>
-    <td align="center" valign="center"><b>EMST</td>
   </tr>
   <tr>
+    <td valign="top" width="25%"><img src="resources/point_set/sobolLDS.gif"></td>
     <td valign="top" width="25%"><img src="resources/point_set/nRooksLDS.png"></td>
     <td valign="top" width="25%"><img src="resources/point_set/removeWithinDistance.gif"></td>
     <td valign="top" width="25%"><img src="resources/point_set/hilbertSort.gif"></td>
+  </tr>
+  <tr>
+    <td align="center" valign="center"><b>EMST</td>
+  </tr>
+  <tr>
     <td valign="top" width="25%"><img src="resources/point_set/emst.png"></td>
   </tr>
 </table>

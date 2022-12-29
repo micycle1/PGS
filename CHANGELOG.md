@@ -8,14 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## **1.3.1** *(2022-xx-xx)*
 
 ### Added
-*  
+*  `sobolLDS()` to `PGS_PointSet`. Generates a 2D set of deterministic stratified points from the Sobol low discrepancy sequence.
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).
-* Reimplemented `PGS_Processing.simplifyDCE()`. New algorithm is much faster, particulary on large inputs.
+* Reimplemented `PGS_Processing.simplifyDCE()`. New algorithm is much faster, particularly on large inputs.
   
 ### Fixed
-*
+* A slow collections size call included in `prunePointsWithinDistance()` was making it much slower than it should have been.
 
 ### Removed
 *
