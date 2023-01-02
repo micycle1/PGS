@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 *  `sobolLDS()` to `PGS_PointSet`. Generates a 2D set of deterministic stratified points from the Sobol low discrepancy sequence.
+*  `cluster()` to `PGS_PointSet`. Clusters a collection points into N groups (using k-means).
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).

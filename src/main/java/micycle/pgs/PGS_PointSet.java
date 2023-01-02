@@ -1,16 +1,22 @@
 package micycle.pgs;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.SplittableRandom;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.apache.commons.math3.ml.clustering.Clusterable;
+import org.apache.commons.math3.ml.clustering.Clusterer;
+import org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer;
+import org.apache.commons.math3.ml.distance.EuclideanDistance;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.Well19937c;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.commons.math3.util.Pair;
+
 import org.jgrapht.alg.interfaces.SpanningTreeAlgorithm;
 import org.jgrapht.alg.spanning.PrimMinimumSpanningTree;
 import org.jgrapht.graph.SimpleGraph;
@@ -18,6 +24,7 @@ import org.tinfour.common.IIncrementalTin;
 import org.tinspin.index.kdtree.KDTree;
 
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
+import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
 import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.PoissonDistributionJRUS;
 import processing.core.PShape;
@@ -116,7 +123,7 @@ public final class PGS_PointSet {
 			nHilbert = 4;
 		}
 
-		// could also use SortedMap<index -> point> 
+		// could also use SortedMap<index -> point>
 		List<Pair<Integer, PVector>> ranks = new ArrayList<>(points.size());
 		double hScale = (1 << nHilbert) - 1.0;
 		// scale coordinates to 2^n - 1
@@ -129,6 +136,50 @@ public final class PGS_PointSet {
 		ranks.sort((a, b) -> Integer.compare(a.getFirst(), b.getFirst()));
 
 		return ranks.stream().map(Pair::getSecond).collect(Collectors.toList());
+	}
+
+	/**
+	 * Clusters points into N groups, using k-means clustering.
+	 * <p>
+	 * K-means finds the N cluster centers and assigns points to the nearest cluster
+	 * center, such that the squared (euclidean) distances from the cluster are
+	 * minimised.
+	 * 
+	 * @param points list of points to cluster
+	 * @param groups desired number of clustered groups
+	 * @since 1.3.1
+	 * @see #cluster(Collection, int, long)
+	 * @return list of groups, where each group is a list of PVectors
+	 */
+	public static List<List<PVector>> cluster(Collection<PVector> points, int groups) {
+		return cluster(points, groups, System.currentTimeMillis());
+	}
+
+	/**
+	 * Clusters points into N groups, using k-means clustering.
+	 * <p>
+	 * K-means finds the N cluster centers and assigns points to the nearest cluster
+	 * center, such that the squared (euclidean) distances from the cluster are
+	 * minimised.
+	 * 
+	 * @param points list of points to cluster
+	 * @param groups desired number of clustered groups
+	 * @param seed   random seed
+	 * @since 1.3.1
+	 * @return list of groups, where each group is a list of PVectors
+	 * @see #cluster(Collection, int)
+	 */
+	public static List<List<PVector>> cluster(Collection<PVector> points, int groups, long seed) {
+		RandomGenerator r = new XoRoShiRo128PlusRandomGenerator(seed);
+		Clusterer<CPVector> kmeans = new KMeansPlusPlusClusterer<>(groups, 25, new EuclideanDistance(), r);
+		List<CPVector> pointz = points.stream().map(p -> new CPVector(p)).collect(Collectors.toList());
+
+		List<List<PVector>> clusters = new ArrayList<>(groups);
+		kmeans.cluster(pointz).forEach(cluster -> {
+			clusters.add(cluster.getPoints().stream().map(p -> p.p).collect(Collectors.toList()));
+		});
+
+		return clusters;
 	}
 
 	/**
@@ -882,6 +933,21 @@ public final class PGS_PointSet {
 				q = q / base;
 				denominator *= base;
 			}
+		}
+	}
+
+	private static class CPVector implements Clusterable {
+		final PVector p;
+		final double[] point;
+
+		CPVector(PVector p) {
+			this.p = p;
+			point = new double[] { p.x, p.y };
+		}
+
+		@Override
+		public double[] getPoint() {
+			return point;
 		}
 	}
 
