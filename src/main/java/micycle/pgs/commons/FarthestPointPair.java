@@ -22,7 +22,7 @@ import processing.core.PVector;
  *
  * @author Robert Sedgewick
  * @author Kevin Wayne
- * @author Adapeted by Michael Carleton
+ * @author Adapted by Michael Carleton
  */
 public class FarthestPointPair {
 

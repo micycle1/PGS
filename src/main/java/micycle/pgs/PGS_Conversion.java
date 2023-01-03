@@ -1062,10 +1062,13 @@ public final class PGS_Conversion {
 	}
 
 	/**
-	 * Generates a simple closed polygon (assumes no holes) from the list of
-	 * vertices (varargs).
+	 * Generates a shape from a list of vertices. If the list of vertices is closed
+	 * (first and last vertices are the same), the vertices are interpreted as a
+	 * closed polygon (having no holes); if the list is unclosed, they are treated
+	 * as a linestring.
 	 *
 	 * @param vertices list of (un)closed shape vertices
+	 * @return a PATH PShape (either open linestring or closed polygon)
 	 * @see #fromPVector(List)
 	 */
 	public static PShape fromPVector(PVector... vertices) {

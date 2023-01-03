@@ -13,7 +13,6 @@ import org.apache.commons.math3.ml.clustering.Clusterer;
 import org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer;
 import org.apache.commons.math3.ml.distance.EuclideanDistance;
 import org.apache.commons.math3.random.RandomGenerator;
-import org.apache.commons.math3.random.Well19937c;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.commons.math3.util.Pair;
 
@@ -259,7 +258,7 @@ public final class PGS_PointSet {
 	 * @see #gaussian(double, double, double, int) non-seeded gaussian()
 	 */
 	public static List<PVector> gaussian(double centerX, double centerY, double sd, int n, long seed) {
-		final RandomGenerator random = new Well19937c(seed);
+		final RandomGenerator random = new XoRoShiRo128PlusRandomGenerator(seed);
 		final List<PVector> points = new ArrayList<>(n);
 		for (int i = 0; i < n; i++) {
 			final float x = (float) (sd * random.nextGaussian() + centerX);

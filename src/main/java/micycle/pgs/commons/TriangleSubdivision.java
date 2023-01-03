@@ -1,8 +1,8 @@
 package micycle.pgs.commons;
 
 import org.apache.commons.math3.random.RandomGenerator;
-import org.apache.commons.math3.random.Well19937c;
 
+import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
 import micycle.pgs.color.RGB;
 import processing.core.PApplet;
 import processing.core.PConstants;
@@ -11,12 +11,13 @@ import processing.core.PVector;
 
 /**
  * Balanced triangle subdivision.
- * https://openprocessing.org/sketch/970715
  * 
  * @author Michael Carleton
  *
  */
 public class TriangleSubdivision {
+
+	// implements openprocessing.org/sketch/970715
 
 	private static final double VARIANCE = 0.1; // gaussian variance
 
@@ -33,7 +34,7 @@ public class TriangleSubdivision {
 		this.width = width;
 		this.height = height;
 		maxDiv = maxDepth;
-		random = new Well19937c(seed);
+		random = new XoRoShiRo128PlusRandomGenerator(seed);
 	}
 
 	public PShape divide() {

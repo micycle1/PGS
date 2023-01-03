@@ -34,7 +34,7 @@ import org.locationtech.jts.geom.PrecisionModel;
  * <p>
  * O'Rourke provides a θ(n) algorithm for finding the minimal enclosing triangle
  * of a 2D <b>convex</b> polygon with n vertices. However, the overall
- * complexity for the convex computation is O(nlog(n)) because a convex hull
+ * complexity for the concave computation is O(nlog(n)) because a convex hull
  * must first be computed for the input geometry.
  * 
  * @author Python <a href=

@@ -20,7 +20,7 @@ import net.jafama.FastMath;
  * overall shape of the polygonal curve.
  * <p>
  * The shape relevance of every kink can be defined by the turn angle and the
- * lengths of the neighboring line segments; tthe larger both the relative
+ * lengths of the neighboring line segments; the larger both the relative
  * lengths and the turn angle of a kink, the greater is its contribution to the
  * shape of a curve.
  * 
@@ -60,15 +60,15 @@ public class DiscreteCurveEvolution {
 		int vertexRemoveCount = Math.min(coords.length - vertexPreserveCount, coords.length - (closed ? 4 : 2));
 
 		/*
-		 * Create linked coordinates, then link each one to its neighbours once all have
-		 * been instantiated.
+		 * Create unlinked LinkedCoordinates, then link each one to its neighbours once
+		 * all have been instantiated.
 		 */
 		final List<LinkedCoordinate> linkedCoords = Arrays.asList(coords).stream().map(c -> new LinkedCoordinate(c))
 				.collect(Collectors.toList());
 		for (int i = 0; i < linkedCoords.size(); i++) {
 			LinkedCoordinate prev = linkedCoords.get(i == 0 ? linkedCoords.size() - 1 : i - 1);
 			LinkedCoordinate next = linkedCoords.get(i == linkedCoords.size() - 1 ? 0 : i + 1);
-			linkedCoords.get(i).assignLinks(prev, next);
+			linkedCoords.get(i).linkTo(prev, next);
 		}
 
 		if (!closed) { // unlink start and end if coords are unclosed
@@ -108,7 +108,8 @@ public class DiscreteCurveEvolution {
 	}
 
 	/**
-	 * Models a "kink".
+	 * A doubly-linked coordinate; models a "kink" in a linestring where consecutive
+	 * line segments meet.
 	 */
 	private static class LinkedCoordinate implements Comparable<LinkedCoordinate> {
 
@@ -120,7 +121,7 @@ public class DiscreteCurveEvolution {
 			this.c = c;
 		}
 
-		void assignLinks(LinkedCoordinate prev, LinkedCoordinate next) {
+		void linkTo(LinkedCoordinate prev, LinkedCoordinate next) {
 			this.prev = prev;
 			this.next = next;
 			computeRelevance();
@@ -128,7 +129,7 @@ public class DiscreteCurveEvolution {
 
 		void markAsStart() {
 			this.prev = null;
-			relevance = Double.MAX_VALUE / 2;
+			relevance = Double.MAX_VALUE - 1; // -1 because treeset values must be unique
 		}
 
 		void markAsEnd() {
@@ -136,6 +137,12 @@ public class DiscreteCurveEvolution {
 			relevance = Double.MAX_VALUE;
 		}
 
+		/**
+		 * Mutually links this LC ('previous' in the chain) with the other LC ('next' in
+		 * the chain'), and updates the relevancy measure of both.
+		 * 
+		 * @param newNext this LC's new 'next' LC
+		 */
 		void relinkToNext(LinkedCoordinate newNext) {
 			this.next = newNext; // link me to other
 			next.prev = this; // link other to me
@@ -144,9 +151,9 @@ public class DiscreteCurveEvolution {
 			newNext.computeRelevance();
 		}
 
-		void computeRelevance() {
+		private void computeRelevance() {
 			if (prev == null || next == null) {
-				relevance = prev == null ? Double.MAX_VALUE / 2 : Double.MAX_VALUE;
+				relevance = prev == null ? Double.MAX_VALUE - 1 : Double.MAX_VALUE;
 				return;
 			}
 			double uv = prev.c.distance(c);

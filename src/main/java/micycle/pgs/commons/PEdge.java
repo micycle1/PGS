@@ -6,7 +6,7 @@ import processing.core.PVector;
  * An undirected edge / line segment joining 2 PVectors.
  * <p>
  * Note: PEdges <code>PEdge(a, b)</code> and <code>PEdge(b, a)</code> are
- * consided equal.
+ * considered equal.
  * 
  * @author Michael Carleton
  *
@@ -25,7 +25,7 @@ public class PEdge {
 	}
 
 	/**
-	 * Rounds (mutates) the vertices of this PEdge.
+	 * Rounds (mutates) the vertex coordinates of this PEdge to their closest ints.
 	 * 
 	 * @return this PEdge
 	 */
@@ -41,6 +41,11 @@ public class PEdge {
 		return a.copy().add(b).div(2);
 	}
 
+	/**
+	 * Calculates the Euclidean distance of this PEdge.
+	 * 
+	 * @return
+	 */
 	public float length() {
 		return a.dist(b);
 	}
