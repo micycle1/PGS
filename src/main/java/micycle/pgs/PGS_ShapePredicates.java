@@ -7,6 +7,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import javax.vecmath.Point3d;
+import javax.vecmath.Point4d;
+
 import org.locationtech.jts.algorithm.Angle;
 import org.locationtech.jts.algorithm.MinimumBoundingCircle;
 import org.locationtech.jts.algorithm.MinimumDiameter;
@@ -20,6 +23,7 @@ import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 
+import micycle.pgs.commons.GeometricMedian;
 import micycle.trapmap.TrapMap;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -239,6 +243,23 @@ public final class PGS_ShapePredicates {
 		}
 		return null;
 	}
+	
+	/**
+	 * Computes the geometric median location of a shape's vertices.
+	 * <p>
+	 * The median point is the point that minimises the sum of distances to the
+	 * shape vertices.
+	 * 
+	 * @param shape
+	 * @return median point
+	 * @since 1.3.1
+	 */
+	public static PVector median(PShape shape) {
+		List<PVector> points = PGS_Conversion.toPVector(shape);
+		Point4d[] wp = points.stream().map(p -> new Point4d(p.x, p.y, 0, 1)).toArray(Point4d[]::new);
+		Point3d median = GeometricMedian.median(wp, 1e-3, 50);
+		return new PVector((float) median.x, (float) median.y);
+	}
 
 	/**
 	 * Computes the horizontal width of a shape (the width of its bounding-box).
@@ -347,7 +368,7 @@ public final class PGS_ShapePredicates {
 	}
 
 	/**
-	 * Measures the elongation of a shape; the ratio of the shapes bounding box's
+	 * Measures the elongation of a shape; the ratio of a shape's bounding box
 	 * length to its width.
 	 * 
 	 * @param shape

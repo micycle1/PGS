@@ -5,16 +5,19 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
-## **1.3.1** *(2022-xx-xx)*
+## **1.3.1** *(2023-xx-xx)*
 
 ### Added
-*  `sobolLDS()` to `PGS_PointSet`. Generates a 2D set of deterministic stratified points from the Sobol low discrepancy sequence.
+*  `sobolLDS()` to `PGS_PointSet`. Generates a set of 2D deterministic stratified points from the Sobol low discrepancy sequence.
 *  `cluster()` to `PGS_PointSet`. Clusters a collection points into N groups (using k-means).
 * `double[][]` conversion methods to `PGS_Conversion`. Converts simple PShapes to and from their `double[p1, p2][x, y]` representation.
+* `weightedMedian()` to `PGS_PointSet`. Finds the geometric median point of a set of weighted sample points.
+* `median()` to `PGS_ShapePredicates`. Computes the geometric median location of a shape's vertices.
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).
 * Reimplemented `PGS_Processing.simplifyDCE()`. New algorithm is much faster, particularly on large inputs.
+* `toPVector()` now works on GROUP shapes (returning vertices from all child shapes). 
   
 ### Fixed
 * A slow collections size call included in `prunePointsWithinDistance()` was making it much slower than it should have been.

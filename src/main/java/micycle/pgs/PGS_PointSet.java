@@ -8,6 +8,9 @@ import java.util.SplittableRandom;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import javax.vecmath.Point3d;
+import javax.vecmath.Point4d;
+
 import org.apache.commons.math3.ml.clustering.Clusterable;
 import org.apache.commons.math3.ml.clustering.Clusterer;
 import org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer;
@@ -24,6 +27,7 @@ import org.tinspin.index.kdtree.KDTree;
 
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
+import micycle.pgs.commons.GeometricMedian;
 import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.PoissonDistributionJRUS;
 import processing.core.PShape;
@@ -179,6 +183,28 @@ public final class PGS_PointSet {
 		});
 
 		return clusters;
+	}
+
+	/**
+	 * Finds the geometric median point of a set of weighted sample points.
+	 * <p>
+	 * The median point is the point that minimises the sum of (weighted) distances
+	 * to the sample points.
+	 * <p>
+	 * Points are expressed as PVectors; the z coordinate is used as the weight for
+	 * each point. Weights must be positive. If every point has a weight of 0 (z=0),
+	 * the function returns the median as if each point had an equal non-zero
+	 * weight (set to 1).
+	 * 
+	 * @param points list of points, where the z coordinate is point weight
+	 * @since 1.3.1
+	 * @return 2D median point
+	 */
+	public static PVector weightedMedian(Collection<PVector> points) {
+		boolean allZero = points.stream().allMatch(p -> p.z == 0);
+		Point4d[] wp = points.stream().map(p -> new Point4d(p.x, p.y, 0, allZero ? 1 : p.z)).toArray(Point4d[]::new);
+		Point3d median = GeometricMedian.median(wp, 1e-3, 50);
+		return new PVector((float) median.x, (float) median.y);
 	}
 
 	/**

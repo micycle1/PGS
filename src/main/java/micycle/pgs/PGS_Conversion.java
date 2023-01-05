@@ -680,21 +680,30 @@ public final class PGS_Conversion {
 	}
 
 	/**
-	 * Returns the vertices of a PShape as an <b>unclosed</b> list of PVector
-	 * coordinates.
+	 * Extracts the vertices of a PShape into list of PVectors.
+	 * <p>
+	 * If the input shape forms a closed polygon, this method returns an
+	 * <b>unclosed</b> view of the shape (without the last closing vertex, which is
+	 * identical to the first).
+	 * <p>
+	 * If the input shape has a GROUP type, vertices from all children shapes are
+	 * flattened and returned.
 	 *
-	 * @param shape a non-GROUP PShape
-	 * @return
+	 * @param shape a PShape of any type
+	 * @return all vertices of the input
 	 */
 	public static List<PVector> toPVector(PShape shape) {
-		if (shape.getFamily() == PShape.PRIMITIVE) {
-			// getVertex() doesn't work on PShape primitives
-			shape = toPShape(fromPrimitive(shape));
-		}
-		final ArrayList<PVector> vertices = new ArrayList<>();
-		for (int i = 0; i < shape.getVertexCount(); i++) {
-			vertices.add(shape.getVertex(i));
-		}
+		// use getChildren() incase shape is GROUP
+		final List<PVector> vertices = new ArrayList<>();
+		getChildren(shape).forEach(s -> {
+			if (s.getFamily() == PShape.PRIMITIVE) {
+				// getVertex() doesn't work on PShape primitives
+				s = toPShape(fromPrimitive(s));
+			}
+			for (int i = 0; i < s.getVertexCount(); i++) {
+				vertices.add(s.getVertex(i));
+			}
+		});
 		if (!vertices.isEmpty() && vertices.get(0).equals(vertices.get(vertices.size() - 1))) {
 			vertices.remove(vertices.size() - 1);
 		}
