@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 *  `sobolLDS()` to `PGS_PointSet`. Generates a 2D set of deterministic stratified points from the Sobol low discrepancy sequence.
 *  `cluster()` to `PGS_PointSet`. Clusters a collection points into N groups (using k-means).
+* `double[][]` conversion methods to `PGS_Conversion`. Converts simple PShapes to and from their `double[p1, p2][x, y]` representation.
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).
@@ -17,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   
 ### Fixed
 * A slow collections size call included in `prunePointsWithinDistance()` was making it much slower than it should have been.
+* Shape Y coordinates were being inverted during `fromJava2D()` conversion.
 
 ### Removed
 *

@@ -520,6 +520,7 @@ class PGS_ConversionTests {
 		assertTrue(PGS_ShapePredicates.equalsNorm(shape, in));
 	}
 
+	@Test
 	void testJava2DIO() {
 		final PShape shape = new PShape(PShape.GEOMETRY);
 		shape.beginShape();
@@ -531,6 +532,21 @@ class PGS_ConversionTests {
 		Shape s = PGS_Conversion.toJava2D(shape);
 		PShape in = PGS_Conversion.fromJava2D(s);
 
+		assertTrue(PGS_ShapePredicates.equalsNorm(shape, in));
+	}
+	
+	@Test
+	void testArrayIO() {
+		final PShape shape = new PShape(PShape.GEOMETRY);
+		shape.beginShape();
+		shape.vertex(1, 1);
+		shape.vertex(10, 0);
+		shape.vertex(33, 10);
+		shape.endShape(PShape.CLOSE);
+		
+		double[][] s = PGS_Conversion.toArray(shape, true);
+		PShape in = PGS_Conversion.fromArray(s, false);
+		
 		assertTrue(PGS_ShapePredicates.equalsNorm(shape, in));
 	}
 
