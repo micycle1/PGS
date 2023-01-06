@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `double[][]` conversion methods to `PGS_Conversion`. Converts simple PShapes to and from their `double[p1, p2][x, y]` representation.
 * `weightedMedian()` to `PGS_PointSet`. Finds the geometric median point of a set of weighted sample points.
 * `median()` to `PGS_ShapePredicates`. Computes the geometric median location of a shape's vertices.
+* `createRandomSFCurve()` to `PGS_Construction`. Creates a random space-filling curve.
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).
