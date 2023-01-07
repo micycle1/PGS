@@ -14,7 +14,6 @@ import java.util.Deque;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Random;
 import java.util.SplittableRandom;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -74,6 +73,7 @@ import com.vividsolutions.jump.feature.FeatureDatasetFactory;
 import com.vividsolutions.jump.feature.FeatureUtil;
 import com.vividsolutions.jump.task.DummyTaskMonitor;
 
+import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import micycle.balaban.BalabanSolver;
 import micycle.balaban.Point;
 import micycle.balaban.Segment;
@@ -455,7 +455,7 @@ public final class PGS_Processing {
 				randomPoints.add(new PVector((float) rX, (float) rY));
 			}
 		} else if (remaining < 0) {
-			Collections.shuffle(randomPoints, new Random(seed)); // shuffle so that points are removed from regions randomly
+			Collections.shuffle(randomPoints, new XoRoShiRo128PlusRandom(seed)); // shuffle so that points are removed from regions randomly
 			return randomPoints.subList(0, points);
 		}
 
@@ -605,6 +605,7 @@ public final class PGS_Processing {
 	}
 
 	private static Polygon removeSmallHoles(Polygon polygon, double areaThreshold) {
+		// TODO construct polygon from holes[] (rather than difference!)
 		Polygon noHolePol = GEOM_FACTORY.createPolygon(polygon.getExteriorRing());
 		for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
 			final LinearRing hole = polygon.getInteriorRingN(i);
@@ -660,9 +661,13 @@ public final class PGS_Processing {
 
 	/**
 	 * Splits a shape into 4^(1+recursions) rectangular partitions.
+	 * <p>
+	 * Note: this operation is different to merely overlaying a grid on the shape
+	 * and then splitting. Instead, during each recursion, the envelope of the
+	 * parent is divided into 4 quadrants, but the envelope may be rectangular.
 	 * 
 	 * @param shape
-	 * @param splitDepth
+	 * @param splitDepth number of split recursions to perform
 	 * @return a GROUP PShape, where each child shape is some quadrant partition of
 	 *         the original shape
 	 * @see #split(PShape)

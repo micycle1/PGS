@@ -434,9 +434,9 @@ public class TangencyPack {
 
 	private static double tangentAngle(double a, double b, double c) {
 		/*
-		 * Overall computation time is actually reduced by forgoing trig approximation
-		 * functions (tangentAngleFast()), because the slight inaccuracies mean solution
-		 * converges more slowly and ends up doing more iterations overall.
+		 * Overall computation time is actually reduced by foregoing trig approximation
+		 * functions (such as tangentAngleFast()), because the slight inaccuracies cause
+		 * solution to converge more slowly, performing more iterations overall.
 		 */
 		final double q = b * c;
 		final double o = 1 - 2 * q / (a * a + a * (b + c) + q);

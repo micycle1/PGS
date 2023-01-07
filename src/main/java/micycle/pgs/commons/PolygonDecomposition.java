@@ -1,25 +1,25 @@
 /*
  * Copyright (c) 2010-2020 William Bittle  http://www.dyn4j.org/
  * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, with or without modification, are permitted 
+ *
+ * Redistribution and use in source and binary forms, with or without modification, are permitted
  * provided that the following conditions are met:
- * 
- *   * Redistributions of source code must retain the above copyright notice, this list of conditions 
+ *
+ *   * Redistributions of source code must retain the above copyright notice, this list of conditions
  *     and the following disclaimer.
- *   * Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
- *     and the following disclaimer in the documentation and/or other materials provided with the 
+ *   * Redistributions in binary form must reproduce the above copyright notice, this list of conditions
+ *     and the following disclaimer in the documentation and/or other materials provided with the
  *     distribution.
- *   * Neither the name of the copyright holder nor the names of its contributors may be used to endorse or 
+ *   * Neither the name of the copyright holder nor the names of its contributors may be used to endorse or
  *     promote products derived from this software without specific prior written permission.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR 
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND 
- * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR 
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL 
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER 
- * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT 
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+ * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package micycle.pgs.commons;
@@ -32,7 +32,6 @@ import org.dyn4j.Epsilon;
 import org.dyn4j.geometry.Geometry;
 import org.dyn4j.geometry.Segment;
 import org.dyn4j.geometry.Vector2;
-import org.dyn4j.resources.Messages;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Polygon;
@@ -45,7 +44,7 @@ import org.locationtech.jts.geom.PrecisionModel;
  * This algorithm is a O(nr) complexity algorithm where n is the number of input
  * vertices and r is the number of output convex polygons. This algorithm can
  * achieve optimal decompositions, however this is not guaranteed.
- * 
+ *
  * @author William Bittle
  * @version 3.1.10
  * @see <a href="http://mnbayazit.com/406/bayazit" target="_blank">Bayazit</a>
@@ -70,13 +69,15 @@ public class PolygonDecomposition {
 	 */
 	private static List<Polygon> decompose(Vector2... points) {
 		// check for null array
-		if (points == null)
-			throw new NullPointerException(Messages.getString("geometry.decompose.nullArray"));
+		if (points == null) {
+			throw new NullPointerException("Points are null.");
+		}
 		// get the number of points
 		int size = points.length;
 		// check the size
-		if (size < 4)
-			throw new IllegalArgumentException(Messages.getString("geometry.decompose.invalidSize"));
+		if (size < 4) {
+			throw new IllegalArgumentException("Points have invalid size (<4).");
+		}
 
 		// get the winding order
 		double winding = Geometry.getWinding(points);
@@ -105,7 +106,7 @@ public class PolygonDecomposition {
 	/**
 	 * Internal recursive method to decompose the given polygon into convex
 	 * sub-polygons.
-	 * 
+	 *
 	 * @param polygon  the polygon to decompose
 	 * @param polygons the list to store the convex polygons resulting from the
 	 *                 decomposition
@@ -206,12 +207,14 @@ public class PolygonDecomposition {
 						lower.addAll(polygon.subList(i, upperIndex + 1));
 						lower.add(s);
 						upper.add(s);
-						if (lowerIndex != 0)
+						if (lowerIndex != 0) {
 							upper.addAll(polygon.subList(lowerIndex, size));
+						}
 						upper.addAll(polygon.subList(0, i + 1));
 					} else {
-						if (i != 0)
+						if (i != 0) {
 							lower.addAll(polygon.subList(i, size));
+						}
 						lower.addAll(polygon.subList(0, upperIndex + 1));
 						lower.add(s);
 						upper.add(s);
@@ -230,8 +233,9 @@ public class PolygonDecomposition {
 						int jmod = j % size;
 						Vector2 q = polygon.get(jmod);
 
-						if (q == p || q == p0 || q == p1)
+						if (q == p || q == p0 || q == p1) {
 							continue;
+						}
 
 						// check the distance first, since this is generally
 						// a much faster operation than checking if its visible
@@ -247,12 +251,14 @@ public class PolygonDecomposition {
 					// once we find the closest partition the polygon
 					if (i < closestIndex) {
 						lower.addAll(polygon.subList(i, closestIndex + 1));
-						if (closestIndex != 0)
+						if (closestIndex != 0) {
 							upper.addAll(polygon.subList(closestIndex, size));
+						}
 						upper.addAll(polygon.subList(0, i + 1));
 					} else {
-						if (i != 0)
+						if (i != 0) {
 							lower.addAll(polygon.subList(i, size));
+						}
 						lower.addAll(polygon.subList(0, closestIndex + 1));
 						upper.addAll(polygon.subList(closestIndex, i + 1));
 					}
@@ -275,7 +281,6 @@ public class PolygonDecomposition {
 		// if we get here, we know the given polygon has 0 reflex vertices
 		// and is therefore convex, add it to the list of convex polygons
 		if (polygon.size() < 3) {
-			System.err.println(Messages.getString("geometry.decompose.crossingEdges"));
 			return;
 		}
 		Vector2[] vertices = new Vector2[polygon.size()];
@@ -293,7 +298,7 @@ public class PolygonDecomposition {
 	 * Returns true if the given vertex, b, is a reflex vertex.
 	 * <p>
 	 * A reflex vertex is a vertex who's interior angle is greater than 180 degrees.
-	 * 
+	 *
 	 * @param p0 the vertex to test
 	 * @param p  the previous vertex
 	 * @param p1 the next vertex
@@ -307,7 +312,7 @@ public class PolygonDecomposition {
 
 	/**
 	 * Returns true if the given point p is to the left of the line created by a-b.
-	 * 
+	 *
 	 * @param a the first point of the line
 	 * @param b the second point of the line
 	 * @param p the point to test
@@ -320,7 +325,7 @@ public class PolygonDecomposition {
 	/**
 	 * Returns true if the given point p is to the left or on the line created by
 	 * a-b.
-	 * 
+	 *
 	 * @param a the first point of the line
 	 * @param b the second point of the line
 	 * @param p the point to test
@@ -332,7 +337,7 @@ public class PolygonDecomposition {
 
 	/**
 	 * Returns true if the given point p is to the right of the line created by a-b.
-	 * 
+	 *
 	 * @param a the first point of the line
 	 * @param b the second point of the line
 	 * @param p the point to test
@@ -345,7 +350,7 @@ public class PolygonDecomposition {
 	/**
 	 * Returns true if the given point p is to the right or on the line created by
 	 * a-b.
-	 * 
+	 *
 	 * @param a the first point of the line
 	 * @param b the second point of the line
 	 * @param p the point to test
@@ -358,7 +363,7 @@ public class PolygonDecomposition {
 	/**
 	 * Returns true if the given lines intersect and returns the intersection point
 	 * in the p parameter.
-	 * 
+	 *
 	 * @param a1 the first point of the first line
 	 * @param a2 the second point of the first line
 	 * @param b1 the first point of the second line
@@ -399,7 +404,7 @@ public class PolygonDecomposition {
 
 	/**
 	 * Returns true if the vertex at index i can see the vertex at index j.
-	 * 
+	 *
 	 * @param polygon the current polygon
 	 * @param i       the ith vertex
 	 * @param j       the jth vertex
@@ -421,31 +426,37 @@ public class PolygonDecomposition {
 
 		// can i see j
 		if (isReflex(iv0, iv, iv1)) {
-			if (leftOn(iv, iv0, jv) && rightOn(iv, iv1, jv))
+			if (leftOn(iv, iv0, jv) && rightOn(iv, iv1, jv)) {
 				return false;
+			}
 		} else {
-			if (rightOn(iv, iv1, jv) || leftOn(iv, iv0, jv))
+			if (rightOn(iv, iv1, jv) || leftOn(iv, iv0, jv)) {
 				return false;
+			}
 		}
 		// can j see i
 		if (isReflex(jv0, jv, jv1)) {
-			if (leftOn(jv, jv0, iv) && rightOn(jv, jv1, iv))
+			if (leftOn(jv, jv0, iv) && rightOn(jv, jv1, iv)) {
 				return false;
+			}
 		} else {
-			if (rightOn(jv, jv1, iv) || leftOn(jv, jv0, iv))
+			if (rightOn(jv, jv1, iv) || leftOn(jv, jv0, iv)) {
 				return false;
+			}
 		}
 		// make sure the segment from i to j doesn't intersect any edges
 		for (int k = 0; k < s; k++) {
 			int ki1 = k + 1 == s ? 0 : k + 1;
-			if (k == i || k == j || ki1 == i || ki1 == j)
+			if (k == i || k == j || ki1 == i || ki1 == j) {
 				continue;
+			}
 			Vector2 k1 = polygon.get(k);
 			Vector2 k2 = polygon.get(ki1);
 
 			Vector2 in = Segment.getSegmentIntersection(iv, jv, k1, k2);
-			if (in != null)
+			if (in != null) {
 				return false;
+			}
 		}
 
 		return true;

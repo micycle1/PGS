@@ -24,6 +24,7 @@ import org.locationtech.jts.util.GeometricShapeFactory;
 import micycle.pgs.color.RGB;
 import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.RandomPolygon;
+import micycle.pgs.commons.RandomSpaceFillingCurve;
 import micycle.pgs.commons.Star;
 import micycle.spacefillingcurves.SierpinskiFiveSteps;
 import micycle.spacefillingcurves.SierpinskiFourSteps;
@@ -519,6 +520,49 @@ public class PGS_Construction {
 		}
 		spiral.endShape();
 		return spiral;
+	}
+
+	/**
+	 * Creates a random space-filling curve.
+	 * <p>
+	 * A space-filling curve is a continuous curve that (in this case) traverses
+	 * every cell of a grid exactly once.
+	 * 
+	 * @param nColumns   number of columns in the underlying grid
+	 * @param nRows      number of rows in the underlying grid
+	 * @param cellWidth  visual/pixel width of each cell
+	 * @param cellHeight visual/pixel width of each cell
+	 * @return a stroked PATH PShape
+	 * @see #createRandomSFCurve(int, int, double, double, long)
+	 * @since 1.3.1
+	 */
+	public static PShape createRandomSFCurve(int nColumns, int nRows, double cellWidth, double cellHeight) {
+		return createRandomSFCurve(nColumns, nRows, cellWidth, cellHeight, System.currentTimeMillis());
+	}
+
+	/**
+	 * Creates a random space-filling curve, having a specific random seed.
+	 * <p>
+	 * A space-filling curve is a continuous curve that (in this case) traverses
+	 * every cell of a grid exactly once.
+	 * 
+	 * @param nColumns   number of columns in the underlying grid
+	 * @param nRows      number of rows in the underlying grid
+	 * @param cellWidth  visual/pixel width of each cell
+	 * @param cellHeight visual/pixel width of each cell
+	 * @param seed       random seed
+	 * @return a stroked PATH PShape
+	 * @see #createRandomSFCurve(int, int, double, double)
+	 * @since 1.3.1
+	 */
+	public static PShape createRandomSFCurve(int nColumns, int nRows, double cellWidth, double cellHeight, long seed) {
+		RandomSpaceFillingCurve factory = new RandomSpaceFillingCurve(nColumns, nRows, seed);
+		PShape curve = factory.getCurve((float) cellWidth, (float) cellHeight);
+		curve.setFill(255);
+		curve.setStroke(0);
+		curve.setStrokeWeight(3);
+		
+		return curve;
 	}
 
 	/**

@@ -32,6 +32,7 @@ import micycle.pgs.color.RGB;
 import micycle.pgs.commons.FastPolygonizer;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
+import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -98,6 +99,12 @@ final class PGS {
 		double deltaY = a.getX() - b.getX();
 		return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 	}
+	
+	static final double distanceSq(PVector a, PVector b) {
+		float dx = a.x - b.x;
+		float dy = a.y - b.y;
+		return (dx * dx + dy * dy);
+	}
 
 	static final LineString createLineString(PVector a, PVector b) {
 		return GEOM_FACTORY.createLineString(new Coordinate[] { coordFromPVector(a), coordFromPVector(b) });
@@ -109,6 +116,25 @@ final class PGS {
 
 	static final Point createPoint(double x, double y) {
 		return GEOM_FACTORY.createPoint(new Coordinate(x, y));
+	}
+	
+	/**
+	 * Creates a stroked rectangle.
+	 */
+	static final PShape createRect(double x, double y, double w, double h) {
+		final PShape rect = new PShape(PShape.PATH);
+		rect.setFill(true);
+		rect.setFill(255);
+		rect.setStroke(true);
+		rect.setStrokeWeight(4);
+		rect.setStroke(RGB.PINK);
+		rect.beginShape();
+		rect.vertex((float) x, (float) y);
+		rect.vertex((float) (x + w), (float) y);
+		rect.vertex((float) (x + w), (float) (y + h));
+		rect.vertex((float) x, (float) (y + h));
+		rect.endShape(PConstants.CLOSE);
+		return rect;
 	}
 
 	static final Point pointFromPVector(PVector p) {

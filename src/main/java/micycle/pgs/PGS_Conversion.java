@@ -9,6 +9,8 @@ import static processing.core.PConstants.GROUP;
 import static processing.core.PConstants.QUADRATIC_VERTEX;
 
 import java.awt.Shape;
+import java.awt.geom.AffineTransform;
+import java.awt.geom.PathIterator;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -24,7 +26,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -62,6 +63,7 @@ import org.scoutant.polyline.PolylineDecoder;
 import it.rambow.master.javautils.PolylineEncoder;
 import it.rambow.master.javautils.Track;
 import it.rambow.master.javautils.Trackpoint;
+import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import micycle.pgs.commons.PEdge;
 import processing.core.PConstants;
 import processing.core.PMatrix;
@@ -81,7 +83,8 @@ import processing.core.PVector;
  * <code>Geometry</code> conversion.
  * <p>
  * This class features 2 boolean flags that affect conversion that you may wish
- * to look at: {@link #PRESERVE_STYLE} and {@link #HANDLE_MULTICONTOUR}.
+ * to look at: {@link #PRESERVE_STYLE} (default=true) and
+ * {@link #HANDLE_MULTICONTOUR} (default=false).
  *
  * @author Michael Carleton
  *
@@ -677,21 +680,30 @@ public final class PGS_Conversion {
 	}
 
 	/**
-	 * Returns the vertices of a PShape as an <b>unclosed</b> list of PVector
-	 * coordinates.
+	 * Extracts the vertices of a PShape into list of PVectors.
+	 * <p>
+	 * If the input shape forms a closed polygon, this method returns an
+	 * <b>unclosed</b> view of the shape (without the last closing vertex, which is
+	 * identical to the first).
+	 * <p>
+	 * If the input shape has a GROUP type, vertices from all children shapes are
+	 * flattened and returned.
 	 *
-	 * @param shape a non-GROUP PShape
-	 * @return
+	 * @param shape a PShape of any type
+	 * @return all vertices of the input
 	 */
 	public static List<PVector> toPVector(PShape shape) {
-		if (shape.getFamily() == PShape.PRIMITIVE) {
-			// getVertex() doesn't work on PShape primitives
-			shape = toPShape(fromPrimitive(shape));
-		}
-		final ArrayList<PVector> vertices = new ArrayList<>();
-		for (int i = 0; i < shape.getVertexCount(); i++) {
-			vertices.add(shape.getVertex(i));
-		}
+		// use getChildren() incase shape is GROUP
+		final List<PVector> vertices = new ArrayList<>();
+		getChildren(shape).forEach(s -> {
+			if (s.getFamily() == PShape.PRIMITIVE) {
+				// getVertex() doesn't work on PShape primitives
+				s = toPShape(fromPrimitive(s));
+			}
+			for (int i = 0; i < s.getVertexCount(); i++) {
+				vertices.add(s.getVertex(i));
+			}
+		});
 		if (!vertices.isEmpty() && vertices.get(0).equals(vertices.get(vertices.size() - 1))) {
 			vertices.remove(vertices.size() - 1);
 		}
@@ -752,7 +764,7 @@ public final class PGS_Conversion {
 	public static <V, E> PShape fromGraph(SimpleGraph<V, E> graph, double normalizationFactor, double boundsX, double boundsY) {
 		normalizationFactor = Math.min(Math.max(normalizationFactor, 0.001), 1);
 		LayoutAlgorithm2D<V, E> layout;
-		layout = new IndexedFRLayoutAlgorithm2D<>(50, 0.7, normalizationFactor, new Random(1337));
+		layout = new IndexedFRLayoutAlgorithm2D<>(50, 0.7, normalizationFactor, new XoRoShiRo128PlusRandom(1337));
 		LayoutModel2D<V> model = new MapLayoutModel2D<>(new Box2D(boundsX, boundsY));
 		layout.layout(graph, model);
 
@@ -936,7 +948,7 @@ public final class PGS_Conversion {
 		Track line = new Track();
 		toPVector(shape).forEach(p -> line.addTrackpoint(new Trackpoint(p.x, p.y)));
 		line.addTrackpoint(line.getTrackpoints().get(0)); // close
-		// PolylineEncoder.createEncodings() writes to console, so supress that...
+		// PolylineEncoder.createEncodings() writes to console, so suppress that...
 		PrintStream old = System.out;
 		System.setOut(new PrintStream(new OutputStream() {
 			public void write(int b) throws IOException {
@@ -1018,9 +1030,11 @@ public final class PGS_Conversion {
 	 * @return a PShape representing the Java2D shape
 	 * @since 1.3.0
 	 */
+
 	public static PShape fromJava2D(Shape shape) {
 		if (shape != null) {
-			return toPShape(ShapeReader.read(shape, BEZIER_SAMPLE_DISTANCE, GEOM_FACTORY));
+			PathIterator pathIt = shape.getPathIterator(AffineTransform.getScaleInstance(1, 1), BEZIER_SAMPLE_DISTANCE);
+			return toPShape(ShapeReader.read(pathIt, GEOM_FACTORY));
 		} else {
 			return new PShape();
 		}
@@ -1062,14 +1076,63 @@ public final class PGS_Conversion {
 	}
 
 	/**
-	 * Generates a simple closed polygon (assumes no holes) from the list of
-	 * vertices (varargs).
+	 * Generates a shape from a list of vertices. If the list of vertices is closed
+	 * (first and last vertices are the same), the vertices are interpreted as a
+	 * closed polygon (having no holes); if the list is unclosed, they are treated
+	 * as a linestring.
 	 *
 	 * @param vertices list of (un)closed shape vertices
+	 * @return a PATH PShape (either open linestring or closed polygon)
 	 * @see #fromPVector(List)
 	 */
 	public static PShape fromPVector(PVector... vertices) {
 		return fromPVector(Arrays.asList(vertices));
+	}
+
+	/**
+	 * Converts a simple PShape into an array of its coordinates.
+	 * 
+	 * @param shape      a simple shape (closed polygon or open line) represented by
+	 *                   a coordinate array [[x1, y1], [x2, y2]...]
+	 * @param keepClosed flag to determine whether to keep the (last) closing vertex
+	 *                   in the output if the input formed a closed polygon
+	 * @return coordinate array in the form [[x1, y1], [x2, y2]]
+	 * @since 1.3.1 an array of coordinates representing the PShape
+	 * @see #fromArray(double[][])
+	 */
+	public static double[][] toArray(PShape shape, boolean keepClosed) {
+		List<PVector> points = toPVector(shape); // CLOSE
+		if (shape.isClosed() && keepClosed) {
+			points.add(points.get(0)); // since toPVector returns unclosed view
+		}
+		double[][] out = new double[points.size()][2];
+		for (int i = 0; i < points.size(); i++) {
+			PVector point = points.get(i);
+			out[i][0] = point.x;
+			out[i][1] = point.y;
+		}
+		return out;
+	}
+
+	/**
+	 * Creates a PShape from an array of doubles representing coordinates.
+	 * 
+	 * @param shape coordinate array representing a simple shape (closed polygon or
+	 *              open line) [[x1, y1], [x2, y2]...]
+	 * @param close close the coordinates (if unclosed)
+	 * @return a PShape represented by the coordinates
+	 * @since 1.3.1
+	 * @see #toArray(PShape)
+	 */
+	public static PShape fromArray(double[][] shape, boolean close) {
+		List<PVector> points = new ArrayList<>(shape.length);
+		for (double[] p : shape) {
+			points.add(new PVector((float) p[0], (float) p[1]));
+		}
+		if (close && !points.get(0).equals(points.get(points.size() - 1))) {
+			points.add(new PVector((float) shape[0][0], (float) shape[0][1]));
+		}
+		return fromPVector(points);
 	}
 
 	/**
