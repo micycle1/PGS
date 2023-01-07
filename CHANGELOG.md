@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `weightedMedian()` to `PGS_PointSet`. Finds the geometric median point of a set of weighted sample points.
 * `median()` to `PGS_ShapePredicates`. Computes the geometric median location of a shape's vertices.
 * `createRandomSFCurve()` to `PGS_Construction`. Creates a random space-filling curve.
+* `maximumPerimeterSquare()` to `PGS_Optimisation`. Finds the largest square whose 4 vertices each lie on the perimeter of a shape.
+* `rectPack()` to `PGS_Optimisation`. Packs a collection of rectangles into rectangular 2D bin(s).
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).

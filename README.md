@@ -512,13 +512,14 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Maximum Inscribed Circle</td>
     <td align="center" valign="center"><b>Minimum Bounding Rectangle</td>
-    <td align="center" valign="center" colspan="2"><b>Maximum Inscribed Rectangle</td>
+    <td align="center" valign="center"><b>Maximum Inscribed Rectangle</td>
+    <td align="center" valign="center"><b>Maximum Perimeter Square</td>
   </tr>
   <tr>
     <td valign="top"><img src="resources/optimisation/inscribedCircle.gif"></td>
     <td valign="top"><img src="resources/optimisation/minimumBoundingRectangle.png"></td>
     <td valign="top"><img src="resources/optimisation/mir.png"></td>
-    <td valign="top" ><img src="resources/optimisation/mir2.png"></td>
+    <td valign="top" ><img src="resources/optimisation/mis.png"></td>
   </tr>
 
   <tr>
@@ -558,9 +559,12 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
+    <td align="center" valign="center" colspan="2"><b>Rectangle Bin Pack</td>
     <td align="center" valign="center"><b>Hilbert Sort Faces</td>
   </tr>
   <tr>
+    <td valign="top" width="25%"><img src="resources/optimisation/rectPack.gif"></td>
+    <td valign="top" width="25%"><img src="resources/optimisation/rectPackBins.gif"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/hilbertSortFaces.gif"></td>
   </tr>
   

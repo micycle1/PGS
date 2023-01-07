@@ -2,6 +2,7 @@ package micycle.pgs;
 
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
+import static processing.core.PConstants.GROUP;
 import static micycle.pgs.PGS_Construction.createEllipse;
 
 import java.util.ArrayList;
@@ -15,14 +16,21 @@ import org.locationtech.jts.algorithm.MinimumBoundingCircle;
 import org.locationtech.jts.algorithm.MinimumDiameter;
 import org.locationtech.jts.algorithm.construct.LargestEmptyCircle;
 import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
+import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.operation.distance.DistanceOp;
+import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
+import almadina.rectpacking.RBPSolution;
+import almadina.rectpacking.Rect;
+import almadina.rectpacking.RectPacking.PackingHeuristic;
 import micycle.pgs.color.RGB;
 import micycle.pgs.commons.ClosestPointPair;
 import micycle.pgs.commons.FarthestPointPair;
@@ -137,6 +145,71 @@ public final class PGS_Optimisation {
 	}
 
 	/**
+	 * Finds the largest area <i>perimeter square</i> of the input. A <i>perimeter
+	 * square</i> is a square whose 4 vertices each lie on the perimeter of the
+	 * input shape (within the given tolerance).
+	 * <p>
+	 * If the input is convex, the output forms a fully inscribed square; if the
+	 * input is concave the output is not necessarily inscribed.
+	 * <p>
+	 * Does not respect holes (for now...).
+	 * 
+	 * @param shape
+	 * @param tolerance a value of 2-5 is usually suitable
+	 * @return shape representing the maximum square
+	 * @since 1.3.1
+	 */
+	public static PShape maximumPerimeterSquare(PShape shape, double tolerance) {
+		shape = PGS_Morphology.simplify(shape, tolerance / 2);
+		final Polygon p = (Polygon) PGS_Conversion.fromPShape(shape);
+		Geometry buffer = p.getExteriorRing().buffer(tolerance / 2, 4);
+		final Envelope e = buffer.getEnvelopeInternal();
+		buffer = DouglasPeuckerSimplifier.simplify(buffer, tolerance / 2);
+		final IndexedPointInAreaLocator pia = new IndexedPointInAreaLocator(buffer);
+		shape = PGS_Processing.densify(shape, Math.max(0.5, tolerance)); // min of 0.5
+		final List<PVector> points = PGS_Conversion.toPVector(shape);
+
+		double maxDiagonal = 0;
+		PVector[] maxAreaVertices = new PVector[0];
+		for (int i = 0; i < points.size(); i++) {
+			for (int j = 0; j < points.size(); j++) {
+				final PVector a = points.get(i);
+				final PVector b = points.get(j);
+				double dist = PGS.distanceSq(a, b);
+
+				if (dist < maxDiagonal) {
+					continue;
+				}
+
+				final PVector m = PVector.add(a, b).div(2);
+				final PVector n = new PVector(b.y - a.y, a.x - b.x).div(2);
+				final PVector c = PVector.sub(m, n);
+
+				final PVector d = PVector.add(m, n);
+				// do envelope checks first -- slightly faster
+				if (within(c, e) && within(d, e)) {
+					if (pia.locate(new Coordinate(c.x, c.y)) != Location.EXTERIOR) {
+						if (pia.locate(new Coordinate(d.x, d.y)) != Location.EXTERIOR) {
+							maxDiagonal = dist;
+							maxAreaVertices = new PVector[] { a, c, b, d, a }; // closed vertices
+						}
+					}
+				}
+			}
+		}
+
+		PShape out = PGS_Conversion.fromPVector(maxAreaVertices);
+		out.setStroke(true);
+		out.setStroke(micycle.pgs.color.RGB.PINK);
+		out.setStrokeWeight(4);
+		return out;
+	}
+
+	private static boolean within(PVector p, Envelope rect) {
+		return p.x >= rect.getMinX() && p.x <= rect.getMaxX() && p.y <= rect.getMaxY() && p.y >= rect.getMinY();
+	}
+
+	/**
 	 * Computes the Minimum Bounding Circle (MBC) for the points in a Geometry. The
 	 * MBC is the smallest circle which covers all the vertices of the input shape
 	 * (this is also known as the Smallest Enclosing Circle). This is equivalent to
@@ -244,6 +317,74 @@ public final class PGS_Optimisation {
 		double wh = lec.getRadiusLine().getLength() * 2;
 		Polygon circle = createEllipse(PGS.coordFromPoint(lec.getCenter()), wh, wh);
 		return toPShape(circle);
+	}
+	
+	public enum RectPackHeuristic {
+
+		/**
+		 * Packs rectangles such that the wasted/empty area within the bin is minimised.
+		 * This heuristic tends to generate packings that are less dense but are better
+		 * at covering the whole area (particularly if there is much spare area) than
+		 * the other heuristics.
+		 */
+		BestAreaFit(PackingHeuristic.BestAreaFit),
+		/**
+		 * Packs rectangles such that the total touching perimeter length is maximised.
+		 * In practice, rectangles are packed against the left-most and upper-most
+		 * boundary of the bin first.
+		 */
+		TouchingPerimeter(PackingHeuristic.TouchingPerimeter),
+		/**
+		 * Packs rectangles such that the distance between the top-right corner of each
+		 * rectangle and that of the bin is maximised.
+		 */
+		TopRightCornerDistance(PackingHeuristic.TopRightCornerDistance);
+
+		private final PackingHeuristic h;
+
+		private RectPackHeuristic(PackingHeuristic h) {
+			this.h = h;
+		}
+	}
+
+	/**
+	 * Packs a collection of rectangles, according to the given packing heuristic,
+	 * into rectangular 2D bin(s). Within each bin rectangles are packed flush with
+	 * each other, having no overlap. Each rectangle is packed parallel to the edges
+	 * of the plane.
+	 * <p>
+	 * When packed rectangles fill one bin, any remaining rectangles will be packed
+	 * into additional bin(s).
+	 * 
+	 * @param rectangles a collection of rectangles (represented by PVectors),
+	 *                   specifying their width (.x) and height (.y)
+	 * @param binWidth   the width of each bin's area in which to pack the
+	 *                   rectangles
+	 * @param binHeight  the height of each bin's area in which to pack the
+	 *                   rectangles
+	 * @param heuristic  the packing heuristic to use. The heuristic determines
+	 *                   rules for how every subsequent rectangle is placed
+	 * @since 1.3.1
+	 * @return a GROUP PShape, where each immediate child is a GROUP shape
+	 *         corresponding to a bin; the child shapes of each bin are rectangles.
+	 *         Bins are positioned at (0, 0).
+	 */
+	public static PShape rectPack(List<PVector> rectangles, int binWidth, int binHeight, RectPackHeuristic heuristic) {
+		RBPSolution packer = new RBPSolution(binWidth, binHeight);
+		List<Rect> rects = rectangles.stream().map(p -> Rect.of((int) Math.round(p.x), (int) Math.round(p.y)))
+				.collect(Collectors.toList());
+
+		packer.pack(rects, heuristic.h);
+
+		PShape bins = new PShape(GROUP);
+		packer.getBins().forEach(bin -> {
+			PShape binGroup = new PShape(GROUP);
+			bin.getPackedRects().forEach(r -> {
+				binGroup.addChild(PGS.createRect(r.x, r.y, r.width, r.height));
+			});
+			bins.addChild(binGroup);
+		});
+		return bins;
 	}
 
 	/**

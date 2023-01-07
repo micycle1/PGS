@@ -321,6 +321,11 @@
 			<artifactId>dsiutils</artifactId>
 			<version>2.7.2</version>
 		</dependency>
+		<dependency>
+			<groupId>com.github.micycle1</groupId>
+			<artifactId>RectPacking</artifactId>
+			<version>9178e79df3</version>
+		</dependency>
 	</dependencies>
 
 </project>
