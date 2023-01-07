@@ -14,7 +14,9 @@ public final class GeometricMedian {
 	// java port of
 	// https://github.com/postgis/postgis/blob/master/liblwgeom/lwgeom_median.c
 
-	private static double DBL_EPSILON = 1E-11;
+	private static final double DBL_EPSILON = 1E-11;
+	
+	private GeometricMedian() {}
 
 	/**
 	 * Computes the median point of the input point set.

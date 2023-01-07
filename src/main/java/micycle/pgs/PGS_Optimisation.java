@@ -214,7 +214,7 @@ public final class PGS_Optimisation {
 	 * The minimum diameter is defined to be the width of the smallest band that
 	 * contains the shape, where a band is a strip of the plane defined by two
 	 * parallel lines. This can be thought of as the smallest hole that the geometry
-	 * can bemoved through, with a single rotation.
+	 * can be moved through, with a single rotation.
 	 * 
 	 * @param shape
 	 * @return

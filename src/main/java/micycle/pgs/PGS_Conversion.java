@@ -948,7 +948,7 @@ public final class PGS_Conversion {
 		Track line = new Track();
 		toPVector(shape).forEach(p -> line.addTrackpoint(new Trackpoint(p.x, p.y)));
 		line.addTrackpoint(line.getTrackpoints().get(0)); // close
-		// PolylineEncoder.createEncodings() writes to console, so supress that...
+		// PolylineEncoder.createEncodings() writes to console, so suppress that...
 		PrintStream old = System.out;
 		System.setOut(new PrintStream(new OutputStream() {
 			public void write(int b) throws IOException {

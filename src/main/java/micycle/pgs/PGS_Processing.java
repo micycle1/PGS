@@ -605,6 +605,7 @@ public final class PGS_Processing {
 	}
 
 	private static Polygon removeSmallHoles(Polygon polygon, double areaThreshold) {
+		// TODO construct polygon from holes[] (rather than difference!)
 		Polygon noHolePol = GEOM_FACTORY.createPolygon(polygon.getExteriorRing());
 		for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
 			final LinearRing hole = polygon.getInteriorRingN(i);
@@ -660,9 +661,13 @@ public final class PGS_Processing {
 
 	/**
 	 * Splits a shape into 4^(1+recursions) rectangular partitions.
+	 * <p>
+	 * Note: this operation is different to merely overlaying a grid on the shape
+	 * and then splitting. Instead, during each recursion, the envelope of the
+	 * parent is divided into 4 quadrants, but the envelope may be rectangular.
 	 * 
 	 * @param shape
-	 * @param splitDepth
+	 * @param splitDepth number of split recursions to perform
 	 * @return a GROUP PShape, where each child shape is some quadrant partition of
 	 *         the original shape
 	 * @see #split(PShape)
