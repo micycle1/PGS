@@ -660,6 +660,17 @@ public final class PGS_Conversion {
 		}
 		return GEOM_FACTORY.createPolygon(); // empty polygon
 	}
+	
+	/**
+	 * Transforms a variable arg list of points into a POINTS PShape.
+	 * 
+	 * @param vertices
+	 * @return a POINTS PShape
+	 * @since 1.3.1
+	 */
+	public static final PShape toPointsPShape(PVector... vertices) {
+		return toPointsPShape(Arrays.asList(vertices));
+	}
 
 	/**
 	 * Transforms a list of points into a POINTS PShape.

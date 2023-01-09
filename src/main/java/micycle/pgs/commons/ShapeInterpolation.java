@@ -113,6 +113,12 @@ public class ShapeInterpolation {
 	}
 
 	public Coordinate[] tween(double t) {
+		if (t == 0) {
+			return from.toCoordinateArray();
+		} else if (t == 1) {
+			return to.toCoordinateArray();
+		}
+		t %= 1;
 		CoordinateList morph = new CoordinateList();
 		for (int i = 0; i < from.size(); i++) {
 			morph.add(lerp(from.get(i), to.get(i), t), true);

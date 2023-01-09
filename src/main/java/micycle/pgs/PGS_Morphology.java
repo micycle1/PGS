@@ -95,7 +95,7 @@ public final class PGS_Morphology {
 	 * @param startDistance the starting buffer amount
 	 * @param endDistance   the terminating buffer amount
 	 * @return a polygonal shape representing the variable buffer region (which may
-	 *         beempty)
+	 *         be empty)
 	 * @since 1.3.0
 	 */
 	public static PShape variableBuffer(PShape shape, double startDistance, double endDistance) {
@@ -459,6 +459,9 @@ public final class PGS_Morphology {
 			perturbation *= magnitude * 2;
 			coord.add(heading.normalize().mult(perturbation)); // add perturbation to vertex
 		});
+		if (!coords.get(0).equals(coords.get(coords.size() - 1))) {
+			coords.add(coords.get(0));
+		}
 		return PGS_Conversion.fromPVector(coords);
 	}
 
@@ -612,13 +615,13 @@ public final class PGS_Morphology {
 	 * @see #interpolate(PShape, PShape, int)
 	 */
 	public static PShape interpolate(PShape from, PShape to, double interpolationFactor) {
-		final Geometry toGeom = fromPShape(to);
 		final Geometry fromGeom = fromPShape(from);
+		final Geometry toGeom = fromPShape(to);
 		if (toGeom.getGeometryType().equals(Geometry.TYPENAME_POLYGON) && fromGeom.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
-			final ShapeInterpolation tween = new ShapeInterpolation(toGeom, fromGeom);
+			final ShapeInterpolation tween = new ShapeInterpolation(fromGeom, toGeom);
 			return toPShape(PGS.GEOM_FACTORY.createPolygon(tween.tween(interpolationFactor)));
 		} else {
-			System.err.println("morph() accepts holeless single polygons only (for now).");
+			System.err.println("interpolate() accepts holeless single polygons only (for now).");
 			return from;
 		}
 	}
@@ -643,10 +646,10 @@ public final class PGS_Morphology {
 	 * @see #interpolate(PShape, PShape, double)
 	 */
 	public static PShape interpolate(PShape from, PShape to, int frames) {
-		final Geometry toGeom = fromPShape(to);
 		final Geometry fromGeom = fromPShape(from);
+		final Geometry toGeom = fromPShape(to);
 		if (toGeom.getGeometryType().equals(Geometry.TYPENAME_POLYGON) && fromGeom.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
-			final ShapeInterpolation tween = new ShapeInterpolation(toGeom, fromGeom);
+			final ShapeInterpolation tween = new ShapeInterpolation(fromGeom, toGeom);
 			final float fraction = 1f / (frames - 1);
 			PShape out = new PShape();
 			for (int i = 0; i < frames; i++) {
@@ -654,7 +657,7 @@ public final class PGS_Morphology {
 			}
 			return out;
 		} else {
-			System.err.println("morph() accepts holeless single polygons only (for now).");
+			System.err.println("interpolate() accepts holeless single polygons only (for now).");
 			return from;
 		}
 	}
@@ -667,7 +670,7 @@ public final class PGS_Morphology {
 	 * 
 	 * @param shape     shape to reduce
 	 * @param precision the exact grid size with which to round shape vertices.
-	 *                  shoule be non-zero and positive
+	 *                  should be non-zero and positive
 	 * @return reduced copy of input
 	 * @since 1.3.0
 	 */

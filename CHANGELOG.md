@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 * A slow collections size call included in `prunePointsWithinDistance()` was making it much slower than it should have been.
 * Shape Y coordinates were being inverted during `fromJava2D()` conversion.
+* The `from` and `to` arguments for `interpolate()` are now the correct way round.
 
 ### Removed
 *
