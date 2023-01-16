@@ -87,6 +87,9 @@ public final class PGS_Voronoi {
 		final Geometry g = fromPShape(shape);
 		final List<Vertex> vertices = new ArrayList<>();
 		final Coordinate[] coords = g.getCoordinates();
+		if (coords.length < 3) { // at least 3 vertices are required 
+			return new PShape();
+		}
 		for (int i = 0; i < coords.length; i++) {
 			vertices.add(new Vertex(coords[i].x, coords[i].y, 0, i));
 		}

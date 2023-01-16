@@ -91,6 +91,9 @@ public class PGS_Hull {
 	 * @see #concaveHullBFS2(List, double)
 	 */
 	public static PShape concaveHullDFS(List<PVector> points, double threshold) {
+		if (points == null || points.isEmpty()) {
+			return new PShape();
+		}
 		threshold *= threshold * threshold;
 		List<PVector> closestList = PGS_Optimisation.farthestPointPair(points);
 		threshold *= closestList.get(0).dist(closestList.get(1));
@@ -113,6 +116,9 @@ public class PGS_Hull {
 	 * @see #concaveHullBFS2(List, double)
 	 */
 	public static PShape concaveHullBFS(List<PVector> points, double edgeLengthRatio) {
+		if (points == null || points.isEmpty()) {
+			return new PShape();
+		}
 		edgeLengthRatio *= edgeLengthRatio; // square to make output change more linearly as concavity goes 0...1
 		Geometry g = prepareConcaveGeometry(points);
 		org.locationtech.jts.algorithm.hull.ConcaveHull concaveHull = new org.locationtech.jts.algorithm.hull.ConcaveHull(g);
@@ -144,6 +150,9 @@ public class PGS_Hull {
 	 * @see #concaveHullBFS(List, double)
 	 */
 	public static PShape concaveHullBFS2(List<PVector> points, double threshold) {
+		if (points == null || points.isEmpty()) {
+			return new PShape();
+		}
 //		threshold*=threshold*threshold;
 		/*-
 		 * (from https://doi.org/10.1016/j.patcog.2008.03.023)

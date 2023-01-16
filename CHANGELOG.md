@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `maximumPerimeterSquare()` to `PGS_Optimisation`. Finds the largest square whose 4 vertices each lie on the perimeter of a shape.
 * `rectPack()` to `PGS_Optimisation`. Packs a collection of rectangles into rectangular 2D bin(s).
 * `reorderChildren()` to `PGS_Conversion`. Reorders the child shapes of a shape according to given comparator.
+* `scaleAreaTo()` to `PGS_Transformation`. Scales a given shape to a target shape area.
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).
@@ -29,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * A slow collections size call included in `prunePointsWithinDistance()` was making it much slower than it should have been.
 * Shape Y coordinates were being inverted during `fromJava2D()` conversion.
 * The `from` and `to` arguments for `interpolate()` are now the correct way round.
+* Hearts produced by `PGS_Construction.createHeart()` were slightly squished in the vertical direction.
 
 ### Removed
 *

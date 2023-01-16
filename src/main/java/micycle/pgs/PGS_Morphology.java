@@ -119,6 +119,7 @@ public final class PGS_Morphology {
 	 * @see #dilationErosion(PShape, double)
 	 */
 	public static PShape erosionDilation(PShape shape, double buffer) {
+		buffer = Math.abs(buffer);
 		return toPShape(fromPShape(shape).buffer(-buffer).buffer(buffer));
 	}
 
@@ -136,6 +137,7 @@ public final class PGS_Morphology {
 	 * @see #erosionDilation(PShape, double)
 	 */
 	public static PShape dilationErosion(PShape shape, double buffer) {
+		buffer = Math.abs(buffer);
 		return toPShape(fromPShape(shape).buffer(buffer).buffer(-buffer));
 	}
 
