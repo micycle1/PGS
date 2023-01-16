@@ -75,6 +75,23 @@ public final class PGS_Transformation {
 	}
 
 	/**
+	 * Scales the given PShape to the target area, relative to its center point.
+	 * 
+	 * @param shape      The PShape to be scaled.
+	 * @param targetArea The target area for the shape.
+	 * @return The scaled PShape (now having an area of <code>targetArea</code>).
+	 * @since 1.3.1
+	 */
+	public static PShape scaleAreaTo(PShape shape, double targetArea) {
+		Geometry geometry = fromPShape(shape);
+		double area = geometry.getArea();
+		double scalingFactor = Math.sqrt(targetArea / area);
+		Coordinate c = geometry.getCentroid().getCoordinate();
+		AffineTransformation t = AffineTransformation.scaleInstance(scalingFactor, scalingFactor, c.x, c.y);
+		return toPShape(t.transform(geometry));
+	}
+
+	/**
 	 * Resizes a shape (based on its envelope) to the given dimensions, relative to
 	 * its center point.
 	 * 

@@ -22,6 +22,7 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.util.PolygonExtracter;
 
 import micycle.pgs.commons.GeometricMedian;
 import micycle.trapmap.TrapMap;
@@ -41,9 +42,9 @@ public final class PGS_ShapePredicates {
 	}
 
 	/**
-	 * Determines whether the outer shape contains the inner shape (meaning every
-	 * point of the inner shape is a point of the outer shape). A shape is
-	 * considered to contain itself itself.
+	 * Determines whether the outer shape fully contains the inner shape. A shape is
+	 * considered to contain itself. Points of the inner shape that lie on the
+	 * boundary of the outer shape are considered to be contained.
 	 * 
 	 * @param outer
 	 * @param inner
@@ -70,8 +71,8 @@ public final class PGS_ShapePredicates {
 	/**
 	 * Determines whether a shape contains every point from a list of points. It is
 	 * faster to use method rather than than calling
-	 * {@link #containsPoint(PShape, PVector)} repeatedly. Points that lie on the
-	 * boundary of the shape are considered to be contained.
+	 * {@link #containsPoint(PShape, PVector) containsPoint()} repeatedly. Any
+	 * points that lie on the boundary of the shape are considered to be contained.
 	 * 
 	 * @param shape
 	 * @param points list of points to check
@@ -243,7 +244,7 @@ public final class PGS_ShapePredicates {
 		}
 		return null;
 	}
-	
+
 	/**
 	 * Computes the geometric median location of a shape's vertices.
 	 * <p>
@@ -390,12 +391,21 @@ public final class PGS_ShapePredicates {
 	}
 
 	/**
-	 * Computes the number of holes in a shape.
+	 * Counts the number of holes in a shape.
 	 * 
-	 * @return
+	 * @param shape a polygonal shape (can be a GROUP shape having multiple
+	 *              polygons)
+	 * @return total number of holes in the shape
 	 */
 	public static int holes(PShape shape) {
-		return ((Polygon) fromPShape(shape)).getNumInteriorRing(); // NOTE assume a single polygon
+		@SuppressWarnings("unchecked")
+		List<Polygon> polygons = PolygonExtracter.getPolygons(fromPShape(shape));
+
+		int holes = 0;
+		for (Polygon p : polygons) {
+			holes += p.getNumInteriorRing();
+		}
+		return holes;
 	}
 
 	/**

@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -75,8 +76,8 @@ import processing.core.PVector;
  * <code>Geometries</code> (amongst other formats). Also includes helper/utility
  * methods for PShapes.
  * <p>
- * Methods in this class are used by the library internally but are kept
- * accessible for more advanced user use cases.
+ * Some conversion methods in this class are used by the library internally but
+ * are kept accessible/public for more advanced user use cases.
  * <p>
  * Notably, JTS geometries do not support bezier curves so any bezier curves are
  * finely subdivided into straight linestrings during <code>PShape</code> -> JTS
@@ -660,7 +661,7 @@ public final class PGS_Conversion {
 		}
 		return GEOM_FACTORY.createPolygon(); // empty polygon
 	}
-	
+
 	/**
 	 * Transforms a variable arg list of points into a POINTS PShape.
 	 * 
@@ -1292,6 +1293,25 @@ public final class PGS_Conversion {
 			child.setStroke(PGS.getPShapeFillColor(child));
 		});
 		return shape;
+	}
+
+	/**
+	 * Reorders the child shapes of a given shape.
+	 * <p>
+	 * Creates a new GROUP shape, having the same children as the input, but in a
+	 * different order; child shapes of the new shape are ordered according to the
+	 * given comparator.
+	 * 
+	 * @param shape      a GROUP shape
+	 * @param comparator PShape comparison function
+	 * @return a new GROUP PShape object having its children in a different order.
+	 *         Child shapes reference the same objects as the input.
+	 * @since 1.3.1
+	 */
+	public static PShape reorderChildren(PShape shape, Comparator<PShape> comparator) {
+		List<PShape> children = getChildren(shape);
+		children.sort(comparator);
+		return flatten(children);
 	}
 
 	/**

@@ -230,13 +230,13 @@ public class PGS_Construction {
 	 * <p>
 	 * In order for the shape to not self intersect a + b should be less than 1.
 	 * 
-	 * @param centerX The x coordinate of the center
-	 * @param centerY The y coordinate of the center
+	 * @param centerX  The x coordinate of the center
+	 * @param centerY  The y coordinate of the center
 	 * @param maxWidth
-	 * @param a blob parameter. a + b should be less than 1
-	 * @param b blob parameter.a + b should be less than 1
-	 * @param c blob parameter
-	 * @param d blob parameter
+	 * @param a        blob parameter. a + b should be less than 1
+	 * @param b        blob parameter.a + b should be less than 1
+	 * @param c        blob parameter
+	 * @param d        blob parameter
 	 * @return
 	 * @since 1.3.0
 	 */
@@ -288,14 +288,15 @@ public class PGS_Construction {
 		heart.setFill(RGB.WHITE);
 		heart.beginShape();
 
-		final int points = 180;
+		final double length = 6.3855 * width; // Arc length of parametric curve from wolfram alpha
+		final int points = (int) length / 2; // sample every 2 units along curve (roughly)
 		final double angleInc = Math.PI * 2 / points;
 		double angle = 0;
 		while (angle < Math.PI * 2) {
 			final double s = FastMath.sin(angle);
 			double vx = s * s * s;
 			double vy = 13 * FastMath.cos(angle) - 5 * FastMath.cos(2 * angle) - 2 * FastMath.cos(3 * angle) - FastMath.cos(4 * angle);
-			vy /= 17; // normalise to 1
+			vy /= 16; // normalise to 1
 			heart.vertex((float) (centerX + vx * width / 2), (float) (centerY - vy * width / 2));
 			angle += angleInc;
 		}
@@ -561,7 +562,7 @@ public class PGS_Construction {
 		curve.setFill(255);
 		curve.setStroke(0);
 		curve.setStrokeWeight(3);
-		
+
 		return curve;
 	}
 

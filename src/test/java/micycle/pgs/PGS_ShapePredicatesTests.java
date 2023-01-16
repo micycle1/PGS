@@ -56,5 +56,15 @@ class PGS_ShapePredicatesTests {
 		assertEquals(Math.PI / 2, PGS_ShapePredicates.maximumInteriorAngle(square));
 		assertEquals(Math.PI / 3, PGS_ShapePredicates.maximumInteriorAngle(triangle), EPSILON);
 	}
+	
+	@Test
+	void testHoles() {
+		assertEquals(0, PGS_ShapePredicates.holes(square));
+		PShape withHole = PGS_ShapeBoolean.subtract(square, PGS_Transformation.scale(square, 0.5));
+		assertEquals(1, PGS_ShapePredicates.holes(withHole));
+		PShape groupHoles = PGS_Conversion.flatten(withHole, withHole);
+		assertEquals(2, PGS_ShapePredicates.holes(groupHoles));
+		
+	}
 
 }
