@@ -559,10 +559,12 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
+    <td align="center" valign="center"><b>Circle Covering</td>
     <td align="center" valign="center" colspan="2"><b>Rectangle Bin Pack</td>
     <td align="center" valign="center"><b>Hilbert Sort Faces</td>
   </tr>
   <tr>
+    <td valign="top" width="25%"><img src="resources/optimisation/circleCoverage.gif"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/rectPack.gif"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/rectPackBins.gif"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/hilbertSortFaces.gif"></td>

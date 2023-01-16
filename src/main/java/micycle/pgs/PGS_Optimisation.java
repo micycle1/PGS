@@ -22,9 +22,11 @@ import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Location;
+import org.locationtech.jts.geom.MultiPoint;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.operation.distance.DistanceOp;
+import org.locationtech.jts.shape.random.RandomPointsInGridBuilder;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
@@ -38,6 +40,7 @@ import micycle.pgs.commons.MaximumInscribedAARectangle;
 import micycle.pgs.commons.MaximumInscribedRectangle;
 import micycle.pgs.commons.MinimumBoundingEllipse;
 import micycle.pgs.commons.MinimumBoundingTriangle;
+import micycle.pgs.commons.SeededRandomPointsInGridBuilder;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -318,7 +321,55 @@ public final class PGS_Optimisation {
 		Polygon circle = createEllipse(PGS.coordFromPoint(lec.getCenter()), wh, wh);
 		return toPShape(circle);
 	}
-	
+
+	/**
+	 * Covers a polygon with n circles such that no circle’s center lies outside the
+	 * polygon. Circles will generally cover most of the shape and have some mutual
+	 * overlap.
+	 * 
+	 * @param shape shape to cover
+	 * @param n     number of circles to generate
+	 * @return A list of PVectors, each representing one circle: (.x, .y) represent
+	 *         the center point and .z represents radius.
+	 * @see #circleCoverage(PShape, int, long)
+	 * @since 1.3.1
+	 */
+	public static List<PVector> circleCoverage(PShape shape, int n) {
+		return circleCoverage(shape, n, System.currentTimeMillis());
+	}
+
+	/**
+	 * Covers a polygon with n circles such that no circle’s center lies outside the
+	 * polygon. Circles will generally cover most of the shape and have some mutual
+	 * overlap.
+	 * 
+	 * @param shape shape to cover
+	 * @param n     number of circles to generate
+	 * @param seed  random seed
+	 * @return A list of PVectors, each representing one circle: (.x, .y) represent
+	 *         the center point and .z represents radius.
+	 * @see #circleCoverage(PShape, int)
+	 * @since 1.3.1
+	 */
+	public static List<PVector> circleCoverage(PShape shape, int n, long seed) {
+		int nSeedPoints = (int) (PGS_ShapePredicates.area(shape) / 100); // ~one point every 10 units
+		List<PVector> points = PGS_Processing.generateRandomGridPoints(shape, nSeedPoints, false, 0.5, seed);
+		points.addAll(PGS_Conversion.toPVector(shape)); // incl. shape vertices
+
+		List<PVector> circles = new ArrayList<>(n);
+		PGS_PointSet.cluster(points, n, seed).forEach(group -> {
+			if (group.size() < 2) { // unlikely
+				return;
+			}
+			Geometry clusterPoints = PGS.GEOM_FACTORY.createMultiPointFromCoords(PGS.toCoords(group));
+			MinimumBoundingCircle mbc = new MinimumBoundingCircle(clusterPoints);
+			Coordinate mbcp = mbc.getCentre();
+			circles.add(new PVector((float) mbcp.x, (float) mbcp.y, (float) mbc.getRadius()));
+		});
+
+		return circles;
+	}
+
 	public enum RectPackHeuristic {
 
 		/**
@@ -371,8 +422,7 @@ public final class PGS_Optimisation {
 	 */
 	public static PShape rectPack(List<PVector> rectangles, int binWidth, int binHeight, RectPackHeuristic heuristic) {
 		RBPSolution packer = new RBPSolution(binWidth, binHeight);
-		List<Rect> rects = rectangles.stream().map(p -> Rect.of((int) Math.round(p.x), (int) Math.round(p.y)))
-				.collect(Collectors.toList());
+		List<Rect> rects = rectangles.stream().map(p -> Rect.of(Math.round(p.x), Math.round(p.y))).collect(Collectors.toList());
 
 		packer.pack(rects, heuristic.h);
 

@@ -137,16 +137,24 @@ final class PGS {
 		return rect;
 	}
 
-	static final Point pointFromPVector(PVector p) {
+	static final Point pointFromPVector(final PVector p) {
 		return GEOM_FACTORY.createPoint(new Coordinate(p.x, p.y));
 	}
 
-	static final Coordinate coordFromPoint(Point p) {
+	static final Coordinate coordFromPoint(final Point p) {
 		return new Coordinate(p.getX(), p.getY());
 	}
 
-	static final Coordinate coordFromPVector(PVector p) {
+	static final Coordinate coordFromPVector(final PVector p) {
 		return new Coordinate(p.x, p.y);
+	}
+	
+	static final Coordinate[] toCoords(final List<PVector> points) {
+		final Coordinate[] coords = new Coordinate[points.size()];
+		for (int i = 0; i < coords.length; i++) {
+			coords[i] = coordFromPVector(points.get(i));
+		}
+		return coords;
 	}
 
 	static final PVector toPVector(Coordinate c) {
@@ -244,17 +252,17 @@ final class PGS {
 	 * @return a GROUP PShape, where each child shape represents a polygon face
 	 *         formed by the given edges
 	 */
-	static final PShape polygonizeSegments(Collection<SegmentString> segments, boolean node) {
+	public static final PShape polygonizeSegments(Collection<SegmentString> segments, boolean node) {
 		if (node) {
 			segments = nodeSegmentStrings(segments);
 		}
-		final Collection<PEdge> meshEdges = new ArrayList<>(segments.size());
+		final List<PEdge> meshEdges = new ArrayList<>(segments.size());
 		segments.forEach(ss -> { // ss is not necessarily a single edge (can be many connected edges)
 			for (int i = 0; i < ss.size() - 1; i++) {
 				meshEdges.add(new PEdge(toPVector(ss.getCoordinate(i)), toPVector(ss.getCoordinate(i + 1))));
 			}
 		});
-		Collections.shuffle((List<?>) meshEdges);
+		Collections.shuffle(meshEdges);
 		return polygonizeEdges(meshEdges);
 	}
 
