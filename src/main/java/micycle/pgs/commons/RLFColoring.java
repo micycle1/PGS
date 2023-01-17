@@ -1,6 +1,7 @@
 package micycle.pgs.commons;
 
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -72,7 +73,7 @@ public class RLFColoring<V, E> implements VertexColoringAlgorithm<V> {
 
 	public RLFColoring(Graph<V, E> graph) {
 		this.graph = Objects.requireNonNull(graph, "Graph cannot be null");
-		U = new HashSet<>(graph.vertexSet());
+		U = new LinkedHashSet<>(graph.vertexSet());
 		W = new HashSet<>(graph.vertexSet().size());
 		C = CollectionUtil.newHashMapWithExpectedSize(graph.vertexSet().size());
 		neighborCache = new NeighborCache<>(graph);
