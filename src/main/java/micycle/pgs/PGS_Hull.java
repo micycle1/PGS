@@ -1,14 +1,16 @@
 package micycle.pgs;
 
-import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
 import org.locationtech.jts.algorithm.hull.ConcaveHullOfPolygons;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
+
+import micycle.pgs.commons.FastConvexHull;
 import processing.core.PShape;
 import processing.core.PVector;
 import uk.osgb.algorithm.concavehull.ConcaveHull;
@@ -38,7 +40,7 @@ public class PGS_Hull {
 	 * @since 1.3.0
 	 */
 	public static PShape convexHull(Collection<PVector> points) {
-		return toPShape(fromPShape(PGS_Conversion.toPointsPShape(points)).convexHull());
+		return PGS_Conversion.fromPVector(FastConvexHull.convexHull(new ArrayList<>(points)));
 	}
 
 	/**
@@ -50,7 +52,7 @@ public class PGS_Hull {
 	 * @since 1.3.0
 	 */
 	public static PShape convexHull(PShape shape) {
-		return toPShape(fromPShape(shape).convexHull());
+		return PGS_Conversion.fromPVector(FastConvexHull.convexHull(PGS_Conversion.toPVector(shape)));
 	}
 
 	/**
