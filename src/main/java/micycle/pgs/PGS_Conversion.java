@@ -65,6 +65,7 @@ import it.rambow.master.javautils.PolylineEncoder;
 import it.rambow.master.javautils.Track;
 import it.rambow.master.javautils.Trackpoint;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
+import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
 import processing.core.PConstants;
 import processing.core.PMatrix;
@@ -1102,12 +1103,68 @@ public final class PGS_Conversion {
 	}
 
 	/**
+	 * Generates a polygonal shape from lists of vertices representing its shell and
+	 * holes.
+	 * <p>
+	 * In theory, the shell should be orientated CW and the holes CCW, but this
+	 * method will detect orientation and handle it accordingly, so the orientation
+	 * of input does not matter.
+	 * 
+	 * @param shell vertices of the shell of the polygon
+	 * @param holes (optional) list of holes
+	 * @return
+	 * @since 1.3.1
+	 */
+	public static PShape fromPVector(List<PVector> shell, @Nullable List<List<PVector>> holes) {
+		boolean closed = false;
+		if (!shell.isEmpty() && shell.get(0).equals(shell.get(shell.size() - 1))) {
+			closed = true;
+		}
+
+		PShape shape = new PShape();
+		shape.setFamily(PShape.PATH);
+		shape.setFill(true);
+		shape.setFill(RGB.WHITE);
+		shape.setStroke(true);
+		shape.setStroke(RGB.PINK);
+		shape.setStrokeWeight(4);
+
+		shape.beginShape();
+		if (!PGS.isClockwise(shell)) {
+			Collections.reverse(shell);
+		}
+		for (int i = 0; i < shell.size() - (closed ? 1 : 0); i++) {
+			PVector v = shell.get(i);
+			shape.vertex(v.x, v.y);
+		}
+
+		if (holes != null) {
+			holes.forEach(hole -> {
+				final boolean holeClosed = hole.get(0).equals(hole.get(hole.size() - 1));
+				if (PGS.isClockwise(hole)) {
+					Collections.reverse(hole);
+				}
+				shape.beginContour();
+				for (int i = 0; i < hole.size() - (holeClosed ? 1 : 0); i++) {
+					PVector v = hole.get(i);
+					shape.vertex(v.x, v.y);
+				}
+				shape.endContour();
+			});
+		}
+
+		shape.endShape(PConstants.CLOSE);
+
+		return shape;
+	}
+
+	/**
 	 * Converts a simple PShape into an array of its coordinates.
 	 * 
 	 * @param shape      a simple shape (closed polygon or open line) represented by
 	 *                   a coordinate array [[x1, y1], [x2, y2]...]
 	 * @param keepClosed flag to determine whether to keep the (last) closing vertex
-	 *                   in the output if the input formed a closed polygon
+	 *                   in the output if the input forms a closed polygon
 	 * @return coordinate array in the form [[x1, y1], [x2, y2]]
 	 * @since 1.3.1 an array of coordinates representing the PShape
 	 * @see #fromArray(double[][])

@@ -42,15 +42,16 @@ public final class PGS_ShapeBoolean {
 	 * polygon.
 	 * <p>
 	 * Note: The intersecting parts of faces of a mesh-like shape will be collapsed
-	 * into a single area during intersection. To intersect such a shape and
+	 * into a single area during intersection; to intersect such a shape and
 	 * preserve how each face is intersected individually, use
 	 * {@link #intersectMesh(PShape, PShape) intersectMesh()}.
 	 * 
-	 * @return A∩B
+	 * @param a The first shape.
+	 * @param b The second shape.
+	 * @return A new shape representing the intersection of the two input shapes.
 	 */
-	public static PShape intersect(PShape a, PShape b) {
-		PShape out = toPShape(OverlayNG.overlay(fromPShape(a), fromPShape(b), OverlayNG.INTERSECTION));
-		return out;
+	public static PShape intersect(final PShape a, final PShape b) {
+		return toPShape(OverlayNG.overlay(fromPShape(a), fromPShape(b), OverlayNG.INTERSECTION));
 	}
 
 	/**
@@ -74,7 +75,7 @@ public final class PGS_ShapeBoolean {
 	 *         and the area
 	 * @since 1.3.0
 	 */
-	public static PShape intersectMesh(PShape mesh, PShape area) {
+	public static PShape intersectMesh(final PShape mesh, final PShape area) {
 		final Geometry g = fromPShape(area);
 		final PreparedGeometry cache = PreparedGeometryFactory.prepare(g);
 		// @formatter:off
@@ -93,7 +94,7 @@ public final class PGS_ShapeBoolean {
 	 * @return A∪B
 	 * @see #union(PShape...)
 	 */
-	public static PShape union(PShape a, PShape b) {
+	public static PShape union(final PShape a, final PShape b) {
 		return toPShape(OverlayNG.overlay(fromPShape(a), fromPShape(b), OverlayNG.UNION));
 	}
 
@@ -105,7 +106,7 @@ public final class PGS_ShapeBoolean {
 	 * @see #union(PShape, PShape)
 	 * @see #union(PShape...)
 	 */
-	public static PShape union(List<PShape> shapes) {
+	public static PShape union(final List<PShape> shapes) {
 		Collection<Geometry> polygons = new ArrayList<>();
 		shapes.forEach(s -> polygons.add(fromPShape(s)));
 		return toPShape(UnaryUnionOp.union(polygons));
@@ -135,7 +136,7 @@ public final class PGS_ShapeBoolean {
 	 * @return
 	 * @since 1.2.0
 	 */
-	public static PShape unionMesh(PShape mesh) {
+	public static PShape unionMesh(final PShape mesh) {
 		// faster than JTS CoverageUnion
 		if (mesh.getChildCount() < 2 || mesh.getKind() != PConstants.GROUP) {
 			if (mesh.getChildCount() == 1) {
@@ -179,13 +180,46 @@ public final class PGS_ShapeBoolean {
 	}
 
 	/**
-	 * Subtract is the opposite of Union. Subtract removes the area of shape
-	 * <code>b</code> from a base shape <code>a</code>. A.k.a "difference".
+	 * Subtracts one shape (b) from another shape (a) and returns the resulting
+	 * shape. This procedure is also known as "difference".
+	 * <p>
+	 * Subtract is the opposite of {@link #union(PShape, PShape) union()}.
 	 * 
-	 * @return shape A - shape B
+	 * @param a The PShape from which the other PShape will be subtracted.
+	 * @param b The PShape that will be subtracted from the first PShape.
+	 * @return A new PShape representing the difference between the two input
+	 *         shapes.
+	 * @see #simpleSubtract(PShape, PShape)
 	 */
-	public static PShape subtract(PShape a, PShape b) {
+	public static PShape subtract(final PShape a, final PShape b) {
 		return toPShape(OverlayNG.overlay(fromPShape(a), fromPShape(b), OverlayNG.DIFFERENCE));
+	}
+
+	/**
+	 * Subtracts <code>holes</code> from the <code>shell</code>, without geometric
+	 * processing.
+	 * <p>
+	 * Rather than performing geometric overlay, this method simply appends the
+	 * holes as contours to the shell. For this reason, it is faster than
+	 * {@link #subtract(PShape, PShape) subtract()} but this method produces valid
+	 * results only if <b>all holes lie inside the shell</b>.
+	 * 
+	 * @param shell polygonal shape
+	 * @param holes single polygon, or GROUP shape, whose children are holes that
+	 *              lie within the shell
+	 * @since 1.3.1
+	 * @see #subtract(PShape, PShape)
+	 * @return
+	 */
+	public static PShape simpleSubtract(PShape shell, PShape holes) {
+		List<PShape> children = PGS_Conversion.getChildren(holes);
+		List<List<PVector>> holez;
+		if (holes.getChildCount() == 0) {
+			children.add(holes);
+		}
+		holez = children.stream().map(PGS_Conversion::toPVector).collect(Collectors.toList());
+
+		return PGS_Conversion.fromPVector(PGS_Conversion.toPVector(shell), holez);
 	}
 
 	/**
@@ -222,22 +256,27 @@ public final class PGS_ShapeBoolean {
 	}
 
 	/**
-	 * Computes the parts that the shapes do not have in common.
+	 * Computes the <i>symmetric difference</i> (the parts that the shapes do not
+	 * have in common) between two shapes and returns the result as a new shape.
 	 * 
-	 * @return A∪B - A∩B
+	 * @param a The first shape.
+	 * @param b The second shape.
+	 * @return A new shape representing the symmetric difference between the two
+	 *         input shapes.
 	 */
 	public static PShape symDifference(PShape a, PShape b) {
 		return toPShape(OverlayNG.overlay(fromPShape(a), fromPShape(b), OverlayNG.SYMDIFFERENCE));
 	}
 
 	/**
-	 * Computes the shape's complement (or inverse) against a plane having the given
-	 * dimensions.
+	 * Computes the shape's complement (or inverse) against a rectangle of specified
+	 * width and height.
 	 * 
-	 * @param shape
+	 * @param shape  The PShape for which the complement is to be calculated.
 	 * @param width  width of the rectangle plane to subtract shape from
 	 * @param height height of the rectangle plane to subtract shape from
-	 * @return
+	 * @return A new PShape representing the complement of the input shape within
+	 *         the specified rectangle.
 	 */
 	public static PShape complement(PShape shape, double width, double height) {
 		final GeometricShapeFactory shapeFactory = new GeometricShapeFactory();

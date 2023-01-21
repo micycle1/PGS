@@ -76,6 +76,24 @@ public final class PGS_Transformation {
 	}
 
 	/**
+	 * Scales the area of a given shape by a specified scale factor. The shape is
+	 * scaled relative to its center point.
+	 * 
+	 * @param shape The PShape to be scaled.
+	 * @param scale The scale factor by which the area of the shape should be
+	 *              scaled.
+	 * @return A new PShape representing the scaled shape.
+	 * @since 1.3.1
+	 */
+	public static PShape scaleArea(PShape shape, double scale) {
+		Geometry geometry = fromPShape(shape);
+		double scalingFactor = Math.sqrt(scale);
+		Coordinate c = geometry.getCentroid().getCoordinate();
+		AffineTransformation t = AffineTransformation.scaleInstance(scalingFactor, scalingFactor, c.x, c.y);
+		return toPShape(t.transform(geometry));
+	}
+
+	/**
 	 * Scales the given PShape to the target area, relative to its center point.
 	 * 
 	 * @param shape      The PShape to be scaled.
@@ -463,14 +481,18 @@ public final class PGS_Transformation {
 		AffineTransformation t = AffineTransformation.reflectionInstance(x, -1, x, 1);
 		return toPShape(t.transform(fromPShape(shape)));
 	}
-
+	
 	/**
-	 * Objects are sheared around their relative position to the origin.
+	 * Shears a given shape by specified angles along the x and y axis and returns
+	 * the result as a new PShape. Shapes are sheared around their relative position
+	 * to the origin.
 	 * 
-	 * @param shape
-	 * @param angleX radians
-	 * @param angleY radians
-	 * @return
+	 * @param shape  The shape to be sheared.
+	 * @param angleX The angle by which the shape should be sheared along the
+	 *               x-axis, in radians.
+	 * @param angleY The angle by which the shape should be sheared along the
+	 *               y-axis, in radians.
+	 * @return A new shape representing the sheared shape.
 	 */
 	public static PShape shear(PShape shape, double angleX, double angleY) {
 		Geometry g = fromPShape(shape);

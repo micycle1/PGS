@@ -18,7 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `rectPack()` to `PGS_Optimisation`. Packs a collection of rectangles into rectangular 2D bin(s).
 * `reorderChildren()` to `PGS_Conversion`. Reorders the child shapes of a shape according to given comparator.
 * `scaleAreaTo()` to `PGS_Transformation`. Scales a given shape to a target shape area.
+* `scaleArea()` to `PGS_Transformation`. Scales the area of a given shape by a specified scale factor.
 * `circleCoverage()` to `PGS_Optimsation`. Covers a polygon with n circles.
+* Additional method signature for `PGS_Conversion.fromPVector()` that accepts a list of holes, each defined a list of by PVectors.
+* `simpleSubtract()` to `PGS_ShapeBoolean`. Subtracts inner holes that lie within a shell, without geometric processing.
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).
