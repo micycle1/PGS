@@ -726,9 +726,11 @@ public class PGS_Construction {
 	}
 
 	static Polygon createEllipse(Coordinate center, double width, double height) {
+		final double circumference = Math.PI * ((width + height) / 2);
 		shapeFactory.setCentre(center);
 		shapeFactory.setWidth(width);
 		shapeFactory.setHeight(height);
+		shapeFactory.setNumPoints((int) Math.round(circumference / 7)); // sample every 7 units
 		return shapeFactory.createEllipse();
 	}
 

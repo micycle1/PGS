@@ -32,7 +32,8 @@ public final class PGS_Transformation {
 	}
 
 	/**
-	 * Scales the shape relative to its center point.
+	 * Scales the dimensions of the shape by a scaling factor relative to its center
+	 * point.
 	 * 
 	 * @param shape
 	 * @param scale X and Y axis scale factor

@@ -138,6 +138,9 @@ public final class PGS_ShapeBoolean {
 	public static PShape unionMesh(PShape mesh) {
 		// faster than JTS CoverageUnion
 		if (mesh.getChildCount() < 2 || mesh.getKind() != PConstants.GROUP) {
+			if (mesh.getChildCount() == 1) {
+				return mesh.getChild(0);
+			}
 			return mesh;
 		}
 

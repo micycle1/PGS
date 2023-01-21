@@ -138,9 +138,7 @@ public class PGS_SegmentSet {
 	 * number of points is odd, the last point is discarded.
 	 * <p>
 	 * The <code>graphMatchedSegments</code> methods are arguably the best
-	 * approaches for random segment set generation. Graph matched / graph perfect
-	 * matching. In this method, the input point set is triangulated and a matching
-	 * ran on that.
+	 * approaches for random segment set generation.
 	 * 
 	 * @param points point set from which to compute segments
 	 * @return set of non-intersecting line segments
@@ -171,9 +169,7 @@ public class PGS_SegmentSet {
 	 * triangulation. If the number of points is odd, the last point is discarded.
 	 * <p>
 	 * The <code>graphMatchedSegments</code> methods are arguably the best
-	 * approaches for random segment set generation. Graph matched / graph perfect
-	 * matching. In this method, the input point set is triangulated and a matching
-	 * ran on that.
+	 * approaches for random segment set generation.
 	 * 
 	 * @param points point set from which to compute segments
 	 * @return set of non-intersecting line segments

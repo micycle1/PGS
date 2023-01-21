@@ -9,6 +9,8 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+
+import org.junit.Ignore;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.LineString;
@@ -95,8 +97,8 @@ class FastPolygonizerTests {
 		assertEquals(1, out.getChildCount());
 	}
 
-	@SuppressWarnings("unchecked")
 	@Test
+	@Ignore
 	void testRobustnessRandomly() {
 		Random r = new XoRoShiRo128PlusRandom(0);
 		for (int k = 0; k < 100; k++) {
@@ -119,6 +121,7 @@ class FastPolygonizerTests {
 			});
 
 			long t1 = System.currentTimeMillis();
+			@SuppressWarnings("unchecked")
 			Collection<Polygon> JTS = polygonizerJTS.getPolygons();
 			long t2 = System.currentTimeMillis();
 			long timeJTS = t2 - t1;

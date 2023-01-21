@@ -30,6 +30,7 @@ import org.tinfour.common.PolygonConstraint;
 import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
 import org.tinfour.standard.IncrementalTin;
+import org.tinfour.utils.HilbertSort;
 import org.tinfour.utils.TriangleCollector;
 
 import micycle.pgs.PGS.LinearRingIterator;
@@ -268,20 +269,22 @@ public final class PGS_Triangulation {
 		Geometry g = shape == null ? PGS.GEOM_FACTORY.createEmpty(2) : fromPShape(shape);
 		final IncrementalTin tin = new IncrementalTin(10);
 
-		final ArrayList<Vertex> vertices = new ArrayList<>();
+		final List<Vertex> vertices = new ArrayList<>();
 		final Coordinate[] coords = g.getCoordinates();
-		for (int i = 0; i < coords.length; i++) {
-			vertices.add(new Vertex(coords[i].x, coords[i].y, 0, i));
+		int vIndex = 0;
+		for (vIndex = 0; vIndex < coords.length; vIndex++) {
+			vertices.add(new Vertex(coords[vIndex].x, coords[vIndex].y, Double.NaN, vIndex));
 		}
 
-		tin.add(vertices, null); // initial triangulation
-
-		int vertexIndex = coords.length;
 		if (steinerPoints != null) {
 			for (PVector v : steinerPoints) { // add steiner points
-				tin.add(new Vertex(v.x, v.y, 0, vertexIndex++));
+				vertices.add(new Vertex(v.x, v.y, Double.NaN, vIndex++));
 			}
 		}
+		
+		HilbertSort hs = new HilbertSort();
+		hs.sort(vertices); // prevent degenerate insertion
+		tin.add(vertices, null); // initial triangulation
 
 		if (refinements > 0) {
 
@@ -303,7 +306,7 @@ public final class PGS_Triangulation {
 					if (t.getArea() > 50) { // don't refine small triangles
 						final Coordinate center = centroid(t); // use centroid rather than circumcircle center
 						if (pretty || pointLocator.locate(center) != Location.EXTERIOR) {
-							refinementVertices.add(new Vertex(center.x, center.y, 0));
+							refinementVertices.add(new Vertex(center.x, center.y, Double.NaN));
 						}
 					}
 				});
@@ -331,7 +334,7 @@ public final class PGS_Triangulation {
 						}
 
 						for (int i = 0; i < c.length; i++) {
-							points.add(new Vertex(c[i].x, c[i].y, 0));
+							points.add(new Vertex(c[i].x, c[i].y, Double.NaN));
 						}
 						/*
 						 * In Tinfour, the shape exterior must be CCW and the holes must be CW. This is

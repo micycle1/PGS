@@ -22,11 +22,9 @@ import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Location;
-import org.locationtech.jts.geom.MultiPoint;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.operation.distance.DistanceOp;
-import org.locationtech.jts.shape.random.RandomPointsInGridBuilder;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
@@ -40,7 +38,6 @@ import micycle.pgs.commons.MaximumInscribedAARectangle;
 import micycle.pgs.commons.MaximumInscribedRectangle;
 import micycle.pgs.commons.MinimumBoundingEllipse;
 import micycle.pgs.commons.MinimumBoundingTriangle;
-import micycle.pgs.commons.SeededRandomPointsInGridBuilder;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -352,6 +349,7 @@ public final class PGS_Optimisation {
 	 * @since 1.3.1
 	 */
 	public static List<PVector> circleCoverage(PShape shape, int n, long seed) {
+		// same as 'Simple Methods to Represent Shapes with Sample Spheres'
 		int nSeedPoints = (int) (PGS_ShapePredicates.area(shape) / 100); // ~one point every 10 units
 		List<PVector> points = PGS_Processing.generateRandomGridPoints(shape, nSeedPoints, false, 0.5, seed);
 		points.addAll(PGS_Conversion.toPVector(shape)); // incl. shape vertices

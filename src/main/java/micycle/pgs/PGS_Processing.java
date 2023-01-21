@@ -23,6 +23,7 @@ import org.apache.commons.math3.ml.clustering.CentroidCluster;
 import org.apache.commons.math3.ml.clustering.Clusterable;
 import org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer;
 import org.locationtech.jts.algorithm.Angle;
+import org.locationtech.jts.algorithm.Area;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.algorithm.hull.ConcaveHullOfPolygons;
 import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
@@ -42,6 +43,7 @@ import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.locationtech.jts.geom.util.GeometryFixer;
 import org.locationtech.jts.geom.util.LineStringExtracter;
+import org.locationtech.jts.geom.util.PolygonExtracter;
 import org.locationtech.jts.linearref.LengthIndexedLine;
 import org.locationtech.jts.noding.MCIndexSegmentSetMutualIntersector;
 import org.locationtech.jts.noding.NodedSegmentString;
@@ -77,7 +79,6 @@ import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import micycle.balaban.BalabanSolver;
 import micycle.balaban.Point;
 import micycle.balaban.Segment;
-import micycle.pgs.PGS.GeometryIterator;
 import micycle.pgs.color.RGB;
 import micycle.pgs.commons.PolygonDecomposition;
 import micycle.pgs.commons.SeededRandomPointsInGridBuilder;
@@ -586,35 +587,32 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Returns a copy of the shape where small holes (i.e. inner rings with area <
-	 * given threshold) are removed.
+	 * Returns a copy of the shape where holes having an area <b>less than</b> the
+	 * specified threshold are removed.
 	 * 
 	 * @param shape         a single polygonal shape or GROUP polygonal shape
-	 * @param areaThreshold remove any holes with an area smaller than this value
+	 * @param areaThreshold removes any holes with an area smaller than this value
 	 * @return
 	 */
 	public static PShape removeSmallHoles(PShape shape, double areaThreshold) {
-		final ArrayList<Geometry> polygons = new ArrayList<>();
 		final Geometry g = fromPShape(shape);
-		for (final Geometry geom : new GeometryIterator(g)) {
-			if (geom.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
-				polygons.add(removeSmallHoles((Polygon) geom, areaThreshold));
-			}
-		}
-		return toPShape(polygons);
+		@SuppressWarnings("unchecked")
+		final List<Polygon> polygons = PolygonExtracter.getPolygons(g);
+		return toPShape(polygons.stream().map(p -> removeSmallHoles(p, areaThreshold)).collect(Collectors.toList()));
 	}
 
 	private static Polygon removeSmallHoles(Polygon polygon, double areaThreshold) {
-		// TODO construct polygon from holes[] (rather than difference!)
-		Polygon noHolePol = GEOM_FACTORY.createPolygon(polygon.getExteriorRing());
+		LinearRing noHolePol = polygon.getExteriorRing();
+		List<LinearRing> validHoles = new ArrayList<>();
 		for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
 			final LinearRing hole = polygon.getInteriorRingN(i);
-			if (hole.getArea() < areaThreshold) {
+			double holeArea = Area.ofRing(polygon.getInteriorRingN(i).getCoordinates());
+			if (holeArea < areaThreshold) {
 				continue;
 			}
-			noHolePol = (Polygon) noHolePol.difference(hole);
+			validHoles.add(hole);
 		}
-		return noHolePol;
+		return GEOM_FACTORY.createPolygon(noHolePol, GeometryFactory.toLinearRingArray(validHoles));
 	}
 
 	/**
@@ -732,9 +730,10 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Partitions a shape into simple convex polygons.
+	 * Partitions shape(s) into simple convex polygons.
 	 * 
-	 * @param shape the shape to partition
+	 * @param shape the shape to partition. can be a single polygon or a GROUP of
+	 *              polygons
 	 * @return a GROUP PShape, where each child shape is some convex partition of
 	 *         the original shape
 	 */
@@ -742,18 +741,16 @@ public final class PGS_Processing {
 		// algorithm described in https://mpen.ca/406/bayazit
 		final Geometry g = fromPShape(shape);
 
-		final PShape partitions = new PShape(PConstants.GROUP);
-		for (int i = 0; i < g.getNumGeometries(); i++) {
-			Geometry child = g.getGeometryN(i);
-			if (child.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) { // skip any linestrings etc
-				List<Polygon> decomposed = PolygonDecomposition.decompose((Polygon) child);
-				for (Polygon polygon : decomposed) {
-					partitions.addChild(toPShape(polygon));
-				}
-			}
-		}
+		final PShape polyPartitions = new PShape(PConstants.GROUP);
+		@SuppressWarnings("unchecked")
+		final List<Polygon> polygons = PolygonExtracter.getPolygons(g);
+		polygons.forEach(p -> polyPartitions.addChild(toPShape(PolygonDecomposition.decompose(p))));
 
-		return partitions;
+		if (polyPartitions.getChildCount() == 1) {
+			return polyPartitions.getChild(0);
+		} else {
+			return polyPartitions;
+		}
 	}
 
 	/**
