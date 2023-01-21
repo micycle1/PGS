@@ -12,7 +12,9 @@ import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.util.AffineTransformation;
 import org.locationtech.jts.geom.util.GeometryFixer;
+import org.locationtech.jts.geom.util.PolygonExtracter;
 import org.locationtech.jts.operation.buffer.BufferParameters;
 import org.locationtech.jts.operation.linemerge.LineMerger;
 import org.locationtech.jts.shape.GeometricShapeBuilder;
@@ -203,6 +205,80 @@ public class PGS_Construction {
 
 		out.setStroke(false);
 		return out;
+	}
+
+	/**
+	 * 
+	 * Creates a <i>Taijitu</i> shape (a geometric representation of the Taoist
+	 * symbol of yin and yang).
+	 * 
+	 * @param centerX the x-coordinate of the center of the shape
+	 * @param centerY the y-coordinate of the center of the shape
+	 * @param radius  the radius of the shape
+	 * @return a PShape representing the Taijitu shape
+	 * @since 1.3.1
+	 */
+	public static PShape createTaijitu(double centerX, double centerY, double radius) {
+		Coordinate center = new Coordinate(centerX, centerY);
+		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
+		shapeFactory.setCentre(center);
+		shapeFactory.setWidth(radius * 2);
+		shapeFactory.setHeight(radius * 2);
+
+		Geometry a = shapeFactory.createArcPolygon(-Math.PI / 2, Math.PI);
+		Geometry b = createEllipse(center.x, centerY + radius / 2, radius, radius);
+		Geometry c = createEllipse(center.x, centerY - radius / 2, radius, radius);
+
+		Geometry yinG = a.union(b).difference(c).getGeometryN(0);
+		AffineTransformation t = AffineTransformation.rotationInstance(Math.PI, centerX, centerY);
+		Geometry yangG = t.transform(yinG);
+
+		PShape yin = toPShape(yinG);
+		PShape yang = toPShape(yangG);
+		yin.setFill(0);
+		yang.setFill(255);
+
+		return PGS_Conversion.flatten(yin, yang);
+	}
+
+	/**
+	 * Creates an Arbelos shape, a mathematical figure bounded by three semicircles.
+	 * <p>
+	 * The position of the central notch is arbitrary and can be located anywhere
+	 * along the diameter.
+	 * 
+	 * @param centerX       the x-coordinate of the center of the shape
+	 * @param centerY       the y-coordinate of the center of the shape
+	 * @param radius        radius of the largest (enclosing) circle
+	 * @param notchPosition the fractional position, between 0 and 1, along the
+	 *                      diameter where the notch will be
+	 * @since 1.3.1
+	 * @return a PShape representing the Arbelos shape
+	 */
+	public static PShape createArbelos(double centerX, double centerY, double radius, double notchPosition) {
+		centerY += radius / 2;
+		final double rA = radius * notchPosition;
+		final double rB = radius * (1 - notchPosition);
+		final double xA = (centerX - radius) + rA;
+		final double xB = xA + rA + rB;
+
+		final Coordinate center = new Coordinate(centerX, centerY);
+		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
+		shapeFactory.setCentre(center);
+		shapeFactory.setWidth(radius * 2);
+		shapeFactory.setHeight(radius * 2);
+
+		Geometry a = shapeFactory.createArcPolygon(Math.PI, Math.PI);
+		Geometry b = createEllipse(xA, centerY, rA * 2, rA * 2);
+		Geometry c = createEllipse(xB, centerY, rB * 2, rB * 2);
+		Geometry curve = a.difference(b).difference(c).buffer(1e-3);
+		@SuppressWarnings("unchecked")
+		List<Polygon> polygons = PolygonExtracter.getPolygons(curve);
+		polygons.sort((m, n) -> Integer.compare(n.getNumPoints(), m.getNumPoints()));
+
+		PShape arbelos = toPShape(polygons.get(0));
+		arbelos.setStroke(false);
+		return arbelos;
 	}
 
 	/**
@@ -725,12 +801,16 @@ public class PGS_Construction {
 		return out;
 	}
 
+	static Polygon createEllipse(double x, double y, double width, double height) {
+		return createEllipse(new Coordinate(x, y), width, height);
+	}
+
 	static Polygon createEllipse(Coordinate center, double width, double height) {
 		final double circumference = Math.PI * ((width + height) / 2);
 		shapeFactory.setCentre(center);
 		shapeFactory.setWidth(width);
 		shapeFactory.setHeight(height);
-		shapeFactory.setNumPoints((int) Math.round(circumference / 7)); // sample every 7 units
+		shapeFactory.setNumPoints(Math.max(21, (int) Math.round(circumference / 7))); // sample every 7 units
 		return shapeFactory.createEllipse();
 	}
 
