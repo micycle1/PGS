@@ -231,35 +231,32 @@ public final class PGS_Triangulation {
 	}
 
 	/**
-	 * Generates a Delaunay Triangulation from the given shape. The triangulation
-	 * can be both constrained (meaning the triangulation is masked by the original
-	 * shape) and refined (meaning additional points are inserted, usually leading
-	 * to more uniform triangle shapes and sizes).
+	 * Generates a Delaunay Triangulation of the given shape and returns it in raw
+	 * form as a Triangulated Irregular Network (mesh).
 	 * <p>
-	 * This method returns the triangulation in its raw form: a Triangulated
-	 * Irregular Network (mesh).
+	 * The triangulation can be constrained to the shape's boundary and refined by
+	 * adding additional points, resulting in more uniform triangle shapes and
+	 * sizes.
 	 * 
-	 * @param shape         the shape whose vertices to generate a triangulation
-	 *                      from. <b>Can be null</b>.
+	 * @param shape         the shape to generate a triangulation from. <b>Can be
+	 *                      null</b>.
 	 * @param steinerPoints A list of additional points to insert into the
 	 *                      triangulation in addition to the vertices of the input
 	 *                      shape. <b>Can be null</b>.
-	 * @param constrain     Constrain the triangulation output using the shape
-	 *                      boundary (from point set). With shapes, you'll probably
-	 *                      want to this to be true.
-	 * @param refinements   The number of triangulation refinement/subdivision
-	 *                      passes to perform. Each pass inserts the centroids of
-	 *                      every existing triangle into the triangulation. Should
-	 *                      be 0 or greater (probably no more than 5).
-	 * @param pretty        Whether to maintain the Delaunay nature when
-	 *                      constraining the triangulation, and whether to check
-	 *                      that centroid locations lie within the shape during
-	 *                      refinement. When pretty=true, triangles in the
-	 *                      triangulation may be slightly more regular in
-	 *                      shape/size. There is a small performance overhead which
-	 *                      becomes more considerable at higher refinement levels.
-	 *                      When constrain=false and refinements=0, this argument
-	 *                      has no effect.
+	 * @param constrain     whether to constrain the triangulation to the shape's
+	 *                      boundary. If using a shape, it is recommended to set
+	 *                      this to true.
+	 * @param refinements   The number of times to subdivide the triangulation by
+	 *                      inserting the centroid of each triangle. Should be 0 or
+	 *                      greater, typically no more than 5.
+	 * @param pretty        Whether to maintain Delaunay nature when constraining
+	 *                      the triangulation and check that centroid locations are
+	 *                      within the shape during refinement. This can result in
+	 *                      more regular triangle shapes and sizes, but with a
+	 *                      performance overhead that increases with higher
+	 *                      refinement levels. Has no effect if
+	 *                      <code>constrain=false</code> and
+	 *                      <code>refinements=0</code>.
 	 * @return Triangulated Irregular Network object (mesh)
 	 * @see #delaunayTriangulation(PShape, Collection, boolean, int, boolean)
 	 * @see #delaunayTriangulationPoints(PShape, Collection, boolean, int, boolean)
@@ -281,7 +278,7 @@ public final class PGS_Triangulation {
 				vertices.add(new Vertex(v.x, v.y, Double.NaN, vIndex++));
 			}
 		}
-		
+
 		HilbertSort hs = new HilbertSort();
 		hs.sort(vertices); // prevent degenerate insertion
 		tin.add(vertices, null); // initial triangulation

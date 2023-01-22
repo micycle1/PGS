@@ -1,5 +1,6 @@
 package micycle.pgs.commons;
 
+import org.locationtech.jts.densify.Densifier;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateSequence;
 import org.locationtech.jts.geom.Geometry;
@@ -22,11 +23,12 @@ class LittleThumblingDensifier {
 	// from https://github.com/locationtech/jts/pull/478
 
 	/**
-	 * Densify a geometry: Walk along the line step by step and record the positions
-	 * at each step (like the "Little Thumbling" would do). Return the line composed
-	 * of the recorded positions. The vertices of the input geometry are not kept,
-	 * which can result in an output line with shorter length. The result is
-	 * different from org.locationtech.jts.densify.Densifier
+	 * Densifies a geometry: Walk along the line in steps of <code>stepLength</code>
+	 * and record the coordinate at each step (like the "Little Thumbling" would
+	 * do). Return the line composed of the recorded positions. The vertices of the
+	 * input geometry are not kept, which can result in an output line with shorter
+	 * length (for instance, corners may be cut). The result is different from
+	 * {@link Densifier}.
 	 * 
 	 * @param geom
 	 * @param stepLength the step length
@@ -71,8 +73,7 @@ class LittleThumblingDensifier {
 		@Override
 		protected CoordinateSequence transformCoordinates(CoordinateSequence coords, Geometry parent) {
 			Coordinate[] inputPts = coords.toCoordinateArray();
-			Coordinate[] newPts = densifyPoints(inputPts, stepLength,
-					parent.getPrecisionModel());
+			Coordinate[] newPts = densifyPoints(inputPts, stepLength, parent.getPrecisionModel());
 			// prevent creation of invalid linestrings
 			if (parent instanceof LineString && newPts.length == 1) {
 				newPts = new Coordinate[0];
@@ -123,7 +124,7 @@ class LittleThumblingDensifier {
 			LineString line = new GeometryFactory(precModel).createLineString(pts);
 			int nb = (int) (line.getLength() / stepLength);
 			Coordinate[] out = new Coordinate[nb + 1];
-		
+
 			double d = 0.0, a = 0.0, dTot;
 			int densIndex = 0;
 			for (int i = 0; i < pts.length - 1; i++) {

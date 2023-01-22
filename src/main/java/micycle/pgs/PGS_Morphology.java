@@ -208,6 +208,7 @@ public final class PGS_Morphology {
 		removeFraction = 1 - removeFraction; // since dce class is preserve-based, not remove-based
 		Geometry g = fromPShape(shape);
 		if (g instanceof Polygon) {
+			// process each ring individually
 			LinearRing[] rings = new LinearRingIterator(g).getLinearRings();
 			LinearRing[] dceRings = new LinearRing[rings.length];
 			for (int i = 0; i < rings.length; i++) {
@@ -388,23 +389,29 @@ public final class PGS_Morphology {
 	}
 
 	/**
-	 * Smoothes a shape via iterated corner cutting (chaikin cutting). More
-	 * iterations results in more smoothing.
+	 * Smoothes a shape by recursively cutting its corners, a technique introduced
+	 * by George Chaikin in 1974.
+	 * <p>
+	 * This method can be used to generate smooth-looking curves from a limited
+	 * number of points. More iterations result in more smoothing.
 	 * 
-	 * @param shape
-	 * @param ratio      Between 0...1. Determines how far along each edge to
-	 *                   perform the cuts. 0 is no cutting; 1 is maximal cutting
-	 *                   (cut at the midpoint of each edge).
-	 * @param iterations number of cutting iterations/recursions to perform. A value
-	 *                   of 1 simply cuts the corners; higher values effectively
-	 *                   smooth the cut. Values greater than ~10 generally have no
-	 *                   additional effect.
-	 * @return a cut copy of the input shape
+	 * @param shape      The shape to be smoothed
+	 * @param ratio      A ratio (between 0 and 1) determining how far along each
+	 *                   edge to perform the two cuts. For example, a ratio of 0.5
+	 *                   will cut the underlying edge twice, at 0.25x and 0.75x
+	 *                   along its length. A value of 1 will cut each edge once,
+	 *                   directly at its midpoint. It is recommended to use a value
+	 *                   of 0.5 for this parameter.
+	 * @param iterations The number of cutting iterations/recursions to perform. A
+	 *                   value of 1 will simply cut the corners once, higher values
+	 *                   will effectively smooth the cut. Values greater than ~10
+	 *                   generally have no additional visual effect.
+	 * @return A copy of the input shape with corners cut.
 	 * @since 1.1.0
 	 */
 	public static PShape chaikinCut(PShape shape, double ratio, int iterations) {
-		ratio = Math.max(ratio, 0.0001);
-		ratio = Math.min(ratio, 0.9999);
+		ratio = Math.max(ratio, 1e-6);
+		ratio = Math.min(ratio, 1 - 1e-6);
 		ratio /= 2; // constrain to 0...0.5
 		PShape cut = ChaikinCut.chaikin(shape, (float) ratio, iterations);
 		PGS_Conversion.setAllFillColor(cut, RGB.WHITE);

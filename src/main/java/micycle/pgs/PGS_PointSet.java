@@ -193,8 +193,8 @@ public final class PGS_PointSet {
 	 * <p>
 	 * Points are expressed as PVectors; the z coordinate is used as the weight for
 	 * each point. Weights must be positive. If every point has a weight of 0 (z=0),
-	 * the function returns the median as if each point had an equal non-zero
-	 * weight (set to 1).
+	 * the function returns the median as if each point had an equal non-zero weight
+	 * (set to 1).
 	 * 
 	 * @param points list of points, where the z coordinate is point weight
 	 * @since 1.3.1
@@ -581,6 +581,11 @@ public final class PGS_PointSet {
 	 * from a low discrepancy sequence (LDS) based on an irrational number (the
 	 * plastic constant).
 	 * <p>
+	 * The <i>plastic LDS</i> has been <a href=
+	 * "http://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/">shown</a>
+	 * to have superior low discrepancy properties amongst the quasirandom
+	 * sequences, and is therefore recommended.
+	 * <p>
 	 * Low discrepancy sequences are deterministic (not randomized) number sequences
 	 * that are low discrepancy - meaning the points tend not to clump together and
 	 * leave holes; the resulting point set is more evenly spaced than a simple
@@ -598,8 +603,8 @@ public final class PGS_PointSet {
 		final double w = xMax - xMin;
 		final double h = yMax - yMin;
 		final double p = 1.32471795724474602596; // plastic constant
-		final double a1 = 1.0f / p;
-		final double a2 = 1.0f / (p * p);
+		final double a1 = 1.0 / p; // inverse of plastic number
+		final double a2 = 1.0 / (p * p);
 
 		final List<PVector> points = new ArrayList<>(n);
 		for (int i = 0; i < n; i++) {
@@ -663,9 +668,9 @@ public final class PGS_PointSet {
 
 		final SplittableRandom random = new SplittableRandom(seed);
 		final double p = 1.32471795724474602596; // plastic constant
-		final double a1 = 1.0f / p;
-		final double a2 = 1.0f / (p * p);
-		final double c_magicNumber = 0.732f;
+		final double a1 = 1.0 / p;
+		final double a2 = 1.0 / (p * p);
+		final double c_magicNumber = 0.732;
 
 		final List<PVector> points = new ArrayList<>(n);
 		for (int i = 0; i < n; i++) {

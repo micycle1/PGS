@@ -65,6 +65,7 @@ import it.rambow.master.javautils.PolylineEncoder;
 import it.rambow.master.javautils.Track;
 import it.rambow.master.javautils.Trackpoint;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
+import micycle.pgs.color.RGB;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
 import processing.core.PConstants;
@@ -843,7 +844,7 @@ public final class PGS_Conversion {
 				if (neighbour != null) {
 					// edge seen before, so faces must be adjacent; create edge between faces
 					if (neighbour.equals(face)) { // probably bad input (3 edges the same)
-						System.err.println("toGraph: Bad input — saw the same edge 3 times.");
+						System.err.println("toDualGraph(): Bad input — saw the same edge 3 times.");
 						continue; // continue to prevent self-loop in graph
 					}
 					graph.addEdge(neighbour, face);
@@ -1140,6 +1141,9 @@ public final class PGS_Conversion {
 
 		if (holes != null) {
 			holes.forEach(hole -> {
+				if (hole.size() < 3) {
+					return;
+				}
 				final boolean holeClosed = hole.get(0).equals(hole.get(hole.size() - 1));
 				if (PGS.isClockwise(hole)) {
 					Collections.reverse(hole);
