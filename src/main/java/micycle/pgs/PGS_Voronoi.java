@@ -25,16 +25,19 @@ import org.tinfour.voronoi.BoundedVoronoiDiagram;
 import org.tinfour.voronoi.ThiessenPolygon;
 
 import micycle.pgs.color.RGB;
+import micycle.pgs.commons.Nullable;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Voronoi Diagrams of shapes and point sets.
+ * Voronoi Diagrams of shapes and point sets. Supports polygonal constraining
+ * and relaxation to generate centroidal Voronoi.
  * 
  * @author Michael Carleton
  *
  */
+@SuppressWarnings("squid:S3776")
 public final class PGS_Voronoi {
 
 	private PGS_Voronoi() {
@@ -50,71 +53,160 @@ public final class PGS_Voronoi {
 	 * {@link micycle.pgs.PGS_Processing#densify(PShape, double)
 	 * densify(density=~10)} method first before using this method on a polygon.
 	 * 
-	 * @param shape     a shape whose vertices to use as Voronoi sites
-	 * @param constrain whether to constrain the diagram lines to the shape (if
-	 *                  polygonal). When true, output voronoi cells are
-	 *                  cropped/constrained to the shape outline.
-	 * 
+	 * @param shape     A shape whose vertices to use as Voronoi sites
+	 * @param constrain A flag indicating whether or not to constrain the resulting
+	 *                  diagram to the original shape (if it is polygonal).
 	 * @return a GROUP PShape, where each child shape is a Voronoi cell
 	 * @see #innerVoronoi(Collection)
+	 * @see #innerVoronoi(PShape, boolean, double[], Collection, int)
 	 */
 	public static PShape innerVoronoi(final PShape shape, final boolean constrain) {
-		return innerVoronoi(shape, constrain, null);
+		return innerVoronoi(shape, constrain, null, null, 0);
 	}
 
 	/**
-	 * Generates a Voronoi diagram for a single shape, where shape vertices are
+	 * Generates an inner Voronoi diagram of a given shape with a specified number
+	 * of relaxations.
+	 * 
+	 * @param shape       The shape to generate the inner Voronoi diagram for.
+	 * @param relaxations The number of times to relax the diagram.
+	 * @return The generated inner Voronoi diagram as a GROUP PShape, where each
+	 *         child shape is a Voronoi cell
+	 */
+	public static PShape innerVoronoi(final PShape shape, final int relaxations) {
+		return innerVoronoi(shape, true, null, null, relaxations);
+	}
+
+	/**
+	 * Generates an inner Voronoi diagram of a given shape with additional sites.
+	 * 
+	 * @param shape           The shape to generate the inner Voronoi diagram for.
+	 * @param additionalSites A collection of PVector points representing additional
+	 *                        sites to be used in the diagram.
+	 * @return The generated inner Voronoi diagram as a GROUP PShape, where each
+	 *         child shape is a Voronoi cell.
+	 * @see #innerVoronoi(PShape, boolean, double[], Collection, int)
+	 */
+	public static PShape innerVoronoi(final PShape shape, Collection<PVector> additionalSites) {
+		return innerVoronoi(shape, true, null, additionalSites, 0);
+	}
+
+	/**
+	 * Generates an inner Voronoi diagram of a given shape with additional sites and
+	 * relaxation.
+	 * 
+	 * @param shape           The shape to generate the inner Voronoi diagram for.
+	 * @param additionalSites A collection of PVector points representing additional
+	 *                        sites to be used in the diagram.
+	 * @param relaxations     The number of times to relax the diagram.
+	 * @return The generated inner Voronoi diagram as a GROUP PShape, where each
+	 *         child shape is a Voronoi cell.
+	 * @see #innerVoronoi(PShape, boolean, double[], Collection, int)
+	 */
+	public static PShape innerVoronoi(final PShape shape, Collection<PVector> additionalSites, int relaxations) {
+		return innerVoronoi(shape, true, null, additionalSites, relaxations);
+	}
+
+	/**
+	 * Generates a Voronoi diagram of a given shape, where shape vertices are
 	 * voronoi point sites. In this method each voronoi cell designates the area
 	 * closest to some vertex.
 	 * <p>
 	 * Note: If the input shape is polygonal, the output is sensitive to how densely
-	 * populated lines are in the input. Consider processing a shape with
+	 * populated lines are in the input. It may be desirable to first process a
+	 * polygonal shape with
 	 * {@link micycle.pgs.PGS_Processing#densify(PShape, double)
-	 * densify(density=~10)} method first before using this method on a polygon.
+	 * densify(density=~10)} before using this method.
+	 * <p>
+	 * The diagram may be "relaxed" into a <i>Centroidal Voronoi Diagram</i>. The
+	 * relaxation process is a technique used to improve the quality of the Voronoi
+	 * diagram. It involves moving the vertices of the diagram slightly to reduce
+	 * the maximum distance between a vertex and the centroid of its associated
+	 * cell. The process is repeated for a specified number of
+	 * <code>relaxations</code> iterations. This process aims to reduce the number
+	 * of irregular shaped polygons in the Voronoi diagram and produce a smoother
+	 * and more evenly distributed diagram.
 	 * 
-	 * @param shape     a shape whose vertices to use as Voronoi sites
-	 * @param constrain whether to constrain the diagram lines to the shape (if
-	 *                  polygonal). When true, output voronoi cells are
-	 *                  cropped/constrained to the shape outline.
-	 * @param bounds    an array of the form [minX, minY, maxX, maxY] defining the
-	 *                  boundary of the voronoi diagram. the boundary must fully
-	 *                  contain the shape.
+	 * @param shape         The shape to generate the inner Voronoi diagram for
+	 *                      (using its vertices for Voronoi sites).
+	 * @param constrain     A flag indicating whether or not to constrain the
+	 *                      resulting diagram to the original shape (if it is
+	 *                      polygonal).
+	 * @param bounds        an optional array of the form [minX, minY, maxX, maxY]
+	 *                      representing the bounds of the diagram. The boundary
+	 *                      must fully contain the shape (but needn't contain all
+	 *                      steiner points).
+	 * @param steinerPoints an optional collection of PVector points representing
+	 *                      Steiner points to be used as additional sites in the
+	 *                      diagram.
+	 * @param relaxations   the number of times to relax the diagram. 0 or greater.
 	 * 
 	 * @return a GROUP PShape, where each child shape is a Voronoi cell
 	 * @see #innerVoronoi(Collection)
 	 */
-	public static PShape innerVoronoi(final PShape shape, final boolean constrain, double[] bounds) {
+	public static PShape innerVoronoi(final PShape shape, final boolean constrain, @Nullable final double[] bounds,
+			@Nullable final Collection<PVector> steinerPoints, final int relaxations) {
 		final Geometry g = fromPShape(shape);
 		final List<Vertex> vertices = new ArrayList<>();
 		final Coordinate[] coords = g.getCoordinates();
-		if (coords.length < 3) { // at least 3 vertices are required 
+		if (coords.length < 3) { // at least 3 vertices are required
 			return new PShape();
-		}
-		for (int i = 0; i < coords.length; i++) {
-			vertices.add(new Vertex(coords[i].x, coords[i].y, 0, i));
 		}
 
 		final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();
-		final double x, y, w, h;
+		final Rectangle2D boundsRect;
 		if (bounds == null) {
-			final Envelope envelope = g.getEnvelopeInternal();
-			x = envelope.getMinX();
-			y = envelope.getMinY();
-			w = envelope.getWidth();
-			h = envelope.getHeight();
+			final Envelope e = g.getEnvelopeInternal();
+			boundsRect = new Rectangle2D.Double(e.getMinX(), e.getMinY(), e.getWidth(), e.getHeight());
 		} else {
-			x = bounds[0];
-			y = bounds[1];
-			w = bounds[2] - bounds[0];
-			h = bounds[3] - bounds[1];
+			boundsRect = new Rectangle2D.Double(bounds[0], bounds[1], bounds[2] - bounds[0], bounds[3] - bounds[1]);
 		}
-		options.setBounds(new Rectangle2D.Double(x, y, w, h));
+		options.setBounds(boundsRect);
 
-		final BoundedVoronoiDiagram v = new BoundedVoronoiDiagram(vertices, options);
+		for (int i = 0; i < coords.length; i++) {
+			Coordinate p = coords[i];
+			if (boundsRect.contains(p.x, p.y)) {
+				vertices.add(new Vertex(p.x, p.y, Double.NaN, 1)); // index == 1
+			}
+		}
+		if (steinerPoints != null) {
+			steinerPoints.forEach(p -> {
+				if (boundsRect.contains(p.x, p.y)) {
+					vertices.add(new Vertex(p.x, p.y, Double.NaN));
+				}
+			});
+		}
+
+		BoundedVoronoiDiagram v = new BoundedVoronoiDiagram(vertices, options);
+
+		for (int i = 0; i < relaxations; i++) {
+			double maxDistDelta = 0;
+			List<Vertex> newSites = new ArrayList<>(vertices.size());
+			for (ThiessenPolygon p : v.getPolygons()) {
+				final Vertex newSite;
+				if (p.getVertex().getIndex() == 0 || steinerPoints == null) {
+					PVector centroid = computeCentroid(p);
+					PVector site = new PVector((float) p.getVertex().x, (float) p.getVertex().y);
+					site.add(PVector.sub(centroid, site).mult(1.5f)); // over-relax (1.5x)
+					newSite = new Vertex(site.x, site.y, Double.NaN);
+					maxDistDelta = Math.max(maxDistDelta, p.getVertex().getDistance(centroid.x, centroid.y));
+				} else {
+					newSite = p.getVertex();
+				}
+				if (boundsRect.contains(newSite.x, newSite.y)) {
+					newSites.add(newSite);
+				}
+			}
+			if (maxDistDelta < 0.05) {
+				break; // sufficiently converged
+			}
+			v = new BoundedVoronoiDiagram(newSites, options);
+		}
 
 		List<Geometry> faces = v.getPolygons().stream().map(PGS_Voronoi::toPolygon).collect(Collectors.toList());
 		if (constrain && g instanceof Polygonal) {
 			faces = faces.parallelStream().map(f -> OverlayNG.overlay(f, g, OverlayNG.INTERSECTION)).collect(Collectors.toList());
+			faces.removeIf(f -> f.getNumPoints() == 0); // (odd, artifacts of intersection?)
 		}
 
 		return PGS_Conversion.toPShape(faces);
@@ -127,9 +219,42 @@ public final class PGS_Voronoi {
 	 * @param points the set of points to use as Voronoi sites
 	 * @return a GROUP PShape, where each child shape is a Voronoi cell
 	 * @see #innerVoronoi(PShape)
+	 * @see #innerVoronoi(PShape, boolean, double[], Collection, int)
 	 */
 	public static PShape innerVoronoi(Collection<PVector> points) {
 		return innerVoronoi(PGS_Conversion.toPointsPShape(points), false);
+	}
+
+	/**
+	 * Generates a Voronoi diagram for a set of points, with relaxation. In this
+	 * method each voronoi cell designates the area closest to some point.
+	 * 
+	 * @param points      the set of points to use as Voronoi sites
+	 * @param relaxations the number of times to relax the diagram. 0 or greater.
+	 * @return a GROUP PShape, where each child shape is a Voronoi cell
+	 * @see #innerVoronoi(PShape)
+	 * @see #innerVoronoi(PShape, boolean, double[], Collection, int)
+	 */
+	public static PShape innerVoronoi(Collection<PVector> points, int relaxations) {
+		return innerVoronoi(PGS_Conversion.toPointsPShape(points), false, null, null, relaxations);
+	}
+
+	/**
+	 * Generates a boundary-constrained Voronoi diagram for a set of points, with
+	 * relaxation. In this method each voronoi cell designates the area closest to
+	 * some point.
+	 * 
+	 * @param points      the set of points to use as Voronoi sites
+	 * @param bounds      an array of the form [minX, minY, maxX, maxY] representing
+	 *                    the bounds of the diagram. The boundary must fully contain
+	 *                    the shape.
+	 * @param relaxations the number of times to relax the diagram. 0 or greater.
+	 * @return a GROUP PShape, where each child shape is a Voronoi cell
+	 * @see #innerVoronoi(PShape)
+	 * @see #innerVoronoi(PShape, boolean, double[], Collection, int)
+	 */
+	public static PShape innerVoronoi(Collection<PVector> points, double[] bounds, int relaxations) {
+		return innerVoronoi(PGS_Conversion.toPointsPShape(points), false, bounds, null, relaxations);
 	}
 
 	/**
@@ -144,7 +269,7 @@ public final class PGS_Voronoi {
 	 * @see #innerVoronoi(PShape)
 	 */
 	public static PShape innerVoronoi(Collection<PVector> points, double[] bounds) {
-		return innerVoronoi(PGS_Conversion.toPointsPShape(points), false, bounds);
+		return innerVoronoi(PGS_Conversion.toPointsPShape(points), false, bounds, null, 0);
 	}
 
 	/**
@@ -296,13 +421,25 @@ public final class PGS_Voronoi {
 		return PGS.GEOM_FACTORY.createPolygon(coords);
 	}
 
+	private static PVector computeCentroid(ThiessenPolygon polygon) {
+		double xSum = 0;
+		double ySum = 0;
+		int n = 0;
+		for (IQuadEdge e : polygon.getEdges()) {
+			xSum += e.getA().x;
+			ySum += e.getA().y;
+			n++;
+		}
+		return new PVector((float) xSum / n, (float) ySum / n);
+	}
+
 	private static List<Vertex> toVertex(Coordinate[] coords) {
 		final boolean closed = coords[0].equals2D(coords[coords.length - 1]) && coords.length > 1;
-		List<Vertex> vertexes = new ArrayList<>(coords.length - (closed ? 1 : 0));
+		List<Vertex> vertices = new ArrayList<>(coords.length - (closed ? 1 : 0));
 		for (int i = 0; i < coords.length - (closed ? 1 : 0); i++) {
 			Coordinate coord = coords[i];
-			vertexes.add(new Vertex(coord.x, coord.y, 0));
+			vertices.add(new Vertex(coord.x, coord.y, 0));
 		}
-		return vertexes;
+		return vertices;
 	}
 }

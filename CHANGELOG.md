@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Improved *Doyle Spiral* implementation. Outputs on some combinations of argument inputs should be better.
 * `PGS_ShapePredicates.holes()` now supports GROUP shapes.
 * Reimplemented `PGS_Hull.convexHull()`. New algorithm is faster, and particularly so on large input sizes.
+* Added a `relaxations` parameter to `innerVoronoi()` methods in `PGS_Voronoi`. Performs Lloyd's relaxations leading to centroidal voronoi.
   
 ### Fixed
 * A slow collections size call included in `prunePointsWithinDistance()` was making it much slower than it should have been.
