@@ -252,13 +252,13 @@
 		<dependency> <!-- for test running -->
 			<groupId>org.junit.jupiter</groupId>
 			<artifactId>junit-jupiter-api</artifactId>
-			<version>[5.7,)</version>
+			<version>[5.9,)</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency> <!-- for test running -->
 			<groupId>org.junit.jupiter</groupId>
 			<artifactId>junit-jupiter-engine</artifactId>
-			<version>[5.7,)</version>
+			<version>[5.9,)</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
@@ -326,6 +326,11 @@
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>RectPacking</artifactId>
 			<version>9178e79df3</version>
+		</dependency>
+		<dependency>
+			<groupId>com.github.micycle1</groupId>
+			<artifactId>BetterBeziers</artifactId>
+			<version>08b1b79077</version>
 		</dependency>
 	</dependencies>
 

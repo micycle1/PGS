@@ -65,6 +65,7 @@ import it.rambow.master.javautils.PolylineEncoder;
 import it.rambow.master.javautils.Track;
 import it.rambow.master.javautils.Trackpoint;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
+import micycle.betterbeziers.CubicBezier;
 import micycle.pgs.color.RGB;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
@@ -1468,6 +1469,77 @@ public final class PGS_Conversion {
 	}
 
 	/**
+	 * Creates a PATH PShape representing a quadratic bezier curve, given by its
+	 * parameters.
+	 * 
+	 * @param start
+	 * @param controlPoint
+	 * @param end
+	 * @return
+	 * @since 1.3.1
+	 */
+	public static PShape fromQuadraticBezier(PVector start, PVector controlPoint, PVector end) {
+		// convert to cubic bezier form
+		PVector cp1 = start.copy().add(controlPoint.copy().sub(start).mult(2 / 3f));
+		PVector cp2 = end.copy().add(controlPoint.copy().sub(end).mult(2 / 3f));
+		return fromCubicBezier(start, cp1, cp2, end);
+	}
+
+	/**
+	 * Creates a PATH PShape representing a cubic bezier curve, given by its
+	 * parameters.
+	 * 
+	 * @param start
+	 * @param controlPoint1
+	 * @param controlPoint2
+	 * @param end
+	 * @return
+	 * @since 1.3.1
+	 */
+	public static PShape fromCubicBezier(PVector start, PVector controlPoint1, PVector controlPoint2, PVector end) {
+		CubicBezier bezier = new CubicBezier(start.x, start.y, controlPoint1.x, controlPoint1.y, controlPoint2.x, controlPoint2.y, end.x,
+				end.y);
+		double[][] samples = bezier.sampleEquidistantPoints(BEZIER_SAMPLE_DISTANCE);
+		final List<PVector> coords = new ArrayList<>(samples.length);
+		for (double[] sample : samples) {
+			coords.add(new PVector((float) sample[0], (float) sample[1]));
+		}
+		return fromPVector(coords);
+	}
+
+	/**
+	 * Subdivide/interpolate/discretise along a quadratic bezier curve, given by its
+	 * start, end and control points
+	 *
+	 * @return list of points along curve
+	 */
+	private static List<Coordinate> getQuadraticBezierPoints(PVector start, PVector controlPoint, PVector end, float sampleDistance) {
+		// convert to cubic form
+		PVector cp1 = start.copy().add(controlPoint.copy().sub(start).mult(2 / 3f));
+		PVector cp2 = end.copy().add(controlPoint.copy().sub(end).mult(2 / 3f));
+		return getCubicBezierPoints(start, cp1, cp2, end, sampleDistance);
+	}
+
+	/**
+	 * Generates a list of equidistant samples along a cubic bezier curve.
+	 *
+	 * @param sampleDistance distance between successive samples on the curve
+	 * @return
+	 */
+	private static List<Coordinate> getCubicBezierPoints(PVector start, PVector controlPoint1, PVector controlPoint2, PVector end,
+			float sampleDistance) {
+		CubicBezier bezier = new CubicBezier(start.x, start.y, controlPoint1.x, controlPoint1.y, controlPoint2.x, controlPoint2.y, end.x,
+				end.y);
+		double[][] samples = bezier.sampleEquidistantPoints(sampleDistance);
+		final List<Coordinate> coords = new ArrayList<>(samples.length);
+		for (double[] sample : samples) {
+			coords.add(new Coordinate(sample[0], sample[1]));
+		}
+	
+		return coords;
+	}
+
+	/**
 	 * For every vertexcode, store the group (i.e. hole) it belongs to.
 	 *
 	 * @param vertexCodes
@@ -1559,120 +1631,6 @@ public final class PGS_Conversion {
 		final int[] vertexGroups = new int[codes.size()];
 		Arrays.setAll(vertexGroups, codes::get);
 		return vertexGroups;
-	}
-
-	/**
-	 * Subdivide/interpolate/discretise along a quadratic bezier curve, given by its
-	 * start, end and control points
-	 *
-	 * @return list of points along curve
-	 */
-	private static List<Coordinate> getQuadraticBezierPoints(PVector start, PVector controlPoint, PVector end, float sampleDistance) {
-		final List<Coordinate> coords;
-
-		if (start.dist(end) <= sampleDistance) {
-			coords = new ArrayList<>(2);
-			coords.add(coordFromPVector(start));
-			coords.add(coordFromPVector(end));
-			return coords;
-		}
-
-		final float length = bezierLengthQuadratic(start, controlPoint, end);
-		final int samples = (int) Math.ceil(length / sampleDistance); // sample every x unit length (approximately)
-		coords = new ArrayList<>(samples);
-
-		coords.add(coordFromPVector(start));
-		for (int j = 1; j < samples; j++) { // start at 1 -- don't sample at t=0
-			final PVector bezierPoint = getQuadraticBezierCoordinate(start, controlPoint, end, j / (float) samples);
-			coords.add(coordFromPVector(bezierPoint));
-		}
-		coords.add(coordFromPVector(end));
-
-		return coords;
-	}
-
-	/**
-	 *
-	 * @param start
-	 * @param controlPoint
-	 * @param end
-	 * @param t            0...1
-	 * @return
-	 */
-	private static PVector getQuadraticBezierCoordinate(PVector start, PVector controlPoint, PVector end, float t) {
-		float x = (1 - t) * (1 - t) * start.x + 2 * (1 - t) * t * controlPoint.x + t * t * end.x;
-		float y = (1 - t) * (1 - t) * start.y + 2 * (1 - t) * t * controlPoint.y + t * t * end.y;
-		return new PVector(x, y);
-	}
-
-	/**
-	 * Approximate bezier length using Gravesen's approach. The insight is that the
-	 * actual bezier length is always somewhere between the distance between the
-	 * endpoints (the length of the chord) and the perimeter of the control polygon.
-	 * For a quadratic Bézier, 2/3 the first + 1/3 the second is a reasonably good
-	 * estimate.
-	 *
-	 * @return
-	 */
-	private static float bezierLengthQuadratic(PVector start, PVector controlPoint, PVector end) {
-		// https://raphlinus.github.io/curves/2018/12/28/bezier-arclength.html
-		final float chord = PVector.sub(end, start).mag();
-		final float cont_net = PVector.sub(start, controlPoint).mag() + PVector.sub(end, controlPoint).mag();
-		return (2 * chord + cont_net) / 3f;
-
-	}
-
-	/**
-	 * Generates a list of samples of a cubic bezier curve.
-	 *
-	 * @param sampleDistance distance between successive samples on the curve
-	 * @return
-	 */
-	private static List<Coordinate> getCubicBezierPoints(PVector start, PVector controlPoint1, PVector controlPoint2, PVector end,
-			float sampleDistance) {
-		final List<Coordinate> coords;
-
-		if (start.dist(end) <= sampleDistance) {
-			coords = new ArrayList<>(2);
-			coords.add(coordFromPVector(start));
-			coords.add(coordFromPVector(end));
-			return coords;
-		}
-
-		final float length = bezierLengthCubic(start, controlPoint1, controlPoint2, end);
-		final int samples = (int) Math.ceil(length / sampleDistance); // sample every x unit length (approximately)
-		coords = new ArrayList<>(samples);
-
-		coords.add(coordFromPVector(start));
-		for (int j = 1; j < samples; j++) { // start at 1 -- don't sample at t=0
-			final PVector bezierPoint = getCubicBezierCoordinate(start, controlPoint1, controlPoint2, end, j / (float) samples);
-			coords.add(coordFromPVector(bezierPoint));
-		}
-		coords.add(coordFromPVector(end));
-		return coords;
-	}
-
-	private static PVector getCubicBezierCoordinate(PVector start, PVector controlPoint1, PVector controlPoint2, PVector end, float t) {
-		final float t1 = 1.0f - t;
-		float x = start.x * t1 * t1 * t1 + 3 * controlPoint1.x * t * t1 * t1 + 3 * controlPoint2.x * t * t * t1 + end.x * t * t * t;
-		float y = start.y * t1 * t1 * t1 + 3 * controlPoint1.y * t * t1 * t1 + 3 * controlPoint2.y * t * t * t1 + end.y * t * t * t;
-		return new PVector(x, y);
-	}
-
-	/**
-	 * Approximate bezier length using Gravesen's approach. The insight is that the
-	 * actual bezier length is always somewhere between the distance between the
-	 * endpoints (the length of the chord) and the perimeter of the control polygon.
-	 *
-	 * @return
-	 */
-	private static float bezierLengthCubic(PVector start, PVector controlPoint1, PVector controlPoint2, PVector end) {
-		// https://stackoverflow.com/a/37862545/9808792
-		final float chord = PVector.sub(end, start).mag();
-		final float cont_net = PVector.sub(start, controlPoint1).mag() + PVector.sub(controlPoint2, controlPoint1).mag()
-				+ PVector.sub(end, controlPoint2).mag();
-		return (cont_net + chord) / 2;
-
 	}
 
 	static class PShapeData {
