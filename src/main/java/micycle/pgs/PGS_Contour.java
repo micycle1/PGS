@@ -30,6 +30,7 @@ import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.locationtech.jts.operation.buffer.BufferOp;
 import org.locationtech.jts.operation.buffer.BufferParameters;
+import org.locationtech.jts.operation.buffer.OffsetCurve;
 import org.locationtech.jts.operation.linemerge.LineMerger;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.tinfour.common.IIncrementalTin;
@@ -655,44 +656,48 @@ public final class PGS_Contour {
 	}
 
 	/**
-	 * Produces inwards offset curves from the shape. Curves will be generated until
-	 * they collapse.
-	 *
-	 * @param shape   a single polygon or multipolygon (GROUP PShape)
-	 * @param spacing spacing between successive offset curves. Should be >=1.
-	 * @param style   specifies the curve join style (BEVEL, MITER, ROUND) to use
-	 * @return A GROUP PShape, where each child shape is a single curve shape, or a
-	 *         GROUP shape of curves created at the same step
-	 * @see #offsetCurvesOutward(PShape, OffsetStyle, double, int)
+	 * Generates inward-facing offset curves from a shape. Curves are generated
+	 * until they collapse.
+	 * 
+	 * @param shape   a path, polygon or multipolygon (GROUP) shape
+	 * @param style   the type of curve join (BEVEL, MITER, or ROUND)
+	 * @param spacing the distance between each curve, must be >=1
+	 * @return a GROUP PShape where each child is a single curve or a group of
+	 *         curves created at the same step
+	 * @see {@link #offsetCurvesOutward(PShape, OffsetStyle, double, int)
+	 *      offsetCurvesOutward()} for outward-facing curves.
 	 */
 	public static PShape offsetCurvesInward(PShape shape, OffsetStyle style, double spacing) {
 		return offsetCurves(shape, style, spacing, 0, false);
 	}
 
 	/**
-	 * Produces N inwards offset curves from the shape.
-	 *
-	 * @param shape   a single polygon or multipolygon (GROUP PShape)
-	 * @param spacing spacing between successive offset curves. Should be >=1.
-	 * @param style   specifies the curve join style (BEVEL, MITER, ROUND) to use
-	 * @return A GROUP PShape, where each child shape is a single curve shape, or a
-	 *         GROUP shape of curves created at the same step
-	 * @see #offsetCurvesOutward(PShape, OffsetStyle, double, int)
+	 * Generates N inward-facing offset curves from a shape.
+	 * 
+	 * @param shape   a path, polygon or multipolygon (GROUP) shape
+	 * @param style   the type of curve join (BEVEL, MITER, or ROUND)
+	 * @param spacing the distance between each curve, must be >=1
+	 * @param curves  the number of curves to generate (including the original shape
+	 *                outline)
+	 * @return a GROUP PShape where each child is a single curve or a group of
+	 *         curves created at the same step
+	 * @see {@link #offsetCurvesOutward(PShape, OffsetStyle, double, int)
+	 *      offsetCurvesOutward()} for outward-facing curves.
 	 */
 	public static PShape offsetCurvesInward(PShape shape, OffsetStyle style, double spacing, int curves) {
 		return offsetCurves(shape, style, spacing, curves, false);
 	}
 
 	/**
-	 * Produces N offset curves that emanate outwards from the shape.
+	 * Generates N outward-facing offset curves from a shape.
 	 *
-	 * @param shape   a single polygon or multipolygon (GROUP PShape)
-	 * @param spacing spacing between successive offset curves. Should be >=1.
-	 * @param curves  the number of offset curves to create (including the original
-	 *                shape outline)
-	 * @param style   specifies the curve join style (BEVEL, MITER, ROUND) to use
-	 * @return A GROUP PShape, where each child shape is a single curve shape, or a
-	 *         GROUP shape of curves created at the same step
+	 * @param shape   a path, polygon or multipolygon (GROUP) shape
+	 * @param style   the type of curve join (BEVEL, MITER, or ROUND)
+	 * @param spacing the distance between each curve, must be >=1
+	 * @param curves  the number of curves to generate (including the original shape
+	 *                outline)
+	 * @return a GROUP PShape where each child is a single curve or a group of
+	 *         curves created at the same step
 	 * @see #offsetCurvesInward(PShape, OffsetStyle, double)
 	 */
 	public static PShape offsetCurvesOutward(PShape shape, OffsetStyle style, double spacing, final int curves) {
@@ -700,10 +705,20 @@ public final class PGS_Contour {
 	}
 
 	/**
-	 * Generic method for offset curves.
+	 * Generic method for producing offset curves from shapes.
 	 */
 	private static PShape offsetCurves(PShape shape, OffsetStyle style, double spacing, final int curves, boolean outwards) {
 		Geometry g = fromPShape(shape);
+
+		// handle non-polygonal / path shapes
+		if (g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
+			List<Geometry> strings = new ArrayList<>(curves);
+			for (int i = 0; i < curves; i++) {
+				strings.add(
+						OffsetCurve.getCurve(g, spacing * (outwards ? 1 : -1) * i, 8, style.style, BufferParameters.DEFAULT_MITRE_LIMIT));
+			}
+			return toPShape(strings);
+		}
 
 		if (g.getCoordinates().length > 2000) {
 			g = DouglasPeuckerSimplifier.simplify(g, 1);

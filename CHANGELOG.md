@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `circleCoverage()` to `PGS_Optimsation`. Covers a polygon with n circles.
 * Additional method signature for `PGS_Conversion.fromPVector()` that accepts a list of holes, each defined a list of by PVectors.
 * `simpleSubtract()` to `PGS_ShapeBoolean`. Subtracts inner holes that lie within a shell, without geometric processing.
+* `fromQuadraticBezier()` and `fromCubicBezier()` to `PGS_Conversion`. Makes a PATH shape representing a bezier curve given by its parameters.
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).
@@ -33,12 +34,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_ShapePredicates.holes()` now supports GROUP shapes.
 * Reimplemented `PGS_Hull.convexHull()`. New algorithm is faster, and particularly so on large input sizes.
 * Added a `relaxations` parameter to `innerVoronoi()` methods in `PGS_Voronoi`. Performs Lloyd's relaxations leading to centroidal voronoi.
+* Improved how shapes containing bezier vertices are sampled during conversion. Bezier elements are now sampled at exactly equidistant steps.
   
 ### Fixed
 * A slow collections size call included in `prunePointsWithinDistance()` was making it much slower than it should have been.
 * Shape Y coordinates were being inverted during `fromJava2D()` conversion.
 * The `from` and `to` arguments for `interpolate()` are now the correct way round.
 * Hearts produced by `PGS_Construction.createHeart()` were slightly squished in the vertical direction.
+* Offset curves methods now handle (unclosed) path shapes.
 
 ### Removed
 *
