@@ -36,6 +36,7 @@ import micycle.spacefillingcurves.SpaceFillingCurve;
 import net.jafama.FastMath;
 import processing.core.PConstants;
 import processing.core.PShape;
+import processing.core.PVector;
 
 /**
  * Construct uncommon/interesting 2D geometries.
@@ -379,6 +380,72 @@ public class PGS_Construction {
 
 		heart.endShape(PConstants.CLOSE);
 		return heart;
+	}
+
+	/**
+	 * Creates a teardrop shape from a parametric curve.
+	 * 
+	 * @param centerX The x coordinate of the center of the teardrop
+	 * @param centerY The y coordinate of the center of the teardrop
+	 * @param height  height of the teardrop
+	 * @param m       order of the curve. Values of [2...5] give good results
+	 * @return
+	 * @since 1.3.1
+	 */
+	public static PShape createTeardrop(final double centerX, final double centerY, double height, final double m) {
+		// https://mathworld.wolfram.com/TeardropCurve.html
+		height /= 2; // get height in terms of radius
+		PShape curve = new PShape(PShape.PATH);
+		curve.setFill(true);
+		curve.setFill(RGB.WHITE);
+		curve.beginShape();
+		final double angleInc = Math.PI * 2 / 360;
+		double angle = 0;
+
+		while (angle < Math.PI * 2) {
+			double x = FastMath.cos(angle);
+			double y = FastMath.sin(angle) * FastMath.pow(FastMath.sin(0.5 * angle), m);
+			curve.vertex((float) (centerX + x * height), (float) (centerY + y * height * 1));
+			angle += angleInc;
+		}
+		curve.endShape(PConstants.CLOSE);
+
+		return PGS_Transformation.rotate(curve, new PVector((float) centerX, (float) centerY), -Math.PI / 2);
+	}
+
+	/**
+	 * Creates a gear shape from a parametric gear curve.
+	 * 
+	 * @param centerX The x coordinate of the center of the gear
+	 * @param centerY The y coordinate of the center of the gear
+	 * @param radius  maximum radius of gear teeth
+	 * @param n       number of gear teeth
+	 * @return the gear shape
+	 * @since 1.3.1
+	 */
+	public static PShape createGear(final double centerX, final double centerY, final double radius, final int n) {
+		// https://mathworld.wolfram.com/GearCurve.html
+		PShape curve = new PShape(PShape.PATH);
+		curve.setFill(true);
+		curve.setFill(RGB.WHITE);
+		curve.beginShape();
+
+		final double cirumference = 2 * Math.PI * radius;
+		final int samples = (int) (cirumference / 5); // 1 point every 5 distance
+		final double angleInc = Math.PI * 2 / samples;
+		double angle = 0;
+
+		final double a = 1; // wolfram default
+		final double b = 10; // wolfram default
+		while (angle < Math.PI * 2) {
+			double r = a + (1 / b) * FastMath.tanh(b * FastMath.sin(n * angle));
+			r *= radius;
+			curve.vertex((float) (centerX + r * FastMath.cos(angle)), (float) (centerY + r * FastMath.sin(angle)));
+			angle += angleInc;
+		}
+		curve.endShape(PConstants.CLOSE);
+
+		return curve;
 	}
 
 	/**

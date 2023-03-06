@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `createRandomSFCurve()` to `PGS_Construction`. Creates a random space-filling curve.
 * `createTaijitu()` to `PGS_Construction`. Creates a _Taijitu_ shape (a geometric representation of the Taoist symbol of yin and yang).
 * `createArbelos()` to `PGS_Construction`.  Creates an _arbelos_ figure.
+* `createTeardrop()` to `PGS_Construction`.  Creates a teardrop figure.
+* `createGear()` to `PGS_Construction`.  Creates a gear figure.
 * `maximumPerimeterSquare()` to `PGS_Optimisation`. Finds the largest square whose 4 vertices each lie on the perimeter of a shape.
 * `rectPack()` to `PGS_Optimisation`. Packs a collection of rectangles into rectangular 2D bin(s).
 * `reorderChildren()` to `PGS_Conversion`. Reorders the child shapes of a shape according to given comparator.

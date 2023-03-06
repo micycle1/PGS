@@ -708,8 +708,12 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
   <tr>
     <td align="center" valign="center"><b>Arbelos</td>
+    <td align="center" valign="center"><b>Teardrop</td>
+    <td align="center" valign="center"><b>Gear</td>
   </tr>
     <td valign="top" width="25%"><img src="resources/pgs/arbelos.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/teardrop.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/gear.gif"></td>
   <tr>
   </tr>
 </table>
