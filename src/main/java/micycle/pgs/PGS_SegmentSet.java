@@ -203,7 +203,7 @@ public class PGS_SegmentSet {
 	 * @see #stochasticSegments(double, double, int, double, double, long)
 	 */
 	public static List<PEdge> stochasticSegments(double width, double height, int n) {
-		return stochasticSegments(width, height, n, 1, Math.min(width, height), System.currentTimeMillis());
+		return stochasticSegments(width, height, n, 1, Math.min(width, height), System.nanoTime());
 	}
 
 	/**
@@ -223,7 +223,7 @@ public class PGS_SegmentSet {
 	 * @see #stochasticSegments(double, double, int, double, double, long)
 	 */
 	public static List<PEdge> stochasticSegments(double width, double height, int n, double length) {
-		return stochasticSegments(width, height, n, length, length, System.currentTimeMillis());
+		return stochasticSegments(width, height, n, length, length, System.nanoTime());
 	}
 
 	/**

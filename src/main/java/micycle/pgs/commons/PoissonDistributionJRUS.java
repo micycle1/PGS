@@ -46,7 +46,7 @@ public final class PoissonDistributionJRUS {
 	private List<PVector> points;
 
 	public PoissonDistributionJRUS() {
-		this(System.currentTimeMillis());
+		this(System.nanoTime());
 	}
 
 	public PoissonDistributionJRUS(final long seed) {

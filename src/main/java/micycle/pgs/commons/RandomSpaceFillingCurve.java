@@ -48,7 +48,7 @@ public class RandomSpaceFillingCurve {
 	 * @param nrows number of cells in the y direction (rows)
 	 */
 	public RandomSpaceFillingCurve(int ncols, int nrows) {
-		this(ncols, nrows, System.currentTimeMillis());
+		this(ncols, nrows, System.nanoTime());
 	}
 
 	/**

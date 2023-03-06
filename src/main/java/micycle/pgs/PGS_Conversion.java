@@ -719,7 +719,7 @@ public final class PGS_Conversion {
 				vertices.add(s.getVertex(i));
 			}
 		});
-		if (!vertices.isEmpty() && vertices.get(0).equals(vertices.get(vertices.size() - 1))) {
+		if (!vertices.isEmpty() && shape.getChildCount() > 0 && vertices.get(0).equals(vertices.get(vertices.size() - 1))) {
 			vertices.remove(vertices.size() - 1);
 		}
 		return vertices;
@@ -1535,7 +1535,7 @@ public final class PGS_Conversion {
 		for (double[] sample : samples) {
 			coords.add(new Coordinate(sample[0], sample[1]));
 		}
-	
+
 		return coords;
 	}
 

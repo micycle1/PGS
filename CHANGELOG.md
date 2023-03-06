@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Reimplemented `PGS_Hull.convexHull()`. New algorithm is faster, and particularly so on large input sizes.
 * Added a `relaxations` parameter to `innerVoronoi()` methods in `PGS_Voronoi`. Performs Lloyd's relaxations leading to centroidal voronoi.
 * Improved how shapes containing bezier vertices are sampled during conversion. Bezier elements are now sampled at exactly equidistant steps.
+* Replaced all instances of `System.currentTimeMillis()` with `System.nanoTime()`. Helps the randomness of outputs when called quickly within a loop.
   
 ### Fixed
 * A slow collections size call included in `prunePointsWithinDistance()` was making it much slower than it should have been.

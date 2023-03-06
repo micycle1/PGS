@@ -269,12 +269,12 @@ public final class PGS_CirclePacking {
 	 * 
 	 * @param triangulation represents the pattern of tangencies; vertices connected
 	 *                      by an edge inthe triangulation represent tangent circles
-	 *                      in thepacking
+	 *                      in the packing
 	 * @param boundaryRadii list of radii of circles associated with the
 	 *                      boundary/perimeter vertices of the triangulation. The
-	 *                      list may have fewer radii than the number of
-	 *                      boundaryvertices; in this case, boundary radii will wrap
-	 *                      aroundthe list
+	 *                      list may have fewer radii than the number of boundary
+	 *                      vertices; in this case, boundary radii will wrap around
+	 *                      the list
 	 * @return A list of PVectors, each representing one circle: (.x, .y) represent
 	 *         the center point and .z represents radius. The packing is centered on
 	 *         (0, 0) by default.

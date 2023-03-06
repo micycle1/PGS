@@ -39,7 +39,7 @@ public class HatchTiling {
 	}
 
 	public PShape getTiling() {
-		return getTiling(System.currentTimeMillis());
+		return getTiling(System.nanoTime());
 	}
 
 	private void tiling() {

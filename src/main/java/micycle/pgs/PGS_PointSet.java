@@ -155,7 +155,7 @@ public final class PGS_PointSet {
 	 * @return list of groups, where each group is a list of PVectors
 	 */
 	public static List<List<PVector>> cluster(Collection<PVector> points, int groups) {
-		return cluster(points, groups, System.currentTimeMillis());
+		return cluster(points, groups, System.nanoTime());
 	}
 
 	/**
@@ -220,7 +220,7 @@ public final class PGS_PointSet {
 	 * @see #random(double, double, double, double, int, long) seeded random()
 	 */
 	public static List<PVector> random(double xMin, double yMin, double xMax, double yMax, int n) {
-		return random(xMin, yMin, xMax, yMax, n, System.currentTimeMillis());
+		return random(xMin, yMin, xMax, yMax, n, System.nanoTime());
 	}
 
 	/**
@@ -263,7 +263,7 @@ public final class PGS_PointSet {
 	 * @see #gaussian(double, double, double, int, long) seeded gaussian()
 	 */
 	public static List<PVector> gaussian(double centerX, double centerY, double sd, int n) {
-		return gaussian(centerX, centerY, sd, n, System.currentTimeMillis());
+		return gaussian(centerX, centerY, sd, n, System.nanoTime());
 	}
 
 	/**
@@ -420,7 +420,7 @@ public final class PGS_PointSet {
 	 * @see #ring(double, double, double, double, double, int, long) seeded ring()
 	 */
 	public static List<PVector> ring(double centerX, double centerY, double innerRadius, double outerRadius, double maxAngle, int n) {
-		return ring(centerX, centerY, innerRadius, outerRadius, maxAngle, n, System.currentTimeMillis());
+		return ring(centerX, centerY, innerRadius, outerRadius, maxAngle, n, System.nanoTime());
 	}
 
 	/**
@@ -473,7 +473,7 @@ public final class PGS_PointSet {
 	 * @see #poisson(double, double, double, double, double, long) seeded poisson()
 	 */
 	public static List<PVector> poisson(double xMin, double yMin, double xMax, double yMax, double minDist) {
-		return poisson(xMin, yMin, xMax, yMax, minDist, System.currentTimeMillis());
+		return poisson(xMin, yMin, xMax, yMax, minDist, System.nanoTime());
 	}
 
 	/**
@@ -636,7 +636,7 @@ public final class PGS_PointSet {
 	 *      irrationalJitteredLDS()
 	 */
 	public static List<PVector> plasticJitteredLDS(double xMin, double yMin, double xMax, double yMax, int n) {
-		return plasticJitteredLDS(xMin, yMin, xMax, yMax, n, System.currentTimeMillis());
+		return plasticJitteredLDS(xMin, yMin, xMax, yMax, n, System.nanoTime());
 	}
 
 	/**
@@ -768,7 +768,7 @@ public final class PGS_PointSet {
 	 * @see #nRooksLDS(double, double, double, double, int, long)
 	 */
 	public static List<PVector> nRooksLDS(double xMin, double yMin, double xMax, double yMax, int n) {
-		return nRooksLDS(xMin, yMin, xMax, yMax, n, System.currentTimeMillis());
+		return nRooksLDS(xMin, yMin, xMax, yMax, n, System.nanoTime());
 	}
 
 	/**

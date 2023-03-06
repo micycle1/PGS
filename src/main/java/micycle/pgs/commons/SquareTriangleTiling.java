@@ -99,7 +99,7 @@ public class SquareTriangleTiling {
 	}
 
 	public PShape getTiling() {
-		return getTiling(System.currentTimeMillis());
+		return getTiling(System.nanoTime());
 	}
 
 	public PShape getTiling(long seed) {

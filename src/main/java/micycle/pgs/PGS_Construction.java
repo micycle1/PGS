@@ -681,7 +681,7 @@ public class PGS_Construction {
 	 * @since 1.3.1
 	 */
 	public static PShape createRandomSFCurve(int nColumns, int nRows, double cellWidth, double cellHeight) {
-		return createRandomSFCurve(nColumns, nRows, cellWidth, cellHeight, System.currentTimeMillis());
+		return createRandomSFCurve(nColumns, nRows, cellWidth, cellHeight, System.nanoTime());
 	}
 
 	/**

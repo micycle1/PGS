@@ -332,7 +332,7 @@ public final class PGS_Optimisation {
 	 * @since 1.3.1
 	 */
 	public static List<PVector> circleCoverage(PShape shape, int n) {
-		return circleCoverage(shape, n, System.currentTimeMillis());
+		return circleCoverage(shape, n, System.nanoTime());
 	}
 
 	/**

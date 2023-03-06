@@ -43,7 +43,7 @@ public final class PGS_Tiling {
 	 * @see #rectSubdivision(double, double, int, long) seeded rectSubdivsion()
 	 */
 	public static PShape rectSubdivision(double width, double height, int maxDepth) {
-		return rectSubdivision(width, height, maxDepth, System.currentTimeMillis());
+		return rectSubdivision(width, height, maxDepth, System.nanoTime());
 	}
 
 	/**
@@ -73,7 +73,7 @@ public final class PGS_Tiling {
 	 *      triangleSubdivsion()
 	 */
 	public static PShape triangleSubdivision(double width, double height, int maxDepth) {
-		return triangleSubdivision(width, height, maxDepth, System.currentTimeMillis());
+		return triangleSubdivision(width, height, maxDepth, System.nanoTime());
 	}
 
 	/**
@@ -104,7 +104,7 @@ public final class PGS_Tiling {
 	 * @see #quadSubdivision(double, double, int, long) seeded quadSubdivision()
 	 */
 	public static PShape quadSubdivision(double width, double height, int depth) {
-		return quadSubdivision(width, height, depth, System.currentTimeMillis());
+		return quadSubdivision(width, height, depth, System.nanoTime());
 	}
 
 	/**
@@ -282,7 +282,7 @@ public final class PGS_Tiling {
 	 * @since 1.3.0
 	 */
 	public static PShape squareTriangleTiling(double width, double height, double tileSize) {
-		return squareTriangleTiling(width, height, tileSize, System.currentTimeMillis());
+		return squareTriangleTiling(width, height, tileSize, System.nanoTime());
 	}
 
 	/**

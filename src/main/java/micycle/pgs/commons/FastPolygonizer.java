@@ -107,7 +107,7 @@ public class FastPolygonizer {
 		 * (it is the face with the highest vertex count) and removed at the end.
 		 */
 		int largestVertexCount = -1;
-		int bopIndex = -1; // "big outside polygon" index
+		int bopIndex = -1; // index of "big outside polygon" (which should be ignored)
 
 		final PShape mesh = new PShape(PConstants.GROUP);
 

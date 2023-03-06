@@ -157,6 +157,7 @@ public class ChaikinCut {
 	 * distance less than 1.0.
 	 */
 	private static boolean cut(PVector a, PVector b) {
+		// TODO expand to exclude almost coincident edge pairs
 		final float dx = b.x - a.x;
 		final float dy = b.y - a.y;
 		final float d2 = dx * dx + dy * dy;

@@ -370,7 +370,7 @@ public final class PGS_Processing {
 	 * @see #generateRandomGridPoints(PShape, int, boolean, double)
 	 */
 	public static List<PVector> generateRandomPoints(PShape shape, int points) {
-		return generateRandomPoints(shape, points, System.currentTimeMillis());
+		return generateRandomPoints(shape, points, System.nanoTime());
 	}
 
 	/**
@@ -489,7 +489,7 @@ public final class PGS_Processing {
 	 * @see #generateRandomGridPoints(PShape, int, boolean, double, long)
 	 */
 	public static List<PVector> generateRandomGridPoints(PShape shape, int maxPoints, boolean constrainedToCircle, double gutterFraction) {
-		return generateRandomGridPoints(shape, maxPoints, constrainedToCircle, gutterFraction, System.currentTimeMillis());
+		return generateRandomGridPoints(shape, maxPoints, constrainedToCircle, gutterFraction, System.nanoTime());
 	}
 
 	/**
