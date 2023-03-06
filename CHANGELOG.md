@@ -24,7 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `circleCoverage()` to `PGS_Optimsation`. Covers a polygon with n circles.
 * Additional method signature for `PGS_Conversion.fromPVector()` that accepts a list of holes, each defined a list of by PVectors.
 * `simpleSubtract()` to `PGS_ShapeBoolean`. Subtracts inner holes that lie within a shell, without geometric processing.
-* `fromQuadraticBezier()` and `fromCubicBezier()` to `PGS_Conversion`. Makes a PATH shape representing a bezier curve given by its parameters.
+* `fromQuadraticBezier()` and `fromCubicBezier()` to `PGS_Conversion`. Makes a PATH shape representing a bezier curve (equidistant sampling) given by its parameters.
+* `simplifyHobby()` to `PGS_Morphology`. Creates a smooth Hobby Curve from the vertices of a shape.
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).

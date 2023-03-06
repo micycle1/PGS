@@ -3,6 +3,7 @@ package micycle.pgs;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -27,6 +28,7 @@ import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.simplify.VWSimplifier;
 
+import micycle.hobbycurves.HobbyCurve;
 import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.PGS_Contour.OffsetStyle;
 import micycle.pgs.color.RGB;
@@ -271,6 +273,40 @@ public final class PGS_Morphology {
 			System.err.println(g.getGeometryType() + " are not supported for the simplifyDCE() method (yet).");
 			return shape;
 		}
+	}
+
+	/**
+	 * Creates a <a href="https://github.com/micycle1/Hobby-Curves"><i>Hobby
+	 * Curve</i></a> from the vertices of the shape. This tends to simplify/round
+	 * the <b>geometry</b> of shape, but may actually increase the number of
+	 * vertices due to increased curvature.
+	 * <p>
+	 * You may want to consider simplifying a shape (reducing vertex count) with
+	 * other methods before applying Hobby simplification.
+	 * 
+	 * @param shape   vertices to use as basis for the Hobby Curve
+	 * @param tension a parameter that controls the tension of the curve (how
+	 *                tightly it is "pulled" towards underlying vertices). Suitable
+	 *                domain is [0.666...3].
+	 * @return a Hobby Curve
+	 * @since 1.3.1
+	 */
+	public static PShape simplifyHobby(PShape shape, double tension) {
+		tension = Math.max(tension, 0.668); // prevent degeneracy
+		double[][] vertices = PGS_Conversion.toArray(shape, false);
+		HobbyCurve curve = new HobbyCurve(vertices, tension, shape.isClosed(), 0.5, 0.5);
+		List<PVector> points = new ArrayList<>();
+		for (double[] b : curve.getBeziers()) {
+			int i = 0;
+			PVector p1 = new PVector((float) b[i++], (float) b[i++]);
+			PVector cp1 = new PVector((float) b[i++], (float) b[i++]);
+			PVector cp2 = new PVector((float) b[i++], (float) b[i++]);
+			PVector p2 = new PVector((float) b[i++], (float) b[i]);
+			PShape bezier = PGS_Conversion.fromCubicBezier(p1, cp1, cp2, p2);
+			points.addAll(PGS_Conversion.toPVector(bezier));
+		}
+
+		return PGS_Conversion.fromPVector(points);
 	}
 
 	/**

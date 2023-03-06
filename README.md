@@ -300,10 +300,12 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Variable Buffer</td>
     <td align="center" valign="center"><b>Precision Reduction</td>
+    <td align="center" valign="center"><b>Hobby Curve Simplification</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/morphology/variableBuffer.gif"></td>
     <td valign="top" width="25%"><img src="resources/morphology/reducePrecision.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/hobbySimplify.gif"></td>
   </tr>
 </table>
 
@@ -334,6 +336,7 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/morphology/snapHull.gif"></td>
   </tr>
   <tr>
+    <td align="center" valign="center"></td>
     <td align="center" valign="center">A variable-convexity hull.</td>
   </tr>
 </table>
