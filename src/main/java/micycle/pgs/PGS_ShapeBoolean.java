@@ -11,9 +11,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
+import org.locationtech.jts.operation.overlayng.CoverageUnion;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.util.GeometricShapeFactory;
@@ -132,12 +134,11 @@ public final class PGS_ShapeBoolean {
 	 * methods.
 	 * 
 	 * @param mesh a GROUP pshape whose children shapes form a mesh (join/overlap at
-	 *             edges)
+	 *             edges). The mesh may contain holes.
 	 * @return
 	 * @since 1.2.0
 	 */
 	public static PShape unionMesh(final PShape mesh) {
-		// faster than JTS CoverageUnion
 		if (mesh.getChildCount() < 2 || mesh.getKind() != PConstants.GROUP) {
 			if (mesh.getChildCount() == 1) {
 				return mesh.getChild(0);
@@ -145,13 +146,26 @@ public final class PGS_ShapeBoolean {
 			return mesh;
 		}
 
+		return unionMeshWithHoles(mesh);
+	}
+	
+	private static PShape unionMeshWithHoles(final PShape mesh) {
+		return toPShape(CoverageUnion.union(PGS_Conversion.fromPShape(mesh)));
+	}
+
+	/**
+	 * Faster than JTS CoverageUnion but does not handle meshes with holes.
+	 * 
+	 * @deprecated
+	 */
+	private static PShape unionMeshWithoutHoles(final PShape mesh) {
 		Map<PEdge, Integer> edges = new HashMap<>(mesh.getChildCount() * 3);
 
 		final List<PEdge> allEdges;
 
 		/*
 		 * Compute set of unique edges belonging to the mesh (this set is equivalent to
-		 * the boundary).
+		 * the boundary, assuming a holeless mesh).
 		 */
 		for (PShape child : mesh.getChildren()) {
 			for (int i = 0; i < child.getVertexCount(); i++) {

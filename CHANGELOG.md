@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * The `from` and `to` arguments for `interpolate()` are now the correct way round.
 * Hearts produced by `PGS_Construction.createHeart()` were slightly squished in the vertical direction.
 * Offset curves methods now handle (unclosed) path shapes.
+* `PGS_ShapeBoolean.unionMesh()` now handles meshes with holes correctly (holes were filled in previously).
 
 ### Removed
 *
