@@ -232,6 +232,8 @@ public final class PGS_Processing {
 	 * @since 1.2.0
 	 */
 	public static PShape extractPerimeter(PShape shape, double from, double to) {
+		from = floatMod(from, 1);
+		to = floatMod(to, 1);
 		Geometry g = fromPShape(shape);
 		if (!g.getGeometryType().equals(Geometry.TYPENAME_LINEARRING) && !g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
 			g = ((Polygon) g).getExteriorRing();
@@ -616,6 +618,31 @@ public final class PGS_Processing {
 	}
 
 	/**
+	 * Extracts all the holes from a shape returning them as if were polygons.
+	 * 
+	 * @param shape the PShape to extract holes from
+	 * @return a new PShape that represents the holes extracted from the input
+	 *         shape. If the input had multiple holes, the output is a GROUP PShape
+	 *         where each child is polygon of one hole.
+	 * @since 1.3.1
+	 */
+	public static PShape extractHoles(PShape shape) {
+		final Geometry g = fromPShape(shape);
+		@SuppressWarnings("unchecked")
+		final List<Polygon> polygons = PolygonExtracter.getPolygons(g);
+
+		List<PShape> holes = new ArrayList<>(polygons.size());
+		for (Polygon polygon : polygons) {
+			for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
+				final LinearRing hole = polygon.getInteriorRingN(i);
+				holes.add(toPShape(hole));
+			}
+		}
+
+		return PGS_Conversion.fromChildren(holes);
+	}
+
+	/**
 	 * Finds the polygonal faces formed by a set of intersecting line segments.
 	 * 
 	 * @param lineSegmentVertices a list of PVectors where each pair (couplet) of
@@ -991,6 +1018,11 @@ public final class PGS_Processing {
 		Collection<Polygon> polys = polygonizer.getPolygons();
 		Polygon[] polyArray = GeometryFactory.toPolygonArray(polys);
 		return geometry.getFactory().createGeometryCollection(polyArray);
+	}
+
+	private static double floatMod(double x, double y) {
+		// x mod y behaving the same way as Math.floorMod but with doubles
+		return (x - Math.floor(x / y) * y);
 	}
 
 }

@@ -1,7 +1,6 @@
 package micycle.pgs;
 
 import static micycle.pgs.PGS_Conversion.fromPShape;
-import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -97,29 +96,7 @@ public final class PGS_Triangulation {
 	public static PShape delaunayTriangulation(PShape shape, @Nullable Collection<PVector> steinerPoints, boolean constrain,
 			int refinements, boolean pretty) {
 		final IIncrementalTin tin = delaunayTriangulationMesh(shape, steinerPoints, constrain, refinements, pretty);
-
-		final PShape triangulation = new PShape(PConstants.GROUP);
-
-		final Consumer<Vertex[]> triangleVertexConsumer = t -> {
-			final PShape triangle = new PShape(PShape.PATH);
-			triangle.beginShape();
-			triangle.vertex((float) t[0].x, (float) t[0].y);
-			triangle.vertex((float) t[1].x, (float) t[1].y);
-			triangle.vertex((float) t[2].x, (float) t[2].y);
-			triangle.endShape(PConstants.CLOSE);
-			triangulation.addChild(triangle);
-		};
-
-		if (constrain && !tin.getConstraints().isEmpty()) {
-			TriangleCollector.visitTrianglesConstrained(tin, triangleVertexConsumer);
-		} else {
-			TriangleCollector.visitTriangles(tin, triangleVertexConsumer);
-		}
-
-		PGS_Conversion.setAllFillColor(triangulation, RGB.WHITE);
-		PGS_Conversion.setAllStrokeColor(triangulation, RGB.PINK, 2);
-
-		return triangulation;
+		return toPShape(tin);
 	}
 
 	/**
@@ -442,7 +419,40 @@ public final class PGS_Triangulation {
 	 */
 	public static PShape earCutTriangulation(PShape shape) {
 		PolygonTriangulator pt = new PolygonTriangulator(fromPShape(shape));
-		return toPShape(pt.getResult());
+		return PGS_Conversion.toPShape(pt.getResult());
+	}
+
+	/**
+	 * Converts a triangulated mesh object to a PShape representing the
+	 * triangulation.
+	 * 
+	 * @param triangulation the IIncrementalTin object to convert
+	 * @return a GROUP PShape, where each child shape is one triangle
+	 * @since 1.3.1
+	 */
+	public static PShape toPShape(IIncrementalTin triangulation) {
+		final PShape out = new PShape(PConstants.GROUP);
+	
+		final Consumer<Vertex[]> triangleVertexConsumer = t -> {
+			final PShape triangle = new PShape(PShape.PATH);
+			triangle.beginShape();
+			triangle.vertex((float) t[0].x, (float) t[0].y);
+			triangle.vertex((float) t[1].x, (float) t[1].y);
+			triangle.vertex((float) t[2].x, (float) t[2].y);
+			triangle.endShape(PConstants.CLOSE);
+			out.addChild(triangle);
+		};
+	
+		if (!triangulation.getConstraints().isEmpty()) {
+			TriangleCollector.visitTrianglesConstrained(triangulation, triangleVertexConsumer);
+		} else {
+			TriangleCollector.visitTriangles(triangulation, triangleVertexConsumer);
+		}
+	
+		PGS_Conversion.setAllFillColor(out, RGB.WHITE);
+		PGS_Conversion.setAllStrokeColor(out, RGB.PINK, 2);
+	
+		return out;
 	}
 
 	/**
