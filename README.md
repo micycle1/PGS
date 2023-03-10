@@ -426,6 +426,13 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/morphology/slivers.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/cleanCoverage.gif"></td>
   </tr>
+  </tr>
+    <tr>
+    <td align="center" valign="center"><b>Extract Holes</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/extractHoles.gif"></td>
+  </tr>
 </table>
 
 ## *Triangulation*

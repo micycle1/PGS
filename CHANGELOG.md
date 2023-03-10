@@ -5,7 +5,7 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
-## **1.3.1** *(2023-xx-xx)*
+## **1.3.1** *(2023-03-xx)*
 
 ### Added
 *  `sobolLDS()` to `PGS_PointSet`. Generates a set of 2D deterministic stratified points from the Sobol low discrepancy sequence.
@@ -26,8 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `circleCoverage()` to `PGS_Optimsation`. Covers a polygon with n circles.
 * Additional method signature for `PGS_Conversion.fromPVector()` that accepts a list of holes, each defined a list of by PVectors.
 * `simpleSubtract()` to `PGS_ShapeBoolean`. Subtracts inner holes that lie within a shell, without geometric processing.
-* `fromQuadraticBezier()` and `fromCubicBezier()` to `PGS_Conversion`. Makes a PATH shape representing a bezier curve (equidistant sampling) given by its parameters.
+* `fromQuadraticBezier()` and `fromCubicBezier()` to `PGS_Conversion`. Makes a PATH shape representing a bezier curve (having equidistant sampling) given by its parameters.
 * `simplifyHobby()` to `PGS_Morphology`. Creates a smooth Hobby Curve from the vertices of a shape.
+* `toPShape()` to `PGS_Triangulation`. Converts a triangulated mesh object to a PShape representing the triangulation -- helpful when working with the raw mesh.
+* `extractHoles()` to `PGS_Processing`. Extracts all the holes from a shape.
+* Additional method signature for `PGS_Processing.fromPVector()` that accepts a random seed.
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).
@@ -47,6 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Hearts produced by `PGS_Construction.createHeart()` were slightly squished in the vertical direction.
 * Offset curves methods now handle (unclosed) path shapes.
 * `PGS_ShapeBoolean.unionMesh()` now handles meshes with holes correctly (holes were filled in previously).
+* `PGS_Processing.extractPerimeter()` now behaves as expected when location values are negative.
 
 ### Removed
 *

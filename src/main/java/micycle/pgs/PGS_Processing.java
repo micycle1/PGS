@@ -22,6 +22,7 @@ import java.util.stream.StreamSupport;
 import org.apache.commons.math3.ml.clustering.CentroidCluster;
 import org.apache.commons.math3.ml.clustering.Clusterable;
 import org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer;
+import org.apache.commons.math3.ml.distance.EuclideanDistance;
 import org.locationtech.jts.algorithm.Angle;
 import org.locationtech.jts.algorithm.Area;
 import org.locationtech.jts.algorithm.Orientation;
@@ -76,6 +77,7 @@ import com.vividsolutions.jump.feature.FeatureUtil;
 import com.vividsolutions.jump.task.DummyTaskMonitor;
 
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
+import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
 import micycle.balaban.BalabanSolver;
 import micycle.balaban.Point;
 import micycle.balaban.Segment;
@@ -233,7 +235,9 @@ public final class PGS_Processing {
 	 */
 	public static PShape extractPerimeter(PShape shape, double from, double to) {
 		from = floatMod(from, 1);
-		to = floatMod(to, 1);
+		if (to != 1) { // so that value of 1 is not moduloed to equal 0
+			to = floatMod(to, 1);
+		}
 		Geometry g = fromPShape(shape);
 		if (!g.getGeometryType().equals(Geometry.TYPENAME_LINEARRING) && !g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
 			g = ((Polygon) g).getExteriorRing();
@@ -248,7 +252,26 @@ public final class PGS_Processing {
 					Stream.concat(Arrays.stream(l1.getCoordinates()), Arrays.stream(l2.getCoordinates())).toArray(Coordinate[]::new)));
 		}
 
-		return toPShape(l.extractLine(length * from, length * to));
+		/*
+		 * The PGS toPShape() method treats a closed linestring as polygonal (having a
+		 * fill), which occurs when from==0 and to==1. We don't want the output to be
+		 * filled in, so build the PATH shape here without closing it.
+		 */
+		LineString string = (LineString) l.extractLine(length * from, length * to);
+		PShape perimeter = new PShape();
+		perimeter.setFamily(PShape.PATH);
+		perimeter.setStroke(true);
+		perimeter.setStroke(micycle.pgs.color.RGB.PINK);
+		perimeter.setStrokeWeight(4);
+
+		perimeter.beginShape();
+		Coordinate[] coords = string.getCoordinates();
+		for (int i = 0; i < coords.length; i++) {
+			perimeter.vertex((float) coords[i].x, (float) coords[i].y);
+		}
+		perimeter.endShape();
+
+		return perimeter;
 	}
 
 	/**
@@ -781,26 +804,46 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Partitions a shape into N approximately equal-area polygonal cells.
+	 * Randomly partitions a shape into N approximately equal-area polygonal cells.
 	 * 
 	 * @param shape a polygonal (non-group, no holes) shape to partition
 	 * @param parts number of roughly equal area partitons to create
 	 * @return a GROUP PShape, whose child shapes are partitions of the original
 	 * @since 1.3.0
 	 */
-	@SuppressWarnings("unchecked")
 	public static PShape equalPartition(final PShape shape, final int parts) {
+		return equalPartition(shape, parts, System.nanoTime());
+	}
+
+	/**
+	 * Randomly (with a given seed) partitions a shape into N approximately
+	 * equal-area polygonal cells.
+	 * 
+	 * @param shape a polygonal (non-group, no holes) shape to partition
+	 * @param parts number of roughly equal area partitons to create
+	 * @param seed  number used to initialize the underlying pseudorandom number
+	 *              generator
+	 * @return a GROUP PShape, whose child shapes are partitions of the original
+	 * @since 1.3.1
+	 */
+	@SuppressWarnings("unchecked")
+	public static PShape equalPartition(final PShape shape, final int parts, long seed) {
 		final Geometry g = fromPShape(shape);
 		if (g instanceof Polygonal) {
 			final Envelope e = g.getEnvelopeInternal();
 
 			int samples = (int) (e.getArea() / 100); // sample every ~10 units in x and y axes
 
-			final List<PVector> samplePoints = PGS_Processing.generateRandomGridPoints(shape, samples, false, 0.8);
-			KMeansPlusPlusClusterer<Clusterable> clusterer = new KMeansPlusPlusClusterer<>(parts, 20);
+			final List<PVector> samplePoints = PGS_Processing.generateRandomGridPoints(shape, samples, false, 0.8, seed);
+			KMeansPlusPlusClusterer<Clusterable> clusterer = new KMeansPlusPlusClusterer<>(parts, 20, new EuclideanDistance(),
+					new XoRoShiRo128PlusRandomGenerator(seed));
 			List<? extends Clusterable> cl = samplePoints.stream().map(p -> (Clusterable) () -> new double[] { p.x, p.y })
 					.collect(Collectors.toList());
 			List<CentroidCluster<Clusterable>> clusters = clusterer.cluster((Collection<Clusterable>) cl);
+			if (clusters.size() < 3) {
+				// since voronoi needs 3+ vertices
+				return shape;
+			}
 			List<Vertex> vertices = new ArrayList<>();
 			clusters.forEach(c -> {
 				double[] p = c.getCenter().getPoint();
