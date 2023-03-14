@@ -63,7 +63,7 @@
 			</plugin>
 			<plugin> <!-- for test running -->
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>2.22.2</version>
+				<version>3.0.0</version>
 			</plugin>
 			<plugin>
 				<groupId>org.jacoco</groupId>
