@@ -401,7 +401,7 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Shape Intersection</td>
     <td align="center" valign="center" colspan="2"><b>Polygonize Lines</td>
-    <td align="center" valign="center"><b>Remove Hidden Lines</td>
+    <td align="center" valign="center"><b>Hidden Line Removal</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/geometry_processing/shapeIntersection.gif"></td>
@@ -584,6 +584,14 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/optimisation/rectPack.gif"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/rectPackBins.gif"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/hilbertSortFaces.gif"></td>
+  </tr>
+
+  <tr>
+    <td align="center" valign="center" colspan="2"><b>Visibility Polygon / Isovist</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/optimisation/visibility.gif"></td>
+    <td valign="top" width="25%"><img src="resources/optimisation/visibility2.gif"></td>
   </tr>
   
 </table>

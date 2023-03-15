@@ -38,6 +38,7 @@ import micycle.pgs.commons.MaximumInscribedAARectangle;
 import micycle.pgs.commons.MaximumInscribedRectangle;
 import micycle.pgs.commons.MinimumBoundingEllipse;
 import micycle.pgs.commons.MinimumBoundingTriangle;
+import micycle.pgs.commons.VisibilityPolygon;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -597,6 +598,45 @@ public final class PGS_Optimisation {
 		double xs = M + N * rs;
 		double ys = P + Q * rs;
 		return new PVector((float) xs, (float) ys, (float) rs);
+	}
+
+	/**
+	 * Computes a visibility polygon / isovist, which is the set of all points
+	 * visible from a given point in a space, considering occlusions caused by
+	 * obstacles. In this case, obstacles comprise the line segments of input shape.
+	 * 
+	 * @param obstacles shape representing obstacles, which may have any manner of
+	 *                  polygon and line geometries.
+	 * @param viewPoint view point from which to compute visibility. If the input if
+	 *                  polygonal, the viewpoint may lie outside the polygon.
+	 * @return a polygonal shape representing the visibility polygon.
+	 * @since 1.3.1
+	 * @see #visibilityPolygon(PShape, Collection)
+	 */
+	public static PShape visibilityPolygon(PShape obstacles, PVector viewPoint) {
+		VisibilityPolygon vp = new VisibilityPolygon();
+		vp.addGeometry(fromPShape(obstacles));
+		return toPShape(vp.getIsovist(PGS.coordFromPVector(viewPoint), true));
+	}
+
+	/**
+	 * Computes a visibility polygon / isovist, which is the set of all points
+	 * visible from a set of given points in space, considering occlusions caused by
+	 * obstacles. In this case, obstacles comprise the line segments of input shape.
+	 * 
+	 * @param obstacles  shape representing obstacles, which may have any manner of
+	 *                   polygon and line geometries.
+	 * @param viewPoints viewpoints from which to compute visibility. If the input
+	 *                   if polygonal, viewpoints may lie outside the polygon.
+	 * @return a polygonal shape representing the visibility polygon (possibly a
+	 *         GROUP shape of disjoint visibility polygons).
+	 * @since 1.3.1
+	 * @see #visibilityPolygon(PShape, PVector)
+	 */
+	public static PShape visibilityPolygon(PShape obstacles, Collection<PVector> viewPoints) {
+		VisibilityPolygon vp = new VisibilityPolygon();
+		vp.addGeometry(fromPShape(obstacles));
+		return toPShape(vp.getIsovist(new CoordinateList(PGS.toCoords(viewPoints)), true));
 	}
 
 }
