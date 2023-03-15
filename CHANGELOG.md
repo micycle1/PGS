@@ -42,15 +42,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Added a `relaxations` parameter to `innerVoronoi()` methods in `PGS_Voronoi`. Performs Lloyd's relaxations leading to centroidal voronoi.
 * Improved how shapes containing bezier vertices are sampled during conversion. Bezier elements are now sampled at exactly equidistant steps.
 * Replaced all instances of `System.currentTimeMillis()` with `System.nanoTime()`. Helps the randomness of outputs when called quickly within a loop.
-  
+* Offset curve methods now handle (unclosed) path shapes.
+
 ### Fixed
 * A slow collections size call included in `prunePointsWithinDistance()` was making it much slower than it should have been.
 * Shape Y coordinates were being inverted during `fromJava2D()` conversion.
-* The `from` and `to` arguments for `interpolate()` are now the correct way round.
+* The `from` and `to` arguments for `interpolate()` were the wrong way round.
 * Hearts produced by `PGS_Construction.createHeart()` were slightly squished in the vertical direction.
-* Offset curves methods now handle (unclosed) path shapes.
 * `PGS_ShapeBoolean.unionMesh()` now handles meshes with holes correctly (holes were filled in previously).
-* `PGS_Processing.extractPerimeter()` now behaves as expected when location values are negative.
+* `PGS_Processing.extractPerimeter()` now behaves as expected when perimeter location values are negative.
+* Positive-valued offset arguments passed to `point[s]OnExterior()` methods could incorrectly produce offsets towards the interior of a shape. Such values will now always correspond to offset **away** from a shape's interior.
 
 ### Removed
 *

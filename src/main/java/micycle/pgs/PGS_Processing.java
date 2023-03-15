@@ -130,7 +130,7 @@ public final class PGS_Processing {
 	 * @param offsetDistance perpendicular offset distance, where 0 is exactly on
 	 *                       the shape exteriod. Positive values offset the point
 	 *                       away from the shape (outwards); negative values offset
-	 *                       the point inwards.
+	 *                       the point inwards towards its interior.
 	 * @return
 	 * @see #pointsOnExterior(PShape, int, double)
 	 */
@@ -142,7 +142,11 @@ public final class PGS_Processing {
 			if (g.getGeometryType().equals(Geometry.TYPENAME_MULTIPOLYGON)) {
 				g = g.getGeometryN(0);
 			}
-			g = ((Polygon) g).getExteriorRing();
+			LinearRing e = ((Polygon) g).getExteriorRing();
+			if (Orientation.isCCW(e.getCoordinates())) {
+				e = e.reverse();
+			}
+			g = e;
 		}
 		LengthIndexedLine l = new LengthIndexedLine(g);
 
@@ -168,14 +172,18 @@ public final class PGS_Processing {
 	public static List<PVector> pointsOnExterior(PShape shape, int points, double offsetDistance) {
 		// TODO another method that returns concave hull of returned points (when
 		// offset)
-		ArrayList<PVector> coords = new ArrayList<>(points);
+		List<PVector> coords = new ArrayList<>(points);
 
 		Geometry g = fromPShape(shape);
 		if (g instanceof Polygonal) {
 			if (g.getGeometryType().equals(Geometry.TYPENAME_MULTIPOLYGON)) {
 				g = g.getGeometryN(0);
 			}
-			g = ((Polygon) g).getExteriorRing();
+			LinearRing e = ((Polygon) g).getExteriorRing();
+			if (Orientation.isCCW(e.getCoordinates())) {
+				e = e.reverse();
+			}
+			g = e;
 		}
 		LengthIndexedLine l = new LengthIndexedLine(g);
 
@@ -205,7 +213,11 @@ public final class PGS_Processing {
 			if (g.getGeometryType().equals(Geometry.TYPENAME_MULTIPOLYGON)) {
 				g = g.getGeometryN(0);
 			}
-			g = ((Polygon) g).getExteriorRing();
+			LinearRing e = ((Polygon) g).getExteriorRing();
+			if (Orientation.isCCW(e.getCoordinates())) {
+				e = e.reverse();
+			}
+			g = e;
 		}
 		LengthIndexedLine l = new LengthIndexedLine(g);
 
@@ -294,6 +306,7 @@ public final class PGS_Processing {
 		Geometry g = fromPShape(shape);
 		if (!g.getGeometryType().equals(Geometry.TYPENAME_LINEARRING) && !g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
 			g = ((Polygon) g).getExteriorRing();
+			// TODO check orientation and ensure CCW?
 		}
 		LengthIndexedLine l = new LengthIndexedLine(g);
 
@@ -330,7 +343,7 @@ public final class PGS_Processing {
 			@Override
 			public void processIntersections(SegmentString e0, int segIndex0, SegmentString e1, int segIndex1) {
 				sid.processIntersections(e0, segIndex0, e1, segIndex1);
-				if (sid.getIntersection() != null) {
+				if (sid.getIntersection() != null) { // TODO use hasIntersection()?
 					points.add(new PVector((float) sid.getIntersection().x, (float) sid.getIntersection().y));
 				}
 			}
