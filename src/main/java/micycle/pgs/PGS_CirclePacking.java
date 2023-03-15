@@ -116,11 +116,47 @@ public final class PGS_CirclePacking {
 	 *         the center point and .z represents radius.
 	 */
 	public static List<PVector> stochasticPack(final PShape shape, final int points, final double minRadius, boolean triangulatePoints) {
+		return stochasticPack(shape, points, minRadius, triangulatePoints, System.nanoTime());
+	}
+
+	/**
+	 * Generates a random (seeded) circle packing of the input shape by generating
+	 * random points one-by-one and calculating the maximum radius a circle at each
+	 * point can have (such that it's tangent to its nearest circle or a shape
+	 * vertex).
+	 * <p>
+	 * Notably, the {@code points} argument defines the number of random point
+	 * attempts (or circle attempts), and not the number of circles in the final
+	 * packing output, since a point is rejected if it lies in an existing circle or
+	 * whose nearest circle is less than minRadius distance away. In other words,
+	 * {@code points} defines the maximum number of circles the packing can have; in
+	 * practice, the packing will contain somewhat fewer circles.
+	 * <p>
+	 * Circles in this packing do not overlap and are contained entirely within the
+	 * shape. However, not every circle is necessarily tangent to other circles (in
+	 * which case, such a circle will be tangent to a shape vertex).
+	 * 
+	 * @param shape             the shape from which to generate a circle packing
+	 * @param points            number of random points to generate (this is not the
+	 *                          number of circles in the packing).
+	 * @param minRadius         filter (however not simply applied at the end, so
+	 *                          affects how the packing operates during packing)
+	 * @param triangulatePoints when true, triangulates an initial random point set
+	 *                          and uses triangle centroids as the random point set
+	 *                          instead; this results in a packing that covers the
+	 *                          shape more evenly (particularly when points is
+	 *                          small), which is sometimes desirable
+	 * @param seed              random seed used to initialise underlying generator
+	 * @return A list of PVectors, each representing one circle: (.x, .y) represent
+	 *         the center point and .z represents radius.
+	 */
+	public static List<PVector> stochasticPack(final PShape shape, final int points, final double minRadius, boolean triangulatePoints,
+			long seed) {
 
 		final CoverTree<PVector> tree = CoverTree.create(3, 2, circleDistanceMetric);
 		final List<PVector> out = new ArrayList<>();
 
-		List<PVector> steinerPoints = PGS_Processing.generateRandomPoints(shape, points);
+		List<PVector> steinerPoints = PGS_Processing.generateRandomPoints(shape, points, seed);
 		if (triangulatePoints) {
 			final IIncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, steinerPoints, true, 1, true);
 			steinerPoints = StreamSupport.stream(tin.triangles().spliterator(), false).filter(filterBorderTriangles)

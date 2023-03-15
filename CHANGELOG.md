@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `toPShape()` to `PGS_Triangulation`. Converts a triangulated mesh object to a PShape representing the triangulation -- helpful when working with the raw mesh.
 * `extractHoles()` to `PGS_Processing`. Extracts all the holes from a shape.
 * Additional method signature for `PGS_Processing.fromPVector()` that accepts a random seed.
+* Additional method signature for `PGS_CirclePacking.stochasticPack()` that accepts a random seed.
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).
