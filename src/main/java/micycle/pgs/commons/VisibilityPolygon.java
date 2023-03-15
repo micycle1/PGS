@@ -1,7 +1,6 @@
 package micycle.pgs.commons;
 
 import org.locationtech.jts.algorithm.RobustLineIntersector;
-import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.geom.*;
 import org.locationtech.jts.noding.IntersectionAdder;
 import org.locationtech.jts.noding.MCIndexNoder;
@@ -52,6 +51,7 @@ import java.util.List;
  * </ul>
  * 
  * @author Nicolas Fortin of Ifsttar UMRAE
+ * @author Small changes by Michael Carleton
  */
 public class VisibilityPolygon {
 
@@ -64,11 +64,10 @@ public class VisibilityPolygon {
 	private List<SegmentString> originalSegments = new ArrayList<>();
 	private double epsilon = 1e-8; // epsilon to help avoid degeneracies
 	private int numPoints = 96;
-	private IndexedPointInAreaLocator locator;
 
 	/**
-	 * @param maxDistance maximum distance constraint for visibility polygon, from
-	 *                    view point
+	 * @param maxDistance maximum distance (from the view point) constraint for the
+	 *                    visibility polygon
 	 */
 	public VisibilityPolygon(double maxDistance) {
 		this.maxDistance = maxDistance;
@@ -79,30 +78,25 @@ public class VisibilityPolygon {
 	}
 
 	/**
+	 * Returns a polygonal geometry that represents the isovist for a collection of
+	 * view points. An isovist is the set of all points visible from a given point
+	 * in a space, considering occlusions caused by the environment.
 	 * 
-	 * @param viewPoints
-	 * @param addEnvelope If true add circle bounding box. This function does not
-	 *                    work properly if the view point is not enclosed by
-	 *                    segments
-	 * @return a polygonal geometry -- either a single polygon or multipolygon (when
-	 *         disjoint)
+	 * @param viewPoints  the collection of view points from which the isovist is
+	 *                    computed.
+	 * @param addEnvelope a boolean flag indicating whether to include a circle
+	 *                    bounding box in the resulting geometry.
+	 * @return a polygonal geometry representing the isovist. The geometry returned
+	 *         may be a single polygon or a multipolygon comprising multiple
+	 *         disjoint polygons.
 	 */
 	public Geometry getIsovist(Collection<Coordinate> viewPoints, boolean addEnvelope) {
-		List<Coordinate> vps = new ArrayList<>(viewPoints); // new container
-		if (!addEnvelope && locator != null) {
-			vps.removeIf(p -> locator.locate(p) == Location.EXTERIOR);
-		}
 		List<Polygon> polys = new ArrayList<>();
-		vps.forEach(p -> {
-			polys.add(getIsovist(p, addEnvelope));
-		});
+		viewPoints.forEach(p -> polys.add(getIsovist(p, addEnvelope)));
 		if (polys.size() == 1) {
 			return polys.get(0);
 		} else if (polys.size() == 2) {
-//			Geometry[] snapped = GeometrySnapper.snap(polys.get(0), polys.get(1), 1e-3);
-//			System.out.println(GeometrySnapper.computeOverlaySnapTolerance(polys.get(1), polys.get(0)));
 			return polys.get(0).union(polys.get(1));
-//			return snapped[0].union(snapped[1]);
 		}
 		return CascadedPolygonUnion.union(polys);
 	}
@@ -422,7 +416,6 @@ public class VisibilityPolygon {
 	 * @param geometry Geometry collection, LineString or Polygon instance
 	 */
 	public void addGeometry(Geometry geometry) {
-		locator = new IndexedPointInAreaLocator(geometry);
 		if (geometry instanceof LineString) {
 			addLineString(originalSegments, (LineString) geometry);
 		} else if (geometry instanceof Polygon) {
