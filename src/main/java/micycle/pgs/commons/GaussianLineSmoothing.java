@@ -2,8 +2,6 @@ package micycle.pgs.commons;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.LineString;
-import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
-
 import net.jafama.FastMath;
 
 /**
@@ -163,13 +161,7 @@ public class GaussianLineSmoothing {
 			out[nb] = densifiedCoords[densifiedCoords.length - 1];
 		}
 
-		// prepare final line, applying some filtering
 		LineString lsOut = line.getFactory().createLineString(out);
-		if (resolution < 0) {
-			resolution = densifiedResolution / 3;
-		}
-
-		lsOut = (LineString) DouglasPeuckerSimplifier.simplify(lsOut, Math.max(1, resolution));
 		return lsOut;
 	}
 

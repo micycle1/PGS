@@ -2,6 +2,7 @@ package micycle.pgs;
 
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
+import static processing.core.PConstants.GROUP;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -382,31 +383,42 @@ public final class PGS_Morphology {
 	 */
 	public static PShape smoothGaussian(PShape shape, double sigma) {
 		Geometry g = fromPShape(shape);
-		if (g.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
-			LinearRingIterator lri = new LinearRingIterator(g);
-			LineString[] rings = lri.getLinearRings();
-			LinearRing[] ringSmoothed = new LinearRing[rings.length];
-			for (int i = 0; i < rings.length; i++) {
-				Coordinate[] coords = GaussianLineSmoothing.get(rings[i], Math.max(sigma, 1), 1).getCoordinates();
-				if (coords.length > 2) {
-					ringSmoothed[i] = PGS.GEOM_FACTORY.createLinearRing(coords);
-				} else {
-					ringSmoothed[i] = PGS.GEOM_FACTORY.createLinearRing();
-				}
-			}
 
-			LinearRing[] holes = null;
-			if (ringSmoothed.length > 1) {
-				holes = Arrays.copyOfRange(ringSmoothed, 1, ringSmoothed.length);
-			}
-			return toPShape(PGS.GEOM_FACTORY.createPolygon(ringSmoothed[0], holes));
+		switch (g.getGeometryType()) {
+			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
+			case Geometry.TYPENAME_MULTIPOLYGON :
+			case Geometry.TYPENAME_MULTILINESTRING :
+				PShape group = new PShape(GROUP);
+				for (int i = 0; i < g.getNumGeometries(); i++) {
+					group.addChild(smoothGaussian(toPShape(g.getGeometryN(i)), sigma));
+				}
+				return group;
+			case Geometry.TYPENAME_POLYGON :
+				LinearRingIterator lri = new LinearRingIterator(g);
+				LineString[] rings = lri.getLinearRings();
+				LinearRing[] ringSmoothed = new LinearRing[rings.length];
+				for (int i = 0; i < rings.length; i++) {
+					Coordinate[] coords = GaussianLineSmoothing.get(rings[i], Math.max(sigma, 1), 1).getCoordinates();
+					if (coords.length > 2) {
+						ringSmoothed[i] = PGS.GEOM_FACTORY.createLinearRing(coords);
+					} else {
+						ringSmoothed[i] = PGS.GEOM_FACTORY.createLinearRing();
+					}
+				}
+
+				LinearRing[] holes = null;
+				if (ringSmoothed.length > 1) {
+					holes = Arrays.copyOfRange(ringSmoothed, 1, ringSmoothed.length);
+				}
+				return toPShape(PGS.GEOM_FACTORY.createPolygon(ringSmoothed[0], holes));
+			case Geometry.TYPENAME_LINEARRING :
+			case Geometry.TYPENAME_LINESTRING :
+				LineString l = (LineString) g;
+				return toPShape(GaussianLineSmoothing.get(l, Math.max(sigma, 1), 1));
+			default :
+				System.err.println(g.getGeometryType() + " are not supported for the smoothGaussian() method."); // pointal geoms
+				return new PShape(); // return empty (so element is invisible if not processed)
 		}
-		if (g.getGeometryType().equals(Geometry.TYPENAME_LINEARRING) || g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
-			LineString l = (LineString) g;
-			return toPShape(GaussianLineSmoothing.get(l, Math.max(sigma, 1), 1));
-		}
-//		System.err.println(g.getGeometryType() + " are not supported for the smoothGaussian() method (yet).");
-		return new PShape(); // return empty (so element is invisible if not processed)
 	}
 
 	/**
