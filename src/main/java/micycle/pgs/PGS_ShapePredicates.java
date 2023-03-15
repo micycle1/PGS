@@ -176,6 +176,19 @@ public final class PGS_ShapePredicates {
 	/**
 	 * Determines whether the shapes intersect/overlap (meaning that have at least
 	 * one point in common).
+	 * <p>
+	 * Note that the input shapes may be lineal (open path) or polygonal (closed
+	 * path), and this affects the meaning of the method. The following intersection
+	 * tests are performed based on the type combinations of the shapes:
+	 * <ul>
+	 * <li>Polygon-line intersection: the polygon <b>area</b> and line share at
+	 * least one point in common. This means a path contained entirely inside a
+	 * polygon will return true as it needn't intersect with the polygon's
+	 * perimeter.</li>
+	 * <li>Line-line intersection: the two lines intersect at least once.</li>
+	 * <li>Polygon-polygon intersection: the two polygons share at least one point
+	 * in common (from their area or perimeter).</li>
+	 * </ul>
 	 * 
 	 * @param a
 	 * @param b

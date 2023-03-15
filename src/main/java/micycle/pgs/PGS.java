@@ -14,6 +14,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
@@ -83,20 +84,11 @@ final class PGS {
 	}
 
 	/**
-	 * Euclidean distance between two coordinates
-	 */
-	static final double distance(Coordinate a, Coordinate b) {
-		double deltaX = a.y - b.y;
-		double deltaY = a.x - b.x;
-		return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-	}
-
-	/**
 	 * Euclidean distance between two points
 	 */
 	static final double distance(Point a, Point b) {
-		double deltaX = a.getY() - b.getY();
-		double deltaY = a.getX() - b.getX();
+		double deltaX = a.getX() - b.getX();
+		double deltaY = a.getY() - b.getY();
 		return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 	}
 	
@@ -149,12 +141,10 @@ final class PGS {
 		return new Coordinate(p.x, p.y);
 	}
 	
-	static final Coordinate[] toCoords(final List<PVector> points) {
-		final Coordinate[] coords = new Coordinate[points.size()];
-		for (int i = 0; i < coords.length; i++) {
-			coords[i] = coordFromPVector(points.get(i));
-		}
-		return coords;
+	static final Coordinate[] toCoords(final Collection<PVector> points) {
+		CoordinateList coords = new CoordinateList();
+		points.forEach(p -> coords.add(coordFromPVector(p)));
+		return coords.toCoordinateArray();
 	}
 
 	static final PVector toPVector(Coordinate c) {
@@ -233,8 +223,8 @@ final class PGS {
 	/**
 	 * Polygonizes a set of edges.
 	 * 
-	 * @param edges a collection of NODED (i.e. non intersecting / must onlymeet at
-	 *              their endpoints) edges. The collection can containduplicates.
+	 * @param edges a collection of NODED (i.e. non intersecting / must only meet at
+	 *              their endpoints) edges. The collection can contain duplicates.
 	 * @return a GROUP PShape, where each child shape represents a polygon face
 	 *         formed by the given edges
 	 */

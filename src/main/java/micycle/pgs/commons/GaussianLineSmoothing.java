@@ -4,6 +4,8 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 
+import net.jafama.FastMath;
+
 /**
  * Line gaussian smoothing.
  * 
@@ -78,7 +80,7 @@ public class GaussianLineSmoothing {
 		final double b = sigmaM * sigmaM * 2;
 		final double d = densifiedResolution * densifiedResolution;
 		for (int i = 0; i < n + 1; i++) {
-			gcs[i] = Math.exp(-i * i * d / b) / a;
+			gcs[i] = FastMath.exp(-i * i * d / b) / a;
 		}
 
 		final Coordinate c0 = densifiedCoords[0];
@@ -166,6 +168,7 @@ public class GaussianLineSmoothing {
 		if (resolution < 0) {
 			resolution = densifiedResolution / 3;
 		}
+
 		lsOut = (LineString) DouglasPeuckerSimplifier.simplify(lsOut, Math.max(1, resolution));
 		return lsOut;
 	}

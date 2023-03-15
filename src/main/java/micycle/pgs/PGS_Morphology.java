@@ -405,8 +405,8 @@ public final class PGS_Morphology {
 			LineString l = (LineString) g;
 			return toPShape(GaussianLineSmoothing.get(l, Math.max(sigma, 1), 1));
 		}
-		System.err.println(g.getGeometryType() + " are not supported for the smoothGaussian() method (yet).");
-		return shape;
+//		System.err.println(g.getGeometryType() + " are not supported for the smoothGaussian() method (yet).");
+		return new PShape(); // return empty (so element is invisible if not processed)
 	}
 
 	/**

@@ -264,10 +264,15 @@ public final class PGS_Conversion {
 	/**
 	 * Converts a PShape to an equivalent JTS Geometry.
 	 * <p>
-	 * PShapes with bezier curves are sampled at regular intervals (in which case
-	 * the resulting geometry will have more vertices than the input PShape).
+	 * Note that bezier curve elements in the input are linearised, being sampled at
+	 * regular equidistant intervals (in which case the resulting geometry will have
+	 * more vertices than the input PShape).
+	 * <p>
+	 * Note also that any multi-level child shape hierarchies are not preserved in
+	 * the output shape; all child shape are flattened to the same level in the
+	 * output.
 	 *
-	 * @param shape
+	 * @param shape the PShape to convert
 	 * @return a JTS Geometry equivalent to the input PShape
 	 */
 	public static Geometry fromPShape(PShape shape) {
@@ -374,6 +379,9 @@ public final class PGS_Conversion {
 	/**
 	 * Creates a JTS Polygon from a geometry or path PShape, whose 'kind' is a
 	 * polygon or path.
+	 * <p>
+	 * Note that repeated vertices are not preserved during conversion (to maximise
+	 * compatibility with geometric algorithms).
 	 */
 	private static Geometry fromVertices(PShape shape) {
 

@@ -144,6 +144,7 @@ public final class PGS_Coloring {
 		}
 		coloring.getColors().forEach((face, color) -> {
 			int c = colorPalette[color % colorPalette.length]; // NOTE use modulo to avoid OOB exception
+			face.setFill(true); // just in case
 			face.setFill(c);
 		});
 
