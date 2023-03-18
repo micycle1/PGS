@@ -86,21 +86,22 @@ public class PGS_Hull {
 	 * more contiguous/less branching and spiral-like.
 	 * 
 	 * @param points
-	 * @param threshold euclidean distance threshold
+	 * @param concavity a factor value between 0 and 1, specifying how concave the
+	 *                  output is (where 1 is maximal concavity)
 	 * @return
 	 * @since 1.1.0
 	 * @see #concaveHullBFS(List, double)
 	 * @see #concaveHullBFS2(List, double)
 	 */
-	public static PShape concaveHullDFS(List<PVector> points, double threshold) {
+	public static PShape concaveHullDFS(List<PVector> points, double concavity) {
 		if (points == null || points.isEmpty()) {
 			return new PShape();
 		}
-		threshold *= threshold * threshold;
+		concavity *= concavity * concavity; // linearise a little bit
 		List<PVector> closestList = PGS_Optimisation.farthestPointPair(points);
-		threshold *= closestList.get(0).dist(closestList.get(1));
+		concavity *= closestList.get(0).dist(closestList.get(1));
 		ConcaveHull hull = new ConcaveHull(prepareConcaveGeometry(points));
-		return toPShape(hull.getConcaveHullDFS(new TriCheckerChi(threshold)));
+		return toPShape(hull.getConcaveHullDFS(new TriCheckerChi(concavity)));
 	}
 
 	/**
@@ -111,7 +112,10 @@ public class PGS_Hull {
 	 *                        concave hull. The edge length ratio is a fraction of
 	 *                        the difference between the longest and shortest edge
 	 *                        lengths in the Delaunay Triangulation of the input
-	 *                        points. It is a value in the range 0 to 1.
+	 *                        points. It is a value in the range 0.0 to 1; at 0.0 it
+	 *                        produces a concave hull of minimum area that is still
+	 *                        connected; 1.0 produces the convex hull.
+	 * 
 	 * @return
 	 * @since 1.1.0
 	 * @see #concaveHullDFS(List, double)

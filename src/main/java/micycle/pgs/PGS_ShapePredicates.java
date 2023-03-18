@@ -166,7 +166,7 @@ public final class PGS_ShapePredicates {
 			try {
 				map = new TrapMap(PGS_Conversion.getChildren(PGS_Transformation.shear(groupShape, .00001, 0)));
 			} catch (Exception e2) {
-				System.err.println(e.getLocalizedMessage());
+				System.err.println(e.getMessage());
 				return new PShape();
 			}
 		}
@@ -246,9 +246,11 @@ public final class PGS_ShapePredicates {
 	/**
 	 * Computes the centroid of a shape. A centroid is the center of mass of the
 	 * shape.
+	 * <p>
+	 * If the input is a polygon, the centroid will always lie inside it.
 	 * 
 	 * @param shape
-	 * @return null if point is empty (geometry empty)
+	 * @return null if geometry empty
 	 */
 	public static PVector centroid(PShape shape) {
 		Point point = fromPShape(shape).getCentroid();
@@ -262,7 +264,8 @@ public final class PGS_ShapePredicates {
 	 * Computes the geometric median location of a shape's vertices.
 	 * <p>
 	 * The median point is the point that minimises the sum of distances to the
-	 * shape vertices.
+	 * shape vertices. If the input is a concave polygon, the median may not lie
+	 * inside it.
 	 * 
 	 * @param shape
 	 * @return median point

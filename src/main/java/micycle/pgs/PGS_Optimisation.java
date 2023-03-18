@@ -18,6 +18,7 @@ import org.locationtech.jts.algorithm.construct.LargestEmptyCircle;
 import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
 import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
@@ -601,9 +602,9 @@ public final class PGS_Optimisation {
 	}
 
 	/**
-	 * Computes a visibility polygon / isovist, which is the set of all points
-	 * visible from a given point in a space, considering occlusions caused by
-	 * obstacles. In this case, obstacles comprise the line segments of input shape.
+	 * Computes a visibility polygon / isovist, the area visible from a given point
+	 * in a space, considering occlusions caused by obstacles. In this case,
+	 * obstacles comprise the line segments of input shape.
 	 * 
 	 * @param obstacles shape representing obstacles, which may have any manner of
 	 *                  polygon and line geometries.
@@ -620,9 +621,9 @@ public final class PGS_Optimisation {
 	}
 
 	/**
-	 * Computes a visibility polygon / isovist, which is the set of all points
-	 * visible from a set of given points in space, considering occlusions caused by
-	 * obstacles. In this case, obstacles comprise the line segments of input shape.
+	 * Computes a visibility polygon / isovist, the area visible from a set of given
+	 * points in space, considering occlusions caused by obstacles. In this case,
+	 * obstacles comprise the line segments of input shape.
 	 * 
 	 * @param obstacles  shape representing obstacles, which may have any manner of
 	 *                   polygon and line geometries.

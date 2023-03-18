@@ -158,8 +158,8 @@ public final class PGS_ShapeBoolean {
 	 * 
 	 * @deprecated
 	 */
-	private static PShape unionMeshWithoutHoles(final PShape mesh) {
-		Map<PEdge, Integer> edges = new HashMap<>(mesh.getChildCount() * 3);
+	static PShape unionMeshWithoutHoles(final Collection<PShape> mesh) {
+		Map<PEdge, Integer> edges = new HashMap<>();
 
 		final List<PEdge> allEdges;
 
@@ -167,7 +167,7 @@ public final class PGS_ShapeBoolean {
 		 * Compute set of unique edges belonging to the mesh (this set is equivalent to
 		 * the boundary, assuming a holeless mesh).
 		 */
-		for (PShape child : mesh.getChildren()) {
+		for (PShape child : mesh) {
 			for (int i = 0; i < child.getVertexCount(); i++) {
 				final PVector a = child.getVertex(i);
 				final PVector b = child.getVertex((i + 1) % child.getVertexCount());

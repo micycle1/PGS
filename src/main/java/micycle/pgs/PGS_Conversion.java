@@ -834,6 +834,10 @@ public final class PGS_Conversion {
 		return toDualGraph(getChildren(mesh));
 	}
 
+	/**
+	 * @param meshFaces collection of faces comprising a conforming mesh.
+	 * @return
+	 */
 	static SimpleGraph<PShape, DefaultEdge> toDualGraph(Collection<PShape> meshFaces) {
 		final SimpleGraph<PShape, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
 		// map of which edge belong to each face; used to detect half-edges

@@ -277,7 +277,7 @@ public final class PGS_Triangulation {
 				 */
 				refinementVertices.clear();
 				TriangleCollector.visitSimpleTriangles(tin, t -> {
-					if (t.getArea() > 50) { // don't refine small triangles
+					if (t.getArea() > 99) { // don't refine small triangles
 						final Coordinate center = centroid(t); // use centroid rather than circumcircle center
 						if (pretty || pointLocator.locate(center) != Location.EXTERIOR) {
 							refinementVertices.add(new Vertex(center.x, center.y, Double.NaN));

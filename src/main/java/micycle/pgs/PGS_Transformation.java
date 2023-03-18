@@ -264,7 +264,7 @@ public final class PGS_Transformation {
 	 * 
 	 * @param shape shape to translate
 	 * @param x     the value to translate by in the x direction
-	 * @param y     the value to translate by in the x direction
+	 * @param y     the value to translate by in the y direction
 	 * @return translated copy of input
 	 */
 	public static PShape translate(PShape shape, double x, double y) {

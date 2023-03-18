@@ -528,15 +528,16 @@ public final class PGS_Morphology {
 	 * perimeter at some frequency.
 	 * 
 	 * @param shape     single polygonal shape
-	 * @param magnitude maxiumum perpendicular displacement along the shape
+	 * @param magnitude maximum perpendicular displacement along the shape
 	 *                  perimeter
-	 * @param frequency sine wave frequency
+	 * @param frequency sine wave frequency. Values less than 1 will result in an
+	 *                  offset that does not smoothly join up.
 	 * @param phase     sine wave phase. corresponds to the fraction (0...1) around
 	 *                  the shape perimeter where the wave starts (0 displacement).
 	 * @return
 	 * @since 1.3.0
 	 */
-	public static PShape sineWarp(PShape shape, double magnitude, int frequency, double phase) {
+	public static PShape sineWarp(PShape shape, double magnitude, double frequency, double phase) {
 		Geometry g = fromPShape(shape);
 		if (g instanceof Polygonal) {
 			if (g.getGeometryType().equals(Geometry.TYPENAME_MULTIPOLYGON)) {
