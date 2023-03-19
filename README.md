@@ -515,10 +515,12 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Split Quadrangulation</td>
     <td align="center" valign="center"><b>Spiral Quadrangulation</td>
+    <td align="center" valign="center"><b>Mesh Smoothing</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/meshing/quadrangulation.png"></td>
     <td valign="top" width="25%"><img src="resources/meshing/spiralQuadrangulation.gif"></td>
+    <td valign="top" width="25%"><img src="resources/meshing/smooth.gif"></td>
   </tr>
 </table>
 

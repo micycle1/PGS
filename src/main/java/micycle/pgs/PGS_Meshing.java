@@ -32,6 +32,7 @@ import org.tinspin.index.kdtree.KDTree;
 import micycle.pgs.color.RGB;
 import micycle.pgs.commons.IncrementalTinDual;
 import micycle.pgs.commons.PEdge;
+import micycle.pgs.commons.PMesh;
 import micycle.pgs.commons.RLFColoring;
 import micycle.pgs.commons.SpiralQuadrangulation;
 import processing.core.PConstants;
@@ -552,6 +553,37 @@ public class PGS_Meshing {
 	public static PShape spiralQuadrangulation(List<PVector> points) {
 		SpiralQuadrangulation sq = new SpiralQuadrangulation(points);
 		return PGS.polygonizeEdges(sq.getQuadrangulationEdges());
+	}
+
+	/**
+	 * Smoothes a mesh via iterative weighted <i>Laplacian smoothing</i>. The effect
+	 * of which is mesh faces become more uniform in size and shape (isotropic).
+	 * <p>
+	 * In Laplacian smoothing, vertices are replaced with the (weighted) average of
+	 * the positions of their adjacent vertices; it is computationally inexpensive
+	 * and fairly effective (faces become more isotropic), but it does not guarantee
+	 * improvement in element quality.
+	 * <p>
+	 * Meshes with more faces take more iterations to converge to stable point.
+	 * Meshes with highly convex faces may result in issues.
+	 * 
+	 * @param mesh              a GROUP PShape where each child shape is a single
+	 *                          face comprising a conforming mesh
+	 * @param iterations        number of smoothing passes to perform. Most meshes
+	 *                          will converge very well by around 50-100 passes.
+	 * @param preservePerimeter boolean flag to exclude the boundary vertices from
+	 *                          being smoothed (thus preserving the mesh perimeter).
+	 *                          Generally this should be set to true, otherwise the
+	 *                          mesh will shrink as it is smoothed.
+	 * @return the smoothed mesh
+	 * @since 1.3.1
+	 */
+	public static PShape smoothMesh(PShape mesh, int iterations, boolean preservePerimeter) {
+		PMesh m = new PMesh(mesh);
+		for (int i = 0; i < iterations; i++) {
+			m.smoothWeighted(preservePerimeter);
+		}
+		return m.getMesh();
 	}
 
 	/**

@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Additional method signature for `PGS_Processing.fromPVector()` that accepts a random seed.
 * `visibilityPolygon()` to `PGS_Optimisation`. Computes the area visible from a given point in a space, considering occlusions caused by obstacles.
 * Additional method signature for `PGS_CirclePacking.stochasticPack()` that accepts a random seed.
+* `smoothMesh()` to `PGS_Meshing`. Smoothes a mesh via iterative weighted Laplacian smoothing.
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).
