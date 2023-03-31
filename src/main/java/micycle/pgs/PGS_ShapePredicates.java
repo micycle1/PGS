@@ -13,9 +13,11 @@ import javax.vecmath.Point4d;
 import org.locationtech.jts.algorithm.Angle;
 import org.locationtech.jts.algorithm.MinimumBoundingCircle;
 import org.locationtech.jts.algorithm.MinimumDiameter;
+import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
 import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.algorithm.match.HausdorffSimilarityMeasure;
+import org.locationtech.jts.coverage.CoverageValidator;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
@@ -427,14 +429,17 @@ public final class PGS_ShapePredicates {
 	/**
 	 * Computes the maximum/largest interior angle of a polygon.
 	 * 
-	 * @param shape polygonal shape
+	 * @param shape simple polygonal shape
 	 * @return an angle in the range [0, 2PI]
 	 * @since 1.3.0
 	 */
 	public static double maximumInteriorAngle(PShape shape) {
-		final CoordinateList coords = new CoordinateList(fromPShape(shape).getCoordinates());
+		final Coordinate[] coordz = fromPShape(shape).getCoordinates();
+		final CoordinateList coords = new CoordinateList(coordz);
 		coords.remove(coords.size() - 1); // remove duplicate/closed coordinate
-		Collections.reverse(coords); // as CCW winding by default
+		if (Orientation.isCCW(coordz)) {
+			Collections.reverse(coords); // CCW -> CW
+		}
 		double maxAngle = 0;
 		for (int i = 0; i < coords.size(); i++) {
 			Coordinate p0 = coords.get(i);
@@ -515,6 +520,22 @@ public final class PGS_ShapePredicates {
 		final Geometry g = fromPShape(shape);
 		final double area = g.getArea();
 		return ((g.convexHull().getArea() - area) / area < 0.001);
+	}
+
+	/**
+	 * Determines whether a GROUP shape forms a conforming mesh / valid coverage.
+	 * <p>
+	 * Conforming meshes comprise faces that do not intersect; any adjacent faces
+	 * not only share edges, but every pair of shared edges are <b>identical</b>
+	 * (having the same coordinates) (such as a triangulation).
+	 * 
+	 * @param mesh shape to test
+	 * @return true if the shape is a conforming mesh
+	 * @since 1.3.1
+	 */
+	public static boolean isConformingMesh(PShape mesh) {
+		Geometry[] geoms = PGS_Conversion.getChildren(mesh).stream().map(f -> fromPShape(f)).toArray(Geometry[]::new);
+		return CoverageValidator.isValid(geoms);
 	}
 
 }

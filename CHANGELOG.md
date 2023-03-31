@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `double[][]` conversion methods to `PGS_Conversion`. Converts simple PShapes to and from their `double[p1, p2, ...][x, y]` representation.
 * `weightedMedian()` to `PGS_PointSet`. Finds the geometric median point of a set of weighted sample points.
 * `median()` to `PGS_ShapePredicates`. Computes the geometric median location of a shape's vertices.
+* `isConformingMesh()` to `PGS_ShapePredicates`. Determines whether a GROUP shape forms a conforming mesh / valid coverage.
 * `createRandomSFCurve()` to `PGS_Construction`. Creates a random space-filling curve.
 * `createTaijitu()` to `PGS_Construction`. Creates a _Taijitu_ shape (a geometric representation of the Taoist symbol of yin and yang).
 * `createArbelos()` to `PGS_Construction`.  Creates an _arbelos_ figure.
@@ -34,6 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `visibilityPolygon()` to `PGS_Optimisation`. Computes the area visible from a given point in a space, considering occlusions caused by obstacles.
 * Additional method signature for `PGS_CirclePacking.stochasticPack()` that accepts a random seed.
 * `smoothMesh()` to `PGS_Meshing`. Smoothes a mesh via iterative weighted Laplacian smoothing.
+* `filterChildren()` to `PGS_Processing`. Filters the children of a shape object based on a given Predicate function.
+* `fromGraph()` to `PGS_Conversion`. Converts a graph consisting of PVectors and PEdges into a PShape by polygonizing its edges.
+* `stochasticMerge()` to `PGS_Meshing`. Randomly merges together adjacent faces of a mesh.
+* `simplifyMesh()` to `PGS_Meshing`. Simplifies the boundaries of the faces in a mesh while preserving the original mesh topology
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).
@@ -47,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Improved how shapes containing bezier vertices are sampled during conversion. Bezier elements are now sampled at exactly equidistant steps.
 * Replaced all instances of `System.currentTimeMillis()` with `System.nanoTime()`. Helps the randomness of outputs when called quickly within a loop.
 * Offset curve methods now handle (unclosed) path shapes.
+* Improved robustness of `PGS_ShapePredicates.maximumInteriorAngle()`.
 
 ### Fixed
 * A slow collections size call included in `prunePointsWithinDistance()` was making it much slower than it should have been.

@@ -2,7 +2,7 @@
 
 # Processing Geometry Suite
 
-*Processing Geometry Suite* is a software project that provides easy access to 2D geometric algorithms in the form of a [Processing](https://processing.org/) library.
+*Processing Geometry Suite* is a software project that provides easy access to 2D geometric algorithms in the form of a [Processing](https://processing.org/) library. Over time it has grown to include an incredibly comprehensive range of algorithms.
 
 The focus of the library is on visualisation rather than providing underlying data structures. To this end all methods in the library are static and most of them take in and return [`PShapes`](https://processing.org/reference/PShape.html) or [`PVectors`](https://processing.org/reference/PVector.html).
 
@@ -25,7 +25,7 @@ Library functionality is split over the following classes:
 * `PGS_Hull`
   * Convex and concave hulls of polygons and point sets
 * `PGS_Meshing`
-  * Mesh generation (excluding triangulation) from shapes
+  * Mesh generation (excluding triangulation) and processing
 * `PGS_Morphology`
   * Methods that affect the geometry or topology of shapes (buffering, simplification, smoothing, etc.)
 * `PGS_Optimisation`
@@ -516,11 +516,22 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center"><b>Split Quadrangulation</td>
     <td align="center" valign="center"><b>Spiral Quadrangulation</td>
     <td align="center" valign="center"><b>Mesh Smoothing</td>
+    <td align="center" valign="center"><b>Mesh Subdivision</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/meshing/quadrangulation.png"></td>
     <td valign="top" width="25%"><img src="resources/meshing/spiralQuadrangulation.gif"></td>
     <td valign="top" width="25%"><img src="resources/meshing/smooth.gif"></td>
+    <td valign="top" width="25%"><img src="resources/meshing/subdivide.gif"></td>
+  </tr>
+
+  <tr>
+    <td align="center" valign="center"><b>Mesh Simplification</td>
+    <td align="center" valign="center"><b>Stochastic Merge</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/meshing/simplifyMesh.gif"></td>
+    <td valign="top" width="25%"><img src="resources/meshing/stochasticMerge.gif"></td>
   </tr>
 </table>
 

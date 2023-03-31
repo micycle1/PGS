@@ -765,6 +765,19 @@ public final class PGS_Conversion {
 	}
 
 	/**
+	 * Converts a given SimpleGraph consisting of PVectors and PEdges into a PShape
+	 * by polygonizing its edges. If the graph represented a shape with holes, these
+	 * will not be preserved during the conversion.
+	 * 
+	 * @param graph the graph to be converted into a PShape.
+	 * @return a PShape representing the polygonized edges of the graph.
+	 * @since 1.3.1
+	 */
+	public static PShape fromGraph(SimpleGraph<PVector, PEdge> graph) {
+		return PGS.polygonizeEdges(graph.edgeSet());
+	}
+
+	/**
 	 * Takes as input a graph and computes a layout for the graph vertices using a
 	 * Force-Directed placement algorithm (not vertex coordinates, if any exist).
 	 * Vertices are joined by their edges.

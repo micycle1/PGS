@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.SplittableRandom;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -1054,6 +1055,24 @@ public final class PGS_Processing {
 		final PShape out = PGS_Conversion.toPShape(cleanedGeometries);
 		PGS_Conversion.setAllStrokeColor(out, RGB.PINK, 2);
 		return out;
+	}
+
+	/**
+	 * Filters out the children of a given PShape object based on a given Predicate
+	 * function.
+	 * 
+	 * @param shape          The PShape whose children will be filtered.
+	 * @param filterFunction A Predicate function that takes a PShape object and
+	 *                       returns <code>true</code> if the child shape should be
+	 *                       <b>filtered out/removed</b> from the shape.
+	 * @since 1.3.1
+	 * @return A new PShapethat contains only the children shapes of the input shape
+	 *         that satisfy the given Predicate function (<code>==false</code>).
+	 */
+	public static PShape filterChildren(PShape shape, Predicate<PShape> filterFunction) {
+		filterFunction = filterFunction.negate();
+		List<PShape> filteredFaces = PGS_Conversion.getChildren(shape).stream().filter(filterFunction::test).collect(Collectors.toList());
+		return PGS_Conversion.flatten(filteredFaces);
 	}
 
 	private static Polygon toGeometry(Envelope envelope) {

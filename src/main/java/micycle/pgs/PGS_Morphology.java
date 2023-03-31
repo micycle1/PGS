@@ -154,8 +154,9 @@ public final class PGS_Morphology {
 	 * @param shape
 	 * @param distanceTolerance the tolerance to use
 	 * @return simplifed copy of the shape
-	 * @see #simplifyVW(PShape, double)
-	 * @see #simplifyTopology(PShape, double)
+	 * @see #simplifyVW(PShape, double) simplifyVW()
+	 * @see #simplifyTopology(PShape, double) simplifyTopology()
+	 * @see {@link PGS_Meshing#simplifyMesh(PShape, double, boolean) simplifyMesh()}
 	 */
 	public static PShape simplify(PShape shape, double distanceTolerance) {
 		return toPShape(DouglasPeuckerSimplifier.simplify(fromPShape(shape), distanceTolerance));
@@ -170,8 +171,8 @@ public final class PGS_Morphology {
 	 *                          distance.This is converted to an area tolerance by
 	 *                          squaring it.
 	 * @return simplifed copy of the shape
-	 * @see #simplify(PShape, double)
-	 * @see #simplifyTopology(PShape, double)
+	 * @see #simplify(PShape, double) simplify()
+	 * @see #simplifyTopology(PShape, double) simplifyTopology()
 	 */
 	public static PShape simplifyVW(PShape shape, double distanceTolerance) {
 		return toPShape(VWSimplifier.simplify(fromPShape(shape), distanceTolerance));
@@ -184,8 +185,8 @@ public final class PGS_Morphology {
 	 * @param shape
 	 * @param distanceTolerance the tolerance to use
 	 * @return simplifed copy of the shape
-	 * @see #simplify(PShape, double)
-	 * @see #simplifyVW(PShape, double)
+	 * @see #simplify(PShape, double) simplify()
+	 * @see #simplifyVW(PShape, double) simplifyVW()
 	 */
 	public static PShape simplifyTopology(PShape shape, double distanceTolerance) {
 		return toPShape(TopologyPreservingSimplifier.simplify(fromPShape(shape), distanceTolerance));
@@ -210,27 +211,37 @@ public final class PGS_Morphology {
 	public static PShape simplifyDCE(PShape shape, double removeFraction) {
 		removeFraction = 1 - removeFraction; // since dce class is preserve-based, not remove-based
 		Geometry g = fromPShape(shape);
-		if (g instanceof Polygon) {
-			// process each ring individually
-			LinearRing[] rings = new LinearRingIterator(g).getLinearRings();
-			LinearRing[] dceRings = new LinearRing[rings.length];
-			for (int i = 0; i < rings.length; i++) {
-				LinearRing ring = rings[i];
-				DiscreteCurveEvolution dce = new DiscreteCurveEvolution((int) Math.round(removeFraction * ring.getNumPoints()));
-				dceRings[i] = PGS.GEOM_FACTORY.createLinearRing(dce.process(ring));
-			}
-			LinearRing[] holes = null;
-			if (dceRings.length > 1) {
-				holes = Arrays.copyOfRange(dceRings, 1, dceRings.length);
-			}
-			return toPShape(PGS.GEOM_FACTORY.createPolygon(dceRings[0], holes));
-		} else if (g instanceof LineString) {
-			LineString l = (LineString) g;
-			DiscreteCurveEvolution dce = new DiscreteCurveEvolution((int) Math.round(removeFraction * l.getNumPoints()));
-			return toPShape(PGS.GEOM_FACTORY.createLineString(dce.process(l)));
-		} else {
-			System.err.println(g.getGeometryType() + " are not supported for the simplifyDCE() method (yet).");
-			return shape;
+		switch (g.getGeometryType()) {
+			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
+			case Geometry.TYPENAME_MULTIPOLYGON :
+			case Geometry.TYPENAME_MULTILINESTRING :
+				PShape group = new PShape(GROUP);
+				for (int i = 0; i < g.getNumGeometries(); i++) {
+					group.addChild(simplifyDCE(toPShape(g.getGeometryN(i)), removeFraction));
+				}
+				return group;
+			case Geometry.TYPENAME_LINEARRING :
+			case Geometry.TYPENAME_POLYGON :
+				// process each ring individually
+				LinearRing[] rings = new LinearRingIterator(g).getLinearRings();
+				LinearRing[] dceRings = new LinearRing[rings.length];
+				for (int i = 0; i < rings.length; i++) {
+					LinearRing ring = rings[i];
+					DiscreteCurveEvolution dce = new DiscreteCurveEvolution((int) Math.round(removeFraction * ring.getNumPoints()));
+					dceRings[i] = PGS.GEOM_FACTORY.createLinearRing(dce.process(ring));
+				}
+				LinearRing[] holes = null;
+				if (dceRings.length > 1) {
+					holes = Arrays.copyOfRange(dceRings, 1, dceRings.length);
+				}
+				return toPShape(PGS.GEOM_FACTORY.createPolygon(dceRings[0], holes));
+			case Geometry.TYPENAME_LINESTRING :
+				LineString l = (LineString) g;
+				DiscreteCurveEvolution dce = new DiscreteCurveEvolution((int) Math.round(removeFraction * l.getNumPoints()));
+				return toPShape(PGS.GEOM_FACTORY.createLineString(dce.process(l)));
+			default :
+				System.err.println(g.getGeometryType() + " are not supported for the simplifyDCE() method."); // pointal geoms
+				return new PShape(); // return empty (so element is invisible if not processed)
 		}
 	}
 
@@ -528,8 +539,7 @@ public final class PGS_Morphology {
 	 * perimeter at some frequency.
 	 * 
 	 * @param shape     single polygonal shape
-	 * @param magnitude maximum perpendicular displacement along the shape
-	 *                  perimeter
+	 * @param magnitude maximum perpendicular displacement along the shape perimeter
 	 * @param frequency sine wave frequency. Values less than 1 will result in an
 	 *                  offset that does not smoothly join up.
 	 * @param phase     sine wave phase. corresponds to the fraction (0...1) around

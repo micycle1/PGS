@@ -1,12 +1,17 @@
 package micycle.pgs;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.apache.commons.math3.random.RandomGenerator;
+import org.jgrapht.alg.connectivity.ConnectivityInspector;
 import org.jgrapht.alg.interfaces.VertexColoringAlgorithm.Coloring;
 import org.jgrapht.alg.spanning.GreedyMultiplicativeSpanner;
 import org.jgrapht.alg.util.NeighborCache;
@@ -14,6 +19,7 @@ import org.jgrapht.graph.AbstractBaseGraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 import org.locationtech.jts.algorithm.Orientation;
+import org.locationtech.jts.coverage.CoverageSimplifier;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
@@ -29,6 +35,7 @@ import org.tinfour.utils.TriangleCollector;
 import org.tinspin.index.PointIndex;
 import org.tinspin.index.kdtree.KDTree;
 
+import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
 import micycle.pgs.color.RGB;
 import micycle.pgs.commons.IncrementalTinDual;
 import micycle.pgs.commons.PEdge;
@@ -40,7 +47,7 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Mesh generation (excluding triangulation).
+ * Mesh generation (excluding triangulation) and processing.
  * <p>
  * Many of the methods within this class process an existing Delaunay
  * triangulation; you may first generate such a triangulation from a shape using
@@ -556,6 +563,62 @@ public class PGS_Meshing {
 	}
 
 	/**
+	 * Randomly merges together / dissolves adjacent faces of a mesh.
+	 * <p>
+	 * The procedure randomly assigns a integer ID to each face and then groups of
+	 * mutually adjacent faces that share an ID (belong to the same group) are
+	 * merged into one.
+	 * 
+	 * @param mesh     the conforming mesh shape to perform the operation on
+	 * @param nClasses the number of classes to assign to mesh faces; fewer classes
+	 *                 means adjacent faces are more likely to share a class and be
+	 *                 merged.
+	 * @param seed     the seed for the random number generator
+	 * @return a new GROUP PShape representing the result of the operation
+	 * @since 1.3.1
+	 */
+	public static PShape stochasticMerge(PShape mesh, int nClasses, long seed) {
+		final RandomGenerator random = new XoRoShiRo128PlusRandomGenerator(seed);
+		SimpleGraph<PShape, DefaultEdge> graph = PGS_Conversion.toDualGraph(mesh);
+		Map<PShape, Integer> classes = new HashMap<>();
+		graph.vertexSet().forEach(v -> classes.put(v, random.nextInt(Math.max(nClasses, 1))));
+
+		/*
+		 * Handle "island" faces, which are faces whose neighbours all have the same
+		 * class (which differ from the island itself).
+		 */
+		NeighborCache<PShape, DefaultEdge> cache = new NeighborCache<>(graph);
+		graph.vertexSet().forEach(v -> {
+			final int vClass = classes.get(v);
+			List<PShape> neighbours = cache.neighborListOf(v);
+			final int nClass1 = classes.get(neighbours.get(0));
+			if (vClass == nClass1) {
+				return; // certainly not an island
+			}
+
+			neighbours.removeIf(n -> classes.get(n) == nClass1);
+			if (neighbours.isEmpty()) {
+				classes.put(v, nClass1); // reassign face class
+			}
+		});
+
+		List<DefaultEdge> toRemove = new ArrayList<>();
+		graph.edgeSet().forEach(e -> {
+			PShape a = graph.getEdgeSource(e);
+			PShape b = graph.getEdgeTarget(e);
+			if (!classes.get(a).equals(classes.get(b))) {
+				toRemove.add(e);
+			}
+		});
+		graph.removeAllEdges(toRemove);
+		ConnectivityInspector<PShape, DefaultEdge> ci = new ConnectivityInspector<>(graph);
+
+		List<PShape> blobs = ci.connectedSets().stream().map(group -> PGS_ShapeBoolean.unionMesh(PGS_Conversion.flatten(group)))
+				.collect(Collectors.toList());
+		return PGS_Conversion.flatten(blobs);
+	}
+
+	/**
 	 * Smoothes a mesh via iterative weighted <i>Laplacian smoothing</i>. The effect
 	 * of which is mesh faces become more uniform in size and shape (isotropic).
 	 * <p>
@@ -584,6 +647,33 @@ public class PGS_Meshing {
 			m.smoothWeighted(preservePerimeter);
 		}
 		return m.getMesh();
+	}
+
+	/**
+	 * Simplifies the boundaries of the faces in a mesh while preserving the
+	 * original mesh topology.
+	 * 
+	 * @param mesh              GROUP shape comprising the faces of a conforming
+	 *                          mesh
+	 * @param tolerance         the simplification tolerance for area-based
+	 *                          simplification. Roughly to the maximumdistance by
+	 *                          which a simplified line can change from the
+	 *                          original.
+	 * @param preservePerimeter whether to only simplify inner-boundaries and
+	 *                          leaving outer boundary edges unchanged.
+	 * @return GROUP shape comprising the simplfied mesh faces
+	 * @since 1.3.1
+	 */
+	public static PShape simplifyMesh(PShape mesh, double tolerance, boolean preservePerimeter) {
+		Geometry[] geometries = PGS_Conversion.getChildren(mesh).stream().map(s -> PGS_Conversion.fromPShape(s)).toArray(Geometry[]::new);
+		CoverageSimplifier simplifier = new CoverageSimplifier(geometries);
+		Geometry[] output;
+		if (preservePerimeter) {
+			output = simplifier.simplifyInner(tolerance);
+		} else {
+			output = simplifier.simplify(tolerance);
+		}
+		return PGS_Conversion.toPShape(Arrays.asList(output));
 	}
 
 	/**
