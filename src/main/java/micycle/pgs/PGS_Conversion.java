@@ -170,6 +170,7 @@ public final class PGS_Conversion {
 					}
 				}
 				break;
+			// TODO treat closed linestrings as unfilled & unclosed paths?
 			case Geometry.TYPENAME_LINEARRING : // LinearRings are closed by definition
 			case Geometry.TYPENAME_LINESTRING : // LineStrings may be open
 				final LineString l = (LineString) g;
@@ -703,6 +704,20 @@ public final class PGS_Conversion {
 	}
 
 	/**
+	 * Creates a PShape having circle geometries representing a collection of
+	 * circles.
+	 * 
+	 * @param circles The collection of PVector objects representing the circles.
+	 *                The x and y components represent the center of the circle, and
+	 *                the z component represents the radius.
+	 * @return The PShape object representing the collection of circles.
+	 * @since 1.3.1
+	 */
+	public static final PShape toCircles(Collection<PVector> circles) {
+		return toPShape(circles.stream().map(c -> PGS_Construction.createEllipse(c.x, c.y, c.z, c.z)).collect(Collectors.toList()));
+	}
+
+	/**
 	 * Extracts the vertices of a PShape into list of PVectors.
 	 * <p>
 	 * If the input shape forms a closed polygon, this method returns an
@@ -1099,10 +1114,10 @@ public final class PGS_Conversion {
 
 		PShape shape = new PShape();
 		shape.setFamily(PShape.PATH);
-		shape.setFill(micycle.pgs.color.RGB.WHITE);
+		shape.setFill(RGB.WHITE);
 		shape.setFill(closed);
-		shape.setStroke(!closed);
-		shape.setStroke(micycle.pgs.color.RGB.WHITE);
+		shape.setStroke(true);
+		shape.setStroke(closed ? RGB.PINK : RGB.WHITE);
 		shape.setStrokeWeight(2);
 
 		shape.beginShape();
@@ -1683,7 +1698,7 @@ public final class PGS_Conversion {
 		float strokeWeight;
 		boolean fill, stroke;
 
-		private PShapeData(PShape shape) {
+		PShapeData(PShape shape) {
 			try {
 				fillColor = fillColorF.getInt(shape);
 				fill = fillF.getBoolean(shape);
@@ -1712,6 +1727,29 @@ public final class PGS_Conversion {
 		public String toString() {
 			return String.format("fillColor: %s; strokeColor: %s; strokeWeight: %.1f", Arrays.toString(decomposeclrRGB(fillColor)),
 					Arrays.toString(decomposeclrRGB(strokeColor)), strokeWeight);
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + (fill ? 1231 : 1237);
+			result = prime * result + fillColor;
+			result = prime * result + (stroke ? 1231 : 1237);
+			result = prime * result + strokeColor;
+			result = prime * result + Float.floatToIntBits(strokeWeight);
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null || getClass() != obj.getClass())
+				return false;
+			PShapeData other = (PShapeData) obj;
+			return fillColor == other.fillColor && strokeColor == other.strokeColor && strokeWeight == other.strokeWeight
+					&& fill == other.fill && stroke == other.stroke;
 		}
 	}
 }

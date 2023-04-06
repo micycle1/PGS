@@ -62,7 +62,7 @@ public class PEdge {
 	public boolean equals(Object obj) {
 		if (obj instanceof PEdge) {
 			PEdge other = (PEdge) obj;
-			return (other.a.equals(a) && other.b.equals(b)) || (other.a.equals(b) && other.b.equals(a));
+			return (equals(a, other.a) && equals(b, other.b)) || (equals(b, other.a) && equals(a, other.b));
 		}
 		return false;
 	}
@@ -77,5 +77,9 @@ public class PEdge {
 	@Override
 	public String toString() {
 		return a.toString() + " <-> " + b.toString();
+	}
+
+	private static boolean equals(PVector a, PVector b) {
+		return a.x == b.x && a.y == b.y;
 	}
 }

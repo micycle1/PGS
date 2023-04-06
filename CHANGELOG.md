@@ -38,7 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `filterChildren()` to `PGS_Processing`. Filters the children of a shape object based on a given Predicate function.
 * `fromGraph()` to `PGS_Conversion`. Converts a graph consisting of PVectors and PEdges into a PShape by polygonizing its edges.
 * `stochasticMerge()` to `PGS_Meshing`. Randomly merges together adjacent faces of a mesh.
-* `simplifyMesh()` to `PGS_Meshing`. Simplifies the boundaries of the faces in a mesh while preserving the original mesh topology
+* `simplifyMesh()` to `PGS_Meshing`. Simplifies the boundaries of the faces in a mesh while preserving the original mesh topology.
+* `toCircles()` to `PGS_Conversion`. Creates a PShape having circle geometries representing a collection of circles.
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).
