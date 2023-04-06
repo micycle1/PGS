@@ -53,6 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Replaced all instances of `System.currentTimeMillis()` with `System.nanoTime()`. Helps the randomness of outputs when called quickly within a loop.
 * Offset curve methods now handle (unclosed) path shapes.
 * Improved robustness of `PGS_ShapePredicates.maximumInteriorAngle()`.
+* The 4 simple `PGS_ShapeBoolean` methods now preserve the style of input shape `a` in their output.
 
 ### Fixed
 * A slow collections size call included in `prunePointsWithinDistance()` was making it much slower than it should have been.

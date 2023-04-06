@@ -50,10 +50,14 @@ public final class PGS_ShapeBoolean {
 	 * 
 	 * @param a The first shape.
 	 * @param b The second shape.
-	 * @return A new shape representing the intersection of the two input shapes.
+	 * @return A new shape representing the intersection of the two input shapes;
+	 *         the new shape will have the style of shape a.
 	 */
 	public static PShape intersect(final PShape a, final PShape b) {
-		return toPShape(OverlayNG.overlay(fromPShape(a), fromPShape(b), OverlayNG.INTERSECTION));
+		Geometry shapeA = fromPShape(a);
+		Geometry result = OverlayNG.overlay(shapeA, fromPShape(b), OverlayNG.INTERSECTION);
+		result.setUserData(shapeA.getUserData()); // preserve shape style (if any)
+		return toPShape(result);
 	}
 
 	/**
@@ -93,11 +97,15 @@ public final class PGS_ShapeBoolean {
 	 * "Glues" shapes together so they become a single combined shape with the sum
 	 * of its areas.
 	 * 
-	 * @return A∪B
+	 * @return A new PShape representing the union of the two input shapes; the new
+	 *         shape will have the style of shape a.
 	 * @see #union(PShape...)
 	 */
 	public static PShape union(final PShape a, final PShape b) {
-		return toPShape(OverlayNG.overlay(fromPShape(a), fromPShape(b), OverlayNG.UNION));
+		Geometry shapeA = fromPShape(a);
+		Geometry result = OverlayNG.overlay(shapeA, fromPShape(b), OverlayNG.UNION);
+		result.setUserData(shapeA.getUserData()); // preserve shape style (if any)
+		return toPShape(result);
 	}
 
 	/**
@@ -148,7 +156,7 @@ public final class PGS_ShapeBoolean {
 
 		return unionMeshWithHoles(mesh);
 	}
-	
+
 	private static PShape unionMeshWithHoles(final PShape mesh) {
 		return toPShape(CoverageUnion.union(PGS_Conversion.fromPShape(mesh)));
 	}
@@ -158,7 +166,7 @@ public final class PGS_ShapeBoolean {
 	 * 
 	 * @deprecated
 	 */
-	static PShape unionMeshWithoutHoles(final Collection<PShape> mesh) {
+	public static PShape unionMeshWithoutHoles(final Collection<PShape> mesh) {
 		Map<PEdge, Integer> edges = new HashMap<>();
 
 		final List<PEdge> allEdges;
@@ -202,11 +210,14 @@ public final class PGS_ShapeBoolean {
 	 * @param a The PShape from which the other PShape will be subtracted.
 	 * @param b The PShape that will be subtracted from the first PShape.
 	 * @return A new PShape representing the difference between the two input
-	 *         shapes.
+	 *         shapes; the new shape will have the style of shape a.
 	 * @see #simpleSubtract(PShape, PShape)
 	 */
 	public static PShape subtract(final PShape a, final PShape b) {
-		return toPShape(OverlayNG.overlay(fromPShape(a), fromPShape(b), OverlayNG.DIFFERENCE));
+		Geometry shapeA = fromPShape(a);
+		Geometry result = OverlayNG.overlay(shapeA, fromPShape(b), OverlayNG.DIFFERENCE);
+		result.setUserData(shapeA.getUserData()); // preserve shape style (if any)
+		return toPShape(result);
 	}
 
 	/**
@@ -276,10 +287,13 @@ public final class PGS_ShapeBoolean {
 	 * @param a The first shape.
 	 * @param b The second shape.
 	 * @return A new shape representing the symmetric difference between the two
-	 *         input shapes.
+	 *         input shapes; the new shape will have the style of shape a.
 	 */
 	public static PShape symDifference(PShape a, PShape b) {
-		return toPShape(OverlayNG.overlay(fromPShape(a), fromPShape(b), OverlayNG.SYMDIFFERENCE));
+		Geometry shapeA = fromPShape(a);
+		Geometry result = OverlayNG.overlay(shapeA, fromPShape(b), OverlayNG.SYMDIFFERENCE);
+		result.setUserData(shapeA.getUserData()); // preserve shape style (if any)
+		return toPShape(result);
 	}
 
 	/**
