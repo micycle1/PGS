@@ -61,13 +61,29 @@ public class PGS_Construction {
 	 * @param n         number of polygon vertices/sides
 	 * @param maxWidth  maximum width of generated random polygon
 	 * @param maxHeight maximum height of generated random polygon
-	 * @return
-	 * @see {@link #createRandomPolygonExact(int, double, double)} to specify exact
-	 *      dimensions
+	 * @return a PShape representing the generated polygon
+	 * @see {@link #createRandomPolygonExact(int, double, double)
+	 *      createRandomPolygonExact()} to specify exact dimensions
 	 */
 	public static PShape createRandomPolygon(int n, double maxWidth, double maxHeight) {
+		return createRandomPolygon(n, maxWidth, maxHeight, System.nanoTime());
+	}
+
+	/**
+	 * Generates a random simple convex polygon (n-gon), having a given random seed.
+	 * 
+	 * @param n         number of polygon vertices/sides
+	 * @param maxWidth  maximum width of generated random polygon
+	 * @param maxHeight maximum height of generated random polygon
+	 * @param seed      a seed value used to generate the random polygon (optional)
+	 * @return a PShape representing the generated polygon
+	 * @see {@link #createRandomPolygonExact(int, double, double, long)
+	 *      createRandomPolygonExact()} to specify exact dimensions
+	 */
+	public static PShape createRandomPolygon(int n, double maxWidth, double maxHeight, long seed) {
 		return PGS_Transformation.translateEnvelopeTo(
-				PGS_Conversion.fromPVector(RandomPolygon.generateRandomConvexPolygon(n, maxWidth, maxHeight)), maxWidth / 2, maxHeight / 2);
+				PGS_Conversion.fromPVector(RandomPolygon.generateRandomConvexPolygon(n, maxWidth, maxHeight, seed)), maxWidth / 2,
+				maxHeight / 2);
 	}
 
 	/**
@@ -77,11 +93,25 @@ public class PGS_Construction {
 	 * @param n      number of polygon vertices/sides
 	 * @param width  width of generated random polygon
 	 * @param height height of generated random polygon
-	 * @return
+	 * @return a PShape representing the generated polygon
 	 */
 	public static PShape createRandomPolygonExact(int n, double width, double height) {
-		return PGS_Transformation.resize(PGS_Conversion.fromPVector(RandomPolygon.generateRandomConvexPolygon(n, width, height)), width,
-				height);
+		return createRandomPolygonExact(n, width, height, System.nanoTime());
+	}
+
+	/**
+	 * Generates a random simple convex polygon (n-gon), where the output's bounding
+	 * box has the dimensions of those specified.
+	 * 
+	 * @param n      number of polygon vertices/sides
+	 * @param width  width of generated random polygon
+	 * @param height height of generated random polygon
+	 * @param seed   a seed value used to generate the random polygon
+	 * @return a PShape representing the generated polygon
+	 */
+	public static PShape createRandomPolygonExact(int n, double width, double height, long seed) {
+		return PGS_Transformation.resize(PGS_Conversion.fromPVector(RandomPolygon.generateRandomConvexPolygon(n, width, height, seed)),
+				width, height);
 	}
 
 	/**
