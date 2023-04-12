@@ -39,6 +39,7 @@ import micycle.pgs.commons.MaximumInscribedAARectangle;
 import micycle.pgs.commons.MaximumInscribedRectangle;
 import micycle.pgs.commons.MinimumBoundingEllipse;
 import micycle.pgs.commons.MinimumBoundingTriangle;
+import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.VisibilityPolygon;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -314,8 +315,50 @@ public final class PGS_Optimisation {
 	 * @param tolerance the distance tolerance for computing the circle center point
 	 * @return
 	 */
+
+	/**
+	 * Computes the largest empty circle that does not intersect any obstacles (up
+	 * to a specified tolerance).
+	 * <p>
+	 * Valid obstacles are point and line shapes (such as a <code>POINTS</code>
+	 * PShape).
+	 * <p>
+	 * The circle center lies within the interior of the convex hull of the
+	 * obstacles.
+	 * 
+	 * @param obstacles A PShape representing the obstacles.
+	 * @param boundary  A PShape representing the polygonal boundary, or null if
+	 *                  there is no boundary constraint.
+	 * @param tolerance A double representing the tolerance for the circle
+	 *                  computation.
+	 * @return A PShape representing the largest empty circle that does not
+	 *         intersect the obstacles and lies within the specified boundary.
+	 */
 	public static PShape largestEmptyCircle(PShape obstacles, double tolerance) {
-		LargestEmptyCircle lec = new LargestEmptyCircle(fromPShape(obstacles), Math.max(0.01, tolerance));
+		return largestEmptyCircle(obstacles, null, tolerance);
+	}
+
+	/**
+	 * Computes the largest empty circle that does not intersect any obstacles and
+	 * lies within the specified boundary (up to a specified tolerance).
+	 * <p>
+	 * Valid obstacles are point and line shapes (such as a <code>POINTS</code>
+	 * PShape).
+	 * <p>
+	 * The circle center is the point in the interior of the boundary which has the
+	 * farthest distance from the obstacles (up to the tolerance).
+	 * 
+	 * @param obstacles A PShape representing the obstacles.
+	 * @param boundary  A PShape representing the polygonal boundary, or null if
+	 *                  there is no boundary constraint.
+	 * @param tolerance A double representing the tolerance for the circle
+	 *                  computation.
+	 * @return A PShape representing the largest empty circle that does not
+	 *         intersect the obstacles and lies within the specified boundary.
+	 */
+	public static PShape largestEmptyCircle(PShape obstacles, @Nullable PShape boundary, double tolerance) {
+		LargestEmptyCircle lec = new LargestEmptyCircle(fromPShape(obstacles), boundary == null ? null : fromPShape(boundary),
+				Math.max(0.01, tolerance));
 		double wh = lec.getRadiusLine().getLength() * 2;
 		Polygon circle = createEllipse(PGS.coordFromPoint(lec.getCenter()), wh, wh);
 		return toPShape(circle);
