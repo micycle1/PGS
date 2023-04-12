@@ -2,7 +2,9 @@ package micycle.pgs;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.SplittableRandom;
 import java.util.stream.Collectors;
 
@@ -381,6 +383,58 @@ public class PGS_SegmentSet {
 	}
 
 	/**
+	 * Extracts a list of unique PEdge segments representing the given shape.
+	 * <p>
+	 * This method iterates through all the child shapes of the input shape,
+	 * creating PEdge segments for each pair of consecutive vertices.
+	 *
+	 * @param shape shape from which to extract the edges.
+	 * @return list of unique PEdge segments representing the edges of the input
+	 *         shape and its child shapes.
+	 * @since 1.3.1
+	 */
+	public static List<PEdge> fromPShape(PShape shape) {
+		Set<PEdge> edges = new HashSet<>(shape.getVertexCount() / 2);
+		for (PShape child : PGS_Conversion.getChildren(shape)) {
+			for (int i = 0; i < child.getVertexCount(); i++) {
+				final PVector a = child.getVertex(i);
+				final PVector b = child.getVertex((i + 1) % child.getVertexCount());
+				if (a.equals(b)) {
+					continue;
+				}
+				final PEdge e = new PEdge(a, b);
+				edges.add(e);
+			}
+		}
+		return new ArrayList<>(edges);
+	}
+
+	/**
+	 * Stretches each PEdge segment in the provided list by a specified factor. The
+	 * stretch is applied by scaling the distance between the edge's vertices, while
+	 * keeping the midpoint of the edge constant.
+	 *
+	 * @param segments The list of PEdges to be stretched.
+	 * @param factor   The factor by which to stretch each PEdge. A value greater
+	 *                 than 1 will stretch the edges, while a value between 0 and 1
+	 *                 will shrink them.
+	 * @return A new List of PEdges representing the stretched edges.
+	 * @since 1.3.1
+	 */
+	public static List<PEdge> stretch(List<PEdge> segments, double factor) {
+		List<PEdge> stretchedEdges = new ArrayList<>(segments.size());
+
+		for (PEdge edge : segments) {
+			PVector midpoint = PVector.add(edge.a, edge.b).mult(0.5f);
+			PVector newA = PVector.add(midpoint, PVector.sub(edge.a, midpoint).mult((float) factor));
+			PVector newB = PVector.add(midpoint, PVector.sub(edge.b, midpoint).mult((float) factor));
+			stretchedEdges.add(new PEdge(newA, newB));
+		}
+
+		return stretchedEdges;
+	}
+
+	/**
 	 * Removes segments having a length less than the given length from a collection
 	 * of segmensts.
 	 * 
@@ -427,7 +481,7 @@ public class PGS_SegmentSet {
 		return filtered;
 	}
 
-	private static List<PEdge> toPEdges(List<LineSegment> segments) {
+	private static List<PEdge> toPEdges(Collection<LineSegment> segments) {
 		List<PEdge> edges = new ArrayList<>(segments.size());
 		segments.forEach(s -> {
 			PEdge e = new PEdge(s.p0.x, s.p0.y, s.p1.x, s.p1.y);

@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `stochasticMerge()` to `PGS_Meshing`. Randomly merges together adjacent faces of a mesh.
 * `simplifyMesh()` to `PGS_Meshing`. Simplifies the boundaries of the faces in a mesh while preserving the original mesh topology.
 * `toCircles()` to `PGS_Conversion`. Creates a PShape having circle geometries representing a collection of circles.
+* `fromPShape()` to `PGS_SegmentSet`. Extracts a list of unique PEdge segments representing the given shape.
+* `stretch()` to `PGS_SegmentSet`. Stretches segments in a list by a specified factor.
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).
