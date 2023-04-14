@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `scaleArea()` to `PGS_Transformation`. Scales the area of a given shape by a specified scale factor.
 * `circleCoverage()` to `PGS_Optimsation`. Covers a polygon with n circles.
 * Additional method signature for `PGS_Conversion.fromPVector()` that accepts a list of holes, each defined a list of by PVectors.
-* `simpleSubtract()` to `PGS_ShapeBoolean`. Subtracts inner holes that lie within a shell, without geometric processing.
+* `simpleSubtract()` to `PGS_ShapeBoolean`. Subtracts inner holes that lie within a given shell from the shell, without geometric processing.
 * `fromQuadraticBezier()` and `fromCubicBezier()` to `PGS_Conversion`. Makes a PATH shape representing a bezier curve (having equidistant sampling) given by its parameters.
 * `simplifyHobby()` to `PGS_Morphology`. Creates a smooth Hobby Curve from the vertices of a shape.
 * `toPShape()` to `PGS_Triangulation`. Converts a triangulated mesh object to a PShape representing the triangulation -- helpful when working with the raw mesh.
@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `toCircles()` to `PGS_Conversion`. Creates a PShape having circle geometries representing a collection of circles.
 * `fromPShape()` to `PGS_SegmentSet`. Extracts a list of unique PEdge segments representing the given shape.
 * `stretch()` to `PGS_SegmentSet`. Stretches segments in a list by a specified factor.
+* `nest()` to `PGS_Processing`. Creates a nested shape having n levels of inner polygons.
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).

@@ -580,6 +580,57 @@ public final class PGS_Processing {
 	}
 
 	/**
+	 * Creates a nested shape having n levels of inner polygons; each inner polygon
+	 * is obtained by joining the points at some fractional distance <code>r</code>
+	 * along each side of the previous polygon.
+	 * <p>
+	 * This is also called a "derived polygon".
+	 *
+	 * @param shape a PShape representing the single input polygon for which the
+	 *              nested shape will be created. Although all polygon types are
+	 *              compatible, simpler/convex polygons make for a more effective
+	 *              result.
+	 * @param n     the number of nested levels to be created inside the input
+	 *              shape.
+	 * @param r     fractional distance between each nested level of polygons, where
+	 *              <code>0.5</code> produces maximal nesting.
+	 * @return A PShape representing the nested shape, including the input shape and
+	 *         all the nested levels.
+	 * @since 1.3.1
+	 */
+	public static PShape nest(PShape shape, int n, double r) {
+		final Polygon polygon = (Polygon) fromPShape(shape);
+
+		if (r != 1) {
+			r %= 1;
+		}
+		final Polygon[] derivedPolygons = new Polygon[n + 1];
+		derivedPolygons[0] = polygon;
+		Polygon currentPolygon = polygon;
+
+		for (int i = 0; i < n; i++) {
+			Coordinate[] inputCoordinates = currentPolygon.getCoordinates();
+			int numVertices = inputCoordinates.length - 1;
+
+			Coordinate[] derivedCoordinates = new Coordinate[numVertices + 1];
+
+			for (int k = 0; k < numVertices; k++) {
+				double x = inputCoordinates[k].x * (1 - r) + inputCoordinates[(k + 1) % numVertices].x * r;
+				double y = inputCoordinates[k].y * (1 - r) + inputCoordinates[(k + 1) % numVertices].y * r;
+				derivedCoordinates[k] = new Coordinate(x, y);
+			}
+			derivedCoordinates[numVertices] = derivedCoordinates[0]; // close the ring
+
+			Polygon derivedPolygon = PGS.GEOM_FACTORY.createPolygon(derivedCoordinates);
+
+			derivedPolygons[i + 1] = derivedPolygon;
+			currentPolygon = derivedPolygon;
+		}
+
+		return toPShape(GEOM_FACTORY.createMultiPolygon(derivedPolygons));
+	}
+
+	/**
 	 * Removes overlap between polygons contained in a GROUP shape, preserving only
 	 * line segments that are visible to a human, rather than a computer (to use as
 	 * input for a pen plotter, for example).

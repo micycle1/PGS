@@ -429,9 +429,11 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
     <tr>
     <td align="center" valign="center"><b>Extract Holes</td>
+    <td align="center" valign="center"><b>Nest</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/geometry_processing/extractHoles.gif"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/nest.gif"></td>
   </tr>
 </table>
 
