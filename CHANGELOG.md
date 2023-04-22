@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `fromPShape()` to `PGS_SegmentSet`. Extracts a list of unique PEdge segments representing the given shape.
 * `stretch()` to `PGS_SegmentSet`. Stretches segments in a list by a specified factor.
 * `nest()` to `PGS_Processing`. Creates a nested shape having n levels of inner polygons.
+* `largestEmptyCircles()` to `PGS_Optimisation`. Finds the N largest empty circles amongst a set of obstacle geometries within a boundary.
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).
@@ -59,6 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Improved robustness of `PGS_ShapePredicates.maximumInteriorAngle()`.
 * The 4 simple `PGS_ShapeBoolean` methods now preserve the style of input shape `a` in their output.
 * `PGS_createRandomPolygon` can now accept a random seed.
+* Reimplemented `PGS_CirclePacking.maximumInscribedPack()`. New algorithm is faster, particularly so on higher circle counts.
 
 ### Fixed
 * A slow collections size call included in `prunePointsWithinDistance()` was making it much slower than it should have been.

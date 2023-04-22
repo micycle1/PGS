@@ -35,6 +35,7 @@ import almadina.rectpacking.RectPacking.PackingHeuristic;
 import micycle.pgs.color.RGB;
 import micycle.pgs.commons.ClosestPointPair;
 import micycle.pgs.commons.FarthestPointPair;
+import micycle.pgs.commons.LargestEmptyCircles;
 import micycle.pgs.commons.MaximumInscribedAARectangle;
 import micycle.pgs.commons.MaximumInscribedRectangle;
 import micycle.pgs.commons.MinimumBoundingEllipse;
@@ -320,8 +321,7 @@ public final class PGS_Optimisation {
 	 * Computes the largest empty circle that does not intersect any obstacles (up
 	 * to a specified tolerance).
 	 * <p>
-	 * Valid obstacles are point and line shapes (such as a <code>POINTS</code>
-	 * PShape).
+	 * Valid obstacles are point, line or polygonal shapes.
 	 * <p>
 	 * The circle center lies within the interior of the convex hull of the
 	 * obstacles.
@@ -342,8 +342,7 @@ public final class PGS_Optimisation {
 	 * Computes the largest empty circle that does not intersect any obstacles and
 	 * lies within the specified boundary (up to a specified tolerance).
 	 * <p>
-	 * Valid obstacles are point and line shapes (such as a <code>POINTS</code>
-	 * PShape).
+	 * Valid obstacles are point, line or polygonal shapes.
 	 * <p>
 	 * The circle center is the point in the interior of the boundary which has the
 	 * farthest distance from the obstacles (up to the tolerance).
@@ -362,6 +361,41 @@ public final class PGS_Optimisation {
 		double wh = lec.getRadiusLine().getLength() * 2;
 		Polygon circle = createEllipse(PGS.coordFromPoint(lec.getCenter()), wh, wh);
 		return toPShape(circle);
+	}
+
+	/**
+	 * Computes the {@code n} largest empty circles that do not intersect any
+	 * obstacles (nor each other) within an optional {@code boundary}.
+	 * <p>
+	 * The empty circles are found with a specified {@code tolerance} value, which
+	 * limits the precision of the computation.
+	 * <p>
+	 * Valid obstacles are point, line or polygonal shapes.
+	 *
+	 * @param obstacles PShape containing the obstacles in the 2D space
+	 * @param boundary  polygonal PShape defining the boundary of the space, or
+	 *                  {@code null} if no boundary is defined (in which case the
+	 *                  convex hull of obstacles is used as boundary).
+	 * @param n         the number of largest empty circles to find
+	 * @param tolerance the tolerance value for the computation
+	 * @return a list of {@code PVector} objects representing the centers and radii
+	 *         of the found largest empty circles as {@code PVector(x, y, r)}, where
+	 *         {@code x} and {@code y} are the center coordinates, and {@code r} is
+	 *         the radius
+	 * @since 1.3.1
+	 */
+	public static List<PVector> largestEmptyCircles(PShape obstacles, @Nullable PShape boundary, int n, double tolerance) {
+		tolerance = Math.max(0.01, tolerance);
+		LargestEmptyCircles lecs = new LargestEmptyCircles(obstacles == null ? null : fromPShape(obstacles),
+				boundary == null ? null : fromPShape(boundary), tolerance);
+
+		final List<PVector> out = new ArrayList<>();
+		for (int i = 0; i < n; i++) {
+			double[] c = lecs.findNextLEC();
+			out.add(new PVector((float) c[0], (float) c[1], (float) c[2]));
+		}
+
+		return out;
 	}
 
 	/**

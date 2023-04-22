@@ -27,7 +27,7 @@ import org.tinspin.index.PointEntryDist;
 import org.tinspin.index.covertree.CoverTree;
 
 import micycle.pgs.commons.FrontChainPacker;
-import micycle.pgs.commons.MaximumInscribedCircles;
+import micycle.pgs.commons.LargestEmptyCircles;
 import micycle.pgs.commons.RepulsionCirclePack;
 import micycle.pgs.commons.TangencyPack;
 import processing.core.PShape;
@@ -264,11 +264,12 @@ public final class PGS_CirclePacking {
 	 *         the center point and .z represents radius.
 	 */
 	public static List<PVector> maximumInscribedPack(PShape shape, int n, double tolerance) {
-		MaximumInscribedCircles mics = new MaximumInscribedCircles(fromPShape(shape), tolerance);
+		tolerance = Math.max(0.01, tolerance);
+		LargestEmptyCircles mics = new LargestEmptyCircles(fromPShape(shape), null, tolerance);
 
 		final List<PVector> out = new ArrayList<>();
 		for (int i = 0; i < n; i++) {
-			double[] c = mics.getNextLargestCircle();
+			double[] c = mics.findNextLEC();
 			out.add(new PVector((float) c[0], (float) c[1], (float) c[2]));
 		}
 

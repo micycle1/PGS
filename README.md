@@ -578,33 +578,35 @@ Much of the functionality (but by no means all) is demonstrated below:
 
   <tr>
     <td align="center" valign="center"><b>Largest Empty Circle</td>
-    <td align="center" valign="center"><b>Closest Vertex</td>
+    <td align="center" valign="center"><b>Largest Empty Circles</td>
     <td align="center" valign="center"><b>Closest Point Pair</td>
     <td align="center" valign="center"><b>Farthest Point Pair</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/optimisation/lec.png"></td>
-    <td valign="top" width="25%"><img src="resources/pgs/closestVertex.gif"></td>
+    <td valign="top" width="25%"><img src="resources/optimisation/lecs.gif"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/closestPair.png"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/farthestPair.png"></td>
   </tr>
 
   <tr>
+    <td align="center" valign="center"><b>Closest Vertex</td>
     <td align="center" valign="center"><b>Circle Covering</td>
     <td align="center" valign="center" colspan="2"><b>Rectangle Bin Pack</td>
-    <td align="center" valign="center"><b>Hilbert Sort Faces</td>
   </tr>
   <tr>
+    <td valign="top" width="25%"><img src="resources/pgs/closestVertex.gif"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/circleCoverage.gif"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/rectPack.gif"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/rectPackBins.gif"></td>
-    <td valign="top" width="25%"><img src="resources/optimisation/hilbertSortFaces.gif"></td>
   </tr>
 
   <tr>
+    <td align="center" valign="center"><b>Hilbert Sort Faces</td>
     <td align="center" valign="center" colspan="2"><b>Visibility Polygon / Isovist</td>
   </tr>
   <tr>
+    <td valign="top" width="25%"><img src="resources/optimisation/hilbertSortFaces.gif"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/visibility.gif"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/visibility2.gif"></td>
   </tr>
