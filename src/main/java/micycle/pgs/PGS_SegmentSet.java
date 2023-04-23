@@ -2,8 +2,10 @@ package micycle.pgs;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.SplittableRandom;
 import java.util.stream.Collectors;
@@ -12,10 +14,18 @@ import org.jgrapht.alg.interfaces.MatchingAlgorithm;
 import org.jgrapht.alg.matching.blossom.v5.KolmogorovWeightedPerfectMatching;
 import org.jgrapht.alg.matching.blossom.v5.ObjectiveSense;
 import org.jgrapht.graph.SimpleGraph;
+import org.locationtech.jts.algorithm.RobustLineIntersector;
+import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineSegment;
+import org.locationtech.jts.geom.Location;
+import org.locationtech.jts.noding.MCIndexSegmentSetMutualIntersector;
 import org.locationtech.jts.noding.NodedSegmentString;
+import org.locationtech.jts.noding.SegmentIntersector;
+import org.locationtech.jts.noding.SegmentSetMutualIntersector;
 import org.locationtech.jts.noding.SegmentString;
+import org.locationtech.jts.noding.SegmentStringUtil;
 import org.tinfour.common.IIncrementalTin;
 
 import micycle.pgs.color.RGB;
@@ -481,6 +491,57 @@ public class PGS_SegmentSet {
 		return filtered;
 	}
 
+	/**
+	 * Retains line segments from the input shape if they are wholly contained
+	 * within it.
+	 *
+	 * @param segments a list of line segments to check for containment within the
+	 *                 shape
+	 * @param shape    the polygonal shape to check for interior segments
+	 * @return a list of interior segments contained within the shape
+	 * @since 1.3.1
+	 */
+	public static List<PEdge> getPolygonInteriorSegments(List<PEdge> segments, PShape shape) {
+		Geometry g = PGS_Conversion.fromPShape(shape);
+		final Collection<?> segmentStrings = SegmentStringUtil.extractBasicSegmentStrings(g);
+		final SegmentSetMutualIntersector mci = new MCIndexSegmentSetMutualIntersector(segmentStrings);
+
+		Map<SegmentString, PEdge> map = new HashMap<>(segments.size());
+		segments.forEach(e -> map.put(PGS.createSegmentString(e.a, e.b), e));
+
+		List<PEdge> interiorSegments = new ArrayList<>();
+		IndexedPointInAreaLocator locator = new IndexedPointInAreaLocator(g);
+		RobustLineIntersector lineIntersector = new RobustLineIntersector();
+		Set<SegmentString> segSet = new HashSet<>(fromPEdges(segments));
+		Set<SegmentString> segSet2 = new HashSet<>();
+
+		mci.process(fromPEdges(segments), new SegmentIntersector() {
+			@Override
+			public void processIntersections(SegmentString e0, int segIndex0, SegmentString e1, int segIndex1) {
+				lineIntersector.computeIntersection(e0.getCoordinate(0), e0.getCoordinate(1), e1.getCoordinate(0), e1.getCoordinate(1));
+
+				if (lineIntersector.getIntersectionNum() > 0) { // no intersection -- either inside or outside
+					if (locator.locate(e0.getCoordinate(0)) != Location.EXTERIOR) { // one point is inside
+						interiorSegments.add(map.get(e1));
+					}
+				} else {
+					segSet2.add(e0);
+				}
+			}
+
+			@Override
+			public boolean isDone() {
+				return false;
+			}
+		});
+
+		segSet.removeAll(segSet2);
+		segSet.removeIf(
+				s -> locator.locate(s.getCoordinate(1)) == Location.EXTERIOR || locator.locate(s.getCoordinate(0)) == Location.EXTERIOR);
+
+		return fromSegmentString(segSet);
+	}
+
 	private static List<PEdge> toPEdges(Collection<LineSegment> segments) {
 		List<PEdge> edges = new ArrayList<>(segments.size());
 		segments.forEach(s -> {
@@ -489,6 +550,26 @@ public class PGS_SegmentSet {
 		});
 
 		return edges;
+	}
+
+	private static List<PEdge> fromSegmentString(Collection<SegmentString> segments) {
+		List<PEdge> edges = new ArrayList<>(segments.size());
+		segments.forEach(s -> {
+			PEdge e = new PEdge(s.getCoordinate(0).x, s.getCoordinate(0).y, s.getCoordinate(1).x, s.getCoordinate(1).y);
+			edges.add(e);
+		});
+
+		return edges;
+	}
+
+	private static List<SegmentString> fromPEdges(List<PEdge> edges) {
+		List<SegmentString> segments = new ArrayList<>(edges.size());
+		edges.forEach(e -> {
+			SegmentString s = PGS.createSegmentString(e.a, e.b);
+			segments.add(s);
+		});
+
+		return segments;
 	}
 
 	private static boolean ccw(Coordinate A, Coordinate B, Coordinate C) {

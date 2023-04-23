@@ -45,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `nest()` to `PGS_Processing`. Creates a nested shape having n levels of inner polygons.
 * `largestEmptyCircles()` to `PGS_Optimisation`. Finds the N largest empty circles amongst a set of obstacle geometries within a boundary.
 * Additional method signature for `PGS_CirclePacking.maximumInscribedPack()` that accepts a minimum radius threshold.
+* `getPolygonInteriorSegments()` to `PGS_SegmentSet`. Retains line segments from the input shape if they are wholly contained within it.
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).
