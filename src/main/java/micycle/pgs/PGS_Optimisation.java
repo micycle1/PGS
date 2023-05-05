@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.locationtech.jts.algorithm.MinimumAreaRectangle;
 import org.locationtech.jts.algorithm.MinimumBoundingCircle;
 import org.locationtech.jts.algorithm.MinimumDiameter;
 import org.locationtech.jts.algorithm.construct.LargestEmptyCircle;
@@ -118,7 +119,7 @@ public final class PGS_Optimisation {
 
 	/**
 	 * Finds the rectangle with a maximum area whose sides are parallel to the
-	 * x-axis and y-axis ("axis-aligned"), contained within a convex shape.
+	 * x-axis and y-axis ("axis-aligned"), contained/insribed within a convex shape.
 	 * <p>
 	 * This method computes the MIR for convex shapes only; if a concave shape is
 	 * passed in, the resulting rectangle will be computed based on its convex hull.
@@ -227,16 +228,35 @@ public final class PGS_Optimisation {
 	}
 
 	/**
-	 * Computes the minimum bounding rectangle that encloses a shape. Unlike the
-	 * envelope for a shape, the rectangle returned by this method can have any
+	 * Computes the minimum-width bounding rectangle that encloses a shape. Unlike
+	 * the envelope for a shape, the rectangle returned by this method can have any
 	 * orientation (it's not axis-aligned).
+	 * <p>
+	 * The minimum-width enclosing rectangle does not necessarily have the minimum
+	 * possible area. Use {@link #minimumAreaRectangle(PShape)
+	 * minimumAreaRectangle()} to compute this.
 	 * 
-	 * @param shape
-	 * @return
+	 * @param shape The shape to compute the minimum bounding rectangle for.
+	 * @return A PShape object representing the minimum bounding rectangle.
 	 */
-	public static PShape minimumBoundingRectangle(PShape shape) {
-		Polygon md = (Polygon) MinimumDiameter.getMinimumRectangle(fromPShape(shape));
+	public static PShape minimumWidthRectangle(PShape shape) {
+		Geometry md = MinimumDiameter.getMinimumRectangle(fromPShape(shape));
 		return toPShape(md);
+	}
+
+	/**
+	 * Computes the minimum-area rectangle that encloses a shape.
+	 * <p>
+	 * The minimum-area enclosing rectangle does not necessarily have the minimum
+	 * possible width. Use {@link #minimumWidthRectangle(PShape)
+	 * minimumBoundingRectangle()} to compute this.
+	 * 
+	 * @param shape The shape to compute the minimum-area rectangle for.
+	 * @return A PShape object representing the minimum-area rectangle.
+	 * @since 1.3.1
+	 */
+	public static PShape minimumAreaRectangle(PShape shape) {
+		return toPShape(MinimumAreaRectangle.getMinimumRectangle(fromPShape(shape)));
 	}
 
 	/**
@@ -302,22 +322,6 @@ public final class PGS_Optimisation {
 	}
 
 	/**
-	 * Constructs the Largest Empty Circle for a set of obstacle geometries, up to a
-	 * specified tolerance. Valid obstacles are point and line shapes (such as a
-	 * POINTS PShape).
-	 * <p>
-	 * The Largest Empty Circle is the largest circle which has its center in the
-	 * convex hull of the obstacles (the boundary), and whose interior does not
-	 * intersect with any obstacle. The circle center is the point in the interior
-	 * of the boundary which has the farthest distance from the obstacles (up to
-	 * tolerance).
-	 * 
-	 * @param obstacles a shape representing the obstacles (points and lines)
-	 * @param tolerance the distance tolerance for computing the circle center point
-	 * @return
-	 */
-
-	/**
 	 * Computes the largest empty circle that does not intersect any obstacles (up
 	 * to a specified tolerance).
 	 * <p>
@@ -327,8 +331,6 @@ public final class PGS_Optimisation {
 	 * obstacles.
 	 * 
 	 * @param obstacles A PShape representing the obstacles.
-	 * @param boundary  A PShape representing the polygonal boundary, or null if
-	 *                  there is no boundary constraint.
 	 * @param tolerance A double representing the tolerance for the circle
 	 *                  computation.
 	 * @return A PShape representing the largest empty circle that does not

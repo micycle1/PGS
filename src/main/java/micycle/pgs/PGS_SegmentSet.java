@@ -492,8 +492,8 @@ public class PGS_SegmentSet {
 	}
 
 	/**
-	 * Retains line segments from the input shape if they are wholly contained
-	 * within it.
+	 * Retains line segments from a set of line segments that are wholly contained
+	 * within a given shape.
 	 *
 	 * @param segments a list of line segments to check for containment within the
 	 *                 shape

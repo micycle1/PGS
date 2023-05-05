@@ -5,7 +5,7 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
-## **1.3.1** *(2023-03-xx)*
+## **1.3.1** *(2023-06-xx)*
 
 ### Added
 *  `sobolLDS()` to `PGS_PointSet`. Generates a set of 2D deterministic stratified points from the Sobol low discrepancy sequence.
@@ -45,11 +45,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `nest()` to `PGS_Processing`. Creates a nested shape having n levels of inner polygons.
 * `largestEmptyCircles()` to `PGS_Optimisation`. Finds the N largest empty circles amongst a set of obstacle geometries within a boundary.
 * Additional method signature for `PGS_CirclePacking.maximumInscribedPack()` that accepts a minimum radius threshold.
-* `getPolygonInteriorSegments()` to `PGS_SegmentSet`. Retains line segments from the input shape if they are wholly contained within it.
+* `getPolygonInteriorSegments()` to `PGS_SegmentSet`. Retains line segments from a set of line segments that are wholly contained within a given shape.
+* `minimumAreaRectangle()` to `PGS_Optimisation`. Computes the minimum-area rectangle that encloses a shape.
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).
 * Reimplemented `PGS_Processing.simplifyDCE()`. New algorithm is much faster, particularly on large inputs.
+* Reimplemented `PGS_Processing.cleanCoverage()`. New algorithm is much faster, particularly on large inputs.
 * `toPVector()` now works on GROUP shapes (returning vertices from all child shapes). 
 * Improved *Doyle Spiral* implementation. Outputs on some combinations of argument inputs should be better.
 * `PGS_ShapePredicates.holes()` now supports GROUP shapes.
@@ -63,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * The 4 simple `PGS_ShapeBoolean` methods now preserve the style of input shape `a` in their output.
 * `PGS_createRandomPolygon` can now accept a random seed.
 * Reimplemented `PGS_CirclePacking.maximumInscribedPack()`. New algorithm is faster, particularly so on higher circle counts.
+* Renamed `miniumumBoundingRectangle()` to `minimumWidthRectangle()`.
 
 ### Fixed
 * A slow collections size call included in `prunePointsWithinDistance()` was making it much slower than it should have been.
