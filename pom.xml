@@ -337,6 +337,11 @@
 			<artifactId>Hobby-Curves</artifactId>
 			<version>1.0</version>
 		</dependency>
+		<dependency>
+			<groupId>com.github.whitegreen</groupId>
+			<artifactId>Dalsoo-Bin-Packing</artifactId>
+			<version>bde2a3ef09</version>
+		</dependency>
 	</dependencies>
 
 </project>

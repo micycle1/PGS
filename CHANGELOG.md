@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `reorderChildren()` to `PGS_Conversion`. Reorders the child shapes of a shape according to given comparator.
 * `scaleAreaTo()` to `PGS_Transformation`. Scales a given shape to a target shape area.
 * `scaleArea()` to `PGS_Transformation`. Scales the area of a given shape by a specified scale factor.
-* `circleCoverage()` to `PGS_Optimsation`. Covers a polygon with n circles.
+* `circleCoverage()` to `PGS_Optimisation`. Covers a polygon with n circles.
 * Additional method signature for `PGS_Conversion.fromPVector()` that accepts a list of holes, each defined a list of by PVectors.
 * `simpleSubtract()` to `PGS_ShapeBoolean`. Subtracts inner holes that lie within a given shell from the shell, without geometric processing.
 * `fromQuadraticBezier()` and `fromCubicBezier()` to `PGS_Conversion`. Makes a PATH shape representing a bezier curve (having equidistant sampling) given by its parameters.
@@ -47,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Additional method signature for `PGS_CirclePacking.maximumInscribedPack()` that accepts a minimum radius threshold.
 * `getPolygonInteriorSegments()` to `PGS_SegmentSet`. Retains line segments from a set of line segments that are wholly contained within a given shape.
 * `minimumAreaRectangle()` to `PGS_Optimisation`. Computes the minimum-area rectangle that encloses a shape.
+* `binPack()` to `PGS_Optimisation`. Packs irregular polygonal shapes into rectangular containers (bins).
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).

@@ -45,6 +45,7 @@ import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.VisibilityPolygon;
 import processing.core.PShape;
 import processing.core.PVector;
+import whitegreen.dalsoo.DalsooPack;
 
 /**
  * Solve geometric optimisation problems, such as bounding volumes, inscribed
@@ -514,6 +515,47 @@ public final class PGS_Optimisation {
 			bins.addChild(binGroup);
 		});
 		return bins;
+	}
+
+	/**
+	 * Packs a list of irregular polygonal shapes into (potentially multiple)
+	 * rectangular containers (bins), while attempting to minimise the occupied
+	 * space of the packing.
+	 * <p>
+	 * Every bin has the dimensions given by the width and height parameters; when
+	 * packed shapes fill/overflow one bin, any remaining shapes will be packed into
+	 * additional bin(s). Multiple bins are arranged in a grid, having the maximum
+	 * number of columns specified by the <code>binColumns</code> parameter.
+	 * <p>
+	 * Bins are packed top-to-bottom vertically.
+	 * 
+	 * @param shapes     a list of PShapes to be packed within a bin(s)
+	 * @param binWidth   the width of each bin/container to pack the shapes into
+	 * @param binHeight  the height of each bin/container to pack the shapes into
+	 * @param binColumns the number of columns to arrange the bins into (>= 1, only
+	 *                   applies when there are multiple bins).
+	 * @param spacing    the amount of spacing between each packed shape (>= 0).
+	 * @return a new GROUP PShape object containing the packed shapes arranged in
+	 *         columns
+	 * @since 1.3.1
+	 */
+	public static PShape binPack(List<PShape> shapes, double binWidth, double binHeight, int binColumns, double spacing) {
+		if (shapes.isEmpty()) {
+			return new PShape();
+		}
+		binColumns = Math.max(1, binColumns); // enforce >= 1
+		double[][][] polys = new double[shapes.size()][0][0];
+		for (int i = 0; i < polys.length; i++) {
+			polys[i] = PGS_Conversion.toArray(shapes.get(i), false);
+		}
+
+		PShape packing = new PShape(GROUP);
+		DalsooPack pack = new DalsooPack(polys, spacing, null, 1, binWidth, binHeight, 0); // pack vertically
+		pack.packAll(true, false); // use abey pack -- most efficient method
+		pack.getPackedPolys(binColumns).forEach(p -> packing.addChild(PGS_Conversion.fromArray(p, true)));
+		PGS_Conversion.disableAllStroke(packing);
+
+		return packing;
 	}
 
 	/**

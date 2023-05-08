@@ -592,23 +592,31 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Closest Vertex</td>
     <td align="center" valign="center"><b>Circle Covering</td>
-    <td align="center" valign="center" colspan="2"><b>Rectangle Bin Pack</td>
+    <td align="center" valign="center" colspan="2"><b>Visibility Polygon / Isovist</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/pgs/closestVertex.gif"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/circleCoverage.gif"></td>
+    <td valign="top" width="25%"><img src="resources/optimisation/visibility.gif"></td>
+    <td valign="top" width="25%"><img src="resources/optimisation/visibility2.gif"></td>
+  </tr>
+
+  <tr>
+    <td align="center" valign="center" colspan="2"><b>Bin Pack</td>
+    <td align="center" valign="center" colspan="2"><b>Rectangle Bin Pack</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/optimisation/binPack1.png"></td>
+    <td valign="top" width="25%"><img src="resources/optimisation/binPack2.png"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/rectPack.gif"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/rectPackBins.gif"></td>
   </tr>
 
   <tr>
     <td align="center" valign="center"><b>Hilbert Sort Faces</td>
-    <td align="center" valign="center" colspan="2"><b>Visibility Polygon / Isovist</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/optimisation/hilbertSortFaces.gif"></td>
-    <td valign="top" width="25%"><img src="resources/optimisation/visibility.gif"></td>
-    <td valign="top" width="25%"><img src="resources/optimisation/visibility2.gif"></td>
   </tr>
   
 </table>
@@ -741,10 +749,16 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Arbelos</td>
     <td align="center" valign="center"><b>Teardrop</td>
-    <td align="center" valign="center"><b>Gear</td>
+    <td align="center" valign="center" colspan="2"><b>Sponge</td>
   </tr>
     <td valign="top" width="25%"><img src="resources/pgs/arbelos.gif"></td>
     <td valign="top" width="25%"><img src="resources/pgs/teardrop.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/sponge1.png"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/sponge2.png"></td>
+  <tr>
+  <tr>
+    <td align="center" valign="center"><b>Gear</td>
+  </tr>
     <td valign="top" width="25%"><img src="resources/pgs/gear.gif"></td>
   <tr>
   </tr>
