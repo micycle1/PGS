@@ -67,6 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_createRandomPolygon` can now accept a random seed.
 * Reimplemented `PGS_CirclePacking.maximumInscribedPack()`. New algorithm is faster, particularly so on higher circle counts.
 * Renamed `miniumumBoundingRectangle()` to `minimumWidthRectangle()`.
+* `intersectMesh()` and `subtractMesh()` now fully preserve the styling of original mesh faces.
 
 ### Fixed
 * A slow collections size call included in `prunePointsWithinDistance()` was making it much slower than it should have been.

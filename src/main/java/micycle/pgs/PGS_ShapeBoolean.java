@@ -9,7 +9,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.locationtech.jts.geom.Geometry;
@@ -84,12 +83,18 @@ public final class PGS_ShapeBoolean {
 	public static PShape intersectMesh(final PShape mesh, final PShape area) {
 		final Geometry g = fromPShape(area);
 		final PreparedGeometry cache = PreparedGeometryFactory.prepare(g);
-		// @formatter:off
-		List<Geometry> faces = PGS_Conversion.getChildren(mesh).parallelStream()
-				.map(PGS_Conversion::fromPShape)
-				.map(f -> cache.containsProperly(f) ? f : OverlayNG.overlay(f, g, OverlayNG.INTERSECTION))
-				.collect(Collectors.toList());
-		// @formatter:on
+
+		List<Geometry> faces = PGS_Conversion.getChildren(mesh).parallelStream().map(s -> {
+			final Geometry f = PGS_Conversion.fromPShape(s);
+			if (cache.containsProperly(f)) {
+				return f;
+			} else {
+				// preserve the fill etc of the PShape during intersection
+				Geometry boundaryIntersect = OverlayNG.overlay(f, g, OverlayNG.INTERSECTION);
+				boundaryIntersect.setUserData(f.getUserData());
+				return boundaryIntersect;
+			}
+		}).collect(Collectors.toList());
 		return PGS_Conversion.toPShape(faces);
 	}
 
@@ -270,13 +275,22 @@ public final class PGS_ShapeBoolean {
 	public static PShape subtractMesh(PShape mesh, PShape area) {
 		final Geometry g = fromPShape(area);
 		final PreparedGeometry cache = PreparedGeometryFactory.prepare(g);
-		// @formatter:off
-		List<Geometry> faces = PGS_Conversion.getChildren(mesh).parallelStream()
-				.map(PGS_Conversion::fromPShape)
-				.map(f -> cache.containsProperly(f) ? null : OverlayNG.overlay(f, g, OverlayNG.DIFFERENCE))
-				.filter(Objects::nonNull)
-				.collect(Collectors.toList());
-		// @formatter:on
+		
+		List<Geometry> faces = PGS_Conversion.getChildren(mesh).parallelStream().map(s -> {
+			final Geometry f = PGS_Conversion.fromPShape(s);
+			if (cache.containsProperly(f)) {
+				return null; // inside -- remove
+			} else {
+				if (cache.disjoint(f)) {
+					return f; // outside -- keep
+				}
+				// preserve the fill etc of the PShape during subtraction
+				Geometry boundarySubtract = OverlayNG.overlay(f, g, OverlayNG.DIFFERENCE);
+				boundarySubtract.setUserData(f.getUserData());
+				return boundarySubtract;
+			}
+		}).collect(Collectors.toList());
+		
 		return PGS_Conversion.toPShape(faces);
 	}
 
