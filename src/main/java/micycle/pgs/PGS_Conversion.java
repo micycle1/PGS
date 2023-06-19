@@ -695,8 +695,8 @@ public final class PGS_Conversion {
 		shape.setFamily(PShape.GEOMETRY);
 		shape.setStrokeCap(PConstants.ROUND);
 		shape.setStroke(true);
-		shape.setStroke(micycle.pgs.color.RGB.WHITE);
-		shape.setStrokeWeight(5);
+		shape.setStroke(micycle.pgs.color.RGB.PINK);
+		shape.setStrokeWeight(6);
 		shape.beginShape(PConstants.POINTS);
 		points.forEach(p -> shape.vertex(p.x, p.y));
 		shape.endShape();
@@ -1320,7 +1320,7 @@ public final class PGS_Conversion {
 	 * @param children
 	 * @return a GROUP PShape consisting of the given children
 	 */
-	public static PShape fromChildren(List<PShape> children) {
+	public static PShape fromChildren(Collection<PShape> children) {
 		final PShape parent = new PShape(GROUP);
 		children.forEach(parent::addChild);
 		return parent;

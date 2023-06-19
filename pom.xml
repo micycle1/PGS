@@ -23,8 +23,8 @@
 				<version>3.11.0</version>
 				<configuration>
 					<release>8</release>
-					<source>14</source>
-					<target>14</target>
+					<source>8</source>
+					<target>8</target>
 					<compilerArgs>
 						<arg>-Xplugin:jabel</arg>
 					</compilerArgs>
@@ -33,7 +33,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
-				<version>3.2.1</version>
+				<version>3.3</version>
 				<executions>
 					<execution>
 						<id>attach-sources</id>
@@ -63,7 +63,7 @@
 			</plugin>
 			<plugin> <!-- for test running -->
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>3.0.0</version>
+				<version>3.1.0</version>
 			</plugin>
 			<plugin>
 				<groupId>org.jacoco</groupId>
@@ -95,7 +95,7 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-shade-plugin</artifactId>
-						<version>3.4.1</version>
+						<version>3.5</version>
 						<configuration>
 							<createDependencyReducedPom>false</createDependencyReducedPom>
 							<minimizeJar>true</minimizeJar>
@@ -142,7 +142,7 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-shade-plugin</artifactId>
-						<version>3.3.0</version>
+						<version>3.5</version>
 						<configuration>
 							<createDependencyReducedPom>false</createDependencyReducedPom>
 							<minimizeJar>true</minimizeJar>
@@ -330,7 +330,7 @@
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>BetterBeziers</artifactId>
-			<version>b3a0dfc8fa</version>
+			<version>19567c7be4</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.micycle1</groupId>

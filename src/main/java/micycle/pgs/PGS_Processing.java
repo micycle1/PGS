@@ -344,11 +344,10 @@ public final class PGS_Processing {
 			@Override
 			public void processIntersections(SegmentString e0, int segIndex0, SegmentString e1, int segIndex1) {
 				sid.processIntersections(e0, segIndex0, e1, segIndex1);
-				if (sid.getIntersection() != null) { // TODO use hasIntersection()?
+				if (sid.hasIntersection()) {
 					points.add(new PVector((float) sid.getIntersection().x, (float) sid.getIntersection().y));
 				}
 			}
-
 			@Override
 			public boolean isDone() {
 				return false;

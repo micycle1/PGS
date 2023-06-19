@@ -203,7 +203,7 @@ public final class PGS_Voronoi {
 			v = new BoundedVoronoiDiagram(newSites, options);
 		}
 
-		List<Geometry> faces = v.getPolygons().stream().map(PGS_Voronoi::toPolygon).collect(Collectors.toList());
+		List<Geometry> faces = v.getPolygons().stream().filter(p -> p.getEdges().size() > 1).map(PGS_Voronoi::toPolygon).collect(Collectors.toList());
 		if (constrain && g instanceof Polygonal) {
 			faces = faces.parallelStream().map(f -> OverlayNG.overlay(f, g, OverlayNG.INTERSECTION)).collect(Collectors.toList());
 			faces.removeIf(f -> f.getNumPoints() == 0); // (odd, artifacts of intersection?)

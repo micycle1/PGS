@@ -15,6 +15,8 @@ public class RGB {
 	public static final int WHITE = composeColor(255, 255, 255);
 	/** RGB (237, 50, 162) */
 	public static final int PINK = composeColor(237, 50, 162);
+	/** RGBA (237, 50, 162, 128) */
+	public static final int HALF_PINK = micycle.pgs.color.RGB.setAlpha(PINK, 128);
 	/** RGB (255, 0, 0) */
 	public static final int RED = composeColor(255, 0, 0);
 	/** RGB (0, 255, 0) */

@@ -408,15 +408,17 @@ public final class PGS_PointSet {
 	}
 
 	/**
-	 * Generates a set of points that are randomly distribted on a ring.
+	 * Generates a set of n points that are randomly distributed on a ring
+	 * (annulus).
 	 * 
 	 * @param centerX     x coordinate of the center/mean of the ring
 	 * @param centerY     x coordinate of the center/mean of the ring
 	 * @param innerRadius radius of the ring's hole
-	 * @param outerRadius maximum radius of the ring
+	 * @param outerRadius outer radius of the ring
 	 * @param maxAngle    angle of the ring (in radians). Can be negative
-	 * @param n           number of points to generate
-	 * @return
+	 * @param n           the number of random points to generate
+	 * @return a list of PVector objects representing the (x, y) coordinates of the
+	 *         random points
 	 * @see #ring(double, double, double, double, double, int, long) seeded ring()
 	 */
 	public static List<PVector> ring(double centerX, double centerY, double innerRadius, double outerRadius, double maxAngle, int n) {
@@ -424,17 +426,18 @@ public final class PGS_PointSet {
 	}
 
 	/**
-	 * Generates a set of points that are randomly distribted on a ring.
+	 * Generates a set of points that are randomly distributed on a ring (annulus).
 	 * 
 	 * @param centerX     x coordinate of the center/mean of the ring
 	 * @param centerY     x coordinate of the center/mean of the ring
 	 * @param innerRadius radius of the ring's hole
-	 * @param outerRadius maximum radius of the ring
+	 * @param outerRadius outer radius of the ring
 	 * @param maxAngle    angle of the ring (in radians). Can be negative
-	 * @param n           number of points to generate
+	 * @param n           the number of random points to generate
 	 * @param seed        number used to initialize the underlying pseudorandom
 	 *                    number generator
-	 * @return
+	 * @return a list of PVector objects representing the (x, y) coordinates of the
+	 *         random points
 	 * @see #ring(double, double, double, double, double, int) non-seeded ring()
 	 */
 	public static List<PVector> ring(double centerX, double centerY, double innerRadius, double outerRadius, double maxAngle, int n,
