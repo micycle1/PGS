@@ -36,21 +36,22 @@ public final class PGS_ShapeBoolean {
 	}
 
 	/**
-	 * Computes a shape representing the area which is common to both input shapes
-	 * (i.e. the shape formed by intersection of <code>a</code> and <code>b</code>).
+	 * Calculates the intersection of two shapes, producing a new shape representing
+	 * the shared area.
 	 * <p>
-	 * Note: Intersecting a polygon with a path/linestring will crop the path to the
-	 * polygon.
+	 * When intersecting a polygon with a path or linestring, the method will trim
+	 * the path to the polygon's boundaries.
 	 * <p>
-	 * Note: The intersecting parts of faces of a mesh-like shape will be collapsed
-	 * into a single area during intersection; to intersect such a shape and
-	 * preserve how each face is intersected individually, use
+	 * Note: When intersecting a mesh-like shape with a polygon, the remaining
+	 * intersecting parts of individual faces will be collapsed into a single area.
+	 * To preserve individual faces during intersection, use
 	 * {@link #intersectMesh(PShape, PShape) intersectMesh()}.
 	 * 
-	 * @param a The first shape.
-	 * @param b The second shape.
-	 * @return A new shape representing the intersection of the two input shapes;
-	 *         the new shape will have the style of shape a.
+	 * @param a The first shape to be intersected.
+	 * @param b The second shape to intersect with the first.
+	 * @return A new shape representing the area of intersection between the two
+	 *         input shapes. The resulting shape retains the style of the first
+	 *         input shape, 'a'.
 	 */
 	public static PShape intersect(final PShape a, final PShape b) {
 		Geometry shapeA = fromPShape(a);
@@ -60,24 +61,27 @@ public final class PGS_ShapeBoolean {
 	}
 
 	/**
-	 * Intersects a mesh-like shape / polygonal coverage with a polygonal area,
-	 * preserving individual faces/features of the mesh during the operation.
+	 * Performs an intersection operation between a mesh-like shape (a polygonal
+	 * coverage) and a polygonal area, while preserving the individual features of
+	 * the mesh during the operation.
 	 * <p>
-	 * When a mesh-like shape / polygonal coverage is intersected with a whole
-	 * polygon using {@link #intersect(PShape, PShape) intersect(a, b)}, the result
-	 * is a <b>single</b> polygon comprising the combined/dissolved area of all
-	 * intersecting mesh faces. Sometimes this behaviour is desired whereas other
-	 * times it is not -- this method can be used to preserve how each face is
-	 * intersected individually.
+	 * When a mesh-like shape or polygonal coverage is intersected with a polygon
+	 * using the general {@link #intersect(PShape, PShape) intersect(a, b)} method,
+	 * the result is a single polygon that consists of the unified or dissolved area
+	 * of all intersecting mesh faces. Depending on the requirements of your task,
+	 * this behavior may not be optimal. The current method addresses this issue by
+	 * preserving the individual intersections of each mesh face.
 	 * <p>
-	 * Using this method is faster than calling {@link #intersect(PShape, PShape)
-	 * intersect(a, b)} repeatedly for every face of a mesh-like shape
-	 * <code>a</code> against an area <code>b</code>.
+	 * This method performs faster than invoking the
+	 * {@link #intersect(PShape, PShape) intersect(a, b)} method repeatedly for
+	 * every face of a mesh-like shape <code>a</code> against an area
+	 * <code>b</code>.
 	 * 
-	 * @param mesh a mesh-like GROUP shape
-	 * @param area a polygonal shape
-	 * @return a GROUP shape, where each child shape is the union of one mesh face
-	 *         and the area
+	 * @param mesh A mesh-like GROUP shape that will be intersected with the
+	 *             polygonal area.
+	 * @param area A polygonal shape with which the mesh will be intersected.
+	 * @return A GROUP shape where each child shape represents the union of one mesh
+	 *         face with the area.
 	 * @since 1.3.0
 	 */
 	public static PShape intersectMesh(final PShape mesh, final PShape area) {
@@ -99,12 +103,19 @@ public final class PGS_ShapeBoolean {
 	}
 
 	/**
-	 * "Glues" shapes together so they become a single combined shape with the sum
-	 * of its areas.
-	 * 
-	 * @return A new PShape representing the union of the two input shapes; the new
-	 *         shape will have the style of shape a.
-	 * @see #union(PShape...)
+	 * Combines two shapes into a single new shape, representing the total area of
+	 * both input shapes.
+	 * <p>
+	 * This method performs a geometric union operation, "gluing" the two input
+	 * shapes together to create a new shape that encompasses the combined area of
+	 * both inputs. If the input shapes overlap, the overlapping area is included
+	 * only once in the resulting shape.
+	 *
+	 * @param a The first shape to be unified.
+	 * @param b The second shape to be unified with the first.
+	 * @return A new PShape representing the union of the two input shapes. The
+	 *         resulting shape retains the style of the first input shape, 'a'.
+	 * @see #union(PShape...) For union operations on multiple shapes.
 	 */
 	public static PShape union(final PShape a, final PShape b) {
 		Geometry shapeA = fromPShape(a);
@@ -114,12 +125,15 @@ public final class PGS_ShapeBoolean {
 	}
 
 	/**
-	 * Unions any variable number of shapes.
-	 * 
-	 * @param shapes
-	 * @return
-	 * @see #union(PShape, PShape)
-	 * @see #union(PShape...)
+	 * Performs a geometric union operation on a collection of shapes, merging them
+	 * into a new shape that represents the total area of all the input shapes.
+	 * Overlapping areas among the shapes are included only once in the resulting
+	 * shape.
+	 *
+	 * @param shapes A list of PShapes to be unified.
+	 * @return A new PShape object representing the union of the input shapes.
+	 * @see #union(PShape, PShape) For a union operation on two shapes.
+	 * @see #union(PShape...) For union operations on a variable number of shapes.
 	 */
 	public static PShape union(final List<PShape> shapes) {
 		Collection<Geometry> polygons = new ArrayList<>();
@@ -128,27 +142,33 @@ public final class PGS_ShapeBoolean {
 	}
 
 	/**
-	 * Unions any variable number of shapes.
+	 * Performs a geometric union operation on a variable number of shapes, merging
+	 * them into a new shape that encompasses the total area of all input shapes.
+	 * Overlapping areas among the shapes are included only once in the resulting
+	 * shape.
 	 * 
-	 * @param shapes varArgs
-	 * @return
-	 * @see #union(PShape, PShape)
-	 * @see #union(List)
+	 * @param shapes A variable number of PShape instances to be unified.
+	 * @return A new PShape object representing the union of the input shapes.
+	 * @see #union(PShape, PShape) For a union operation on two shapes.
+	 * @see #union(List) For a union operation on a list of shapes.
 	 */
+
 	public static PShape union(PShape... shapes) {
 		return union(Arrays.asList(shapes));
 	}
 
 	/**
-	 * Unions/flattens/merges/dissolves a mesh-like PShape (that is, a GROUP PShape
-	 * whose children represent faces that share edges) into a single shape that
-	 * represents the boundary of the mesh. This method is optimised for meshes, and
-	 * is accordingly much faster than unioning the mesh faces together using other
-	 * methods.
-	 * 
-	 * @param mesh a GROUP pshape whose children shapes form a mesh (join/overlap at
-	 *             edges). The mesh may contain holes.
-	 * @return
+	 * Merges a mesh-like PShape (i.e., a GROUP PShape whose children represent
+	 * faces with shared edges) into a single shape that denotes the boundary of the
+	 * entire mesh. This method is specifically optimized for meshes and
+	 * significantly outperforms other methods of unioning the mesh faces.
+	 * <p>
+	 * The mesh can contain holes and these will be correctly processed and
+	 * reflected in the final output.
+	 *
+	 * @param mesh A GROUP PShape, where each child shape forms part of a mesh,
+	 *             meaning they join or overlap at edges.
+	 * @return A single PShape representing the boundary of the mesh.
 	 * @since 1.2.0
 	 */
 	public static PShape unionMesh(final PShape mesh) {
@@ -167,9 +187,20 @@ public final class PGS_ShapeBoolean {
 	}
 
 	/**
-	 * Faster than JTS CoverageUnion but does not handle meshes with holes.
-	 * 
-	 * @deprecated
+	 * Unifies a collection of mesh shapes without handling holes, providing a more
+	 * faster approach than {@link #unionMesh(PShape)} if the input is known to have
+	 * no holes.
+	 * <p>
+	 * This method calculates the set of unique edges belonging to the mesh, which
+	 * is equivalent to the boundary, assuming a mesh without holes. It then
+	 * determines a sequential/winding order for the vertices of the boundary.
+	 * <p>
+	 * Note: This method does not account for meshes with holes.
+	 *
+	 * @param mesh A collection of shapes representing a mesh.
+	 * @return A new PShape representing the union of the mesh shapes.
+	 * @deprecated This method is deprecated due to the lack of support for meshes
+	 *             with holes.
 	 */
 	public static PShape unionMeshWithoutHoles(final Collection<PShape> mesh) {
 		Map<PEdge, Integer> edges = new HashMap<>();
@@ -232,7 +263,8 @@ public final class PGS_ShapeBoolean {
 	 * Rather than performing geometric overlay, this method simply appends the
 	 * holes as contours to the shell. For this reason, it is faster than
 	 * {@link #subtract(PShape, PShape) subtract()} but this method produces valid
-	 * results only if <b>all holes lie inside the shell</b>.
+	 * results only if <b>all holes lie inside the shell</b> and holes are <b>not
+	 * nested</b>.
 	 * 
 	 * @param shell polygonal shape
 	 * @param holes single polygon, or GROUP shape, whose children are holes that
@@ -253,29 +285,30 @@ public final class PGS_ShapeBoolean {
 	}
 
 	/**
-	 * Subtracts a polygonal area from a mesh-like shape / polygonal coverage,
-	 * preserving individual faces/features of the mesh during the operation.
+	 * Subtracts a polygonal area from a mesh-like shape or polygonal coverage,
+	 * ensuring each individual face or feature of the mesh is preserved during the
+	 * operation.
 	 * <p>
-	 * When polygon is subtracted from a mesh-like shape / polygonal coverage using
-	 * {@link #subtract(PShape, PShape) subtract(a, b)}, the result is a
-	 * <b>single</b> polygon comprising the combined/dissolved area of all remaining
-	 * mesh face parts. Sometimes this behaviour is desired whereas other times it
-	 * is not -- this method can be used to preserve how each face is subtracted
-	 * from individually.
+	 * The method {@link #subtract(PShape, PShape) subtract(a, b)} subtracts a
+	 * polygon from a mesh, producing a single polygon that represents the combined
+	 * and dissolved area of all remaining mesh face parts. This method offers an
+	 * alternative to preserve how each face is individually affected by the
+	 * subtraction.
 	 * <p>
-	 * Using this method is faster than calling {@link #subtract(PShape, PShape)
-	 * subtract(a, b)} repeatedly on every face of a mesh-like shape <code>a</code>.
-	 * 
-	 * @param mesh a mesh-like GROUP shape
-	 * @param area a polygonal shape
-	 * @return a GROUP shape, where each child shape is the subtraction of the area
-	 *         from one mesh face
+	 * This method is more efficient than repeatedly calling
+	 * {@link #subtract(PShape, PShape) subtract(a, b)} on each face of a mesh-like
+	 * shape.
+	 *
+	 * @param mesh A GROUP PShape that represents a mesh-like shape.
+	 * @param area A polygonal PShape from which the mesh shape is subtracted.
+	 * @return A GROUP PShape, where each child shape is the result of the area
+	 *         being subtracted from a single mesh face.
 	 * @since 1.3.0
 	 */
 	public static PShape subtractMesh(PShape mesh, PShape area) {
 		final Geometry g = fromPShape(area);
 		final PreparedGeometry cache = PreparedGeometryFactory.prepare(g);
-		
+
 		List<Geometry> faces = PGS_Conversion.getChildren(mesh).parallelStream().map(s -> {
 			final Geometry f = PGS_Conversion.fromPShape(s);
 			if (cache.containsProperly(f)) {
@@ -290,13 +323,14 @@ public final class PGS_ShapeBoolean {
 				return boundarySubtract;
 			}
 		}).collect(Collectors.toList());
-		
+
 		return PGS_Conversion.toPShape(faces);
 	}
 
 	/**
-	 * Computes the <i>symmetric difference</i> (the parts that the shapes do not
-	 * have in common) between two shapes and returns the result as a new shape.
+	 * Calculates the symmetric difference between two shapes. The symmetric
+	 * difference is the set of regions that exist in either of the two shapes but
+	 * not in their intersection.
 	 * 
 	 * @param a The first shape.
 	 * @param b The second shape.
@@ -311,14 +345,18 @@ public final class PGS_ShapeBoolean {
 	}
 
 	/**
-	 * Computes the shape's complement (or inverse) against a rectangle of specified
-	 * width and height.
+	 * Calculates the complement (or inverse) of the provided shape within a
+	 * rectangular boundary of specified width and height.
+	 * <p>
+	 * The resulting shape corresponds to the portion of the rectangle not covered
+	 * by the input shape. The operation is essentially a subtraction of the input
+	 * shape from the rectangle.
 	 * 
-	 * @param shape  The PShape for which the complement is to be calculated.
-	 * @param width  width of the rectangle plane to subtract shape from
-	 * @param height height of the rectangle plane to subtract shape from
-	 * @return A new PShape representing the complement of the input shape within
-	 *         the specified rectangle.
+	 * @param shape  The input shape for which the complement is to be determined.
+	 * @param width  The width of the rectangular boundary.
+	 * @param height The height of the rectangular boundary.
+	 * @return A new PShape representing the inverse of the input shape within the
+	 *         specified rectangular boundary.
 	 */
 	public static PShape complement(PShape shape, double width, double height) {
 		final GeometricShapeFactory shapeFactory = new GeometricShapeFactory();

@@ -48,8 +48,9 @@ class LittleThumblingDensifier {
 	}
 
 	public void setStepLength(double stepLength) {
-		if (stepLength <= 0.0)
+		if (stepLength <= 0.0) {
 			throw new IllegalArgumentException("Step length must be positive");
+		}
 		this.stepLength = stepLength;
 	}
 
@@ -130,8 +131,9 @@ class LittleThumblingDensifier {
 			for (int i = 0; i < pts.length - 1; i++) {
 				Coordinate c0 = pts[i], c1 = pts[i + 1];
 				dTot = c0.distance(c1);
-				if (d <= dTot)
+				if (d <= dTot) {
 					a = FastAtan2.atan2(c1.y - c0.y, c1.x - c0.x);
+				}
 				while (d <= dTot) {
 					// use LineSegment.pointAlong instead ?
 					Coordinate c = new Coordinate(c0.x + d * Math.cos(a), c0.y + d * Math.sin(a));

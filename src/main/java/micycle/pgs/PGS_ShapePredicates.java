@@ -33,7 +33,7 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Various shape metrics &amp; predicates
+ * Various shape metrics, predicates and descriptors.
  * 
  * @author Michael Carleton
  *
@@ -406,6 +406,20 @@ public final class PGS_ShapePredicates {
 		} else {
 			return l / w;
 		}
+	}
+
+	/**
+	 * Computes the convexity of a shape using a simple area-based measure of
+	 * convexity.
+	 * 
+	 * @param shape
+	 * @return a value in [0, 1]
+	 * @since 1.3.1
+	 */
+	public static double convexity(PShape shape) {
+		// also see 'A New Convexity Measure for Polygons'
+		Geometry g = fromPShape(shape);
+		return g.getArea() / g.convexHull().getArea();
 	}
 
 	/**

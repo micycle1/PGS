@@ -51,9 +51,10 @@ public final class PGS_Coloring {
 	}
 
 	/**
-	 * Specifies the algorithm/heuristic used by the underlying graph coloring process to find
-	 * a coloring for mesh faces. RLF, followed by DSATUR generally produce the
-	 * "best" colorings (as measured by chromatic number, where lower is better).
+	 * Specifies the algorithm/heuristic used by the underlying graph coloring
+	 * process to find a coloring for mesh faces. RLF, followed by DSATUR generally
+	 * produce the "best" colorings (as measured by chromatic number, where lower is
+	 * better).
 	 */
 	public enum ColoringAlgorithm {
 		/**

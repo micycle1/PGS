@@ -1243,6 +1243,7 @@ public final class PGS_Conversion {
 		for (double[] p : shape) {
 			points.add(new PVector((float) p[0], (float) p[1]));
 		}
+		// add closing vertex if close==true and data isn't already closed
 		if (close && !points.get(0).equals(points.get(points.size() - 1))) {
 			points.add(new PVector((float) shape[0][0], (float) shape[0][1]));
 		}
