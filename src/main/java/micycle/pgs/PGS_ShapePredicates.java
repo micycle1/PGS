@@ -26,6 +26,7 @@ import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.util.PolygonExtracter;
 
+import micycle.pgs.commons.EllipticFourierDesc;
 import micycle.pgs.commons.GeometricMedian;
 import micycle.trapmap.TrapMap;
 import processing.core.PConstants;
@@ -359,10 +360,13 @@ public final class PGS_ShapePredicates {
 		Geometry g1 = fromPShape(a);
 		Geometry g2 = fromPShape(b);
 		Geometry overlap = g1.intersection(g2);
+		double aOverlap = overlap.getArea();
+		if (aOverlap == 0) {
+			return 0;
+		}
 		double a1 = g1.getArea();
 		double a2 = g2.getArea();
 		double total = a1 + a2;
-		double aOverlap = overlap.getArea();
 		double w1 = a1 / total;
 		double w2 = a2 / total;
 		return w1 * (aOverlap / a1) + w2 * (aOverlap / a2);
@@ -462,6 +466,30 @@ public final class PGS_ShapePredicates {
 			maxAngle = Math.max(maxAngle, Angle.interiorAngle(p0, p1, p2));
 		}
 		return maxAngle;
+	}
+
+	/**
+	 * Quantifies the similarity between two shapes, by using the pairwise euclidean
+	 * distance between each shape's <i>Elliptic Fourier Descriptors</i> (EFD).
+	 * <p>
+	 * Smaller values indicate greater similarity or equivalence, and the measure is
+	 * translation and rotation invariant.
+	 * <p>
+	 * This method can be useful in shape recognition tasks where it is necessary to
+	 * quantify the difference or similarity between two shapes.
+	 *
+	 * @param a polygonal shape
+	 * @param b polygonal shape
+	 * @return The EFD distance between the two provided PShapes. Smaller values
+	 *         indicate greater similarity or equivalence between the shapes.
+	 * @since 1.3.1
+	 */
+	public static double efdSimilarity(PShape a, PShape b) {
+		int n = Math.min(a.getVertexCount(), b.getVertexCount()) / 2;
+		n = Math.min(n, 50); // max of 50 descriptors
+		EllipticFourierDesc efdA = new EllipticFourierDesc(((Polygon) fromPShape(a)).getExteriorRing(), n);
+		EllipticFourierDesc efdB = new EllipticFourierDesc(((Polygon) fromPShape(b)).getExteriorRing(), n);
+		return EllipticFourierDesc.computeEFDDistance(efdA.getEFD(), efdB.getEFD());
 	}
 
 	/**

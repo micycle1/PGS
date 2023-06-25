@@ -36,6 +36,7 @@ import micycle.pgs.color.RGB;
 import micycle.pgs.commons.ChaikinCut;
 import micycle.pgs.commons.CornerRounding;
 import micycle.pgs.commons.DiscreteCurveEvolution;
+import micycle.pgs.commons.EllipticFourierDesc;
 import micycle.pgs.commons.GaussianLineSmoothing;
 import micycle.pgs.commons.ShapeInterpolation;
 import processing.core.PConstants;
@@ -433,15 +434,106 @@ public final class PGS_Morphology {
 	}
 
 	/**
-	 * Rounds the corners of a shape by substituting a circular arc for each corner.
-	 * Each corner is rounded in proportion to the smallest length of its 2
-	 * constituent lines.
+	 * Calculates the Elliptic Fourier Descriptors (EFD) of a specified shape,
+	 * yielding a simplified/smoothed shape representation based on the specified
+	 * number of descriptors.
+	 * <p>
+	 * The EFD technique is an approach for shape analysis and simplification that
+	 * decomposes a shape into a sequence of elliptic harmonic components. These
+	 * components encapsulate the contour details of the shape: lower-order
+	 * harmonics capture the broad geometry of the shape, while higher-order
+	 * harmonics register the detailed, high-frequency contour characteristics,
+	 * analogous to Principal Component Analysis (PCA). This technique is
+	 * particularly effective for generating condensed or smoother versions of
+	 * complex shapes.
 	 * 
-	 * @param shape
-	 * @param extent 0...1 (where 0 is no rounding, and 1 is the maximum rounding
-	 *               whilst keeping shape valid). Values greater than 1 are allowed
-	 *               by output undefined results.
-	 * @return
+	 * @param shape       A polygonal shape to be transformed using the EFD.
+	 * @param descriptors The desired level of the EFD, denoting the quantity of
+	 *                    harmonics to be retained in the output. The maximum value
+	 *                    is half the total number of vertices in the shape, while
+	 *                    the minimum allowable value is 2. As the number of
+	 *                    harmonics is increased, the output tends towards the input
+	 *                    shape.
+	 * @return A new PShape, simplified through the application of the Elliptic
+	 *         Fourier Descriptors up to the indicated order. This shape will always
+	 *         have the same number of vertices as the original.
+	 * @since 1.3.1
+	 */
+	public static PShape smoothEllipticFourier(PShape shape, int descriptors) {
+		Geometry g = fromPShape(shape);
+		switch (g.getGeometryType()) {
+			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
+			case Geometry.TYPENAME_MULTIPOLYGON :
+			case Geometry.TYPENAME_MULTILINESTRING :
+				PShape group = new PShape(GROUP);
+				for (int i = 0; i < g.getNumGeometries(); i++) {
+					group.addChild(smoothEllipticFourier(toPShape(g.getGeometryN(i)), descriptors));
+				}
+				return group;
+			case Geometry.TYPENAME_POLYGON :
+				LinearRingIterator lri = new LinearRingIterator(g);
+				LinearRing[] rings = lri.getLinearRings();
+				LinearRing[] ringProcessed = new LinearRing[rings.length];
+				for (int i = 0; i < rings.length; i++) {
+					descriptors = Math.min(rings[i].getCoordinates().length / 2, descriptors); // max=#vertices/2
+					descriptors = Math.max(2, descriptors); // min=2
+					final EllipticFourierDesc efd = new EllipticFourierDesc(rings[i], descriptors);
+					Coordinate[] coords = efd.createPolygon();
+					ringProcessed[i] = PGS.GEOM_FACTORY.createLinearRing(coords);
+				}
+
+				LinearRing[] holes = null;
+				if (ringProcessed.length > 1) {
+					holes = Arrays.copyOfRange(ringProcessed, 1, ringProcessed.length);
+				}
+				return toPShape(PGS.GEOM_FACTORY.createPolygon(ringProcessed[0], holes));
+			case Geometry.TYPENAME_LINEARRING :
+				descriptors = Math.min(shape.getVertexCount() / 2, descriptors); // max=#vertices/2
+				descriptors = Math.max(2, descriptors); // min=2
+				LinearRing l = (LinearRing) g;
+				final EllipticFourierDesc efd = new EllipticFourierDesc(l, descriptors);
+				return toPShape(PGS.GEOM_FACTORY.createLinearRing(efd.createPolygon()));
+			case Geometry.TYPENAME_LINESTRING :
+			default :
+				System.err.println(g.getGeometryType() + " are not supported for the smoothEllipticFourier() method."); // pointal/string
+																														// geoms
+				return new PShape(); // return empty (so element is invisible if not processed)
+		}
+	}
+
+	public static double[][] coordsToDoubles(Coordinate[] coordinates) {
+		double[][] result = new double[coordinates.length][2];
+
+		for (int i = 0; i < coordinates.length; i++) {
+			result[i][0] = coordinates[i].x;
+			result[i][1] = coordinates[i].y;
+		}
+
+		return result;
+	}
+
+	public static Coordinate[] doublesToCoords(double[][] doubles) {
+		Coordinate[] result = new Coordinate[doubles.length];
+
+		for (int i = 0; i < doubles.length; i++) {
+			result[i] = new Coordinate(doubles[i][0], doubles[i][1]);
+		}
+
+		return result;
+	}
+
+	/**
+	 * Modifies the corners of a specified shape by replacing each angular corner
+	 * with a smooth, circular arc. The radius of each arc is determined
+	 * proportionally to the shorter of the two lines forming the corner.
+	 * 
+	 * @param shape  The original PShape object whose corners are to be rounded.
+	 * @param extent Specifies the degree of corner rounding, with a range from 0 to
+	 *               1. A value of 0 corresponds to no rounding, whereas a value of
+	 *               1 yields maximum rounding while still maintaining the validity
+	 *               of the shape. Values above 1 are accepted but may produce
+	 *               unpredictable results.
+	 * @return A new PShape object with corners rounded to the specified extent.
 	 */
 	public static PShape round(PShape shape, double extent) {
 		return CornerRounding.round(shape, extent);
@@ -479,23 +571,26 @@ public final class PGS_Morphology {
 	}
 
 	/**
-	 * Warps/perturbs a shape by displacing vertices along a line between each
-	 * vertex and the shape centroid.
-	 * 
+	 * Distorts a polygonal shape by radially displacing its vertices along the line
+	 * connecting each vertex with the shape's centroid, creating a warping or
+	 * perturbing effect.
 	 * <p>
-	 * Inputs may be densified before warping.
+	 * The shape's input vertices can optionally be densified prior to the warping
+	 * operation.
 	 * 
-	 * @param shape      a polygonal shape
-	 * @param magnitude  magnitude of the displacement. The value defines the
-	 *                   maximum euclidean displacement of a vertex compared to the
-	 *                   shape centroid
-	 * @param warpOffset offset angle that determines at which angle to begin the
-	 *                   displacement.
-	 * @param densify    whether to densify the shape (using distance=1) before
-	 *                   warping. When true, shapes with long edges will undergo
-	 *                   warping along the whole edge (rather than only at the
-	 *                   original vertices).
-	 * @return
+	 * @param shape      A polygonal PShape object to be distorted.
+	 * @param magnitude  The degree of the displacement, which determines the
+	 *                   maximum Euclidean distance a vertex will be moved in
+	 *                   relation to the shape's centroid.
+	 * @param warpOffset An offset angle, which establishes the starting angle for
+	 *                   the displacement process.
+	 * @param densify    A boolean parameter determining whether the shape should be
+	 *                   densified (by inserting additional vertices at a distance
+	 *                   of 1) before warping. If true, shapes with long edges will
+	 *                   experience warping along their entire length, not just at
+	 *                   the original vertices.
+	 * @return A new PShape object that has been radially warped according to the
+	 *         specified parameters.
 	 */
 	public static PShape radialWarp(PShape shape, double magnitude, double warpOffset, boolean densify) {
 		Geometry g = fromPShape(shape);
