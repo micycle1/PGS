@@ -51,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `binPack()` to `PGS_Optimisation`. Packs irregular polygonal shapes into rectangular containers (bins).
 * `smoothEllipticFourier()` to `PGS_Morphology`. Smoothes a shape using its elliptic fourier descriptors.
 * `efdSimilarity()` to `PGS_ShapePredicates`. Quantifies the similarity between two shapes, using elliptic fourier descriptors.
+* `areaMerge()` to `PGS_Meshing`. Merges/dissolves small faces of a mesh into their neighboring faces.
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).

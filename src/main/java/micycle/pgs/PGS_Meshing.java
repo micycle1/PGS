@@ -35,9 +35,10 @@ import org.tinfour.common.Vertex;
 import org.tinfour.utils.TriangleCollector;
 import org.tinspin.index.PointIndex;
 import org.tinspin.index.kdtree.KDTree;
-
 import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
+
 import micycle.pgs.color.RGB;
+import micycle.pgs.commons.AreaMerge;
 import micycle.pgs.commons.IncrementalTinDual;
 import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.PMesh;
@@ -577,7 +578,7 @@ public class PGS_Meshing {
 	 */
 	public static PShape nodeNonMesh(PShape shape) {
 		final List<SegmentString> segmentStrings = new ArrayList<>(shape.getChildCount() * 3);
-	
+
 		for (PShape face : shape.getChildren()) {
 			for (int i = 0; i < face.getVertexCount(); i++) {
 				final PVector a = face.getVertex(i);
@@ -684,9 +685,9 @@ public class PGS_Meshing {
 	 * @param mesh              GROUP shape comprising the faces of a conforming
 	 *                          mesh
 	 * @param tolerance         the simplification tolerance for area-based
-	 *                          simplification. Roughly to the maximumdistance by
-	 *                          which a simplified line can change from the
-	 *                          original.
+	 *                          simplification. Roughly equal to the maximum
+	 *                          distance by which a simplified line can change from
+	 *                          the original.
 	 * @param preservePerimeter whether to only simplify inner-boundaries and
 	 *                          leaving outer boundary edges unchanged.
 	 * @return GROUP shape comprising the simplfied mesh faces
@@ -702,6 +703,24 @@ public class PGS_Meshing {
 			output = simplifier.simplify(tolerance);
 		}
 		return PGS_Conversion.toPShape(Arrays.asList(output));
+	}
+
+	/**
+	 * Recursively merges smaller faces of a mesh into their adjacent faces. The
+	 * procedure continues until there are no resulting faces with an area smaller
+	 * than the specified threshold.
+	 * 
+	 * @param mesh          a GROUP shape representing a conforming mesh the mesh to
+	 *                      perform area merging on
+	 * @param areaThreshold The maximum permissible area threshold for merging
+	 *                      faces. Any faces smaller than this threshold will be
+	 *                      consolidated into their neighboring faces.
+	 * @return GROUP shape comprising the merged mesh faces
+	 * @since 1.3.1
+	 */
+	public static PShape areaMerge(PShape mesh, double areaThreshold) {
+		PShape merged = AreaMerge.areaMerge(mesh, areaThreshold);
+		return merged;
 	}
 
 	/**

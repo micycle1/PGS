@@ -532,10 +532,12 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Mesh Simplification</td>
     <td align="center" valign="center"><b>Stochastic Merge</td>
+    <td align="center" valign="center"><b>Area Merge</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/meshing/simplifyMesh.gif"></td>
     <td valign="top" width="25%"><img src="resources/meshing/stochasticMerge.gif"></td>
+    <td valign="top" width="25%"><img src="resources/meshing/areaMerge.gif"></td>
   </tr>
 </table>
 
