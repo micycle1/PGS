@@ -1,8 +1,6 @@
 package micycle.pgs;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 
 import org.jgrapht.alg.color.ColorRefinementAlgorithm;
@@ -13,37 +11,34 @@ import org.jgrapht.alg.color.SmallestDegreeLastColoring;
 import org.jgrapht.alg.interfaces.VertexColoringAlgorithm.Coloring;
 import org.jgrapht.graph.AbstractBaseGraph;
 import org.jgrapht.graph.DefaultEdge;
-import org.locationtech.jts.noding.SegmentString;
-
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
+
 import micycle.pgs.color.RGB;
 import micycle.pgs.commons.GeneticColoring;
 import micycle.pgs.commons.RLFColoring;
 import processing.core.PShape;
-import processing.core.PVector;
 
 /**
- * Intelligently color meshes (or mesh-like shapes) such that no two adjacent
- * faces have the same color, while minimising the number of colors used.
+ * This class provides methods to color meshes and mesh-like shapes. It ensures
+ * that no two adjacent faces share the same color while also minimizing the
+ * total number of colors used.
  * <p>
- * The methods in this class distinguish between mesh-like shapes (<i>conforming
- * meshes</i>) and non-mesh-like shapes (<i>non-conforming meshes</i>). This
- * distinction is necessary because shapes that represent non-conforming meshes
- * require a single step of pre-processing ("noding") to first split edges
- * before coloring. The difference is described below:
+ * This class differentiates between "conforming meshes" and "non-conforming
+ * meshes".
  * 
  * <p style="margin-left: 40px">
- * <i>Conforming Meshes</i> : Consists of adjacent cells that not only share
- * edges, but every pair of shared edges are <b>identical</b> (having the same
- * coordinates) (such as a triangulation). <br>
- * <i>Non-Conforming Meshes</i> : Consists of adjacent cells that share edges
+ * <i>Conforming Meshes</i> : Consist of adjacent cells that share edges and
+ * every pair of shared edges are identical, meaning they have the same
+ * coordinates. An example of a conforming mesh is a triangulation. <br>
+ * <i>Non-Conforming Meshes</i> : Consist of adjacent cells that share edges
  * (i.e. edges may overlap) but adjacent edges do not necessarily have identical
  * start and end coordinates.
  * </p>
+ * For a non-conforming mesh, a pre-processing step called "noding" is required
+ * to split edges before coloring.
  * 
  * @author Michael Carleton
  * @since 1.2.0
- *
  */
 public final class PGS_Coloring {
 
@@ -178,7 +173,7 @@ public final class PGS_Coloring {
 	 *         color class (integer)
 	 */
 	public static Map<PShape, Integer> colorNonMesh(PShape shape, ColoringAlgorithm coloringAlgorithm) {
-		final PShape mesh = nodeNonMesh(shape);
+		final PShape mesh = PGS_Meshing.nodeNonMesh(shape);
 		return colorMesh(mesh, coloringAlgorithm);
 	}
 
@@ -194,7 +189,7 @@ public final class PGS_Coloring {
 	 *         colored)
 	 */
 	public static PShape colorNonMesh(PShape shape, ColoringAlgorithm coloringAlgorithm, int[] colorPalette) {
-		final PShape mesh = nodeNonMesh(shape);
+		final PShape mesh = PGS_Meshing.nodeNonMesh(shape);
 		colorMesh(mesh, coloringAlgorithm, colorPalette);
 		PGS_Conversion.setAllStrokeColor(mesh, RGB.WHITE, 2);
 		return mesh;
@@ -213,7 +208,7 @@ public final class PGS_Coloring {
 	 *         colored)
 	 */
 	public static PShape colorNonMesh(PShape shape, ColoringAlgorithm coloringAlgorithm, String[] colorPalette) {
-		final PShape mesh = nodeNonMesh(shape);
+		final PShape mesh = PGS_Meshing.nodeNonMesh(shape);
 		colorMesh(mesh, coloringAlgorithm, colorPalette);
 		PGS_Conversion.setAllStrokeColor(mesh, RGB.WHITE, 2);
 		return mesh;
@@ -255,29 +250,6 @@ public final class PGS_Coloring {
 				coloring = new RLFColoring<>(graph).getColoring();
 		}
 		return coloring;
-	}
-
-	/**
-	 * Converts a non-conforming mesh shape into a conforming mesh by "noding" it.
-	 * This essentially means splitting edges into two at points where they
-	 * intersect (touch) another edge.
-	 * 
-	 * @param shape a GROUP PShape
-	 * @return the input shape, having been noded and polygonized
-	 */
-	private static PShape nodeNonMesh(PShape shape) {
-		final List<SegmentString> segmentStrings = new ArrayList<>(shape.getChildCount() * 3);
-
-		for (PShape face : shape.getChildren()) {
-			for (int i = 0; i < face.getVertexCount(); i++) {
-				final PVector a = face.getVertex(i);
-				final PVector b = face.getVertex((i + 1) % face.getVertexCount());
-				if (!a.equals(b)) {
-					segmentStrings.add(PGS.createSegmentString(a, b));
-				}
-			}
-		}
-		return PGS.polygonizeSegments(segmentStrings, true);
 	}
 
 }

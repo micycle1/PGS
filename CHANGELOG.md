@@ -34,11 +34,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Additional method signature for `PGS_Processing.fromPVector()` that accepts a random seed.
 * `visibilityPolygon()` to `PGS_Optimisation`. Computes the area visible from a given point in a space, considering occlusions caused by obstacles.
 * Additional method signature for `PGS_CirclePacking.stochasticPack()` that accepts a random seed.
-* `smoothMesh()` to `PGS_Meshing`. Smoothes a mesh via iterative weighted Laplacian smoothing.
 * `filterChildren()` to `PGS_Processing`. Filters the children of a shape object based on a given Predicate function.
 * `fromGraph()` to `PGS_Conversion`. Converts a graph consisting of PVectors and PEdges into a PShape by polygonizing its edges.
+* `smoothMesh()` to `PGS_Meshing`. Smoothes a mesh via iterative weighted Laplacian smoothing.
 * `stochasticMerge()` to `PGS_Meshing`. Randomly merges together adjacent faces of a mesh.
 * `simplifyMesh()` to `PGS_Meshing`. Simplifies the boundaries of the faces in a mesh while preserving the original mesh topology.
+* `nodeNonMesh()` to `PGS_Meshing`. Transforms a non-conforming mesh shape into a conforming mesh via "noding".
 * `toCircles()` to `PGS_Conversion`. Creates a PShape having circle geometries representing a collection of circles.
 * `fromPShape()` to `PGS_SegmentSet`. Extracts a list of unique PEdge segments representing the given shape.
 * `stretch()` to `PGS_SegmentSet`. Stretches segments in a list by a specified factor.

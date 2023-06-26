@@ -25,6 +25,7 @@ import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.index.strtree.STRtree;
+import org.locationtech.jts.noding.SegmentString;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.tinfour.common.IConstraint;
 import org.tinfour.common.IIncrementalTin;
@@ -53,7 +54,7 @@ import processing.core.PVector;
  * triangulation; you may first generate such a triangulation from a shape using
  * the
  * {@link PGS_Triangulation#delaunayTriangulationMesh(PShape, Collection, boolean, int, boolean)
- * delaunayTriangulationMesh()} method
+ * delaunayTriangulationMesh()} method.
  * 
  * @author Michael Carleton
  * @since 1.2.0
@@ -560,6 +561,33 @@ public class PGS_Meshing {
 	public static PShape spiralQuadrangulation(List<PVector> points) {
 		SpiralQuadrangulation sq = new SpiralQuadrangulation(points);
 		return PGS.polygonizeEdges(sq.getQuadrangulationEdges());
+	}
+
+	/**
+	 * Transforms a non-conforming mesh shape into a <i>conforming mesh</i> by
+	 * performing a "noding" operation. "noding" refers to the process of splitting
+	 * edges into two at points where they intersect or touch another edge. It is a
+	 * way of ensuring consistency and accuracy in the spatial topology of the mesh.
+	 * 
+	 * @param shape a GROUP PShape which represents a mesh-like shape, but one that
+	 *              isn't conforming (i.e. adjacent edges do not necessarily have
+	 *              identical start and end coordinates)
+	 * @return the input shape, having been noded and polygonized
+	 * @since <code>public</code> since 1.3.1
+	 */
+	public static PShape nodeNonMesh(PShape shape) {
+		final List<SegmentString> segmentStrings = new ArrayList<>(shape.getChildCount() * 3);
+	
+		for (PShape face : shape.getChildren()) {
+			for (int i = 0; i < face.getVertexCount(); i++) {
+				final PVector a = face.getVertex(i);
+				final PVector b = face.getVertex((i + 1) % face.getVertexCount());
+				if (!a.equals(b)) {
+					segmentStrings.add(PGS.createSegmentString(a, b));
+				}
+			}
+		}
+		return PGS.polygonizeSegments(segmentStrings, true);
 	}
 
 	/**

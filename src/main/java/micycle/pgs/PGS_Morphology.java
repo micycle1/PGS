@@ -501,27 +501,6 @@ public final class PGS_Morphology {
 		}
 	}
 
-	public static double[][] coordsToDoubles(Coordinate[] coordinates) {
-		double[][] result = new double[coordinates.length][2];
-
-		for (int i = 0; i < coordinates.length; i++) {
-			result[i][0] = coordinates[i].x;
-			result[i][1] = coordinates[i].y;
-		}
-
-		return result;
-	}
-
-	public static Coordinate[] doublesToCoords(double[][] doubles) {
-		Coordinate[] result = new Coordinate[doubles.length];
-
-		for (int i = 0; i < doubles.length; i++) {
-			result[i] = new Coordinate(doubles[i][0], doubles[i][1]);
-		}
-
-		return result;
-	}
-
 	/**
 	 * Modifies the corners of a specified shape by replacing each angular corner
 	 * with a smooth, circular arc. The radius of each arc is determined

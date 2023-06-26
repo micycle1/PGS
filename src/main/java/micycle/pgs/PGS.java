@@ -242,7 +242,7 @@ final class PGS {
 	 * @return a GROUP PShape, where each child shape represents a polygon face
 	 *         formed by the given edges
 	 */
-	public static final PShape polygonizeSegments(Collection<SegmentString> segments, boolean node) {
+	static final PShape polygonizeSegments(Collection<SegmentString> segments, boolean node) {
 		if (node) {
 			segments = nodeSegmentStrings(segments);
 		}
@@ -299,7 +299,7 @@ final class PGS {
 		 * are generally caused by nearly coincident line segments, or by very short
 		 * line segments. Snapping mitigates both of these situations.".
 		 */
-		final Noder noder = new SnappingNoder(0.01);
+		final Noder noder = new SnappingNoder(1e-2);
 		noder.computeNodes(segments);
 		return noder.getNodedSubstrings();
 	}
@@ -459,6 +459,9 @@ final class PGS {
 			ArrayList<LinearRing> rings = new ArrayList<>(g.getNumGeometries());
 			for (int i = 0; i < g.getNumGeometries(); i++) {
 				Polygon poly = (Polygon) g.getGeometryN(i);
+//				if (poly.getNumPoints() == 0) {
+//					continue;
+//				}
 				rings.add(poly.getExteriorRing());
 				for (int j = 0; j < poly.getNumInteriorRing(); j++) {
 					rings.add(poly.getInteriorRingN(j));
