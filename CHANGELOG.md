@@ -80,6 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_ShapeBoolean.unionMesh()` now handles meshes with holes correctly (holes were filled in previously).
 * `PGS_Processing.extractPerimeter()` now behaves as expected when perimeter location values are negative.
 * Positive-valued offset arguments passed to `point[s]OnExterior()` methods could incorrectly produce offsets towards the interior of a shape. Such values will now always correspond to offset **away** from a shape's interior.
+* `PGS_ShapePredicates.holes()` now identifies and counts gaps in meshes as holes.
 
 ### Removed
 *

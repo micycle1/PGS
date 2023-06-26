@@ -135,7 +135,7 @@ public final class PGS_ShapeBoolean {
 	 * @see #union(PShape, PShape) For a union operation on two shapes.
 	 * @see #union(PShape...) For union operations on a variable number of shapes.
 	 */
-	public static PShape union(final List<PShape> shapes) {
+	public static PShape union(final Collection<PShape> shapes) {
 		Collection<Geometry> polygons = new ArrayList<>();
 		shapes.forEach(s -> polygons.add(fromPShape(s)));
 		return toPShape(UnaryUnionOp.union(polygons));
@@ -155,6 +155,15 @@ public final class PGS_ShapeBoolean {
 
 	public static PShape union(PShape... shapes) {
 		return union(Arrays.asList(shapes));
+	}
+	
+	/**
+	 * @see #unionMesh(PShape)
+	 * @param faces collection of faces comprising a mesh
+	 * @return A single PShape representing the boundary of the mesh.
+	 */
+	public static PShape unionMesh(final Collection<PShape> faces) {
+		return unionMesh(PGS_Conversion.flatten(faces));
 	}
 
 	/**

@@ -17,6 +17,7 @@ import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
 import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.algorithm.match.HausdorffSimilarityMeasure;
+import org.locationtech.jts.coverage.CoverageUnion;
 import org.locationtech.jts.coverage.CoverageValidator;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
@@ -428,14 +429,32 @@ public final class PGS_ShapePredicates {
 
 	/**
 	 * Counts the number of holes in a shape.
+	 * <p>
+	 * If the shape forms a polygon coverage (a mesh), then this method will count
+	 * holes from gaps within the mesh.
 	 * 
 	 * @param shape a polygonal shape (can be a GROUP shape having multiple
 	 *              polygons)
 	 * @return total number of holes in the shape
 	 */
 	public static int holes(PShape shape) {
+		Geometry g = fromPShape(shape);
+
+		/*
+		 * Attempt to convert to a polygon coverage to identify and count mesh holes.
+		 */
+		if (g.getNumGeometries() > 2) { // only 3 or more faces can form a mesh hole
+			Geometry[] geoms = new Geometry[g.getNumGeometries()];
+			for (int i = 0; i < g.getNumGeometries(); i++) {
+				geoms[i] = g.getGeometryN(i);
+			}
+			if (CoverageValidator.isValid(geoms)) {
+				g = CoverageUnion.union(geoms);
+			}
+		}
+
 		@SuppressWarnings("unchecked")
-		List<Polygon> polygons = PolygonExtracter.getPolygons(fromPShape(shape));
+		List<Polygon> polygons = PolygonExtracter.getPolygons(g);
 
 		int holes = 0;
 		for (Polygon p : polygons) {
@@ -565,7 +584,8 @@ public final class PGS_ShapePredicates {
 	}
 
 	/**
-	 * Determines whether a GROUP shape forms a conforming mesh / valid coverage.
+	 * Determines whether a GROUP shape forms a conforming mesh / valid polygon
+	 * coverage.
 	 * <p>
 	 * Conforming meshes comprise faces that do not intersect; any adjacent faces
 	 * not only share edges, but every pair of shared edges are <b>identical</b>
