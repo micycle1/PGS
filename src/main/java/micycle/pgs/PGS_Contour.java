@@ -13,6 +13,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+
 import javax.vecmath.Point3d;
 
 import org.jgrapht.graph.DefaultEdge;
@@ -82,39 +84,39 @@ public final class PGS_Contour {
 	}
 
 	/**
-	 * Computes the medial axis of the given shape, which provides a
-	 * characterization of the skeleton of a shape.
+	 * Computes the medial axis of the given shape, providing a characterization of
+	 * the skeleton of a shape.
 	 * <p>
-	 * The 3 parameters can be used to prune the medial axis according to different
-	 * features (at the same time).
+	 * The method employs three parameters to prune (simplify) the resulting medial
+	 * axis according to distinct features.
 	 *
-	 * @param shape
-	 * @param axialThreshold    Prune edges based on their axial gradient. The axial
-	 *                          gradient measures the change in the width of the
-	 *                          shape per unit length of the axis (measured per edge
-	 *                          segment). Between 0...1, where 0 is no pruning and 1
-	 *                          is maximal pruning for this feature.
-	 * @param distanceThreshold Prune edges based on the spatial distance between
-	 *                          the medial axis root and edge's tail coordinate.
-	 *                          Between 0...1, where 0 is no pruning and 1 is
-	 *                          maximal pruning for this feature.
-	 * @param areaThreshold     Prune edges based on the sum of each edge and its
-	 *                          descendants underlying feature area. Between 0...1,
-	 *                          where 0 is no pruning and 1 is maximal pruning for
-	 *                          this feature.
-	 * @return PShape of lines where lines represent medial axis edges
+	 * @param shape             The PShape to calculate the medial axis for.
+	 * @param axialThreshold    A value in the range of 0 to 1 that determines the
+	 *                          level of pruning based on the axial gradient. The
+	 *                          axial gradient evaluates the variation in the
+	 *                          shape's width per unit length along the axis,
+	 *                          measured per edge segment. A value of 0 results in
+	 *                          no pruning, while a value of 1 leads to the maximum
+	 *                          possible pruning.
+	 * @param distanceThreshold A value between 0 and 1 that determines the level of
+	 *                          pruning based on the spatial distance from the root
+	 *                          of the medial axis to the tail coordinate of each
+	 *                          edge. A value of 0 results in no pruning, while a
+	 *                          value of 1 results in maximum possible pruning.
+	 * @param areaThreshold     A value between 0 and 1 that determines the level of
+	 *                          pruning based on the aggregate feature area of each
+	 *                          edge and its descendants in the medial axis. A value
+	 *                          of 0 results in no pruning, while a value of 1
+	 *                          results in the maximum possible pruning.
+	 * @return A GROUP PShape containing maximal-length lines representing the
+	 *         pruned edges of the medial axis.
 	 */
 	public static PShape medialAxis(PShape shape, double axialThreshold, double distanceThreshold, double areaThreshold) {
 		final Geometry g = fromPShape(shape);
 		final MedialAxis m = new MedialAxis(g);
-
-		final PShape lines = PGS.prepareLinesPShape(RGB.PINK, PShape.ROUND, 4);
-		m.getPrunedEdges(axialThreshold, distanceThreshold, areaThreshold).forEach(e -> {
-			lines.vertex((float) e.head.position.x, (float) e.head.position.y);
-			lines.vertex((float) e.tail.position.x, (float) e.tail.position.y);
-		});
-		lines.endShape();
-		return lines;
+		return PGS_SegmentSet.dissolve(m.getPrunedEdges(axialThreshold, distanceThreshold, areaThreshold).stream()
+				.map(e -> new PEdge(e.head.position.x, e.head.position.y, e.tail.position.x, e.tail.position.y))
+				.collect(Collectors.toList()));
 	}
 
 	/**
@@ -144,7 +146,7 @@ public final class PGS_Contour {
 		final IIncrementalTin triangulation = PGS_Triangulation.delaunayTriangulationMesh(shape);
 		final SimpleGraph<SimpleTriangle, DefaultEdge> graph = PGS_Triangulation.toDualGraph(triangulation);
 
-		PShape axis = PGS.prepareLinesPShape(null, null, 4);
+		final List<PEdge> edges = new ArrayList<>(graph.vertexSet().size());
 
 		for (SimpleTriangle t : graph.vertexSet()) {
 			/*
@@ -165,8 +167,7 @@ public final class PGS_Contour {
 						interiorEdge = t.getEdgeA();
 					}
 					PVector centroid = centroid(t);
-					axis.vertex(centroid.x, centroid.y);
-					axis.vertex(midpoint(interiorEdge).x, midpoint(interiorEdge).y);
+					edges.add(new PEdge(centroid.x, centroid.y, midpoint(interiorEdge).x, midpoint(interiorEdge).y));
 					break;
 				case 2 : // Sleeve triangle (one edge in perimeter)
 					final IQuadEdge interiorEdgeA; // 2 edges are interior
@@ -183,8 +184,7 @@ public final class PGS_Contour {
 					}
 					PVector midpoint1 = midpoint(interiorEdgeA);
 					PVector midpoint2 = midpoint(interiorEdgeB);
-					axis.vertex(midpoint1.x, midpoint1.y);
-					axis.vertex(midpoint2.x, midpoint2.y);
+					edges.add(new PEdge(midpoint1.x, midpoint1.y, midpoint2.x, midpoint2.y));
 					break;
 				case 3 : // Junction triangle (no edge in perimeter)
 					/*
@@ -208,26 +208,15 @@ public final class PGS_Contour {
 					final PVector midpointL = midpoint(longest);
 					final PVector midpointA = midpoint(shortA);
 					final PVector midpointB = midpoint(shortB);
-					axis.vertex(midpointA.x, midpointA.y);
-					axis.vertex(midpointL.x, midpointL.y);
-					axis.vertex(midpointB.x, midpointB.y);
-					axis.vertex(midpointL.x, midpointL.y);
+					edges.add(new PEdge(midpointA.x, midpointA.y, midpointL.x, midpointL.y)); // A<->L
+					edges.add(new PEdge(midpointB.x, midpointB.y, midpointL.x, midpointL.y)); // B<->L
 					break;
 				default :
 					break;
 			}
 		}
-		axis.endShape();
 
-		final LineMerger lm = new LineMerger();
-		for (int i = 0; i < axis.getVertexCount(); i += 2) {
-			axis.getVertex(i);
-			axis.getVertex(i + 1);
-			final LineString l = PGS.createLineString(axis.getVertex(i), axis.getVertex(i + 1));
-			lm.add(l);
-		}
-
-		return toPShape(lm.getMergedLineStrings());
+		return PGS_SegmentSet.dissolve(edges);
 	}
 
 	/**

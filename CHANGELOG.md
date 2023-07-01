@@ -54,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `areaMerge()` to `PGS_Meshing`. Merges/dissolves small faces of a mesh into their neighboring faces.
 * `createSponge()` to `PGS_Construction`. Creates a sponge-like porous structure.
 * `createSuperRandomPolygon()` to `PGS_Construction`. Generates a highly customisable random polygon based on a square grid of cells.
+* `dissolve()` to `PGS_SegmentSet`. Dissolves a collection of edges into a set of maximal-length linestrings.
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).
@@ -74,6 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Reimplemented `PGS_CirclePacking.maximumInscribedPack()`. New algorithm is faster, particularly so on higher circle counts.
 * Renamed `miniumumBoundingRectangle()` to `minimumWidthRectangle()`.
 * `intersectMesh()` and `subtractMesh()` now fully preserve the styling of original mesh faces.
+* `PGS_Contour.medialAxis()` now returns dissolved maximal-length lines, rather than line segments only.
 
 ### Fixed
 * A slow collections size call included in `prunePointsWithinDistance()` was making it much slower than it should have been.

@@ -16,6 +16,7 @@ import org.jgrapht.alg.matching.blossom.v5.ObjectiveSense;
 import org.jgrapht.graph.SimpleGraph;
 import org.locationtech.jts.algorithm.RobustLineIntersector;
 import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
+import org.locationtech.jts.dissolve.LineDissolver;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineSegment;
@@ -374,7 +375,7 @@ public class PGS_SegmentSet {
 	 * Converts a collection of {@link micycle.pgs.commons.PEdge PEdges} into a
 	 * <code>LINES</code> shape, having the (optional) styling provided.
 	 * 
-	 * @param segments     collection of segments
+	 * @param segments     collection of PEdge segments
 	 * @param strokeColor  nullable/optional (default = {@link RGB#PINK})
 	 * @param strokeCap    nullable/optional (default = <code>ROUND</code>)
 	 * @param strokeWeight nullable/optional (default = <code>2</code>)
@@ -390,6 +391,25 @@ public class PGS_SegmentSet {
 		lines.endShape();
 
 		return lines;
+	}
+
+	/**
+	 * Dissolves the edges from a collection of {@link micycle.pgs.commons.PEdge
+	 * PEdges} into a set of maximal-length LineStrings in which each unique segment
+	 * appears only once. This method works by fusing segments that share endpoints
+	 * into longer linear strings.
+	 * <p>
+	 * This method may be preferred to {@link #toPShape(Collection) toPShape()} when
+	 * the input segments form a linear string(s).
+	 * 
+	 * @param segments Collection of PEdge objects to dissolve into maximal-length
+	 *                 LineStrings
+	 * @return A PShape object representing the dissolved LineStrings
+	 * @since 1.3.1
+	 */
+	public static PShape dissolve(Collection<PEdge> segments) {
+		Geometry dissolved = LineDissolver.dissolve(PGS_Conversion.fromPShape(toPShape(segments)));
+		return PGS_Conversion.toPShape(dissolved);
 	}
 
 	/**
