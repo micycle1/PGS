@@ -52,6 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `smoothEllipticFourier()` to `PGS_Morphology`. Smoothes a shape using its elliptic fourier descriptors.
 * `efdSimilarity()` to `PGS_ShapePredicates`. Quantifies the similarity between two shapes, using elliptic fourier descriptors.
 * `areaMerge()` to `PGS_Meshing`. Merges/dissolves small faces of a mesh into their neighboring faces.
+* `createSponge()` to `PGS_Construction`. Creates a sponge-like porous structure.
+* `createSuperRandomPolygon()` to `PGS_Construction`. Generates a highly customisable random polygon based on a square grid of cells.
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).

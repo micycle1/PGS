@@ -5,6 +5,8 @@ import static micycle.pgs.PGS_Conversion.toPShape;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
+import java.util.stream.Collectors;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
@@ -23,6 +25,8 @@ import org.locationtech.jts.shape.fractal.KochSnowflakeBuilder;
 import org.locationtech.jts.shape.fractal.SierpinskiCarpetBuilder;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
+import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
+import micycle.pgs.PGS_Contour.OffsetStyle;
 import micycle.pgs.color.RGB;
 import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.RandomPolygon;
@@ -33,6 +37,7 @@ import micycle.spacefillingcurves.SierpinskiFourSteps;
 import micycle.spacefillingcurves.SierpinskiTenSteps;
 import micycle.spacefillingcurves.SierpinskiThreeSteps;
 import micycle.spacefillingcurves.SpaceFillingCurve;
+import micycle.srpg.SRPolygonGenerator;
 import net.jafama.FastMath;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -538,6 +543,53 @@ public class PGS_Construction {
 	}
 
 	/**
+	 * Creates a sponge-like porous structure.
+	 * <p>
+	 * The sponge structure is formed by randomly merging adjacent cells of a
+	 * Voronoi tessellation and then smoothing them; the final structure is obtained
+	 * by subtracting that result from a rectangle.
+	 *
+	 * @param width      the width of the sponge bounds
+	 * @param height     the height of the sponge bounds
+	 * @param generators the number of generator points for the underlying Voronoi
+	 *                   tessellation. Should be >5.
+	 * @param thickness  thickness of sponge structure walls
+	 * @param smoothing  the cell smoothing factor which determines how rounded the
+	 *                   cells are. a value of 6 is a good starting point.
+	 * @param classes    the number of classes to use for the cell merging process,
+	 *                   where lower results in more merging (or larger "blob-like"
+	 *                   shapes).
+	 * @param seed       the seed for the random number generator
+	 * @return the sponge shape
+	 * @since 1.3.1
+	 */
+	public static PShape createSponge(double width, double height, int generators, double thickness, double smoothing, int classes,
+			long seed) {
+		// A Simple and Effective Geometric Representation for Irregular Porous
+		// Structure Modeling
+		List<PVector> points = PGS_PointSet.random(thickness, thickness / 2, width - thickness / 2, height - thickness / 2, generators,
+				seed);
+		if (points.size() < 6) {
+			return new PShape();
+		}
+		PShape voro = PGS_Voronoi.innerVoronoi(points, 2);
+
+		List<PShape> blobs = PGS_Conversion.getChildren(PGS_Meshing.stochasticMerge(voro, classes, seed)).stream().map(c -> {
+			c = PGS_Morphology.buffer(c, -thickness / 2, OffsetStyle.MITER);
+			c = PGS_Morphology.smoothGaussian(c, smoothing);
+			return c;
+		}).collect(Collectors.toList());
+
+		/*
+		 * Although faster, can't use .simpleSubtract() here because holes (cell
+		 * islands) are *sometimes* nested.
+		 */
+		PShape s = PGS_ShapeBoolean.subtract(PGS.createRect(0, 0, width, height), PGS_Conversion.flatten(blobs));
+		s.setStroke(false);
+		return s;
+	}
+
+	/**
 	 * Creates an linear/archimedean spiral shape, where the distance between any 2
 	 * successive windings is constant.
 	 * 
@@ -737,6 +789,53 @@ public class PGS_Construction {
 		curve.setStrokeWeight(3);
 
 		return curve;
+	}
+
+	/**
+	 * Generates a highly customisable random polygon based on a square grid of NxN cells.
+	 * <p>
+	 * The number of vertices of the polygon generated is not configurable, but
+	 * depends on the size of <code>cells</code> and the percentage
+	 * <code>markPercent</code>: for larger values of <code>cells</code>, the more
+	 * vertices the polygon tends to have for a given markPercent.
+	 * <p>
+	 * Visually pleasing "random" polygons can be achieved by selecting fairly small
+	 * values for markFraction, e.g., <code>markFraction=0.1</code> or even
+	 * <code>markPercent=0.01</code>.
+	 * 
+	 * @param dimensions   pixel dimensions of the polygon in its longest axis.
+	 * @param cells        the number of cells in the X and Y directions of the
+	 *                     grid.
+	 * @param markFraction The fraction of vertices marked on the grid. The larger
+	 *                     the percentage, the more vertices the polygon tends to
+	 *                     have. Should generally be between 0...0.5.
+	 * @param holes        If true, generates a holes in the polygon.
+	 * @param orthogonal   Whether the polygon vertices lie exactly on integer grid
+	 *                     points and only form horizontal and vertical lines.
+	 * @param smoothing    The number of rounds of corner cutting to apply to the
+	 *                     polygon. A small positive integer value is recommended. A
+	 *                     value of 3 is probably sufficient.
+	 * @param depth        The number of rounds of recursive refinement to apply to
+	 *                     the polygon generated. A small positive integer value is
+	 *                     recommended. This is akin to increasing the depth of
+	 *                     fractal curve.
+	 * @param seed         the seed for the random number generator
+	 * @since 1.3.1
+	 */
+	public static PShape createSuperRandomPolygon(double dimensions, int cells, double markFraction, int smoothing, int depth,
+			boolean orthogonal, boolean holes, long seed) {
+		Random r = new XoRoShiRo128PlusRandom(seed);
+		SRPolygonGenerator generator = new SRPolygonGenerator(cells, cells, markFraction, holes, orthogonal, !orthogonal, smoothing, depth,
+				!orthogonal, r);
+		List<List<double[]>> rings = generator.getPolygon();
+		PShape exterior = PGS_Conversion.fromArray(rings.get(0).toArray(new double[0][0]), true);
+		List<PShape> interiorRings = rings.subList(1, rings.size()).stream()
+				.map(l -> PGS_Conversion.fromArray(l.toArray(new double[0][0]), true)).collect(Collectors.toList());
+
+		PShape polygon = PGS_ShapeBoolean.simpleSubtract(exterior, PGS_Conversion.flatten(interiorRings));
+		polygon = PGS_Transformation.resizeByMajorAxis(polygon, dimensions);
+		polygon.setStroke(false);
+		return PGS_Transformation.translateToOrigin(polygon);
 	}
 
 	/**

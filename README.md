@@ -762,8 +762,10 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
   <tr>
     <td align="center" valign="center"><b>Gear</td>
+    <td align="center" valign="center"><b>Super Random Polygon</td>
   </tr>
     <td valign="top" width="25%"><img src="resources/pgs/gear.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/srpg.gif"></td>
   <tr>
   </tr>
 </table>

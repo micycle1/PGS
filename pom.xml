@@ -342,6 +342,11 @@
 			<artifactId>Dalsoo-Bin-Packing</artifactId>
 			<version>bde2a3ef09</version>
 		</dependency>
+		<dependency>
+			<groupId>com.github.micycle1</groupId>
+			<artifactId>SRPG</artifactId>
+			<version>1.0</version>
+		</dependency>
 	</dependencies>
 
 </project>
