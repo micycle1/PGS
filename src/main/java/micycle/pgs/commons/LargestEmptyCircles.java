@@ -22,7 +22,7 @@ import org.locationtech.jts.operation.distance.IndexedFacetDistance;
  * <p>
  * In this adaptation circle circumferences are constrained to lie within the
  * boundary (originally only circle center points must lie within the boundary).
- * This adaption also supports polygonal obstacles; if a boundary is given,
+ * This adaption also supports polygonal obstacles; if a boundary is provided,
  * circles will not lie within the polygonal obstacles.
  * 
  * @author Martin Davis

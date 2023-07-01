@@ -158,7 +158,7 @@ public final class PGS_Optimisation {
 	 * If the input is convex, the output forms a fully inscribed square; if the
 	 * input is concave the output is not necessarily inscribed.
 	 * <p>
-	 * Does not respect holes (for now...).
+	 * The method does not respect holes (for now...).
 	 * 
 	 * @param shape
 	 * @param tolerance a value of 2-5 is usually suitable

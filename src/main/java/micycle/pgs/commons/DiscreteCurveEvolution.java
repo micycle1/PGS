@@ -12,18 +12,21 @@ import org.locationtech.jts.geom.LineString;
 import net.jafama.FastMath;
 
 /**
- * Discrete Curve Evolution simplifies polygonal curves, neglecting minor
- * distortions while preserving perceptual appearance. The main idea of the
- * process is a stepwise elimination of kinks (vertex where consecutive line
- * segments meet) that are least relevant to the shape of the polygonal curve.
- * The relevance of kinks is intended to reflect their contribution to the
- * overall shape of the polygonal curve.
+ * The DiscreteCurveEvolution class is used to simplify polygonal curves while
+ * maintaining their perceptual appearance. It does this through the systematic
+ * removal of the least shape-relevant vertices (kinks), where consecutive line
+ * segments meet.
  * <p>
- * The shape relevance of every kink can be defined by the turn angle and the
- * lengths of the neighboring line segments; the larger both the relative
- * lengths and the turn angle of a kink, the greater is its contribution to the
- * shape of a curve.
- * 
+ * The shape relevance of a vertex is calculated based on its turn angle and the
+ * lengths of its neighboring line segments. Vertices with larger turn angles
+ * and neighboring segment lengths contribute more to the overall shape of the
+ * curve and are thus more likely to be preserved during the simplification
+ * process.
+ * <p>
+ * This class uses an efficient implementation that reduces the time complexity
+ * from O(n^2) to O(n log n), making it suitable for processing large datasets.
+ * It can handle both closed and open curves.
+ *
  * @author Michael Carleton
  */
 public class DiscreteCurveEvolution {
@@ -32,15 +35,22 @@ public class DiscreteCurveEvolution {
 	 * Relevance measure was lifted from github.com/DiegoCatalano/Catalano-Framework,
 	 * which implements 'Convexity Rule for Shape Decomposition Based on Discrete
 	 * Contour Evolution'.
-	 * This implementation uses doubly-linked coordinates + ordered set for better 
+	 * This implementation uses doubly-linked coordinates & ordered set for better 
 	 * time complexity (nlogn vs n^2).
 	 */
 
 	private int vertexPreserveCount;
 
 	/**
-	 * 
-	 * @param vertices the number of vertices to preserve
+	 * Initialises an instance of the DiscreteCurveEvolution class. The provided
+	 * parameter specifies the number of vertices to be preserved during the curve
+	 * evolution process.
+	 *
+	 * @param vertices The number of vertices to be preserved. These vertices are
+	 *                 chosen based on their shape relevance, which is calculated
+	 *                 from their turn angle and the lengths of neighboring line
+	 *                 segments. Larger relative lengths and turn angles make a
+	 *                 vertex more likely to be preserved.
 	 */
 	public DiscreteCurveEvolution(int vertices) {
 		this.vertexPreserveCount = vertices;
@@ -55,13 +65,30 @@ public class DiscreteCurveEvolution {
 		return process(lineString.getCoordinates());
 	}
 
+	/**
+	 * Processes an array of coordinates and applies the Discrete Curve Evolution
+	 * algorithm. The algorithm simplifies the polygonal curve defined by the input
+	 * coordinates while preserving the perceptual appearance by preserving a
+	 * certain number of vertices with high shape relevance. If the shape is closed,
+	 * the method handles it appropriately by preserving the closure.
+	 * <p>
+	 * Note: The vertices removed are always the least relevant vertices, those with
+	 * the smallest turn angles and neighboring line segments.
+	 *
+	 * @param coords The original coordinates of the shape, an array of Coordinates
+	 *               defining the polygonal curve.
+	 *
+	 * @return An array of Coordinates representing a simplified version of the
+	 *         original shape. The number of vertices is reduced while preserving
+	 *         the perceptual appearance of the shape.
+	 */
 	public Coordinate[] process(Coordinate[] coords) {
 		boolean closed = coords[0].equals2D(coords[coords.length - 1]);
 		int vertexRemoveCount = Math.min(coords.length - vertexPreserveCount, coords.length - (closed ? 4 : 2));
 
 		/*
-		 * Create unlinked LinkedCoordinates, then link each one to its neighbours once
-		 * all have been instantiated.
+		 * Initialise LinkedCoordinates (initially unlinked to each other), then link
+		 * each one to its neighbours once all have been instantiated.
 		 */
 		final List<LinkedCoordinate> linkedCoords = Arrays.asList(coords).stream().map(c -> new LinkedCoordinate(c))
 				.collect(Collectors.toList());

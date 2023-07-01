@@ -75,23 +75,23 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Conversion between <i>Processing</i> <code>PShapes</code> and <i>JTS</i>
- * <code>Geometries</code> (amongst other formats). Also includes helper/utility
- * methods for PShapes.
+ * Facilitates conversion between <i>Processing's</i> {@code PShapes} and
+ * <i>JTS's</i> {@code Geometries}, along with various other formats. It also
+ * offers additional utility methods to assist with handling {@code PShapes}.
  * <p>
- * Some conversion methods in this class are used by the library internally but
- * are kept accessible/public for more advanced user use cases.
+ * Though certain conversion methods are utilised internally by the library,
+ * they have been kept public to cater to more complex user requirements.
  * <p>
- * Notably, JTS geometries do not support bezier curves so any bezier curves are
- * finely subdivided into straight linestrings during <code>PShape</code> -> JTS
- * <code>Geometry</code> conversion.
+ * Note: JTS {@code Geometries} do not provide support for bezier curves. As
+ * such, bezier curves are linearised/divided into straight line segments during
+ * the conversion process from {@code PShape} to JTS {@code Geometry}.
  * <p>
- * This class features 2 boolean flags that affect conversion that you may wish
- * to look at: {@link #PRESERVE_STYLE} (default=true) and
- * {@link #HANDLE_MULTICONTOUR} (default=false).
- *
+ * Two configurable boolean flags influence the conversion process:
+ * {@link #PRESERVE_STYLE} (set to true by default), and
+ * {@link #HANDLE_MULTICONTOUR} (set to false by default). Users are encouraged
+ * to review these flags as part of more complicated workflows with this class.
+ * 
  * @author Michael Carleton
- *
  */
 public final class PGS_Conversion {
 
@@ -106,20 +106,21 @@ public final class PGS_Conversion {
 	 */
 	public static boolean PRESERVE_STYLE = true;
 	/**
-	 * A boolean flag that enables a subroutine during {@link #fromPShape(PShape)
-	 * fromPShape()} conversion to properly convert <b>single</b> PShapes that
-	 * consist of multiple contours that in turn represent multiple distinct shapes.
-	 * When <code>false</code>, {@link #fromPShape(PShape) fromPShape()} assumes
-	 * that in shapes having multiple contours, every contour beyond the first
-	 * represents a hole, which is generally sufficient.
+	 * A boolean flag that, when true, enables a specialised subroutine during the
+	 * {@link #fromPShape(PShape) fromPShape()} conversion to correctly convert
+	 * <b>single</b> PShapes comprised of multiple contours, each representing a
+	 * separate shape. If set to <code>false</code>, the {@link #fromPShape(PShape)
+	 * fromPShape()} method assumes that in multi-contour shapes, every contour
+	 * beyond the first represents a hole, which is generally an adequate
+	 * assumption.
 	 * <p>
-	 * This feature is off by default because it introduces some overhead as polygon
-	 * rings orientation must be determined (amongst other such stuff), and is
-	 * rarely needed (unless one is working with fonts, I have found). Default =
+	 * This feature is disabled by default because it necessitates additional
+	 * computation, such as determining polygon ring orientations, and is seldom
+	 * required (unless one is dealing with fonts, I have observed). Default =
 	 * <code>false</code>.
 	 * <p>
-	 * See <a href="https://github.com/micycle1/PGS/issues/67">github</a> for more
-	 * information.
+	 * For more information, refer to the discussion on this topic at
+	 * <a href="https://github.com/micycle1/PGS/issues/67">GitHub</a>.
 	 */
 	public static boolean HANDLE_MULTICONTOUR = false;
 
@@ -136,12 +137,44 @@ public final class PGS_Conversion {
 	}
 
 	/**
-	 * Converts a JTS Geometry to an equivalent PShape. MultiGeometries (collections
-	 * of geometries) become GROUP PShapes containing the appropriate children
-	 * PShapes.
-	 *
-	 * @param g JTS geometry to convert
-	 * @return
+	 * Converts a JTS Geometry into a corresponding PShape. In the case of
+	 * MultiGeometries (which include collections of geometries), the result is a
+	 * GROUP PShape containing the appropriate child PShapes.
+	 * <p>
+	 * The conversion process follows the geometry types supported by JTS, namely:
+	 * <ul>
+	 * <li>{@link Geometry#TYPENAME_GEOMETRYCOLLECTION GEOMETRYCOLLECTION}:
+	 * Converted to a GROUP PShape if it contains multiple geometries. For single
+	 * geometry collections, it extracts and converts the single geometry.</li>
+	 * <li>{@link Geometry#TYPENAME_MULTIPOLYGON MULTIPOLYGON}: Similar to
+	 * GeometryCollection, MultiPolygons are converted to a GROUP PShape, with each
+	 * polygon converted to a child PShape.</li>
+	 * <li>{@link Geometry#TYPENAME_MULTILINESTRING MULTILINESTRING}:
+	 * MultiLineStrings are handled in the same way as GeometryCollections and
+	 * MultiPolygons, converted to a GROUP PShape containing child PShapes.</li>
+	 * <li>{@link Geometry#TYPENAME_LINEARRING LINEARRING} and
+	 * {@link Geometry#TYPENAME_LINESTRING LINESTRING}: These are converted to a
+	 * PATH PShape, preserving the closed or open nature of the original
+	 * LineString.</li>
+	 * <li>{@link Geometry#TYPENAME_POLYGON POLYGON}: Converted to a PATH PShape,
+	 * with each contour of the polygon represented as a series of vertices in the
+	 * PShape. Inner contours, or 'holes' in the polygon, are handled
+	 * separately.</li>
+	 * <li>{@link Geometry#TYPENAME_POINT POINT} and
+	 * {@link Geometry#TYPENAME_MULTIPOINT MULTIPOINT}: These are converted to a
+	 * GEOMETRY PShape with each point represented as a vertex.</li>
+	 * </ul>
+	 * <p>
+	 * Please note that any unsupported geometry types will result in an error
+	 * message.
+	 * <p>
+	 * If {@link #PRESERVE_STYLE} is enabled and the geometry includes user data in
+	 * the form of PShapeData, the style from the data is applied to the resulting
+	 * PShape.
+	 * 
+	 * @param g The JTS geometry to convert.
+	 * @return A PShape that represents the input geometry, or a new, empty PShape
+	 *         if the input is null.
 	 */
 	public static PShape toPShape(final Geometry g) {
 		if (g == null) {
@@ -242,9 +275,21 @@ public final class PGS_Conversion {
 	}
 
 	/**
-	 * Converts a collection of JTS Geometries to an equivalent GROUP PShape. If the
-	 * collection contains only one geometry, an equivalent PShape will be output
-	 * directly (not a GROUP shape).
+	 * 
+	 * Converts a collection of JTS Geometries into a corresponding GROUP PShape.
+	 * This method loops through the provided geometries, converting each individual
+	 * geometry into a PShape, and then adds it as a child to the GROUP PShape.
+	 * <p>
+	 * In case the collection only contains a single geometry, this method will
+	 * instead return a PShape that directly corresponds to that single geometry. It
+	 * will not be wrapped in a GROUP shape in this case.
+	 * 
+	 * @param geometries A collection of JTS Geometries to convert into a PShape.
+	 * @return A PShape that represents the collection of input geometries. If the
+	 *         collection contains only a single geometry, the return is a PShape
+	 *         directly equivalent to that geometry. Otherwise, the return is a
+	 *         GROUP PShape containing child PShapes for each geometry in the
+	 *         collection.
 	 */
 	public static PShape toPShape(Collection<? extends Geometry> geometries) {
 		PShape shape = new PShape(GROUP);
@@ -263,18 +308,44 @@ public final class PGS_Conversion {
 	}
 
 	/**
-	 * Converts a PShape to an equivalent JTS Geometry.
+	 * 
+	 * Transforms a PShape into a corresponding JTS Geometry.
 	 * <p>
-	 * Note that bezier curve elements in the input are linearised, being sampled at
-	 * regular equidistant intervals (in which case the resulting geometry will have
-	 * more vertices than the input PShape).
+	 * During this transformation, any bezier curve elements within the input PShape
+	 * are linearised, meaning they are sampled at regular, equidistant intervals.
+	 * This process results in the created geometry having a greater number of
+	 * vertices than the original PShape.
 	 * <p>
-	 * Note also that any multi-level child shape hierarchies are not preserved in
-	 * the output shape; all child shape are flattened to the same level in the
-	 * output.
-	 *
-	 * @param shape the PShape to convert
-	 * @return a JTS Geometry equivalent to the input PShape
+	 * Additionally, please be aware that the method does not preserve multi-level
+	 * child shape hierarchies present in the input PShape. All child shapes are
+	 * flattened to the same level in the output geometry.
+	 * <p>
+	 * The conversion process depends on the PShape's type and can be broadly
+	 * categorized as follows:
+	 * <ul>
+	 * <li>{@link PConstants#GROUP}: The method recursively converts each child of
+	 * the PShape into a corresponding Geometry and groups these into a
+	 * GeometryCollection.</li>
+	 * <li>{@link PShape#GEOMETRY} and {@link PShape#PATH}: Here, the method further
+	 * distinguishes between the kinds of the shape. For POLYGON, PATH and
+	 * unspecified kinds, it creates a Geometry from the vertices of the PShape. For
+	 * special paths (e.g., POINTS, LINES), it uses a separate conversion
+	 * routine.</li>
+	 * <li>{@link PShape#PRIMITIVE}: It converts the PShape using a separate routine
+	 * dedicated to primitive shapes.</li>
+	 * </ul>
+	 * <p>
+	 * If {@link #PRESERVE_STYLE} is enabled, the method preserves the style of the
+	 * PShape in the output Geometry as user data.
+	 * <p>
+	 * Lastly, any affine transformations applied to the PShape (which do not
+	 * directly affect its vertices) are also applied to the resulting Geometry
+	 * (baked into its coordinates).
+	 * 
+	 * @param shape The PShape to convert into a JTS Geometry.
+	 * @return A JTS Geometry that corresponds to the input PShape, or an empty 2D
+	 *         Geometry if the PShape is null or the type of the PShape is
+	 *         unsupported.
 	 */
 	public static Geometry fromPShape(PShape shape) {
 		Geometry g = GEOM_FACTORY.createEmpty(2);
@@ -467,27 +538,35 @@ public final class PGS_Conversion {
 	}
 
 	/**
-	 * Converts a single PShape, which <i>***may***</i> have multiple contours that
-	 * represent multiple polygons (and may even contain nested polygons with holes)
-	 * into its valid JTS representation.
 	 * <p>
-	 * This kind of shape is not possible to produce from JTS (since multiple
-	 * polygons will always be represented as standalone objects within a
-	 * MultiGeometry, leading to a GROUP shape), but Processing allows single PATH
-	 * PShapes to have multiple contour groups, and thus represent multiple polygons
-	 * despite being a "single" shape.
+	 * Transforms a {@code PShape} object, which might contain multiple contours
+	 * representing several polygons (including nested polygons with holes), into a
+	 * valid JTS representation.
 	 * <p>
-	 * Since the PShape has no information about which contours represent holes, and
-	 * nor any information about which contours should be grouped together to
-	 * represent the same shapes, this must be determined within this method.
+	 * The input shape may not be directly producible using JTS because JTS
+	 * represents multiple polygons as separate objects within a
+	 * {@code MultiGeometry}, resulting in a {@code GROUP} shape. However,
+	 * Processing allows <b>single</b> {@code PATH} PShapes to include multiple
+	 * contour groups, representing multiple polygons despite being considered a
+	 * "single" shape.
+	 * <p>
+	 * The {@code PShape} does not carry information about which contours represent
+	 * holes or how contours should be grouped to represent the same shapes. This
+	 * method determines this internally.
 	 * 
-	 * @param contours list of contours/rings. The contour at index==0 must be a
-	 *                 polygonal and is assumed to be an exterior ring.
-	 * @param sort     whether to sort the contours by orientation (clockwise
-	 *                 contours first), which can fix tricky cases
-	 * @param reverse  whether to reverse the contour collection, which can fix
-	 *                 tricky cases
-	 * @return Polygon or MultiPolygon
+	 * @param contours A {@code List} of contours/rings. The contour at
+	 *                 {@code index==0} is assumed to be polygonal and considered an
+	 *                 exterior ring.
+	 * @param sort     A boolean value determining whether to sort the contours by
+	 *                 orientation (clockwise contours first), which can solve some
+	 *                 complex cases.
+	 * @param reverse  A boolean value indicating whether to reverse the contour
+	 *                 collection, which can also solve complex cases.
+	 * @return Returns either a {@code Polygon} or {@code MultiPolygon} depending on
+	 *         the input shape.
+	 * 
+	 * @see Geometry
+	 * @see CoordinateList
 	 */
 	private static Geometry fromMultiContourShape(List<CoordinateList> contours, boolean sort, boolean reverse) {
 		if (reverse) {
@@ -605,10 +684,24 @@ public final class PGS_Conversion {
 	}
 
 	/**
-	 * Creates a JTS Polygon from a primitive PShape. Primitive PShapes are those
-	 * where createShape() is used to create them, and can take any of these types:
-	 * POINT, LINE, TRIANGLE, QUAD, RECT, ELLIPSE, ARC, BOX, SPHERE. They do not
-	 * have directly accessible vertex data.
+	 * Creates a JTS Polygon from a primitive PShape. Primitive PShapes are
+	 * generated by invoking the <code>createShape()</code> method from Processing.
+	 * <p>
+	 * Supported primitives include POINT, LINE, TRIANGLE, QUAD, RECT, ELLIPSE, and
+	 * ARC. Other types such as BOX and SPHERE (3D primitives), or any non-polygon
+	 * primitives are not supported and will print an error message.
+	 * <p>
+	 * Primitive PShapes do not have directly accessible vertex data. This method
+	 * generates equivalent JTS Polygons by accessing the shape's parameters (e.g.,
+	 * width, height, coordinates) via the <code>getParam()</code> method.
+	 * <p>
+	 * In the event where a non-supported primitive is supplied, an empty JTS
+	 * Polygon is returned.
+	 *
+	 * @param shape The primitive PShape to be converted to a JTS Polygon
+	 * @return A JTS Geometry (Polygon) representing the input primitive PShape. For
+	 *         non-supported or non-polygon primitives, an empty JTS Polygon is
+	 *         returned.
 	 */
 	private static Geometry fromPrimitive(PShape shape) {
 		final GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
@@ -718,17 +811,26 @@ public final class PGS_Conversion {
 	}
 
 	/**
-	 * Extracts the vertices of a PShape into list of PVectors.
+	 * 
+	 * Extracts the vertices of a PShape into a list of PVectors.
 	 * <p>
-	 * If the input shape forms a closed polygon, this method returns an
-	 * <b>unclosed</b> view of the shape (without the last closing vertex, which is
-	 * identical to the first).
+	 * The function navigates through all children of the given shape if it is of
+	 * the GROUP type, recursively flattening their vertices and adding them to the
+	 * list. In the case of PShape primitives, where the <code>getVertex()</code>
+	 * method fails, the shape is converted to its equivalent path representation
+	 * before vertex extraction.
 	 * <p>
-	 * If the input shape has a GROUP type, vertices from all children shapes are
-	 * flattened and returned.
-	 *
-	 * @param shape a PShape of any type
-	 * @return all vertices of the input
+	 * If the input shape represents a closed polygon, the method returns an
+	 * "unclosed" version of the shape. This means that the duplicate vertex that
+	 * closes the shape (which is identical to the first vertex) is omitted from the
+	 * output.
+	 * <p>
+	 * The resulting list contains all vertices from the input PShape in the order
+	 * they appear in the shape.
+	 * 
+	 * @param shape the PShape from which vertices are to be extracted
+	 * @return a list of PVector objects representing the vertices of the input
+	 *         shape
 	 */
 	public static List<PVector> toPVector(PShape shape) {
 		// use getChildren() incase shape is GROUP
@@ -749,12 +851,17 @@ public final class PGS_Conversion {
 	}
 
 	/**
-	 * Converts a shape into a simple graph; graph vertices represent shape
-	 * vertices, and graph edges represent shape edges (formed from adjacent
-	 * vertices in polygonal shapes).
-	 *
-	 * @param shape the shape to convert
-	 * @return graph representation of the input shape
+	 * Transforms a given PShape into a simple graph representation. In this
+	 * representation, the vertices of the graph correspond to the vertices of the
+	 * shape, and the edges of the graph correspond to the edges of the shape. This
+	 * transformation is specifically applicable to polygonal shapes where edges are
+	 * formed by adjacent vertices.
+	 * <p>
+	 * The edge weights in the graph are set to the length of the corresponding edge
+	 * in the shape.
+	 * 
+	 * @param shape the PShape to convert into a graph
+	 * @return A SimpleGraph object that represents the structure of the input shape
 	 * @since 1.3.0
 	 * @see #toDualGraph(PShape)
 	 */

@@ -42,7 +42,7 @@ import micycle.pgs.commons.ShapeInterpolation;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
-import uk.osgb.algorithm.minkowski_sum.Minkowski_Sum;
+import uk.osgb.algorithm.minkowski_sum.MinkowskiSum;
 import micycle.uniformnoise.UniformNoise;
 
 /**
@@ -54,7 +54,7 @@ import micycle.uniformnoise.UniformNoise;
 public final class PGS_Morphology {
 
 	static {
-		Minkowski_Sum.setGeometryFactory(PGS.GEOM_FACTORY);
+		MinkowskiSum.setGeometryFactory(PGS.GEOM_FACTORY);
 	}
 
 	private PGS_Morphology() {
@@ -201,16 +201,21 @@ public final class PGS_Morphology {
 	 * intended to reflect their contribution to the overall shape of the polygonal
 	 * curve.
 	 * 
-	 * @param shape          a polygonal (can include holes) or lineal shape. GROUP
-	 *                       shapes are not supported.
-	 * @param removeFraction the fraction of least relevant kinks/vertices to remove
-	 *                       (per ring). 0...1
-	 * @return simplifed copy of the input shape
+	 * @param shape                 The input shape to be simplified, which can be a
+	 *                              polygonal (inclusive of holes) or a lineal
+	 *                              shape. Note that GROUP shapes are not supported
+	 *                              by this method.
+	 * @param vertexRemovalFraction The proportion of the least significant kinks or
+	 *                              vertices to be removed from each ring in the
+	 *                              shape. This value should be in the range of 0 to
+	 *                              1.
+	 * @return A new, simplified copy of the input shape, with the least significant
+	 *         kinks or vertices removed according to the provided fraction.
 	 * @since 1.3.0
 	 * @see PGS_Morphology#simplifyDCE(PShape, int)
 	 */
-	public static PShape simplifyDCE(PShape shape, double removeFraction) {
-		removeFraction = 1 - removeFraction; // since dce class is preserve-based, not remove-based
+	public static PShape simplifyDCE(PShape shape, double vertexRemovalFraction) {
+		vertexRemovalFraction = 1 - vertexRemovalFraction; // since dce class is preserve-based, not remove-based
 		Geometry g = fromPShape(shape);
 		switch (g.getGeometryType()) {
 			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
@@ -218,7 +223,7 @@ public final class PGS_Morphology {
 			case Geometry.TYPENAME_MULTILINESTRING :
 				PShape group = new PShape(GROUP);
 				for (int i = 0; i < g.getNumGeometries(); i++) {
-					group.addChild(simplifyDCE(toPShape(g.getGeometryN(i)), removeFraction));
+					group.addChild(simplifyDCE(toPShape(g.getGeometryN(i)), vertexRemovalFraction));
 				}
 				return group;
 			case Geometry.TYPENAME_LINEARRING :
@@ -228,7 +233,7 @@ public final class PGS_Morphology {
 				LinearRing[] dceRings = new LinearRing[rings.length];
 				for (int i = 0; i < rings.length; i++) {
 					LinearRing ring = rings[i];
-					DiscreteCurveEvolution dce = new DiscreteCurveEvolution((int) Math.round(removeFraction * ring.getNumPoints()));
+					DiscreteCurveEvolution dce = new DiscreteCurveEvolution((int) Math.round(vertexRemovalFraction * ring.getNumPoints()));
 					dceRings[i] = PGS.GEOM_FACTORY.createLinearRing(dce.process(ring));
 				}
 				LinearRing[] holes = null;
@@ -238,7 +243,7 @@ public final class PGS_Morphology {
 				return toPShape(PGS.GEOM_FACTORY.createPolygon(dceRings[0], holes));
 			case Geometry.TYPENAME_LINESTRING :
 				LineString l = (LineString) g;
-				DiscreteCurveEvolution dce = new DiscreteCurveEvolution((int) Math.round(removeFraction * l.getNumPoints()));
+				DiscreteCurveEvolution dce = new DiscreteCurveEvolution((int) Math.round(vertexRemovalFraction * l.getNumPoints()));
 				return toPShape(PGS.GEOM_FACTORY.createLineString(dce.process(l)));
 			default :
 				System.err.println(g.getGeometryType() + " are not supported for the simplifyDCE() method."); // pointal geoms
@@ -349,7 +354,7 @@ public final class PGS_Morphology {
 	public static PShape minkSum(PShape source, PShape addition) {
 		// produces handled errors with geometries that have straight lines (like a
 		// square)
-		Geometry sum = Minkowski_Sum.minkSum(fromPShape(source), fromPShape(addition), true, true);
+		Geometry sum = MinkowskiSum.minkSum(fromPShape(source), fromPShape(addition), true, true);
 		return toPShape(sum);
 	}
 
@@ -362,7 +367,7 @@ public final class PGS_Morphology {
 	 * @see #minkSum(PShape, PShape)
 	 */
 	public static PShape minkDifference(PShape source, PShape subtract) {
-		Geometry sum = Minkowski_Sum.minkDiff(fromPShape(source), fromPShape(subtract), true, true);
+		Geometry sum = MinkowskiSum.minkDiff(fromPShape(source), fromPShape(subtract), true, true);
 		return toPShape(sum);
 	}
 

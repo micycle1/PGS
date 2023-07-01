@@ -408,7 +408,8 @@ public class PGS_SegmentSet {
 	 * @since 1.3.1
 	 */
 	public static PShape dissolve(Collection<PEdge> segments) {
-		Geometry dissolved = LineDissolver.dissolve(PGS_Conversion.fromPShape(toPShape(segments)));
+		Geometry g = SegmentStringUtil.toGeometry(fromPEdges(segments), PGS.GEOM_FACTORY);
+		Geometry dissolved = LineDissolver.dissolve(g);
 		return PGS_Conversion.toPShape(dissolved);
 	}
 
@@ -582,7 +583,7 @@ public class PGS_SegmentSet {
 		return edges;
 	}
 
-	private static List<SegmentString> fromPEdges(List<PEdge> edges) {
+	private static List<SegmentString> fromPEdges(Collection<PEdge> edges) {
 		List<SegmentString> segments = new ArrayList<>(edges.size());
 		edges.forEach(e -> {
 			SegmentString s = PGS.createSegmentString(e.a, e.b);

@@ -289,15 +289,20 @@ public final class PGS_Transformation {
 	}
 
 	/**
-	 * Translates a shape such that its <b>centroid</b> is equivalent to the given
-	 * coordinates.
-	 * <p>
-	 * The centroid of a polygon corresponds to its "center of mass".
-	 * 
-	 * @param shape shape to translate
-	 * @param x     target centroid X
-	 * @param y     target centroid Y
-	 * @return translated shape
+	 * Translates a shape such that its <b>centroid</b> aligns with the specified
+	 * (x, y) coordinates. The centroid of a polygon is its "center of mass" or
+	 * geometric center.
+	 *
+	 * @param shape The PShape instance to be translated.
+	 * @param x     The horizontal coordinate to which the centroid of the shape's
+	 *              bounding polygon should be aligned. Measured in pixels from the
+	 *              left of the container.
+	 * @param y     The vertical coordinate to which the centroid of the shape's
+	 *              bounding polygon should be aligned. Measured in pixels from the
+	 *              top of the container.
+	 * @return A new PShape instance that is a translation of the input shape such
+	 *         that the centroid of its bounding polygon aligns with the specified
+	 *         coordinates.
 	 * @since 1.3.0 (superceeds {@link #translateTo(PShape, double, double)
 	 *        translateTo()}
 	 */
@@ -335,13 +340,19 @@ public final class PGS_Transformation {
 	}
 
 	/**
-	 * Translates a shape such that the <b>upper-left corner</b> of its bounding box
-	 * is equivalent to the given coordinates.
-	 * 
-	 * @param shape shape to translate
-	 * @param x
-	 * @param y
-	 * @return translated shape
+	 * Translates the given shape such that the upper-left corner of its bounding
+	 * box aligns with the specified (x, y) coordinates.
+	 *
+	 * @param shape The PShape instance to be translated.
+	 * @param x     The horizontal coordinate to which the upper-left corner of the
+	 *              shape's bounding box is to be aligned. Measured in pixels from
+	 *              the left of the container.
+	 * @param y     The vertical coordinate to which the upper-left corner of the
+	 *              shape's bounding box is to be aligned. Measured in pixels from
+	 *              the top of the container.
+	 * @return A new PShape instance that is a translation of the input shape such
+	 *         that the upper-left corner of its bounding box aligns with the
+	 *         specified coordinates.
 	 * @since 1.3.0
 	 */
 	public static PShape translateCornerTo(PShape shape, double x, double y) {
@@ -352,11 +363,13 @@ public final class PGS_Transformation {
 	}
 
 	/**
-	 * Translates a shape such that the top-left corner of its bounding box is at
-	 * (0, 0) (in Processing coordinates).
-	 * 
-	 * @param shape
-	 * @return translated copy of input
+	 * Translates the given shape such that the upper-left corner of its bounding
+	 * box aligns with the origin point (0, 0) of the Processing coordinate system.
+	 *
+	 * @param shape The PShape instance to be translated.
+	 * @return A new PShape instance that is a translation of the input shape such
+	 *         that the upper-left corner of its bounding box aligns with the origin
+	 *         point (0, 0).
 	 */
 	public static PShape translateToOrigin(PShape shape) {
 		final Geometry g = fromPShape(shape);
@@ -481,7 +494,7 @@ public final class PGS_Transformation {
 		AffineTransformation t = AffineTransformation.reflectionInstance(x, -1, x, 1);
 		return toPShape(t.transform(fromPShape(shape)));
 	}
-	
+
 	/**
 	 * Shears a given shape by specified angles along the x and y axis and returns
 	 * the result as a new PShape. Shapes are sheared around their relative position
