@@ -348,9 +348,9 @@ public class PGS_Meshing {
 				final PVector sI = PVector.add(cSeg, sC).div(2); // interior steiner point
 
 				// anti-clockwise, starting at original vertex
-				quads.addChild(PGS_Conversion.fromPVector(p1, sC, sI, sA));
-				quads.addChild(PGS_Conversion.fromPVector(p2, sA, sI, sB));
-				quads.addChild(PGS_Conversion.fromPVector(p3, sB, sI, sC));
+				quads.addChild(PGS_Conversion.fromPVector(p1, sC, sI, sA, p1));
+				quads.addChild(PGS_Conversion.fromPVector(p2, sA, sI, sB, p2));
+				quads.addChild(PGS_Conversion.fromPVector(p3, sB, sI, sC, p3));
 			}
 		});
 
@@ -679,6 +679,43 @@ public class PGS_Meshing {
 	}
 
 	/**
+	 * Smoothes a mesh via iterative weighted <i>Laplacian smoothing</i>. The effect
+	 * of which is mesh faces become more uniform in size and shape (isotropic).
+	 * <p>
+	 * This particular method iteratively smoothes the mesh until the displacement
+	 * of the most displaced vertex in the prior iteration is less than
+	 * <code>displacementCutoff</code>.
+	 * <p>
+	 * In Laplacian smoothing, vertices are replaced with the (weighted) average of
+	 * the positions of their adjacent vertices; it is computationally inexpensive
+	 * and fairly effective (faces become more isotropic), but it does not guarantee
+	 * improvement in element quality.
+	 * <p>
+	 * Meshes with more faces take more iterations to converge to stable point.
+	 * Meshes with highly convex faces may result in issues.
+	 * 
+	 * @param mesh               a GROUP PShape where each child shape is a single
+	 *                           face comprising a conforming mesh
+	 * @param displacementCutoff the
+	 * @param preservePerimeter  boolean flag to exclude the boundary vertices from
+	 *                           being smoothed (thus preserving the mesh
+	 *                           perimeter). Generally this should be set to true,
+	 *                           otherwise the mesh will shrink as it is smoothed.
+	 * @return the smoothed mesh
+	 * @since 1.3.1
+	 */
+	public static PShape smoothMesh(PShape mesh, double displacementCutoff, boolean preservePerimeter) {
+		displacementCutoff = Math.max(displacementCutoff, 1e-3);
+		PMesh m = new PMesh(mesh);
+
+		double displacement;
+		do {
+			displacement = m.smoothWeighted(preservePerimeter);
+		} while (displacement > displacementCutoff);
+		return m.getMesh();
+	}
+
+	/**
 	 * Simplifies the boundaries of the faces in a mesh while preserving the
 	 * original mesh topology.
 	 * 
@@ -721,6 +758,38 @@ public class PGS_Meshing {
 	public static PShape areaMerge(PShape mesh, double areaThreshold) {
 		PShape merged = AreaMerge.areaMerge(mesh, areaThreshold);
 		return merged;
+	}
+
+	/**
+	 * Splits each edge of a given mesh shape into a specified number of
+	 * equal-length parts and creates a new shape from the resulting smaller edges.
+	 * This method preserves the overall topology of the original mesh.
+	 * 
+	 * @param split The PShape representing a polygon to be split into smaller
+	 *              edges.
+	 * @param parts The number of equal parts each edge of the polygon should be
+	 *              split into. Should be a positive integer, but if less than 1,
+	 *              it's reset to 1.
+	 * @return A new mesh PShape created from the split edges.
+	 * @since 1.3.1
+	 */
+	public static PShape splitEdges(PShape split, int parts) {
+		parts = Math.max(1, parts);
+		HashSet<PEdge> edges = new HashSet<>(PGS_SegmentSet.fromPShape(split));
+		List<PEdge> splitEdges = new ArrayList<>(edges.size() * parts);
+
+		for (PEdge edge : edges) {
+			double from = 0;
+			double step = 1.0 / parts;
+			for (int i = 0; i < parts; i++) {
+				double to = from + step;
+				PEdge subEdge = edge.slice(from, to);
+				splitEdges.add(subEdge);
+				from = to;
+			}
+		}
+
+		return PGS.polygonizeEdges(splitEdges);
 	}
 
 	/**

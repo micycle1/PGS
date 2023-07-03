@@ -145,11 +145,12 @@ public class PMesh {
 	 *                                smoothed. Generally this should be set to
 	 *                                true, otherwise the mesh will shrink as it is
 	 *                                smoothed.
-	 * @return the average displacement distance of the smoothed vertices
+	 * @return the displacement of the most displaced vertex
 	 */
 	public float smoothWeighted(final boolean excludeBoundaryVertices) {
 		float totalDisplacement = 0;
 		int displacedVertices = 0;
+		float maxDisplacement = 0;
 
 		for (PMeshVertex mv : meshVertices.values()) {
 			if (excludeBoundaryVertices && mv.onBoundary) {
@@ -165,12 +166,15 @@ public class PMesh {
 				weight += w;
 			}
 			mean.div(weight);
-			totalDisplacement += mv.smoothedVertex.dist(mean);
+			final float displacement = mv.smoothedVertex.dist(mean);
+			totalDisplacement += displacement;
+			maxDisplacement = Math.max(maxDisplacement, displacement);
 			displacedVertices++;
 
 			mv.smoothedVertex.set(mean);
 		}
-		return totalDisplacement / displacedVertices;
+//		return totalDisplacement / displacedVertices;
+		return maxDisplacement;
 	}
 
 	/**

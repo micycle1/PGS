@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `createArbelos()` to `PGS_Construction`.  Creates an _arbelos_ figure.
 * `createTeardrop()` to `PGS_Construction`.  Creates a teardrop figure.
 * `createGear()` to `PGS_Construction`.  Creates a gear figure.
+* `createSponge()` to `PGS_Construction`. Creates a sponge-like porous structure.
+* `createSuperRandomPolygon()` to `PGS_Construction`. Generates a highly customisable random polygon based on a square grid of cells.
 * `maximumPerimeterSquare()` to `PGS_Optimisation`. Finds the largest square whose 4 vertices each lie on the perimeter of a shape.
 * `rectPack()` to `PGS_Optimisation`. Packs a collection of rectangles into rectangular 2D bin(s).
 * `reorderChildren()` to `PGS_Conversion`. Reorders the child shapes of a shape according to given comparator.
@@ -38,8 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `fromGraph()` to `PGS_Conversion`. Converts a graph consisting of PVectors and PEdges into a PShape by polygonizing its edges.
 * `smoothMesh()` to `PGS_Meshing`. Smoothes a mesh via iterative weighted Laplacian smoothing.
 * `stochasticMerge()` to `PGS_Meshing`. Randomly merges together adjacent faces of a mesh.
+* `areaMerge()` to `PGS_Meshing`. Merges/dissolves small faces of a mesh into their neighboring faces.
 * `simplifyMesh()` to `PGS_Meshing`. Simplifies the boundaries of the faces in a mesh while preserving the original mesh topology.
 * `nodeNonMesh()` to `PGS_Meshing`. Transforms a non-conforming mesh shape into a conforming mesh via "noding".
+* `splitEdges()` to `PGS_Meshing`. Splits each edge of a given mesh shape into a specified number of equal parts.
 * `toCircles()` to `PGS_Conversion`. Creates a PShape having circle geometries representing a collection of circles.
 * `fromPShape()` to `PGS_SegmentSet`. Extracts a list of unique PEdge segments representing the given shape.
 * `stretch()` to `PGS_SegmentSet`. Stretches segments in a list by a specified factor.
@@ -51,9 +55,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `binPack()` to `PGS_Optimisation`. Packs irregular polygonal shapes into rectangular containers (bins).
 * `smoothEllipticFourier()` to `PGS_Morphology`. Smoothes a shape using its elliptic fourier descriptors.
 * `efdSimilarity()` to `PGS_ShapePredicates`. Quantifies the similarity between two shapes, using elliptic fourier descriptors.
-* `areaMerge()` to `PGS_Meshing`. Merges/dissolves small faces of a mesh into their neighboring faces.
-* `createSponge()` to `PGS_Construction`. Creates a sponge-like porous structure.
-* `createSuperRandomPolygon()` to `PGS_Construction`. Generates a highly customisable random polygon based on a square grid of cells.
 * `dissolve()` to `PGS_SegmentSet`. Dissolves a collection of edges into a set of maximal-length linestrings.
 
 ### Changed
@@ -86,7 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_Processing.extractPerimeter()` now behaves as expected when perimeter location values are negative.
 * Positive-valued offset arguments passed to `point[s]OnExterior()` methods could incorrectly produce offsets towards the interior of a shape. Such values will now always correspond to offset **away** from a shape's interior.
 * `PGS_ShapePredicates.holes()` now identifies and counts gaps in meshes as holes.
-
+* Quads made by `splitQuadrangulation` were unclosed and are now closed polygons.
 ### Removed
 *
 
