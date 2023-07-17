@@ -356,12 +356,7 @@ public final class PGS_Triangulation {
 	 * @see #poissonTriangulationPoints(PShape, double)
 	 */
 	public static PShape poissonTriangulation(PShape shape, double spacing) {
-		final Envelope e = fromPShape(shape).getEnvelopeInternal();
-
-		final List<PVector> poissonPoints = PGS_PointSet.poisson(e.getMinX(), e.getMinY(), e.getMinX() + e.getWidth(),
-				e.getMinY() + e.getHeight(), spacing, 0);
-
-		final IIncrementalTin tin = delaunayTriangulationMesh(shape, poissonPoints, true, 0, false);
+		final IIncrementalTin tin = poissonTriangulationMesh(shape, spacing);
 
 		final PShape triangulation = new PShape(PConstants.GROUP);
 
@@ -392,12 +387,7 @@ public final class PGS_Triangulation {
 	 * @see #poissonTriangulation(PShape, double)
 	 */
 	public static List<PVector> poissonTriangulationPoints(PShape shape, double spacing) {
-		final Envelope e = fromPShape(shape).getEnvelopeInternal();
-
-		final List<PVector> poissonPoints = PGS_PointSet.poisson(e.getMinX(), e.getMinY(), e.getMinX() + e.getWidth(),
-				e.getMinY() + e.getHeight(), spacing, 0);
-
-		final IIncrementalTin tin = delaunayTriangulationMesh(shape, poissonPoints, true, 0, false);
+		final IIncrementalTin tin = poissonTriangulationMesh(shape, spacing);
 
 		final ArrayList<PVector> triangles = new ArrayList<>();
 		TriangleCollector.visitTrianglesConstrained(tin, t -> {
@@ -406,6 +396,28 @@ public final class PGS_Triangulation {
 			triangles.add(toPVector(t[2]));
 		});
 		return triangles;
+	}
+
+	/**
+	 * Creates a Delaunay triangulation of the shape where additional steiner
+	 * points, populated by poisson sampling, are included.
+	 * <p>
+	 * This method returns the triangulation in its raw form: a
+	 * TriangulatedIrregular Network (mesh).
+	 * 
+	 * @param shape
+	 * @param spacing (Minimum) spacing between poisson points
+	 * @return Triangulated Irregular Network object (mesh)
+	 * @see #poissonTriangulation(PShape, double)
+	 */
+	public static IIncrementalTin poissonTriangulationMesh(PShape shape, double spacing) {
+		final Envelope e = fromPShape(shape).getEnvelopeInternal();
+
+		final List<PVector> poissonPoints = PGS_PointSet.poisson(e.getMinX(), e.getMinY(), e.getMinX() + e.getWidth(),
+				e.getMinY() + e.getHeight(), spacing, 0);
+
+		final IIncrementalTin tin = delaunayTriangulationMesh(shape, poissonPoints, true, 0, false);
+		return tin;
 	}
 
 	/**
@@ -432,7 +444,7 @@ public final class PGS_Triangulation {
 	 */
 	public static PShape toPShape(IIncrementalTin triangulation) {
 		final PShape out = new PShape(PConstants.GROUP);
-	
+
 		final Consumer<Vertex[]> triangleVertexConsumer = t -> {
 			final PShape triangle = new PShape(PShape.PATH);
 			triangle.beginShape();
@@ -442,16 +454,16 @@ public final class PGS_Triangulation {
 			triangle.endShape(PConstants.CLOSE);
 			out.addChild(triangle);
 		};
-	
+
 		if (!triangulation.getConstraints().isEmpty()) {
 			TriangleCollector.visitTrianglesConstrained(triangulation, triangleVertexConsumer);
 		} else {
 			TriangleCollector.visitTriangles(triangulation, triangleVertexConsumer);
 		}
-	
+
 		PGS_Conversion.setAllFillColor(out, RGB.WHITE);
 		PGS_Conversion.setAllStrokeColor(out, RGB.PINK, 2);
-	
+
 		return out;
 	}
 
