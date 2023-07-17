@@ -26,6 +26,7 @@ import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.util.PolygonExtracter;
+import org.locationtech.jts.operation.valid.IsValidOp;
 
 import micycle.pgs.commons.EllipticFourierDesc;
 import micycle.pgs.commons.GeometricMedian;
@@ -598,6 +599,36 @@ public final class PGS_ShapePredicates {
 	public static boolean isConformingMesh(PShape mesh) {
 		Geometry[] geoms = PGS_Conversion.getChildren(mesh).stream().map(f -> fromPShape(f)).toArray(Geometry[]::new);
 		return CoverageValidator.isValid(geoms);
+	}
+
+	/**
+	 * Checks if a PShape is valid, and reports the validation error if it is
+	 * invalid.
+	 * <p>
+	 * An invalid shape is one that violates the rules of geometric validity. Some
+	 * common reasons for a shape to be considered invalid include:
+	 * <ul>
+	 * <li>Self-intersection: The shape intersects itself at one or more points or
+	 * segments, creating overlapping or self-crossing areas.
+	 * <li>Invalid topology: The shape's topology is incorrect, such as having
+	 * dangling edges, disconnected components, or invalid ring configurations in
+	 * polygons.
+	 * <li>Degenerate geometry: The shape has collapsed or degenerate components,
+	 * such as zero-length lines, zero-area polygons, or overlapping vertices.
+	 * </ul>
+	 * 
+	 * @param shape The PShape to validate.
+	 * @return {@code true} if the shape is valid, {@code false} otherwise.
+	 * @since 1.3.1
+	 */
+	public static boolean isValid(PShape shape) {
+		IsValidOp validate = new IsValidOp(fromPShape(shape));
+		if (validate.getValidationError() == null) {
+			return true;
+		} else {
+			System.err.println(validate.getValidationError());
+			return false;
+		}
 	}
 
 }

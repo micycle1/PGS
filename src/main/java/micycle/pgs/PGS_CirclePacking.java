@@ -3,6 +3,7 @@ package micycle.pgs;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.SplittableRandom;
@@ -59,6 +60,47 @@ public final class PGS_CirclePacking {
 	 */
 
 	private PGS_CirclePacking() {
+	}
+
+	/**
+	 * Packs circles of varying radii within a given shape, whilst respecting
+	 * pointal obstacles using the Largest Empty Circle (LEC) algorithm. The method
+	 * continues to generate circles until the sum of the areas of the circles
+	 * exceeds a specified proportion of the area of the given shape.
+	 * 
+	 * @param shape          The shape within which circles will be packed. The
+	 *                       shape should be in the form of PShape.
+	 * @param pointObstacles A collection of PVector points representing obstacles,
+	 *                       around which circles are packed. Only points contained
+	 *                       within the shape are relevant.
+	 * @param areaCoverRatio The target ratio of the total area of the circles to
+	 *                       the area of the shape. This parameter should be a
+	 *                       double between 0 and 1. Circle generation will stop
+	 *                       when this ratio is reached.
+	 * @return A list of PVectors, where each PVector represents a circle. The x and
+	 *         y components of the PVector represent the center of the circle, and
+	 *         the z component represents the radius of the circle.
+	 * @since 1.3.1
+	 */
+	public static List<PVector> obstaclePack(PShape shape, Collection<PVector> pointObstacles, double areaCoverRatio) {
+		final Geometry geometry = fromPShape(shape);
+
+		LargestEmptyCircles lec = new LargestEmptyCircles(fromPShape(PGS_Conversion.toPointsPShape(pointObstacles)), geometry,
+				areaCoverRatio > 0.95 ? 0.5 : 1);
+
+		final double shapeArea = geometry.getArea();
+		double circlesArea = 0;
+		List<PVector> circles = new ArrayList<>();
+
+		while (circlesArea / shapeArea < areaCoverRatio) {
+			double[] currentLEC = lec.findNextLEC();
+			circles.add(new PVector((float) currentLEC[0], (float) currentLEC[1], (float) currentLEC[2]));
+			circlesArea += Math.PI * currentLEC[2] * currentLEC[2];
+			if (currentLEC[2] < 0.5) {
+				break;
+			}
+		}
+		return circles;
 	}
 
 	/**

@@ -56,6 +56,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `smoothEllipticFourier()` to `PGS_Morphology`. Smoothes a shape using its elliptic fourier descriptors.
 * `efdSimilarity()` to `PGS_ShapePredicates`. Quantifies the similarity between two shapes, using elliptic fourier descriptors.
 * `dissolve()` to `PGS_SegmentSet`. Dissolves a collection of edges into a set of maximal-length linestrings.
+* `toCentroidDualGraph()` to `PGS_Conversion`. Converts a mesh-like PShape into its centroid-based undirected dual-graph.
+* `isValid()` to `PGS_ShapePredicates`. Checks if a PShape is valid, and reports the validation error if it is invalid.
+* `obstaclePack()` to `PGS_CirclePacking`. Packs circles of varying radii within a given shape, whilst respecting pointal obstacles.
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).

@@ -671,6 +671,13 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top"><img src="resources/circle_packing/tangentPack.gif"></td>
     <td valign="top"><img src="resources/circle_packing/tangentPack1.png"></td>
   </tr>
+
+  <tr>
+    <td align="center" valign="center" colspan="2"><b>Obstacle</td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="resources/circle_packing/obstaclePack.gif"></td>
+  </tr>
 </table>
 
 ## *Coloring*

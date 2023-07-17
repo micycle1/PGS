@@ -96,7 +96,7 @@ import processing.core.PVector;
 public final class PGS_Conversion {
 
 	/** Approximate distance between successive sample points on bezier curves */
-	private static final float BEZIER_SAMPLE_DISTANCE = 2;
+	static final float BEZIER_SAMPLE_DISTANCE = 2;
 	private static Field MATRIX_FIELD;
 	/**
 	 * A boolean flag that affects whether a PShape's style (fillColor, strokeColor,
@@ -967,6 +967,43 @@ public final class PGS_Conversion {
 	 */
 	public static SimpleGraph<PShape, DefaultEdge> toDualGraph(PShape mesh) {
 		return toDualGraph(getChildren(mesh));
+	}
+
+	/**
+	 * Converts a mesh-like PShape into its centroid-based undirected dual-graph.
+	 * <p>
+	 * The output is a <i>dual graph</i> of the input; it has a vertex for each
+	 * centroid of the face of the input, and an edge (connecting the centroids) for
+	 * each pair of faces that are adjacent. Each vertex represents the geometric
+	 * center or centroid of the respective face in the mesh.
+	 *
+	 * @param mesh a GROUP PShape, whose children constitute the polygonal faces of
+	 *             a <b>conforming mesh</b>. A conforming mesh consists of adjacent
+	 *             cells that not only share edges, but every pair of shared edges
+	 *             are identical (having the same coordinates) (such as a
+	 *             triangulation).
+	 * @return the centroid-based dual graph of the input mesh; an undirected graph
+	 *         containing no graph loops or multiple edges. Each vertex in the graph
+	 *         represents the centroid of a face in the input mesh, and each edge
+	 *         represents adjacency between two faces.
+	 * @since 1.3.1
+	 * @see #toDualGraph(PShape)
+	 * @see PGS_ShapePredicates#centroid(PShape)
+	 */
+	public static SimpleGraph<PVector, PEdge> toCentroidDualGraph(PShape mesh) {
+		final SimpleGraph<PShape, DefaultEdge> toplogy = toDualGraph(getChildren(mesh));
+		Map<PShape, PVector> centroids = toplogy.vertexSet().stream().collect(Collectors.toMap(x -> x, PGS_ShapePredicates::centroid));
+
+		SimpleGraph<PVector, PEdge> graph = new SimpleGraph<>(PEdge.class);
+		centroids.values().forEach(v -> graph.addVertex(v));
+		toplogy.edgeSet().forEach(e -> {
+			PVector c1 = centroids.get(toplogy.getEdgeSource(e));
+			PVector c2 = centroids.get(toplogy.getEdgeTarget(e));
+			PEdge edge = new PEdge(c1, c2);
+			graph.addEdge(c1, c2, edge);
+		});
+
+		return graph;
 	}
 
 	/**
