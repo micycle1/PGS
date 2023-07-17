@@ -770,9 +770,11 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Gear</td>
     <td align="center" valign="center"><b>Super Random Polygon</td>
+    <td align="center" valign="center"><b>Random Bezier Polygon</td>
   </tr>
     <td valign="top" width="25%"><img src="resources/pgs/gear.gif"></td>
     <td valign="top" width="25%"><img src="resources/pgs/srpg.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/randomBezierShape.gif"></td>
   <tr>
   </tr>
 </table>

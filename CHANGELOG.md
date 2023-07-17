@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `createTeardrop()` to `PGS_Construction`.  Creates a teardrop figure.
 * `createGear()` to `PGS_Construction`.  Creates a gear figure.
 * `createSponge()` to `PGS_Construction`. Creates a sponge-like porous structure.
+* `createRandomBezierPolygon()` to `PGS_Construction`. Generates a smooth or spiky random polygon comprising Bezier curves.
 * `createSuperRandomPolygon()` to `PGS_Construction`. Generates a highly customisable random polygon based on a square grid of cells.
 * `maximumPerimeterSquare()` to `PGS_Optimisation`. Finds the largest square whose 4 vertices each lie on the perimeter of a shape.
 * `rectPack()` to `PGS_Optimisation`. Packs a collection of rectangles into rectangular 2D bin(s).

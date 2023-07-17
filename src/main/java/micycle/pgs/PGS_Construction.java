@@ -28,6 +28,7 @@ import org.locationtech.jts.util.GeometricShapeFactory;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import micycle.pgs.PGS_Contour.OffsetStyle;
 import micycle.pgs.color.RGB;
+import micycle.pgs.commons.BezierShapeGenerator;
 import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.RandomPolygon;
 import micycle.pgs.commons.RandomSpaceFillingCurve;
@@ -792,7 +793,8 @@ public class PGS_Construction {
 	}
 
 	/**
-	 * Generates a highly customisable random polygon based on a square grid of NxN cells.
+	 * Generates a highly customisable random polygon based on a square grid of NxN
+	 * cells.
 	 * <p>
 	 * The number of vertices of the polygon generated is not configurable, but
 	 * depends on the size of <code>cells</code> and the percentage
@@ -836,6 +838,33 @@ public class PGS_Construction {
 		polygon = PGS_Transformation.resizeByMajorAxis(polygon, dimensions);
 		polygon.setStroke(false);
 		return PGS_Transformation.translateToOrigin(polygon);
+	}
+
+	/**
+	 * Generates a random polygon using Bezier curves.
+	 * 
+	 * @param nPoints   The number of bezier curves the polygon consists of.
+	 * @param scale     Polygon scale. Determines the maximum width or height the
+	 *                  polygon could have.
+	 * @param radius    The radius relative to the distance between adjacent points.
+	 *                  The radius is used to position the control points of the
+	 *                  bezier curve, should be between 0 and 1. Larger values
+	 *                  result in sharper features on the curve.
+	 * @param spikiness A measure of the curve's smoothness. If 0, the curve's angle
+	 *                  through each point will be the average between the direction
+	 *                  to adjacent points. As it increases, the angle will be
+	 *                  determined mostly by one adjacent point, making the curve
+	 *                  more "spiky".
+	 * @param seed      the seed for the random number generator
+	 * @return the random polygon shape
+	 * @since 1.3.1
+	 */
+	public static PShape createRandomBezierPolygon(int nPoints, double scale, double radius, double spikiness, long seed) {
+		BezierShapeGenerator bsg = new BezierShapeGenerator(nPoints, 3, radius, spikiness);
+		Geometry shape = PGS.GEOM_FACTORY.createPolygon(bsg.generate(false, false, scale, seed));
+		PShape poly = toPShape(shape);
+		poly.setStroke(false);
+		return PGS_Transformation.translateToOrigin(poly);
 	}
 
 	/**
