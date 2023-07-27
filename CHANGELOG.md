@@ -60,6 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `toCentroidDualGraph()` to `PGS_Conversion`. Converts a mesh-like PShape into its centroid-based undirected dual-graph.
 * `isValid()` to `PGS_ShapePredicates`. Checks if a PShape is valid, and reports the validation error if it is invalid.
 * `obstaclePack()` to `PGS_CirclePacking`. Packs circles of varying radii within a given shape, whilst respecting pointal obstacles.
+* `align()` to `PGS_Transformation`. Aligns one polygon shape to another, by finding the optimal transformation.
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).

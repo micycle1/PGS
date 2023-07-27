@@ -145,16 +145,19 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center"><b>Resize</td>
     <td align="center" valign="center"><b>Homothetic Transformation</td>
     <td align="center" valign="center"><b>Shear</td>
+    <td align="center" valign="center"><b>Align</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/transform/resize.gif"></td>
     <td valign="top" width="25%"><img src="resources/transform/homothetic.gif"></td>
     <td valign="top" width="25%"><img src="resources/transform/shear.gif"></td>
+    <td valign="top" width="25%"><img src="resources/transform/align.gif"></td>
   </tr>
     <tr>
     <td align="center" valign="center"></td>
     <td align="center" valign="center">Projection-transform a shape with respect to a fixed point.</td>
     <td align="center" valign="center"></td>
+    <td align="center" valign="center">Maximum-overlap alignment.</td>
   </tr>
 </table>
 

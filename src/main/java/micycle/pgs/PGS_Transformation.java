@@ -12,6 +12,7 @@ import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.util.AffineTransformation;
 import org.locationtech.jts.operation.distance.IndexedFacetDistance;
 
+import micycle.pgs.commons.ProcrustesAlignment;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -308,6 +309,9 @@ public final class PGS_Transformation {
 	 */
 	public static PShape translateCentroidTo(PShape shape, double x, double y) {
 		Geometry g = fromPShape(shape);
+		if (g.getNumPoints() == 0) {
+			return shape;
+		}
 		Point c = g.getCentroid();
 		double translateX = x - c.getX();
 		double translateY = y - c.getY();
@@ -332,6 +336,9 @@ public final class PGS_Transformation {
 	 */
 	public static PShape translateEnvelopeTo(PShape shape, double x, double y) {
 		Geometry g = fromPShape(shape);
+		if (g.getNumPoints() == 0) {
+			return shape;
+		}
 		Point c = g.getEnvelope().getCentroid();
 		double translateX = x - c.getX();
 		double translateY = y - c.getY();
@@ -413,6 +420,73 @@ public final class PGS_Transformation {
 			holes[j] = geom.getFactory().createLinearRing(hole_coord_);
 		}
 		return toPShape(PGS.GEOM_FACTORY.createPolygon(lr, holes));
+	}
+
+	/**
+	 * Aligns one polygon shape to another, using Procrustes analysis to find the
+	 * optimal transformation. The transformation includes translation, rotation and
+	 * scaling to maximize overlap between the two shapes.
+	 * 
+	 * @param alignShape the polygon shape to be transformed and aligned to the
+	 *                   other shape.
+	 * @param baseShape  the shape that the other shape will be aligned to.
+	 * @return a new PShape that is the transformed and aligned version of
+	 *         sourceShape.
+	 * @since 1.3.1
+	 */
+	public static PShape align(PShape sourceShape, PShape transformShape) {
+		return align(sourceShape, transformShape, 1);
+	}
+
+	/**
+	 * Aligns one polygon shape to another, using Procrustes analysis to find the
+	 * optimal transformation. The transformation includes translation, rotation and
+	 * scaling to maximize overlap between the two shapes.
+	 * <p>
+	 * This method signature aligns the shape according to a provided ratio,
+	 * indicating how much alignment transformation to apply.
+	 * 
+	 * @param alignShape     the polygon shape to be transformed and aligned to the
+	 *                       other shape.
+	 * @param baseShape      the shape that the other shape will be aligned to.
+	 * @param alignmentRatio a value in [0,1] indicating how much to transform the
+	 *                       shape from its original position to its most aligned
+	 *                       position. 0 means no transformation, 1 means maximum
+	 *                       alignment.
+	 * @return a new PShape that is the transformed and aligned version of
+	 *         sourceShape.
+	 * @since 1.3.1
+	 */
+	public static PShape align(PShape alignShape, PShape baseShape, double alignmentRatio) {
+		final Geometry g1 = fromPShape(alignShape);
+		final Geometry g2 = fromPShape(baseShape);
+		if (g1.getGeometryType() != Geometry.TYPENAME_POLYGON || g2.getGeometryType() != Geometry.TYPENAME_POLYGON) {
+			throw new IllegalArgumentException("Inputs to align() must be polygons.");
+		}
+		if (((Polygon) g1).getNumInteriorRing() > 0 || ((Polygon) g2).getNumInteriorRing() > 0) {
+			throw new IllegalArgumentException("Polygon inputs to align() must be holeless.");
+		}
+
+		// both shapes need same vertex quantity
+		final int vertices = Math.min(alignShape.getVertexCount(), baseShape.getVertexCount()) - 1;
+		PShape sourceShapeT = alignShape;
+		PShape transformShapeT = baseShape;
+		if (alignShape.getVertexCount() > vertices) {
+			sourceShapeT = PGS_Morphology.simplifyDCE(alignShape, vertices);
+		}
+		if (baseShape.getVertexCount() > vertices) {
+			transformShapeT = PGS_Morphology.simplifyDCE(baseShape, vertices);
+		}
+
+		double[] m = ProcrustesAlignment.transform((Polygon) fromPShape(sourceShapeT), (Polygon) fromPShape(transformShapeT));
+
+		Coordinate c = g2.getCentroid().getCoordinate();
+		double scale = 1 + (m[2] - 1) * alignmentRatio;
+		AffineTransformation transform = AffineTransformation.scaleInstance(scale, scale, c.x, c.y).rotate(m[3] * alignmentRatio, c.x, c.y)
+				.translate(m[0] * alignmentRatio, m[1] * alignmentRatio);
+		Geometry aligned = transform.transform(g2);
+
+		return toPShape(aligned);
 	}
 
 	/**
