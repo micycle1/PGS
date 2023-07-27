@@ -82,6 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Renamed `miniumumBoundingRectangle()` to `minimumWidthRectangle()`.
 * `intersectMesh()` and `subtractMesh()` now fully preserve the styling of original mesh faces.
 * `PGS_Contour.medialAxis()` now returns dissolved maximal-length lines, rather than line segments only.
+* `PGS_Processing.tangentAngle()` values correspond to the angle that the tangent line makes with the positive x-axis (east), orientated clockwise, regardless of polygon orientation.
 
 ### Fixed
 * A slow collections size call included in `prunePointsWithinDistance()` was making it much slower than it should have been.

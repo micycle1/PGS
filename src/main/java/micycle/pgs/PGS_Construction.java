@@ -841,7 +841,7 @@ public class PGS_Construction {
 	}
 
 	/**
-	 * Generates a random polygon using Bezier curves.
+	 * Generates a smooth or spiky random polygon comprising Bezier curves.
 	 * 
 	 * @param nPoints   The number of bezier curves the polygon consists of.
 	 * @param scale     Polygon scale. Determines the maximum width or height the

@@ -46,6 +46,7 @@ public class ShapeInterpolation {
 		}
 
 		// find the "smaller" ring (as measured by number of vertices)
+		// NOTE use Kabsch algorithm?
 		CoordinateList smaller, bigger;
 		boolean smallerIsTo = false;
 		if (from.getNumPoints() > to.getNumPoints()) {

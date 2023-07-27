@@ -103,14 +103,17 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Densifies a shape by inserting extra vertices along the line segments
-	 * contained in the shape.
+	 * Densifies a shape by inserting additional vertices along its line segments.
+	 * This results in a more detailed representation of the shape, affecting its
+	 * structure without altering its geometry.
 	 * 
-	 * @param shape
-	 * @param distanceTolerance the densification tolerance to use. All line
-	 *                          segments in the densified geometry will be no longer
-	 *                          than the distance tolerance. The distance tolerance
-	 *                          must be positive.
+	 * @param shape             The shape to be densified. It should be a lineal or
+	 *                          polygonal shape.
+	 * @param distanceTolerance The densification tolerance used. All line segments
+	 *                          in the densified geometry will have lengths no
+	 *                          longer than the specified distance tolerance. The
+	 *                          distance tolerance must be a positive value.
+	 * @return A new PShape object representing the densified geometry.
 	 */
 	public static PShape densify(PShape shape, double distanceTolerance) {
 		Densifier d = new Densifier(fromPShape(shape));
@@ -120,23 +123,29 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Extracts a point from the perimeter (exterior) of the shape at a given
-	 * fraction around its perimeter.
+	 * Extracts a point from the perimeter (exterior) of the given shape at a
+	 * specific position along its perimeter.
 	 * 
-	 * @param shape          a lineal or polygonal shape. If the input is a GROUP
-	 *                       shape, a single point will be extracted from its first
-	 *                       child.
-	 * @param distance       0...1 around shape perimeter; or -1...0 (other
-	 *                       direction)
-	 * @param offsetDistance perpendicular offset distance, where 0 is exactly on
-	 *                       the shape exteriod. Positive values offset the point
-	 *                       away from the shape (outwards); negative values offset
-	 *                       the point inwards towards its interior.
+	 * @param shape             A lineal or polygonal shape. If the input is a GROUP
+	 *                          shape, a single point will be extracted from its
+	 *                          first child shape.
+	 * @param perimeterPosition A normalised position along the perimeter of a shape
+	 *                          [0...1]. 0 corresponds to the starting point of the
+	 *                          shape's perimeter, and 1 corresponds to the ending
+	 *                          point of the perimeter; any value between 0 and 1
+	 *                          represents a proportional distance along the shape's
+	 *                          boundary.
+	 * @param offsetDistance    A perpendicular offset distance from the shape's
+	 *                          perimeter. A value of 0 corresponds to exactly on
+	 *                          the shape's exterior/ Positive values offset the
+	 *                          point away from the shape (outwards); negative
+	 *                          values offset the point inwards towards its
+	 *                          interior.
 	 * @return
 	 * @see #pointsOnExterior(PShape, int, double)
 	 */
-	public static PVector pointOnExterior(PShape shape, double distance, double offsetDistance) {
-		distance %= 1;
+	public static PVector pointOnExterior(PShape shape, double perimeterPosition, double offsetDistance) {
+		perimeterPosition %= 1;
 
 		Geometry g = fromPShape(shape);
 		if (g instanceof Polygonal) {
@@ -151,24 +160,35 @@ public final class PGS_Processing {
 		}
 		LengthIndexedLine l = new LengthIndexedLine(g);
 
-		Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
+		Coordinate coord = l.extractPoint(perimeterPosition * l.getEndIndex(), offsetDistance);
 		return new PVector((float) coord.x, (float) coord.y);
 	}
 
 	/**
-	 * Extracts many points from the perimeter (faster than calling other method
-	 * lots)
+	 * Efficiently extracts multiple points from the perimeter of a shape, evenly
+	 * distributed along its boundary.
+	 * <p>
+	 * This method provides a faster alternative to calling other methods repeatedly
+	 * when you need to obtain multiple points along the exterior of the shape. The
+	 * extracted points will be evenly distributed along the shape's perimeter,
+	 * allowing you to efficiently sample the boundary.
 	 * 
-	 * @param shape          a lineal or polygonal shape. If the input is a GROUP
+	 * @param shape          The shape from which to extract points. It should be a
+	 *                       lineal or polygonal shape. If the input is a GROUP
 	 *                       shape, a single point will be extracted from its first
 	 *                       child.
-	 * @param points         number of points to return; evenly distibuted around
-	 *                       the perimeter of the shape
-	 * @param offsetDistance offset distance along a line perpendicular to the
-	 *                       perimeter
-	 * @return
+	 * @param points         The number of points to return, evenly distributed
+	 *                       around the perimeter of the shape.
+	 * @param offsetDistance The offset distance along a line perpendicular to the
+	 *                       perimeter. Positive values will offset the points away
+	 *                       from the shape's boundary (outwards), while negative
+	 *                       values will offset the points inwards towards its
+	 *                       interior.
+	 * @return An array of PVector objects representing the extracted points on the
+	 *         shape's perimeter.
 	 * @see #pointOnExterior(PShape, double, double)
 	 * @see #pointsOnExterior(PShape, double, double)
+	 * @since 1.3.0
 	 */
 	public static List<PVector> pointsOnExterior(PShape shape, int points, double offsetDistance) {
 		// TODO another method that returns concave hull of returned points (when
@@ -199,13 +219,31 @@ public final class PGS_Processing {
 	/**
 	 * Generates a list of points that lie on the exterior/perimeter of the given
 	 * shape.
+	 * <p>
+	 * This method creates a list of points that are evenly spaced along the shape's
+	 * exterior. The points are distributed around the shape's boundary with a
+	 * specified distance between each consecutive point. You can use this method to
+	 * obtain a set of points that represents an approximation of the shape's
+	 * outline.
 	 * 
-	 * @param shape              a lineal or polygonal shape. If the input is a
-	 *                           GROUP shape, a single point will be extracted from
-	 *                           its first child.
-	 * @param interPointDistance distance between each exterior point
-	 * @param offsetDistance
-	 * @return
+	 * @param shape              The shape from which to generate the points. It
+	 *                           should be a lineal or polygonal shape. If the input
+	 *                           is a GROUP shape, a single point will be extracted
+	 *                           from its first child.
+	 * @param interPointDistance The distance between each exterior point. This
+	 *                           value controls the density of the points and
+	 *                           determines how closely the points will be spaced
+	 *                           along the shape's perimeter.
+	 * @param offsetDistance     The offset distance along a line perpendicular to
+	 *                           the perimeter. Positive values will offset the
+	 *                           points away from the shape's boundary (outwards),
+	 *                           while negative values will offset the points
+	 *                           inwards towards its interior.
+	 * @return An array of PVector objects representing the points lying on the
+	 *         shape's exterior.
+	 * @see #pointOnExterior(PShape, double, double)
+	 * @see #densify(PShape, double)
+	 * @since 1.3.0
 	 */
 	public static List<PVector> pointsOnExterior(PShape shape, double interPointDistance, double offsetDistance) {
 		// TODO points on holes
@@ -288,40 +326,51 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Finds the angle of the line tangent to the shape at a certain point on its
-	 * perimeter (given by the some fraction of the distance around the perimeter).
-	 * <p>
-	 * The tangent line is orientated clockwise with respect to the shape and the
-	 * output angle is normalized to be in the range [ -PI, PI ].
+	 * Calculates the angle of the line tangent to the shape at a specific point on
+	 * its perimeter. The position of the point is determined by the normalized
+	 * distance along the shape's perimeter.
 	 * 
-	 * @param shape
-	 * @param distanceFraction the distance fraction around the perimeter [0...1]
-	 * @return the normalized angle (in radians) that a line tangent to the
-	 *         perimeter of the shape at the given position makes with the positive
-	 *         x-axis, where 0 is north.
+	 * @param shape          The shape for which to find the tangent angle.
+	 * @param perimeterRatio A normalised position along the perimeter of a shape
+	 *                       [0...1]. 0 corresponds to the starting point of the
+	 *                       shape's perimeter, and 1 corresponds to the ending
+	 *                       point of the perimeter; any value between 0 and 1
+	 *                       represents a proportional distance along the shape's
+	 *                       boundary.
+	 * @return the normalized angle (in radians) that the tangent line at the
+	 *         specified position makes with the positive x-axis (east), orientated
+	 *         clockwise.
 	 * @since 1.3.0
 	 */
-	public static double tangentAngle(PShape shape, double distanceFraction) {
-		distanceFraction %= 1;
+	public static double tangentAngle(PShape shape, double perimeterRatio) {
+		perimeterRatio %= 1;
 
 		Geometry g = fromPShape(shape);
 		if (!g.getGeometryType().equals(Geometry.TYPENAME_LINEARRING) && !g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
-			g = ((Polygon) g).getExteriorRing();
-			// TODO check orientation and ensure CCW?
+			LinearRing e = ((Polygon) g).getExteriorRing();
+			if (Orientation.isCCW(e.getCoordinates())) {
+				e = e.reverse();
+			}
+			g = e;
 		}
 		LengthIndexedLine l = new LengthIndexedLine(g);
 
-		double d1 = (distanceFraction * l.getEndIndex()) - 1e-7;
-		double d2 = (distanceFraction * l.getEndIndex()) + 1e-7;
+		final double position = perimeterRatio * l.getEndIndex();
+		final double d1 = position - 1e-5;
+		final double d2 = position + 1e-5;
 
 		Coordinate coordA = l.extractPoint(d1); // CCW - point behind first
 		Coordinate coordB = l.extractPoint(d2); // CCW - point after second
 
-		return Angle.angle(coordA, coordB);
+		double angle = Angle.angle(coordA, coordB); // CCW
+		angle += Math.PI * 2; // [1PI...3PI]
+		angle %= (Math.PI * 2); // [0...2PI], CW
+
+		return angle;
 	}
 
 	/**
-	 * Computes all <b>points</b> of intersection between the <b>perimeter</b> of
+	 * Computes all <b>points</b> of intersection between the <b>perimeters</b> of
 	 * two shapes.
 	 * <p>
 	 * NOTE: This method shouldn't be confused with
@@ -348,6 +397,7 @@ public final class PGS_Processing {
 					points.add(new PVector((float) sid.getIntersection().x, (float) sid.getIntersection().y));
 				}
 			}
+
 			@Override
 			public boolean isDone() {
 				return false;
@@ -630,18 +680,25 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Removes overlap between polygons contained in a GROUP shape, preserving only
-	 * line segments that are visible to a human, rather than a computer (to use as
-	 * input for a pen plotter, for example).
+	 * Removes overlap between polygons contained in a <code>GROUP</code> shape,
+	 * preserving only visible line segments suitable for pen plotting and similar
+	 * applications.
 	 * <p>
-	 * Any overlapping lines are also removed during the operation.
+	 * This method processes a <code>GROUP</code> shape consisting of lineal or
+	 * polygonal child shapes, aiming to create linework that represents only the
+	 * segments visible to a human, rather than a computer. The resulting linework
+	 * is useful for pen plotters or other applications where only the visible paths
+	 * are desired.
 	 * <p>
-	 * Order of shape layers is important: the method will consider the last child
-	 * shape of the input to be "on top" of all other shapes (as is the case
-	 * visually).
+	 * During the operation, any overlapping lines are also removed to ensure a
+	 * clean and clear representation of the shapes. It's important to note that the
+	 * order of shape layers in the input GROUP shape is significant. The method
+	 * considers the last child shape of the input to be "on top" of all other
+	 * shapes, as is the case visually.
 	 * 
-	 * @param shape a GROUP shape consisting of lineal or polygonal child shapes
-	 * @return linework of the overlapping input (LINES PShape)
+	 * @param shape A GROUP shape containing lineal or polygonal child shapes.
+	 * @return The resulting linework of the overlapping input as a LINES PShape,
+	 *         representing only visible line segments.
 	 * @since 1.3.0
 	 */
 	public static PShape removeHiddenLines(PShape shape) {
@@ -705,7 +762,7 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Extracts all the holes from a shape returning them as if were polygons.
+	 * Extracts all the holes from a shape, returning them as if they are polygons.
 	 * 
 	 * @param shape the PShape to extract holes from
 	 * @return a new PShape that represents the holes extracted from the input
@@ -760,11 +817,12 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Splits a shape into 4 equal (as measured be envelope area) quadrants.
+	 * Splits a shape into four equal quadrants (based on the envelope of the
+	 * shape).
 	 * 
-	 * @param shape the shape to split
-	 * @return a GROUP PShape, where each child shape is some quadrant partition of
-	 *         the original shape
+	 * @param shape The shape to be split into quadrants.
+	 * @return A GROUP PShape where each child shape represents one of the four
+	 *         quadrants partitioned from the original shape.
 	 * @see #split(PShape, int)
 	 */
 	public static PShape split(PShape shape) {
@@ -772,16 +830,23 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Splits a shape into 4^(1+recursions) rectangular partitions.
+	 * Splits a shape into <code>4^(1+recursions)</code> rectangular partitions.
 	 * <p>
-	 * Note: this operation is different to merely overlaying a grid on the shape
-	 * and then splitting. Instead, during each recursion, the envelope of the
-	 * parent is divided into 4 quadrants, but the envelope may be rectangular.
+	 * This method performs a recursive split operation on the given shape, dividing
+	 * it into a finer grid of rectangular partitions. Each recursion further
+	 * divides the envelopes of the parent shapes into four quadrants, resulting in
+	 * a more refined partitioning of the original shape.
+	 * <p>
+	 * It's important to note that this operation differs from merely overlaying a
+	 * regular square grid on the shape and then splitting it. The recursive process
+	 * ensures that each subdivision is based on the envelope of the parent shape,
+	 * which may be rectangular.
 	 * 
-	 * @param shape
-	 * @param splitDepth number of split recursions to perform
-	 * @return a GROUP PShape, where each child shape is some quadrant partition of
-	 *         the original shape
+	 * @param shape      The shape to be split into rectangular partitions.
+	 * @param splitDepth The number of split recursions to perform, determining the
+	 *                   level of partitioning and grid refinement.
+	 * @return A GROUP PShape, where each child shape represents one of the quadrant
+	 *         partitions of the original shape.
 	 * @see #split(PShape)
 	 */
 	public static PShape split(final PShape shape, int splitDepth) {
@@ -837,14 +902,12 @@ public final class PGS_Processing {
 		}
 
 		final PShape partitions = new PShape(PConstants.GROUP);
-		stack.forEach(g -> {
-			partitions.addChild(toPShape(g));
-		});
+		stack.forEach(g -> partitions.addChild(toPShape(g)));
 		return partitions;
 	}
 
 	/**
-	 * Partitions shape(s) into simple convex polygons.
+	 * Partitions shape(s) into convex (simple) polygons.
 	 * 
 	 * @param shape the shape to partition. can be a single polygon or a GROUP of
 	 *              polygons
@@ -1109,15 +1172,29 @@ public final class PGS_Processing {
 
 	/**
 	 * Filters out the children of a given PShape object based on a given Predicate
-	 * function.
+	 * function. Child shapes are filtered when the predicate is true: <i>"remove
+	 * if..."</i>.
+	 * <p>
+	 * Example Lambda Code:
+	 * 
+	 * <pre>
+	 * {@code
+	 * PGS_Processing.filterChildren(myShape, child -> PGS_ShapePredicates.area(child) < 50); // discard small child shapes
+	 * }
+	 * </pre>
 	 * 
 	 * @param shape          The PShape whose children will be filtered.
-	 * @param filterFunction A Predicate function that takes a PShape object and
-	 *                       returns <code>true</code> if the child shape should be
-	 *                       <b>filtered out/removed</b> from the shape.
+	 * @param filterFunction A Predicate function that takes a PShape object as its
+	 *                       argument and returns <code>true</code> if the child
+	 *                       shape should be <b>filtered out/removed</b> from the
+	 *                       shape. To retain child shapes, the Predicate function
+	 *                       should return <code>false</code>. You can use a lambda
+	 *                       expression or a method reference to implement the
+	 *                       Predicate function.
 	 * @since 1.3.1
-	 * @return A new PShapethat contains only the children shapes of the input shape
-	 *         that satisfy the given Predicate function (<code>==false</code>).
+	 * @return A new PShape that contains only the children shapes of the input
+	 *         shape that satisfy the given Predicate function
+	 *         (<code>==false</code>).
 	 */
 	public static PShape filterChildren(PShape shape, Predicate<PShape> filterFunction) {
 		filterFunction = filterFunction.negate();

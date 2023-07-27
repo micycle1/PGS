@@ -481,19 +481,19 @@ public final class PGS_Contour {
 
 		double[] intervals = generateDoubleSequence(0, maxDist, intervalSpacing);
 
-		/**
-		 * A null valuator tells the builder to just use the z values from the vertices
-		 * rather than applying any adjustments to their values.
+		/*
+		 * "A null valuator tells the builder to just use the z values from the vertices
+		 * rather than applying any adjustments to their values."
 		 */
 		final ContourBuilderForTin builder = new ContourBuilderForTin(tin, null, intervals, true);
 
-		List<org.tinfour.contour.Contour> contours = builder.getContours();
+		List<Contour> contours = builder.getContours();
 
 		PShape parent = new PShape(PConstants.GROUP);
 		parent.setKind(PConstants.GROUP);
 
 		LineDissolver ld = new LineDissolver();
-		for (org.tinfour.contour.Contour contour : contours) {
+		for (Contour contour : contours) {
 			Coordinate[] coords = new Coordinate[contour.getCoordinates().length / 2];
 			for (int i = 0; i < contour.getCoordinates().length; i += 2) {
 				float vx = (float) contour.getCoordinates()[i];
