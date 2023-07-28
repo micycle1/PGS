@@ -347,6 +347,12 @@
 			<artifactId>SRPG</artifactId>
 			<version>1.0</version>
 		</dependency>
+		<dependency>
+			<groupId>com.scrtwpns</groupId>
+			<artifactId>mixbox</artifactId>
+			<version>2.0.0</version>
+			<type>jar</type>
+		</dependency>
 	</dependencies>
 
 </project>

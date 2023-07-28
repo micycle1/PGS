@@ -1,5 +1,7 @@
 package micycle.pgs.color;
 
+import com.scrtwpns.Mixbox;
+
 /**
  * Provides static methods for Processing color generation (that doesn't require
  * a PApplet instance).
@@ -130,6 +132,18 @@ public class RGB {
 			out[i] = -16777216 + (int) (Long.parseLong(colors[i], 16));
 		}
 		return out;
+	}
+
+	/**
+	 * Mixes/blends two colors using natural color mixing.
+	 * <p>
+	 * It produces saturated gradients with hue shifts and natural secondary colors
+	 * during blending. For instance, yellow and blue make green.
+	 * 
+	 * @return the new mixed color
+	 */
+	public static int pigmentMix(int colorA, int colorB, float t) {
+		return Mixbox.lerp(colorA, colorB, t);
 	}
 
 }
