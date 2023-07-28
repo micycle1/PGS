@@ -27,7 +27,7 @@ import org.locationtech.jts.util.GeometricShapeFactory;
 
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import micycle.pgs.PGS_Contour.OffsetStyle;
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.Colors;
 import micycle.pgs.commons.BezierShapeGenerator;
 import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.RandomPolygon;
@@ -175,7 +175,7 @@ public class PGS_Construction {
 		// http://paulbourke.net/geometry/supershape/
 		PShape shape = new PShape(PShape.PATH);
 		shape.setFill(true);
-		shape.setFill(RGB.WHITE);
+		shape.setFill(Colors.WHITE);
 		shape.beginShape();
 
 		final int points = 180;
@@ -398,7 +398,7 @@ public class PGS_Construction {
 		// https://mathworld.wolfram.com/HeartCurve.html
 		PShape heart = new PShape(PShape.PATH);
 		heart.setFill(true);
-		heart.setFill(RGB.WHITE);
+		heart.setFill(Colors.WHITE);
 		heart.beginShape();
 
 		final double length = 6.3855 * width; // Arc length of parametric curve from wolfram alpha
@@ -433,7 +433,7 @@ public class PGS_Construction {
 		height /= 2; // get height in terms of radius
 		PShape curve = new PShape(PShape.PATH);
 		curve.setFill(true);
-		curve.setFill(RGB.WHITE);
+		curve.setFill(Colors.WHITE);
 		curve.beginShape();
 		final double angleInc = Math.PI * 2 / 360;
 		double angle = 0;
@@ -463,7 +463,7 @@ public class PGS_Construction {
 		// https://mathworld.wolfram.com/GearCurve.html
 		PShape curve = new PShape(PShape.PATH);
 		curve.setFill(true);
-		curve.setFill(RGB.WHITE);
+		curve.setFill(Colors.WHITE);
 		curve.beginShape();
 
 		final double cirumference = 2 * Math.PI * radius;
@@ -636,7 +636,7 @@ public class PGS_Construction {
 			Geometry lineString = PGS.GEOM_FACTORY.createLineString(coords.toCoordinateArray());
 			PShape spiral = PGS_Conversion.toPShape(lineString);
 			spiral.setStrokeWeight(10);
-			spiral.setStroke(RGB.WHITE);
+			spiral.setStroke(Colors.WHITE);
 			spiral.setStrokeCap(PConstants.ROUND);
 			return spiral;
 		} else {
@@ -685,7 +685,7 @@ public class PGS_Construction {
 		LineString lineString = PGS.GEOM_FACTORY.createLineString(yin.toCoordinateArray());
 		PShape spiral = PGS_Conversion.toPShape(lineString);
 		spiral.setStrokeWeight(10);
-		spiral.setStroke(RGB.WHITE);
+		spiral.setStroke(Colors.WHITE);
 		spiral.setStrokeCap(PConstants.ROUND);
 		spiral.setFill(false);
 		return spiral;
@@ -723,7 +723,7 @@ public class PGS_Construction {
 		spiral.setFill(false);
 		spiral.setStroke(true);
 		spiral.setStrokeWeight(spacing * 0.333f);
-		spiral.setStroke(RGB.WHITE);
+		spiral.setStroke(Colors.WHITE);
 		spiral.setStrokeJoin(PConstants.MITER);
 		spiral.setStrokeCap(PConstants.SQUARE);
 		spiral.beginShape();
@@ -901,7 +901,7 @@ public class PGS_Construction {
 
 		final PShape curve = new PShape(PShape.PATH);
 		curve.setFill(true);
-		curve.setFill(RGB.WHITE);
+		curve.setFill(Colors.WHITE);
 		curve.beginShape();
 		half1.forEach(p -> curve.vertex((float) p[0], (float) p[1]));
 		curve.endShape(PConstants.CLOSE);

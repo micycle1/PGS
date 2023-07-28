@@ -9,54 +9,33 @@ import com.scrtwpns.Mixbox;
  * @author Michael Carleton
  *
  */
-public class RGB {
+public class ColorUtils {
 
-	/** RGB (0, 0, 0) */
-	public static final int BLACK = composeColor(0, 0, 0);
-	/** RGB (255, 255, 255) */
-	public static final int WHITE = composeColor(255, 255, 255);
-	/** RGB (237, 50, 162) */
-	public static final int PINK = composeColor(237, 50, 162);
-	/** RGBA (237, 50, 162, 128) */
-	public static final int HALF_PINK = micycle.pgs.color.RGB.setAlpha(PINK, 128);
-	/** RGB (255, 0, 0) */
-	public static final int RED = composeColor(255, 0, 0);
-	/** RGB (0, 255, 0) */
-	public static final int GREEN = composeColor(0, 255, 0);
-	/** RGB (0, 0, 255) */
-	public static final int BLUE = composeColor(0, 0, 255);
-	/** RGB (255, 255, 0) */
-	public static final int YELLOW = composeColor(255, 255, 0);
-	/** RGB (0, 255, 255) */
-	public static final int CYAN = composeColor(0, 255, 255);
-	/** RGB (255, 0, 255) */
-	public static final int FUCHSIA = composeColor(255, 0, 255);
+	private static final float INV_255 = 1f / 255f; // used to normalise ColorUtils values to 0...1
 
-	private static final float INV_255 = 1f / 255f; // used to normalise RGB values to 0...1
-
-	private RGB() {
+	private ColorUtils() {
 	}
 
 	/**
-	 * Composes an integer value that represents a color in RGB format.
+	 * Composes an integer value that represents a color in ColorUtils format.
 	 * 
 	 * @param red   ∈[0, 255]
 	 * @param green ∈[0, 255]
 	 * @param blue  ∈[0, 255]
 	 * @param alpha ∈[0, 255] (where 0 is transparent; 255 is opaque)
-	 * @return the integer representation of the color in RGB format
+	 * @return the integer representation of the color in ColorUtils format
 	 */
 	public static int composeColor(final int red, final int green, final int blue, final int alpha) {
 		return alpha << 24 | red << 16 | green << 8 | blue;
 	}
 
 	/**
-	 * Composes an integer value that represents a color in RGB format.
+	 * Composes an integer value that represents a color in ColorUtils format.
 	 * 
 	 * @param red   ∈[0, 255]
 	 * @param green ∈[0, 255]
 	 * @param blue  ∈[0, 255]
-	 * @return the integer representation of the color in RGB format
+	 * @return the integer representation of the color in ColorUtils format
 	 */
 	public static int composeColor(final int red, final int green, final int blue) {
 		return -16777216 | red << 16 | green << 8 | blue;
@@ -72,7 +51,7 @@ public class RGB {
 	}
 
 	/**
-	 * Decompose color integer (ARGB) into its 3 separate RGB components (0...255)
+	 * Decompose color integer (ARGB) into its 3 separate ColorUtils components (0...255)
 	 * 
 	 * @param clr
 	 * @return [R,G,B] 0...255

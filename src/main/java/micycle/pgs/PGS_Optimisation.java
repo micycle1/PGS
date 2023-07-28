@@ -33,7 +33,7 @@ import org.locationtech.jts.util.GeometricShapeFactory;
 import almadina.rectpacking.RBPSolution;
 import almadina.rectpacking.Rect;
 import almadina.rectpacking.RectPacking.PackingHeuristic;
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.Colors;
 import micycle.pgs.commons.ClosestPointPair;
 import micycle.pgs.commons.FarthestPointPair;
 import micycle.pgs.commons.LargestEmptyCircles;
@@ -206,7 +206,7 @@ public final class PGS_Optimisation {
 
 		PShape out = PGS_Conversion.fromPVector(maxAreaVertices);
 		out.setStroke(true);
-		out.setStroke(micycle.pgs.color.RGB.PINK);
+		out.setStroke(micycle.pgs.color.Colors.PINK);
 		out.setStrokeWeight(4);
 		return out;
 	}
@@ -285,7 +285,7 @@ public final class PGS_Optimisation {
 
 		final PShape ellipse = new PShape(PShape.PATH);
 		ellipse.setFill(true);
-		ellipse.setFill(RGB.WHITE);
+		ellipse.setFill(Colors.WHITE);
 		ellipse.beginShape();
 		for (int i = 0; i < eEoords.length; i++) {
 			ellipse.vertex((float) eEoords[i][0], (float) eEoords[i][1]);

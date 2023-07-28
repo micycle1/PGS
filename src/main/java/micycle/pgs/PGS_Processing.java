@@ -82,7 +82,8 @@ import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
 import micycle.balaban.BalabanSolver;
 import micycle.balaban.Point;
 import micycle.balaban.Segment;
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.Colors;
+import micycle.pgs.color.ColorUtils;
 import micycle.pgs.commons.PolygonDecomposition;
 import micycle.pgs.commons.SeededRandomPointsInGridBuilder;
 import micycle.trapmap.TrapMap;
@@ -312,7 +313,7 @@ public final class PGS_Processing {
 		PShape perimeter = new PShape();
 		perimeter.setFamily(PShape.PATH);
 		perimeter.setStroke(true);
-		perimeter.setStroke(micycle.pgs.color.RGB.PINK);
+		perimeter.setStroke(micycle.pgs.color.Colors.PINK);
 		perimeter.setStrokeWeight(4);
 
 		perimeter.beginShape();
@@ -727,7 +728,7 @@ public final class PGS_Processing {
 
 		Geometry dissolved = LineDissolver.dissolve(GEOM_FACTORY.createGeometryCollection(culledGeometries.toArray(new Geometry[0])));
 		PShape out = toPShape(dissolved);
-		PGS_Conversion.setAllStrokeColor(out, RGB.setAlpha(RGB.PINK, 128), 8);
+		PGS_Conversion.setAllStrokeColor(out, ColorUtils.setAlpha(Colors.PINK, 128), 8);
 
 		return out;
 	}
@@ -1047,8 +1048,8 @@ public final class PGS_Processing {
 			}
 		});
 
-		PGS_Conversion.setAllFillColor(trapezoids, RGB.WHITE);
-		PGS_Conversion.setAllStrokeColor(trapezoids, RGB.PINK, 1);
+		PGS_Conversion.setAllFillColor(trapezoids, Colors.WHITE);
+		PGS_Conversion.setAllStrokeColor(trapezoids, Colors.PINK, 1);
 		return trapezoids;
 	}
 
@@ -1166,7 +1167,7 @@ public final class PGS_Processing {
 
 		final List<Geometry> cleanedGeometries = FeatureUtil.toGeometries(cc.getUpdatedFeatures().getFeatures());
 		final PShape out = PGS_Conversion.toPShape(cleanedGeometries);
-		PGS_Conversion.setAllStrokeColor(out, RGB.PINK, 2);
+		PGS_Conversion.setAllStrokeColor(out, Colors.PINK, 2);
 		return out;
 	}
 

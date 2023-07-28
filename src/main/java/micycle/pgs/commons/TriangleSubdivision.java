@@ -3,7 +3,7 @@ package micycle.pgs.commons;
 import org.apache.commons.math3.random.RandomGenerator;
 
 import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.ColorUtils;
 import processing.core.PApplet;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -104,7 +104,7 @@ public class TriangleSubdivision {
 		private PShape getShape() {
 			final PShape triangle = new PShape(PShape.PATH);
 			triangle.setFill(true);
-			triangle.setFill(RGB.composeColor(255, 0, 255, 80));
+			triangle.setFill(ColorUtils.composeColor(255, 0, 255, 80));
 			triangle.setStroke(true);
 			triangle.setStroke(255);
 			triangle.beginShape();

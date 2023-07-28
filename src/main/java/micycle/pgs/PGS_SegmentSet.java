@@ -32,7 +32,7 @@ import org.locationtech.jts.noding.SegmentString;
 import org.locationtech.jts.noding.SegmentStringUtil;
 import org.tinfour.common.IIncrementalTin;
 
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.Colors;
 import micycle.pgs.commons.FastAtan2;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
@@ -379,7 +379,7 @@ public class PGS_SegmentSet {
 	 * <code>LINES</code> shape, having the (optional) styling provided.
 	 * 
 	 * @param segments     collection of PEdge segments
-	 * @param strokeColor  nullable/optional (default = {@link RGB#PINK})
+	 * @param strokeColor  nullable/optional (default = {@link Colors#PINK})
 	 * @param strokeCap    nullable/optional (default = <code>ROUND</code>)
 	 * @param strokeWeight nullable/optional (default = <code>2</code>)
 	 * @return shape representing segments

@@ -60,7 +60,8 @@ import micycle.medialAxis.MedialAxis;
 import micycle.medialAxis.MedialAxis.MedialDisk;
 import micycle.pgs.PGS.GeometryIterator;
 import micycle.pgs.PGS.LinearRingIterator;
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.Colors;
+import micycle.pgs.color.ColorUtils;
 import micycle.pgs.commons.PEdge;
 import net.jafama.FastMath;
 import processing.core.PConstants;
@@ -321,7 +322,7 @@ public final class PGS_Contour {
 				PShape face = PGS_Conversion.fromPVector(faceVertices);
 				face.setStroke(true);
 				face.setStrokeWeight(2);
-				face.setStroke(RGB.composeColor(147, 112, 219));
+				face.setStroke(ColorUtils.composeColor(147, 112, 219));
 				faces.addChild(face);
 			});
 		} catch (Exception ignore) {
@@ -335,7 +336,7 @@ public final class PGS_Contour {
 		});
 		bones.endShape();
 
-		final PShape branches = prepareLinesPShape(RGB.composeColor(40, 235, 180), null, null);
+		final PShape branches = prepareLinesPShape(ColorUtils.composeColor(40, 235, 180), null, null);
 		branchEdges.forEach(e -> {
 			branches.vertex(e.a.x, e.a.y);
 			branches.vertex(e.b.x, e.b.y);
@@ -398,7 +399,7 @@ public final class PGS_Contour {
 			PShape face = PGS_Conversion.fromPVector(faceVertices);
 			face.setStroke(true);
 			face.setStrokeWeight(2);
-			face.setStroke(RGB.composeColor(147, 112, 219));
+			face.setStroke(ColorUtils.composeColor(147, 112, 219));
 			faces.addChild(face);
 		});
 
@@ -409,7 +410,7 @@ public final class PGS_Contour {
 		});
 		bones.endShape();
 
-		final PShape branches = prepareLinesPShape(RGB.composeColor(40, 235, 180), null, null);
+		final PShape branches = prepareLinesPShape(ColorUtils.composeColor(40, 235, 180), null, null);
 		branchEdges.forEach(e -> {
 			branches.vertex(e.a.x, e.a.y);
 			branches.vertex(e.b.x, e.b.y);
@@ -588,7 +589,7 @@ public final class PGS_Contour {
 			isoline.setFamily(PShape.PATH);
 			isoline.setStroke(true);
 			isoline.setStrokeWeight(2);
-			isoline.setStroke(RGB.PINK);
+			isoline.setStroke(Colors.PINK);
 
 			isoline.beginShape();
 			for (int i = 0; i < coords.length; i += 2) {

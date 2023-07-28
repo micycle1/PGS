@@ -12,8 +12,8 @@ import org.jgrapht.alg.interfaces.VertexColoringAlgorithm.Coloring;
 import org.jgrapht.graph.AbstractBaseGraph;
 import org.jgrapht.graph.DefaultEdge;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
-
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.Colors;
+import micycle.pgs.color.ColorUtils;
 import micycle.pgs.commons.GeneticColoring;
 import micycle.pgs.commons.RLFColoring;
 import processing.core.PShape;
@@ -159,7 +159,7 @@ public final class PGS_Coloring {
 	 * @return the input shape (whose faces have now been colored)
 	 */
 	public static PShape colorMesh(PShape shape, ColoringAlgorithm coloringAlgorithm, String[] colorPalette) {
-		return colorMesh(shape, coloringAlgorithm, RGB.hexToColor(colorPalette));
+		return colorMesh(shape, coloringAlgorithm, ColorUtils.hexToColor(colorPalette));
 	}
 
 	/**
@@ -191,7 +191,7 @@ public final class PGS_Coloring {
 	public static PShape colorNonMesh(PShape shape, ColoringAlgorithm coloringAlgorithm, int[] colorPalette) {
 		final PShape mesh = PGS_Meshing.nodeNonMesh(shape);
 		colorMesh(mesh, coloringAlgorithm, colorPalette);
-		PGS_Conversion.setAllStrokeColor(mesh, RGB.WHITE, 2);
+		PGS_Conversion.setAllStrokeColor(mesh, Colors.WHITE, 2);
 		return mesh;
 	}
 
@@ -210,7 +210,7 @@ public final class PGS_Coloring {
 	public static PShape colorNonMesh(PShape shape, ColoringAlgorithm coloringAlgorithm, String[] colorPalette) {
 		final PShape mesh = PGS_Meshing.nodeNonMesh(shape);
 		colorMesh(mesh, coloringAlgorithm, colorPalette);
-		PGS_Conversion.setAllStrokeColor(mesh, RGB.WHITE, 2);
+		PGS_Conversion.setAllStrokeColor(mesh, Colors.WHITE, 2);
 		return mesh;
 	}
 

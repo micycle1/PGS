@@ -32,7 +32,7 @@ import org.locationtech.jts.simplify.VWSimplifier;
 import micycle.hobbycurves.HobbyCurve;
 import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.PGS_Contour.OffsetStyle;
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.Colors;
 import micycle.pgs.commons.ChaikinCut;
 import micycle.pgs.commons.CornerRounding;
 import micycle.pgs.commons.DiscreteCurveEvolution;
@@ -549,8 +549,8 @@ public final class PGS_Morphology {
 		ratio = Math.min(ratio, 1 - 1e-6);
 		ratio /= 2; // constrain to 0...0.5
 		PShape cut = ChaikinCut.chaikin(shape, (float) ratio, iterations);
-		PGS_Conversion.setAllFillColor(cut, RGB.WHITE);
-		PGS_Conversion.setAllStrokeColor(cut, RGB.PINK, 3);
+		PGS_Conversion.setAllFillColor(cut, Colors.WHITE);
+		PGS_Conversion.setAllStrokeColor(cut, Colors.PINK, 3);
 		return cut;
 	}
 

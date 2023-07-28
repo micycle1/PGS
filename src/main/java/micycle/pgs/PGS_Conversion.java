@@ -2,7 +2,7 @@ package micycle.pgs;
 
 import static micycle.pgs.PGS.GEOM_FACTORY;
 import static micycle.pgs.PGS.coordFromPVector;
-import static micycle.pgs.color.RGB.decomposeclrRGB;
+import static micycle.pgs.color.ColorUtils.decomposeclrRGB;
 import static processing.core.PConstants.BEZIER_VERTEX;
 import static processing.core.PConstants.CURVE_VERTEX;
 import static processing.core.PConstants.GROUP;
@@ -68,7 +68,7 @@ import it.rambow.master.javautils.Track;
 import it.rambow.master.javautils.Trackpoint;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import micycle.betterbeziers.CubicBezier;
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.Colors;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
 import processing.core.PConstants;
@@ -185,9 +185,9 @@ public final class PGS_Conversion {
 		PShape shape = new PShape();
 		// apply PGS style by default
 		shape.setFill(true);
-		shape.setFill(micycle.pgs.color.RGB.WHITE);
+		shape.setFill(micycle.pgs.color.Colors.WHITE);
 		shape.setStroke(true);
-		shape.setStroke(micycle.pgs.color.RGB.PINK);
+		shape.setStroke(micycle.pgs.color.Colors.PINK);
 		shape.setStrokeWeight(4);
 		shape.setStrokeJoin(PConstants.ROUND);
 		shape.setStrokeCap(PConstants.ROUND);
@@ -296,9 +296,9 @@ public final class PGS_Conversion {
 	public static PShape toPShape(Collection<? extends Geometry> geometries) {
 		PShape shape = new PShape(GROUP);
 		shape.setFill(true);
-		shape.setFill(micycle.pgs.color.RGB.WHITE);
+		shape.setFill(micycle.pgs.color.Colors.WHITE);
 		shape.setStroke(true);
-		shape.setStroke(micycle.pgs.color.RGB.PINK);
+		shape.setStroke(micycle.pgs.color.Colors.PINK);
 		shape.setStrokeWeight(4);
 
 		geometries.forEach(g -> shape.addChild(toPShape(g)));
@@ -790,7 +790,7 @@ public final class PGS_Conversion {
 		shape.setFamily(PShape.GEOMETRY);
 		shape.setStrokeCap(PConstants.ROUND);
 		shape.setStroke(true);
-		shape.setStroke(micycle.pgs.color.RGB.PINK);
+		shape.setStroke(micycle.pgs.color.Colors.PINK);
 		shape.setStrokeWeight(6);
 		shape.beginShape(PConstants.POINTS);
 		points.forEach(p -> shape.vertex(p.x, p.y));
@@ -1300,10 +1300,10 @@ public final class PGS_Conversion {
 
 		PShape shape = new PShape();
 		shape.setFamily(PShape.PATH);
-		shape.setFill(RGB.WHITE);
+		shape.setFill(Colors.WHITE);
 		shape.setFill(closed);
 		shape.setStroke(true);
-		shape.setStroke(closed ? RGB.PINK : RGB.WHITE);
+		shape.setStroke(closed ? Colors.PINK : Colors.WHITE);
 		shape.setStrokeWeight(2);
 
 		shape.beginShape();
@@ -1352,9 +1352,9 @@ public final class PGS_Conversion {
 		PShape shape = new PShape();
 		shape.setFamily(PShape.PATH);
 		shape.setFill(true);
-		shape.setFill(RGB.WHITE);
+		shape.setFill(Colors.WHITE);
 		shape.setStroke(true);
-		shape.setStroke(RGB.PINK);
+		shape.setStroke(Colors.PINK);
 		shape.setStrokeWeight(4);
 
 		shape.beginShape();

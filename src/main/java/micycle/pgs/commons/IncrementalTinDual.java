@@ -13,7 +13,7 @@ import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
 
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.ColorUtils;
 import processing.core.PConstants;
 import processing.core.PShape;
 
@@ -158,9 +158,9 @@ public class IncrementalTinDual {
 
 		final PShape dualFace = new PShape(PShape.GEOMETRY);
 		dualFace.setFill(true);
-		dualFace.setFill(RGB.composeColor(0, 150, 200, 128));
+		dualFace.setFill(ColorUtils.composeColor(0, 150, 200, 128));
 		dualFace.setStroke(true);
-		dualFace.setStroke(RGB.composeColor(255, 255, 255));
+		dualFace.setStroke(ColorUtils.composeColor(255, 255, 255));
 		dualFace.setStrokeWeight(2);
 		dualFace.beginShape();
 		faceVertices.forEach(v -> dualFace.vertex((float) v.getX(), (float) v.getY()));

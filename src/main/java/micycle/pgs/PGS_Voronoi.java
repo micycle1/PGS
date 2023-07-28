@@ -24,7 +24,7 @@ import org.tinfour.voronoi.BoundedVoronoiBuildOptions;
 import org.tinfour.voronoi.BoundedVoronoiDiagram;
 import org.tinfour.voronoi.ThiessenPolygon;
 
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.Colors;
 import micycle.pgs.commons.Nullable;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -405,8 +405,8 @@ public final class PGS_Voronoi {
 		}).collect(Collectors.toList());
 
 		PShape voronoiCells = PGS_Conversion.flatten(faces);
-		PGS_Conversion.setAllFillColor(voronoiCells, RGB.WHITE);
-		PGS_Conversion.setAllStrokeColor(voronoiCells, RGB.PINK, 2);
+		PGS_Conversion.setAllFillColor(voronoiCells, Colors.WHITE);
+		PGS_Conversion.setAllStrokeColor(voronoiCells, Colors.PINK, 2);
 
 		return voronoiCells;
 	}

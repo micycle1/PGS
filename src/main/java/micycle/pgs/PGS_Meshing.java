@@ -36,8 +36,7 @@ import org.tinfour.utils.TriangleCollector;
 import org.tinspin.index.PointIndex;
 import org.tinspin.index.kdtree.KDTree;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
-
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.Colors;
 import micycle.pgs.commons.AreaMerge;
 import micycle.pgs.commons.IncrementalTinDual;
 import micycle.pgs.commons.PEdge;
@@ -296,8 +295,8 @@ public class PGS_Meshing {
 		// TODO SEE HOT: Hodge-Optimized Triangulations - use voronoi dual / HOT
 		final IncrementalTinDual dual = new IncrementalTinDual(triangulation);
 		final PShape dualMesh = dual.getMesh();
-		PGS_Conversion.setAllFillColor(dualMesh, RGB.WHITE);
-		PGS_Conversion.setAllStrokeColor(dualMesh, RGB.PINK, 2);
+		PGS_Conversion.setAllFillColor(dualMesh, Colors.WHITE);
+		PGS_Conversion.setAllStrokeColor(dualMesh, Colors.PINK, 2);
 		return dualMesh;
 	}
 
@@ -360,8 +359,8 @@ public class PGS_Meshing {
 		 * https://acdl.mit.edu/ESP/Publications/IMR28.pdf
 		 */
 
-		PGS_Conversion.setAllFillColor(quads, RGB.WHITE);
-		PGS_Conversion.setAllStrokeColor(quads, RGB.PINK, 2);
+		PGS_Conversion.setAllFillColor(quads, Colors.WHITE);
+		PGS_Conversion.setAllStrokeColor(quads, Colors.PINK, 2);
 
 		return quads;
 	}

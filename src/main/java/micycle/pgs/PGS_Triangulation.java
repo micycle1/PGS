@@ -33,7 +33,7 @@ import org.tinfour.utils.HilbertSort;
 import org.tinfour.utils.TriangleCollector;
 
 import micycle.pgs.PGS.LinearRingIterator;
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.Colors;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
 import processing.core.PConstants;
@@ -370,8 +370,8 @@ public final class PGS_Triangulation {
 			triangulation.addChild(triangle);
 		});
 
-		PGS_Conversion.setAllFillColor(triangulation, RGB.WHITE);
-		PGS_Conversion.setAllStrokeColor(triangulation, RGB.PINK, 2);
+		PGS_Conversion.setAllFillColor(triangulation, Colors.WHITE);
+		PGS_Conversion.setAllStrokeColor(triangulation, Colors.PINK, 2);
 
 		return triangulation;
 	}
@@ -461,8 +461,8 @@ public final class PGS_Triangulation {
 			TriangleCollector.visitTriangles(triangulation, triangleVertexConsumer);
 		}
 
-		PGS_Conversion.setAllFillColor(out, RGB.WHITE);
-		PGS_Conversion.setAllStrokeColor(out, RGB.PINK, 2);
+		PGS_Conversion.setAllFillColor(out, Colors.WHITE);
+		PGS_Conversion.setAllStrokeColor(out, Colors.PINK, 2);
 
 		return out;
 	}

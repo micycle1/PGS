@@ -29,7 +29,7 @@ import org.locationtech.jts.noding.snap.SnappingNoder;
 import org.locationtech.jts.operation.linemerge.LineMerger;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.Colors;
 import micycle.pgs.commons.FastPolygonizer;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
@@ -58,14 +58,14 @@ final class PGS {
 	/**
 	 * Create a LINES PShape, ready for vertices (shape.vertex(x, y) calls).
 	 * 
-	 * @param strokeColor  nullable (default = {@link RGB#PINK})
+	 * @param strokeColor  nullable (default = {@link Colors#PINK})
 	 * @param strokeCap    nullable (default = <code>ROUND</code>)
 	 * @param strokeWeight nullable (default = <code>2</code>)
 	 * @return LINES PShape ready for vertex calls
 	 */
 	static final PShape prepareLinesPShape(@Nullable Integer strokeColor, @Nullable Integer strokeCap, @Nullable Integer strokeWeight) {
 		if (strokeColor == null) {
-			strokeColor = RGB.PINK;
+			strokeColor = Colors.PINK;
 		}
 		if (strokeCap == null) {
 			strokeCap = ROUND;
@@ -119,7 +119,7 @@ final class PGS {
 		rect.setFill(255);
 		rect.setStroke(true);
 		rect.setStrokeWeight(4);
-		rect.setStroke(RGB.PINK);
+		rect.setStroke(Colors.PINK);
 		rect.beginShape();
 		rect.vertex((float) x, (float) y);
 		rect.vertex((float) (x + w), (float) y);

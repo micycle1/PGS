@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.SplittableRandom;
 
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.Colors;
 import micycle.pgs.commons.DoyleSpiral;
 import micycle.pgs.commons.HatchTiling;
 import micycle.pgs.commons.PenroseTiling;
@@ -132,8 +132,8 @@ public final class PGS_Tiling {
 
 		final PShape divisions = new PShape(PConstants.GROUP);
 		divideRect(p1, p2, p3, p4, depth, divisions, r);
-		PGS_Conversion.setAllFillColor(divisions, RGB.WHITE);
-		PGS_Conversion.setAllStrokeColor(divisions, RGB.PINK, 2);
+		PGS_Conversion.setAllFillColor(divisions, Colors.WHITE);
+		PGS_Conversion.setAllStrokeColor(divisions, Colors.PINK, 2);
 		return divisions;
 	}
 
@@ -151,7 +151,7 @@ public final class PGS_Tiling {
 	public static PShape hatchSubdivision(double width, double height, int gridCountX, int gridCountY, long seed) {
 		final HatchTiling ht = new HatchTiling((int) width, (int) height, gridCountX, gridCountY);
 		PShape tiling = ht.getTiling(seed);
-		PGS_Conversion.setAllStrokeColor(tiling, RGB.PINK, 4);
+		PGS_Conversion.setAllStrokeColor(tiling, Colors.PINK, 4);
 		return tiling;
 	}
 
@@ -315,10 +315,10 @@ public final class PGS_Tiling {
 		final double span = sideLength * ROOT3;
 		final PShape hexagon = new PShape(PShape.PATH);
 		hexagon.setStroke(true);
-		hexagon.setStroke(RGB.PINK);
+		hexagon.setStroke(Colors.PINK);
 		hexagon.setStrokeWeight(2);
 		hexagon.setFill(true);
-		hexagon.setFill(RGB.WHITE);
+		hexagon.setFill(Colors.WHITE);
 
 		hexagon.beginShape();
 		if (flat) {

@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.Colors;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -151,8 +151,8 @@ public class FastPolygonizer {
 				polygon.setStroke(true);
 				polygon.setStrokeWeight(4);
 				polygon.setStrokeCap(PConstants.ROUND);
-				polygon.setFill(RGB.WHITE);
-				polygon.setStroke(RGB.PINK);
+				polygon.setFill(Colors.WHITE);
+				polygon.setStroke(Colors.PINK);
 
 				polygon.beginShape();
 				while (!stack.isEmpty()) {
