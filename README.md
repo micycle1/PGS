@@ -234,9 +234,11 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
   <tr>
     <td align="center" valign="center"><b>Distance Field</td>
+    <td align="center" valign="center"><b>Center Line</td>
   </tr>
   <tr>
     <td valign="top"><img src="resources/contour/distanceField.png"></td>
+    <td valign="top"><img src="resources/contour/centerLine.gif"></td>
   </tr>
     </tr>
     <tr>

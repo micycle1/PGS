@@ -62,6 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `obstaclePack()` to `PGS_CirclePacking`. Packs circles of varying radii within a given shape, whilst respecting pointal obstacles.
 * `align()` to `PGS_Transformation`. Aligns one polygon shape to another, by finding the optimal transformation.
 * `extractInnerEdges()` to `PGS_Meshing`. Extracts all inner edges from a mesh.
+* `centerLine()` to `PGS_Contour`. Determines the longest center line passing through a given shape.
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).

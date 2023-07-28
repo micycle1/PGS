@@ -21,11 +21,15 @@ import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 import org.joml.Vector2d;
 import org.joml.Vector2dc;
+import org.locationtech.jts.algorithm.Angle;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.dissolve.LineDissolver;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
+import org.locationtech.jts.geom.MultiLineString;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
@@ -48,6 +52,8 @@ import org.twak.camp.Skeleton;
 import org.twak.utils.collections.Loop;
 import org.twak.utils.collections.LoopL;
 
+import com.google.common.collect.Lists;
+
 import kendzi.math.geometry.skeleton.SkeletonConfiguration;
 import kendzi.math.geometry.skeleton.SkeletonOutput;
 import micycle.medialAxis.MedialAxis;
@@ -56,6 +62,7 @@ import micycle.pgs.PGS.GeometryIterator;
 import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.color.RGB;
 import micycle.pgs.commons.PEdge;
+import net.jafama.FastMath;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -626,6 +633,118 @@ public final class PGS_Contour {
 		PShape i = PGS_ShapeBoolean.intersect(shape, out);
 		PGS_Conversion.disableAllFill(i); // since some shapes may be polygons
 		return i;
+	}
+
+	/**
+	 * Calculates the longest center line passing through a given shape (using
+	 * default straightness weighting and smoothing parameters).
+	 * <p>
+	 * The center line is determined based on the medial axis of the shape; it
+	 * endpoints are always leaf vertices of the medial axis, and the line will pass
+	 * through the center coordinate of the shape's largest inscribed circle.
+	 * 
+	 * @param shape The non-GROUP PShape representing the input shape for which the
+	 *              longest center line is to be calculated.
+	 * @return A new PShape representing the smoothed longest center line of the
+	 *         input shape.
+	 * @see #centerLine(PShape, double, double)
+	 * @since 1.3.1
+	 */
+	public static PShape centerLine(PShape shape) {
+		return centerLine(shape, 0.7, 50);
+	}
+
+	/**
+	 * Calculates the longest center line passing through a given shape.
+	 * <p>
+	 * The center line is determined based on the medial axis of the shape; it
+	 * endpoints are always leaf vertices of the medial axis, and the line will pass
+	 * through the center coordinate of the shape's largest inscribed circle.
+	 * <p>
+	 * The method can promote paths that are straighter, even if they are somewhat
+	 * shorter than the longest possible line, by weighting them according to
+	 * <code>straightnessWeighting</code>.
+	 * <p>
+	 * This method can be used to find the placement position for overlayed curved
+	 * text label.
+	 * 
+	 * @param shape                 The non-GROUP PShape representing the input
+	 *                              shape for which the longest center line is to be
+	 *                              calculated.
+	 * @param straightnessWeighting A value in [0...1] to determine how straighter
+	 *                              paths should be weighted (preferred over the
+	 *                              longest possible center line). 0 is no
+	 *                              additional weighting - the longest path is
+	 *                              chosen despite how concave it is - and 1 is
+	 *                              maximum weighting. A good starting value to use
+	 *                              is ~0.7.
+	 * @param smoothing             Gaussian smoothing parameter. A good starting
+	 *                              value to use is ~50.
+	 * @return A new PShape representing the smoothed longest center line of the
+	 *         input shape.
+	 * @since 1.3.1
+	 */
+	public static PShape centerLine(PShape shape, double straightnessWeighting, double smoothing) {
+		/*
+		 * For general polygons, the medial root always trifurcates into 3 distinct
+		 * paths/sub-trees. I assume the longest center line passes through the root, so
+		 * we know that one vertex (origin) of the longest line belongs to the one of
+		 * the paths and the other vertex (terminus) belongs to one of the two other
+		 * paths. So we look at the euclidean distance between pairs of leaf vertices,
+		 * where each leaf in the pair belongs to a distinct path, and select the pair
+		 * that maximises this distance to be the longest center line. One additional
+		 * factor is we multiply the euclidean distance by the angle the line makes with
+		 * the root node in order to promote paths that are straighter, even if they are
+		 * somewhat shorter.
+		 */
+		MedialAxis m = new MedialAxis(fromPShape(shape));
+
+		List<micycle.medialAxis.MedialAxis.Edge> longestPath = new ArrayList<>();
+		List<MedialDisk> subTree1 = m.getDescendants(m.getRoot().children.get(0)).stream().filter(d -> d.degree == 0)
+				.collect(Collectors.toList());
+		List<MedialDisk> subTree2 = m.getDescendants(m.getRoot().children.get(1)).stream().filter(d -> d.degree == 0)
+				.collect(Collectors.toList());
+		if (m.getRoot().children.size() == 2) {
+			// special case of elliptical (etc.) shapes
+			longestPath = new ArrayList<>(m.getEdges());
+		} else {
+			List<MedialDisk> subTree3 = m.getDescendants(m.getRoot().children.get(2)).stream().filter(d -> d.degree == 0)
+					.collect(Collectors.toList());
+
+			MedialDisk longestPathD1 = null;
+			MedialDisk longestPathD2 = null;
+
+			final List<List<MedialDisk>> diskPairs = new ArrayList<>();
+			diskPairs.addAll(Lists.cartesianProduct(subTree1, subTree2));
+			diskPairs.addAll(Lists.cartesianProduct(subTree1, subTree3));
+			diskPairs.addAll(Lists.cartesianProduct(subTree2, subTree3));
+
+			double maxWeight = Double.NEGATIVE_INFINITY;
+			for (List<MedialDisk> diskPair : diskPairs) {
+				final MedialDisk d1 = diskPair.get(0);
+				final MedialDisk d2 = diskPair.get(1);
+				double angle = Angle.angleBetween(d1.position, m.getRoot().position, d2.position);
+				// could also use euclid distanc between d1 and d2
+				angle = FastMath.pow(1 + angle, straightnessWeighting);
+				double pathweight = (d1.distance + d2.distance) * Math.max((angle - 1), 1);
+				if (pathweight > maxWeight) {
+					maxWeight = pathweight;
+					longestPathD1 = d1;
+					longestPathD2 = d2;
+				}
+			}
+
+			longestPath.addAll(m.getEdgesToRoot(longestPathD1));
+			longestPath.addAll(m.getEdgesToRoot(longestPathD2));
+		}
+
+		List<LineString> strings = longestPath.stream().map(e -> e.lineString).collect(Collectors.toList());
+		MultiLineString stringsGeometry = GEOM_FACTORY.createMultiLineString(GeometryFactory.toLineStringArray(strings));
+		PShape longestPathShape = toPShape(LineDissolver.dissolve(stringsGeometry));
+		longestPathShape = PGS_Morphology.simplify(longestPathShape, 1);
+		longestPathShape = PGS_Morphology.smoothGaussian(longestPathShape, smoothing);
+
+		return longestPathShape;
 	}
 
 	/**

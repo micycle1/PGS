@@ -232,7 +232,7 @@
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>JMedialAxis</artifactId>
-			<version>b2d29f0413</version>
+			<version>5207bec2f2</version>
 		</dependency>
 		<dependency>
 			<groupId>org.dyn4j</groupId>
