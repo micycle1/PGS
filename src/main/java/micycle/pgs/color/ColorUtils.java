@@ -2,6 +2,8 @@ package micycle.pgs.color;
 
 import com.scrtwpns.Mixbox;
 
+import net.jafama.FastMath;
+
 /**
  * Provides static methods for Processing color generation (that doesn't require
  * a PApplet instance).
@@ -51,7 +53,8 @@ public class ColorUtils {
 	}
 
 	/**
-	 * Decompose color integer (ARGB) into its 3 separate ColorUtils components (0...255)
+	 * Decompose color integer (ARGB) into its 3 separate ColorUtils components
+	 * (0...255)
 	 * 
 	 * @param clr
 	 * @return [R,G,B] 0...255
@@ -80,7 +83,7 @@ public class ColorUtils {
 	 * @param in
 	 * @return
 	 */
-	static int composeclr(float[] RGBA) {
+	static int composeclr(double[] RGBA) {
 		return (int) (RGBA[3] * 255) << 24 | (int) (RGBA[0] * 255) << 16 | (int) (RGBA[1] * 255) << 8 | (int) (RGBA[2] * 255);
 	}
 
@@ -123,6 +126,23 @@ public class ColorUtils {
 	 */
 	public static int pigmentMix(int colorA, int colorB, float t) {
 		return Mixbox.lerp(colorA, colorB, t);
+	}
+
+	/**
+	 * Produces a smooth hue-cycling rainbow.
+	 * 
+	 * @param t 0...1]
+	 * @return RGB color integer
+	 */
+	public static int sinebow(double t) {
+		t = 0.5f - t;
+		double[] cols = new double[] { sin2(t), sin2(t + (1 / 3d)), sin2(t + (2 / 3d)), 1 };
+		return composeclr(cols);
+	}
+
+	private static double sin2(double t) {
+		double z = FastMath.sin(Math.PI * t);
+		return z * z;
 	}
 
 }

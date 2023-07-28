@@ -141,7 +141,9 @@ public final class PGS_Voronoi {
 	 *                      diagram.
 	 * @param relaxations   the number of times to relax the diagram. 0 or greater.
 	 * 
-	 * @return a GROUP PShape, where each child shape is a Voronoi cell
+	 * @return a GROUP PShape, where each child shape is a Voronoi cell. The
+	 *         <code>.name</code> value of each cell is set to the integer index of
+	 *         its vertex site.
 	 * @see #innerVoronoi(Collection)
 	 */
 	public static PShape innerVoronoi(final PShape shape, final boolean constrain, @Nullable final double[] bounds,
@@ -166,13 +168,13 @@ public final class PGS_Voronoi {
 		for (int i = 0; i < coords.length; i++) {
 			Coordinate p = coords[i];
 			if (boundsRect.contains(p.x, p.y)) {
-				vertices.add(new Vertex(p.x, p.y, Double.NaN, 1)); // index == 1
+				vertices.add(new Vertex(p.x, p.y, Double.NaN, i));
 			}
 		}
 		if (steinerPoints != null) {
 			steinerPoints.forEach(p -> {
 				if (boundsRect.contains(p.x, p.y)) {
-					vertices.add(new Vertex(p.x, p.y, Double.NaN));
+					vertices.add(new Vertex(p.x, p.y, vertices.size()));
 				}
 			});
 		}
@@ -188,7 +190,7 @@ public final class PGS_Voronoi {
 					PVector centroid = computeCentroid(p);
 					PVector site = new PVector((float) p.getVertex().x, (float) p.getVertex().y);
 					site.add(PVector.sub(centroid, site).mult(1.5f)); // over-relax (1.5x)
-					newSite = new Vertex(site.x, site.y, Double.NaN);
+					newSite = new Vertex(site.x, site.y, p.getIndex());
 					maxDistDelta = Math.max(maxDistDelta, p.getVertex().getDistance(centroid.x, centroid.y));
 				} else {
 					newSite = p.getVertex();
@@ -203,13 +205,18 @@ public final class PGS_Voronoi {
 			v = new BoundedVoronoiDiagram(newSites, options);
 		}
 
-		List<Geometry> faces = v.getPolygons().stream().filter(p -> p.getEdges().size() > 1).map(PGS_Voronoi::toPolygon).collect(Collectors.toList());
+		List<Geometry> faces = v.getPolygons().stream().filter(p -> p.getEdges().size() > 1).map(PGS_Voronoi::toPolygon)
+				.collect(Collectors.toList());
 		if (constrain && g instanceof Polygonal) {
 			faces = faces.parallelStream().map(f -> OverlayNG.overlay(f, g, OverlayNG.INTERSECTION)).collect(Collectors.toList());
 			faces.removeIf(f -> f.getNumPoints() == 0); // (odd, artifacts of intersection?)
 		}
 
-		return PGS_Conversion.toPShape(faces);
+		PShape facesShape = PGS_Conversion.toPShape(faces);
+		for (int i = 0; i < faces.size(); i++) {
+			facesShape.getChild(i).setName(Integer.toString((int) faces.get(i).getUserData()));
+		}
+		return facesShape;
 	}
 
 	/**
@@ -418,7 +425,10 @@ public final class PGS_Voronoi {
 			coords[i++] = new Coordinate(e.getA().x, e.getA().y);
 		}
 		coords[i] = new Coordinate(polygon.getEdges().get(0).getA().x, polygon.getEdges().get(0).getA().y); // close polygon
-		return PGS.GEOM_FACTORY.createPolygon(coords);
+
+		Polygon p = PGS.GEOM_FACTORY.createPolygon(coords);
+		p.setUserData(polygon.getIndex()); // preserve polygon index
+		return p;
 	}
 
 	private static PVector computeCentroid(ThiessenPolygon polygon) {
