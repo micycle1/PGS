@@ -139,7 +139,8 @@ public class AreaMerge {
 	static class FaceGroup implements Comparable<FaceGroup> {
 
 		private double area;
-		private Map<PShape, Double> faces; // faces comprising this group (and their areas)
+		/** A map of faces comprising this group and their respective areas. */
+		private Map<PShape, Double> faces;
 		private Set<PShape> neighborFaces; // union of neighbors of each face - faces themselves
 		private final NeighborCache<PShape, DefaultEdge> neighborCache;
 

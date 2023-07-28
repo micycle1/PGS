@@ -11,6 +11,7 @@ import static processing.core.PConstants.QUADRATIC_VERTEX;
 import java.awt.Shape;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.PathIterator;
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -30,6 +31,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.apache.commons.io.FileUtils;
 import org.jgrapht.alg.drawing.IndexedFRLayoutAlgorithm2D;
 import org.jgrapht.alg.drawing.LayoutAlgorithm2D;
 import org.jgrapht.alg.drawing.model.Box2D;
@@ -1094,6 +1096,25 @@ public final class PGS_Conversion {
 	}
 
 	/**
+	 * Converts a shape into <i>Well-Known Binary</i> format and writes the bytes to
+	 * a file.
+	 * 
+	 * @param shape    shape to process
+	 * @param filename Absolute file path (with filename and extension). Prefix with
+	 *                 "./" for a relative path.
+	 * @since 1.3.1
+	 */
+	public static void toWKB(PShape shape, String filename) {
+		WKBWriter writer = new WKBWriter();
+		byte[] bytes = writer.write(fromPShape(shape));
+		try {
+			FileUtils.writeByteArrayToFile(new File(filename), bytes);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	/**
 	 * Converts a geometry in <i>Well-Known Binary</i> format into a PShape.
 	 *
 	 * @param shapeWKB byte representation of shape to process
@@ -1108,6 +1129,27 @@ public final class PGS_Conversion {
 		} catch (ParseException e) {
 			return new PShape();
 		}
+	}
+
+	/**
+	 * Reads a shape from a (binary) file containing the <i>Well-Known Binary</i>
+	 * representation of it.
+	 * 
+	 * @param filename Absolute file path (with filename and extension). Prefix with
+	 *                 "./" for a relative path.
+	 * @return a PShape specified by the WKB in the file
+	 */
+	public static PShape fromWKB(String filename) {
+		byte[] shapeWKB;
+		try {
+			shapeWKB = FileUtils.readFileToByteArray(new File(filename));
+			WKBReader reader = new WKBReader();
+			return toPShape(reader.read(shapeWKB));
+		} catch (IOException | ParseException e) {
+			e.printStackTrace();
+			return new PShape();
+		}
+
 	}
 
 	/**

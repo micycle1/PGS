@@ -460,7 +460,7 @@ public final class PGS_Transformation {
 	public static PShape align(PShape alignShape, PShape baseShape, double alignmentRatio) {
 		final Geometry g1 = fromPShape(alignShape);
 		final Geometry g2 = fromPShape(baseShape);
-		if (g1.getGeometryType() != Geometry.TYPENAME_POLYGON || g2.getGeometryType() != Geometry.TYPENAME_POLYGON) {
+		if (!g1.getGeometryType().equals(Geometry.TYPENAME_POLYGON) || !g2.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
 			throw new IllegalArgumentException("Inputs to align() must be polygons.");
 		}
 		if (((Polygon) g1).getNumInteriorRing() > 0 || ((Polygon) g2).getNumInteriorRing() > 0) {

@@ -20,7 +20,10 @@ import org.locationtech.jts.dissolve.LineDissolver;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineSegment;
+import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Location;
+import org.locationtech.jts.geom.util.LineStringExtracter;
+import org.locationtech.jts.geom.util.LinearComponentExtracter;
 import org.locationtech.jts.noding.MCIndexSegmentSetMutualIntersector;
 import org.locationtech.jts.noding.NodedSegmentString;
 import org.locationtech.jts.noding.SegmentIntersector;
@@ -409,6 +412,9 @@ public class PGS_SegmentSet {
 	 */
 	public static PShape dissolve(Collection<PEdge> segments) {
 		Geometry g = SegmentStringUtil.toGeometry(fromPEdges(segments), PGS.GEOM_FACTORY);
+		if (g.isEmpty()) {
+			return new PShape();
+		}
 		Geometry dissolved = LineDissolver.dissolve(g);
 		return PGS_Conversion.toPShape(dissolved);
 	}
@@ -419,25 +425,30 @@ public class PGS_SegmentSet {
 	 * This method iterates through all the child shapes of the input shape,
 	 * creating PEdge segments for each pair of consecutive vertices.
 	 *
-	 * @param shape shape from which to extract the edges.
-	 * @return list of unique PEdge segments representing the edges of the input
+	 * @param shape The shape from which to extract the edges. Supports holes and
+	 *              GROUP shapes.
+	 * @return A list of unique PEdge segments representing the edges of the input
 	 *         shape and its child shapes.
 	 * @since 1.3.1
 	 */
 	public static List<PEdge> fromPShape(PShape shape) {
-		Set<PEdge> edges = new HashSet<>(shape.getVertexCount() / 2);
-		for (PShape child : PGS_Conversion.getChildren(shape)) {
-			for (int i = 0; i < child.getVertexCount(); i++) {
-				final PVector a = child.getVertex(i);
-				final PVector b = child.getVertex((i + 1) % child.getVertexCount());
+		List<PEdge> edges = new ArrayList<>(shape.getFamily() != PShape.GROUP ? shape.getVertexCount() : shape.getChildCount() * 4);
+		@SuppressWarnings("unchecked")
+		List<LineString> strings = LinearComponentExtracter.getLines(PGS_Conversion.fromPShape(shape));
+		strings.forEach(s -> {
+			Coordinate[] coords = s.getCoordinates();
+			boolean closed = coords[0].equals2D(coords[coords.length - 1]);
+			for (int i = 0; i < coords.length - (closed ? 0 : 1); i++) {
+				Coordinate a = coords[i];
+				Coordinate b = coords[(i + 1) % coords.length];
 				if (a.equals(b)) {
 					continue;
 				}
-				final PEdge e = new PEdge(a, b);
+				final PEdge e = new PEdge(a.x, a.y, b.x, b.y);
 				edges.add(e);
 			}
-		}
-		return new ArrayList<>(edges);
+		});
+		return edges;
 	}
 
 	/**
