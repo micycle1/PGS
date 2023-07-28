@@ -10,7 +10,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 
-import org.junit.Ignore;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.LineString;
@@ -98,7 +98,7 @@ class FastPolygonizerTests {
 	}
 
 	@Test
-	@Ignore
+	@Disabled
 	void testRobustnessRandomly() {
 		Random r = new XoRoShiRo128PlusRandom(0);
 		for (int k = 0; k < 100; k++) {

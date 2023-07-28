@@ -247,18 +247,18 @@
 		<dependency>
 			<groupId>org.tinspin</groupId>
 			<artifactId>tinspin-indexes</artifactId>
-			<version>1.8.0</version>
+			<version>1.7.1</version>
 		</dependency>
 		<dependency> <!-- for test running -->
 			<groupId>org.junit.jupiter</groupId>
 			<artifactId>junit-jupiter-api</artifactId>
-			<version>[5.9,)</version>
+			<version>[5.10,)</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency> <!-- for test running -->
 			<groupId>org.junit.jupiter</groupId>
 			<artifactId>junit-jupiter-engine</artifactId>
-			<version>[5.9,)</version>
+			<version>[5.10,)</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
