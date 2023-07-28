@@ -574,7 +574,7 @@ public class PGS_Meshing {
 	 *              isn't conforming (i.e. adjacent edges do not necessarily have
 	 *              identical start and end coordinates)
 	 * @return the input shape, having been noded and polygonized
-	 * @since <code>public</code> since 1.3.1
+	 * @since <code>public</code> since 1.4.0
 	 */
 	public static PShape nodeNonMesh(PShape shape) {
 		final List<SegmentString> segmentStrings = new ArrayList<>(shape.getChildCount() * 3);
@@ -604,7 +604,7 @@ public class PGS_Meshing {
 	 *                 merged.
 	 * @param seed     the seed for the random number generator
 	 * @return a new GROUP PShape representing the result of the operation
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape stochasticMerge(PShape mesh, int nClasses, long seed) {
 		final RandomGenerator random = new XoRoShiRo128PlusRandomGenerator(seed);
@@ -668,7 +668,7 @@ public class PGS_Meshing {
 	 *                          Generally this should be set to true, otherwise the
 	 *                          mesh will shrink as it is smoothed.
 	 * @return the smoothed mesh
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape smoothMesh(PShape mesh, int iterations, boolean preservePerimeter) {
 		PMesh m = new PMesh(mesh);
@@ -704,7 +704,7 @@ public class PGS_Meshing {
 	 *                           perimeter). Generally this should be set to true,
 	 *                           otherwise the mesh will shrink as it is smoothed.
 	 * @return the smoothed mesh
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape smoothMesh(PShape mesh, double displacementCutoff, boolean preservePerimeter) {
 		displacementCutoff = Math.max(displacementCutoff, 1e-3);
@@ -730,7 +730,7 @@ public class PGS_Meshing {
 	 * @param preservePerimeter whether to only simplify inner-boundaries and
 	 *                          leaving outer boundary edges unchanged.
 	 * @return GROUP shape comprising the simplfied mesh faces
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape simplifyMesh(PShape mesh, double tolerance, boolean preservePerimeter) {
 		Geometry[] geometries = PGS_Conversion.getChildren(mesh).stream().map(s -> PGS_Conversion.fromPShape(s)).toArray(Geometry[]::new);
@@ -751,7 +751,7 @@ public class PGS_Meshing {
 	 * 
 	 * @param mesh The conforming mesh shape to extract inner edges from.
 	 * @return A shape representing the dissolved linework of inner mesh edges.
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape extractInnerEdges(PShape mesh) {
 		List<PEdge> edges = PGS_SegmentSet.fromPShape(mesh);
@@ -775,7 +775,7 @@ public class PGS_Meshing {
 	 *                      faces. Any faces smaller than this threshold will be
 	 *                      consolidated into their neighboring faces.
 	 * @return GROUP shape comprising the merged mesh faces
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape areaMerge(PShape mesh, double areaThreshold) {
 		PShape merged = AreaMerge.areaMerge(mesh, areaThreshold);
@@ -793,7 +793,7 @@ public class PGS_Meshing {
 	 *              split into. Should be a positive integer, but if less than 1,
 	 *              it's reset to 1.
 	 * @return A new mesh PShape created from the split edges.
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape splitEdges(PShape split, int parts) {
 		parts = Math.max(1, parts);

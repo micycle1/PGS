@@ -648,7 +648,7 @@ public final class PGS_Contour {
 	 * @return A new PShape representing the smoothed longest center line of the
 	 *         input shape.
 	 * @see #centerLine(PShape, double, double)
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape centerLine(PShape shape) {
 		return centerLine(shape, 0.7, 50);
@@ -682,7 +682,7 @@ public final class PGS_Contour {
 	 *                              value to use is ~50.
 	 * @return A new PShape representing the smoothed longest center line of the
 	 *         input shape.
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape centerLine(PShape shape, double straightnessWeighting, double smoothing) {
 		/*

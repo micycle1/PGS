@@ -163,7 +163,7 @@ public final class PGS_Optimisation {
 	 * @param shape
 	 * @param tolerance a value of 2-5 is usually suitable
 	 * @return shape representing the maximum square
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape maximumPerimeterSquare(PShape shape, double tolerance) {
 		shape = PGS_Morphology.simplify(shape, tolerance / 2);
@@ -254,7 +254,7 @@ public final class PGS_Optimisation {
 	 * 
 	 * @param shape The shape to compute the minimum-area rectangle for.
 	 * @return A PShape object representing the minimum-area rectangle.
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape minimumAreaRectangle(PShape shape) {
 		return toPShape(MinimumAreaRectangle.getMinimumRectangle(fromPShape(shape)));
@@ -385,7 +385,7 @@ public final class PGS_Optimisation {
 	 *         of the found largest empty circles as {@code PVector(x, y, r)}, where
 	 *         {@code x} and {@code y} are the center coordinates, and {@code r} is
 	 *         the radius
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static List<PVector> largestEmptyCircles(PShape obstacles, @Nullable PShape boundary, int n, double tolerance) {
 		tolerance = Math.max(0.01, tolerance);
@@ -411,7 +411,7 @@ public final class PGS_Optimisation {
 	 * @return A list of PVectors, each representing one circle: (.x, .y) represent
 	 *         the center point and .z represents radius.
 	 * @see #circleCoverage(PShape, int, long)
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static List<PVector> circleCoverage(PShape shape, int n) {
 		return circleCoverage(shape, n, System.nanoTime());
@@ -428,7 +428,7 @@ public final class PGS_Optimisation {
 	 * @return A list of PVectors, each representing one circle: (.x, .y) represent
 	 *         the center point and .z represents radius.
 	 * @see #circleCoverage(PShape, int)
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static List<PVector> circleCoverage(PShape shape, int n, long seed) {
 		// same as 'Simple Methods to Represent Shapes with Sample Spheres'
@@ -495,7 +495,7 @@ public final class PGS_Optimisation {
 	 *                   rectangles
 	 * @param heuristic  the packing heuristic to use. The heuristic determines
 	 *                   rules for how every subsequent rectangle is placed
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 * @return a GROUP PShape, where each immediate child is a GROUP shape
 	 *         corresponding to a bin; the child shapes of each bin are rectangles.
 	 *         Bins are positioned at (0, 0).
@@ -537,7 +537,7 @@ public final class PGS_Optimisation {
 	 * @param spacing    the amount of spacing between each packed shape (>= 0).
 	 * @return a new GROUP PShape object containing the packed shapes arranged in
 	 *         columns
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape binPack(List<PShape> shapes, double binWidth, double binHeight, int binColumns, double spacing) {
 		if (shapes.isEmpty()) {
@@ -732,7 +732,7 @@ public final class PGS_Optimisation {
 	 * @param viewPoint view point from which to compute visibility. If the input if
 	 *                  polygonal, the viewpoint may lie outside the polygon.
 	 * @return a polygonal shape representing the visibility polygon.
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 * @see #visibilityPolygon(PShape, Collection)
 	 */
 	public static PShape visibilityPolygon(PShape obstacles, PVector viewPoint) {
@@ -752,7 +752,7 @@ public final class PGS_Optimisation {
 	 *                   if polygonal, viewpoints may lie outside the polygon.
 	 * @return a polygonal shape representing the visibility polygon (possibly a
 	 *         GROUP shape of disjoint visibility polygons).
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 * @see #visibilityPolygon(PShape, PVector)
 	 */
 	public static PShape visibilityPolygon(PShape obstacles, Collection<PVector> viewPoints) {

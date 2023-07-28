@@ -774,7 +774,7 @@ public final class PGS_Conversion {
 	 * 
 	 * @param vertices
 	 * @return a POINTS PShape
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static final PShape toPointsPShape(PVector... vertices) {
 		return toPointsPShape(Arrays.asList(vertices));
@@ -806,7 +806,7 @@ public final class PGS_Conversion {
 	 *                The x and y components represent the center of the circle, and
 	 *                the z component represents the radius.
 	 * @return The PShape object representing the collection of circles.
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static final PShape toCircles(Collection<PVector> circles) {
 		return toPShape(circles.stream().map(c -> PGS_Construction.createEllipse(c.x, c.y, c.z, c.z)).collect(Collectors.toList()));
@@ -895,7 +895,7 @@ public final class PGS_Conversion {
 	 * 
 	 * @param graph the graph to be converted into a PShape.
 	 * @return a PShape representing the polygonized edges of the graph.
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape fromGraph(SimpleGraph<PVector, PEdge> graph) {
 		return PGS.polygonizeEdges(graph.edgeSet());
@@ -988,7 +988,7 @@ public final class PGS_Conversion {
 	 *         containing no graph loops or multiple edges. Each vertex in the graph
 	 *         represents the centroid of a face in the input mesh, and each edge
 	 *         represents adjacency between two faces.
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 * @see #toDualGraph(PShape)
 	 * @see PGS_ShapePredicates#centroid(PShape)
 	 */
@@ -1102,7 +1102,7 @@ public final class PGS_Conversion {
 	 * @param shape    shape to process
 	 * @param filename Absolute file path (with filename and extension). Prefix with
 	 *                 "./" for a relative path.
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static void toWKB(PShape shape, String filename) {
 		WKBWriter writer = new WKBWriter();
@@ -1341,7 +1341,7 @@ public final class PGS_Conversion {
 	 * @param shell vertices of the shell of the polygon
 	 * @param holes (optional) list of holes
 	 * @return
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape fromPVector(List<PVector> shell, @Nullable List<List<PVector>> holes) {
 		boolean closed = false;
@@ -1397,7 +1397,7 @@ public final class PGS_Conversion {
 	 * @param keepClosed flag to determine whether to keep the (last) closing vertex
 	 *                   in the output if the input forms a closed polygon
 	 * @return coordinate array in the form [[x1, y1], [x2, y2]]
-	 * @since 1.3.1 an array of coordinates representing the PShape
+	 * @since 1.4.0 an array of coordinates representing the PShape
 	 * @see #fromArray(double[][])
 	 */
 	public static double[][] toArray(PShape shape, boolean keepClosed) {
@@ -1421,7 +1421,7 @@ public final class PGS_Conversion {
 	 *              open line) [[x1, y1], [x2, y2]...]
 	 * @param close close the coordinates (if unclosed)
 	 * @return a PShape represented by the coordinates
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 * @see #toArray(PShape)
 	 */
 	public static PShape fromArray(double[][] shape, boolean close) {
@@ -1595,7 +1595,7 @@ public final class PGS_Conversion {
 	 * @param comparator PShape comparison function
 	 * @return a new GROUP PShape object having its children in a different order.
 	 *         Child shapes reference the same objects as the input.
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape reorderChildren(PShape shape, Comparator<PShape> comparator) {
 		List<PShape> children = getChildren(shape);
@@ -1703,7 +1703,7 @@ public final class PGS_Conversion {
 	 * @param controlPoint
 	 * @param end
 	 * @return
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape fromQuadraticBezier(PVector start, PVector controlPoint, PVector end) {
 		// convert to cubic bezier form
@@ -1721,7 +1721,7 @@ public final class PGS_Conversion {
 	 * @param controlPoint2
 	 * @param end
 	 * @return
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape fromCubicBezier(PVector start, PVector controlPoint1, PVector controlPoint2, PVector end) {
 		CubicBezier bezier = new CubicBezier(start.x, start.y, controlPoint1.x, controlPoint1.y, controlPoint2.x, controlPoint2.y, end.x,

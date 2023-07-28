@@ -150,7 +150,7 @@ public final class PGS_PointSet {
 	 * 
 	 * @param points list of points to cluster
 	 * @param groups desired number of clustered groups
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 * @see #cluster(Collection, int, long)
 	 * @return list of groups, where each group is a list of PVectors
 	 */
@@ -168,7 +168,7 @@ public final class PGS_PointSet {
 	 * @param points list of points to cluster
 	 * @param groups desired number of clustered groups
 	 * @param seed   random seed
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 * @return list of groups, where each group is a list of PVectors
 	 * @see #cluster(Collection, int)
 	 */
@@ -197,7 +197,7 @@ public final class PGS_PointSet {
 	 * (set to 1).
 	 * 
 	 * @param points list of points, where the z coordinate is point weight
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 * @return 2D median point
 	 */
 	public static PVector weightedMedian(Collection<PVector> points) {
@@ -831,7 +831,7 @@ public final class PGS_PointSet {
 	 * @param xMax x-coordinate of boundary maximum
 	 * @param yMax y-coordinate of boundary maximum
 	 * @param n    number of points to generate
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 * @return
 	 */
 	public static List<PVector> sobolLDS(double xMin, double yMin, double xMax, double yMax, int n) {

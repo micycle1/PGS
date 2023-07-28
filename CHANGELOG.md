@@ -5,7 +5,7 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
-## **1.3.1** *(2023-06-xx)*
+## **1.4.0** *(2023-06-xx)*
 
 ### Added
 *  `sobolLDS()` to `PGS_PointSet`. Generates a set of 2D deterministic stratified points from the Sobol low discrepancy sequence.

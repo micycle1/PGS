@@ -278,7 +278,7 @@ public final class PGS_ShapeBoolean {
 	 * @param shell polygonal shape
 	 * @param holes single polygon, or GROUP shape, whose children are holes that
 	 *              lie within the shell
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 * @see #subtract(PShape, PShape)
 	 * @return
 	 */

@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>micycle</groupId>
 	<artifactId>PGS</artifactId>
-	<version>1.3.1-SNAPSHOT</version>
+	<version>1.4.0</version>
 	<name>Processing Geometry Suite</name>
 	<description>Geometric algorithms for Processing</description>
 
@@ -33,7 +33,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
-				<version>3.3</version>
+				<version>3.3.0</version>
 				<executions>
 					<execution>
 						<id>attach-sources</id>
@@ -247,7 +247,7 @@
 		<dependency>
 			<groupId>org.tinspin</groupId>
 			<artifactId>tinspin-indexes</artifactId>
-			<version>1.7.1</version>
+			<version>1.8.0</version>
 		</dependency>
 		<dependency> <!-- for test running -->
 			<groupId>org.junit.jupiter</groupId>

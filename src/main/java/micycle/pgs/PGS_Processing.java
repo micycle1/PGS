@@ -645,7 +645,7 @@ public final class PGS_Processing {
 	 *              <code>0.5</code> produces maximal nesting.
 	 * @return A PShape representing the nested shape, including the input shape and
 	 *         all the nested levels.
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape nest(PShape shape, int n, double r) {
 		final Polygon polygon = (Polygon) fromPShape(shape);
@@ -768,7 +768,7 @@ public final class PGS_Processing {
 	 * @return a new PShape that represents the holes extracted from the input
 	 *         shape. If the input had multiple holes, the output is a GROUP PShape
 	 *         where each child is polygon of one hole.
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape extractHoles(PShape shape) {
 		final Geometry g = fromPShape(shape);
@@ -951,7 +951,7 @@ public final class PGS_Processing {
 	 * @param seed  number used to initialize the underlying pseudorandom number
 	 *              generator
 	 * @return a GROUP PShape, whose child shapes are partitions of the original
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	@SuppressWarnings("unchecked")
 	public static PShape equalPartition(final PShape shape, final int parts, long seed) {
@@ -1191,7 +1191,7 @@ public final class PGS_Processing {
 	 *                       should return <code>false</code>. You can use a lambda
 	 *                       expression or a method reference to implement the
 	 *                       Predicate function.
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 * @return A new PShape that contains only the children shapes of the input
 	 *         shape that satisfy the given Predicate function
 	 *         (<code>==false</code>).

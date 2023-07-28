@@ -307,7 +307,7 @@ public final class PGS_Morphology {
 	 *                tightly it is "pulled" towards underlying vertices). Suitable
 	 *                domain is [0.666...3].
 	 * @return a Hobby Curve
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape simplifyHobby(PShape shape, double tension) {
 		tension = Math.max(tension, 0.668); // prevent degeneracy
@@ -462,7 +462,7 @@ public final class PGS_Morphology {
 	 * @return A new PShape, simplified through the application of the Elliptic
 	 *         Fourier Descriptors up to the indicated order. This shape will always
 	 *         have the same number of vertices as the original.
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape smoothEllipticFourier(PShape shape, int descriptors) {
 		Geometry g = fromPShape(shape);

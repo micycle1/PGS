@@ -440,7 +440,7 @@ public final class PGS_Triangulation {
 	 * 
 	 * @param triangulation the IIncrementalTin object to convert
 	 * @return a GROUP PShape, where each child shape is one triangle
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape toPShape(IIncrementalTin triangulation) {
 		final PShape out = new PShape(PConstants.GROUP);

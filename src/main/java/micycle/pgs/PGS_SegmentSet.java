@@ -408,7 +408,7 @@ public class PGS_SegmentSet {
 	 * @param segments Collection of PEdge objects to dissolve into maximal-length
 	 *                 LineStrings
 	 * @return A PShape object representing the dissolved LineStrings
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape dissolve(Collection<PEdge> segments) {
 		Geometry g = SegmentStringUtil.toGeometry(fromPEdges(segments), PGS.GEOM_FACTORY);
@@ -429,7 +429,7 @@ public class PGS_SegmentSet {
 	 *              GROUP shapes.
 	 * @return A list of unique PEdge segments representing the edges of the input
 	 *         shape and its child shapes.
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static List<PEdge> fromPShape(PShape shape) {
 		List<PEdge> edges = new ArrayList<>(shape.getFamily() != PShape.GROUP ? shape.getVertexCount() : shape.getChildCount() * 4);
@@ -461,7 +461,7 @@ public class PGS_SegmentSet {
 	 *                 than 1 will stretch the edges, while a value between 0 and 1
 	 *                 will shrink them.
 	 * @return A new List of PEdges representing the stretched edges.
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static List<PEdge> stretch(List<PEdge> segments, double factor) {
 		List<PEdge> stretchedEdges = new ArrayList<>(segments.size());
@@ -531,7 +531,7 @@ public class PGS_SegmentSet {
 	 *                 shape
 	 * @param shape    the polygonal shape to check for interior segments
 	 * @return a list of interior segments contained within the shape
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static List<PEdge> getPolygonInteriorSegments(List<PEdge> segments, PShape shape) {
 		Geometry g = PGS_Conversion.fromPShape(shape);

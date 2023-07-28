@@ -253,7 +253,7 @@ public class PGS_Construction {
 	 * @param centerY the y-coordinate of the center of the shape
 	 * @param radius  the radius of the shape
 	 * @return a PShape representing the Taijitu shape
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape createTaijitu(double centerX, double centerY, double radius) {
 		Coordinate center = new Coordinate(centerX, centerY);
@@ -289,7 +289,7 @@ public class PGS_Construction {
 	 * @param radius        radius of the largest (enclosing) circle
 	 * @param notchPosition the fractional position, between 0 and 1, along the
 	 *                      diameter where the notch will be
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 * @return a PShape representing the Arbelos shape
 	 */
 	public static PShape createArbelos(double centerX, double centerY, double radius, double notchPosition) {
@@ -426,7 +426,7 @@ public class PGS_Construction {
 	 * @param height  height of the teardrop
 	 * @param m       order of the curve. Values of [2...5] give good results
 	 * @return
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape createTeardrop(final double centerX, final double centerY, double height, final double m) {
 		// https://mathworld.wolfram.com/TeardropCurve.html
@@ -457,7 +457,7 @@ public class PGS_Construction {
 	 * @param radius  maximum radius of gear teeth
 	 * @param n       number of gear teeth
 	 * @return the gear shape
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape createGear(final double centerX, final double centerY, final double radius, final int n) {
 		// https://mathworld.wolfram.com/GearCurve.html
@@ -562,7 +562,7 @@ public class PGS_Construction {
 	 *                   shapes).
 	 * @param seed       the seed for the random number generator
 	 * @return the sponge shape
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape createSponge(double width, double height, int generators, double thickness, double smoothing, int classes,
 			long seed) {
@@ -761,7 +761,7 @@ public class PGS_Construction {
 	 * @param cellHeight visual/pixel width of each cell
 	 * @return a stroked PATH PShape
 	 * @see #createRandomSFCurve(int, int, double, double, long)
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape createRandomSFCurve(int nColumns, int nRows, double cellWidth, double cellHeight) {
 		return createRandomSFCurve(nColumns, nRows, cellWidth, cellHeight, System.nanoTime());
@@ -780,7 +780,7 @@ public class PGS_Construction {
 	 * @param seed       random seed
 	 * @return a stroked PATH PShape
 	 * @see #createRandomSFCurve(int, int, double, double)
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape createRandomSFCurve(int nColumns, int nRows, double cellWidth, double cellHeight, long seed) {
 		RandomSpaceFillingCurve factory = new RandomSpaceFillingCurve(nColumns, nRows, seed);
@@ -822,7 +822,7 @@ public class PGS_Construction {
 	 *                     recommended. This is akin to increasing the depth of
 	 *                     fractal curve.
 	 * @param seed         the seed for the random number generator
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape createSuperRandomPolygon(double dimensions, int cells, double markFraction, int smoothing, int depth,
 			boolean orthogonal, boolean holes, long seed) {
@@ -857,7 +857,7 @@ public class PGS_Construction {
 	 *                  more "spiky".
 	 * @param seed      the seed for the random number generator
 	 * @return the random polygon shape
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape createRandomBezierPolygon(int nPoints, double scale, double radius, double spikiness, long seed) {
 		BezierShapeGenerator bsg = new BezierShapeGenerator(nPoints, 3, radius, spikiness);

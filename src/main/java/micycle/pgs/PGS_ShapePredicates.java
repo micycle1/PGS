@@ -274,7 +274,7 @@ public final class PGS_ShapePredicates {
 	 * 
 	 * @param shape
 	 * @return median point
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PVector median(PShape shape) {
 		List<PVector> points = PGS_Conversion.toPVector(shape);
@@ -420,7 +420,7 @@ public final class PGS_ShapePredicates {
 	 * 
 	 * @param shape
 	 * @return a value in [0, 1]
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static double convexity(PShape shape) {
 		// also see 'A New Convexity Measure for Polygons'
@@ -502,7 +502,7 @@ public final class PGS_ShapePredicates {
 	 * @param b polygonal shape
 	 * @return The EFD distance between the two provided PShapes. Smaller values
 	 *         indicate greater similarity or equivalence between the shapes.
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static double efdSimilarity(PShape a, PShape b) {
 		int n = Math.min(a.getVertexCount(), b.getVertexCount()) / 2;
@@ -594,7 +594,7 @@ public final class PGS_ShapePredicates {
 	 * 
 	 * @param mesh shape to test
 	 * @return true if the shape is a conforming mesh
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static boolean isConformingMesh(PShape mesh) {
 		Geometry[] geoms = PGS_Conversion.getChildren(mesh).stream().map(f -> fromPShape(f)).toArray(Geometry[]::new);
@@ -619,7 +619,7 @@ public final class PGS_ShapePredicates {
 	 * 
 	 * @param shape The PShape to validate.
 	 * @return {@code true} if the shape is valid, {@code false} otherwise.
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static boolean isValid(PShape shape) {
 		IsValidOp validate = new IsValidOp(fromPShape(shape));

@@ -84,7 +84,7 @@ public final class PGS_Transformation {
 	 * @param scale The scale factor by which the area of the shape should be
 	 *              scaled.
 	 * @return A new PShape representing the scaled shape.
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape scaleArea(PShape shape, double scale) {
 		Geometry geometry = fromPShape(shape);
@@ -100,7 +100,7 @@ public final class PGS_Transformation {
 	 * @param shape      The PShape to be scaled.
 	 * @param targetArea The target area for the shape.
 	 * @return The scaled PShape (now having an area of <code>targetArea</code>).
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape scaleAreaTo(PShape shape, double targetArea) {
 		Geometry geometry = fromPShape(shape);
@@ -432,7 +432,7 @@ public final class PGS_Transformation {
 	 * @param baseShape  the shape that the other shape will be aligned to.
 	 * @return a new PShape that is the transformed and aligned version of
 	 *         sourceShape.
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape align(PShape sourceShape, PShape transformShape) {
 		return align(sourceShape, transformShape, 1);
@@ -455,7 +455,7 @@ public final class PGS_Transformation {
 	 *                       alignment.
 	 * @return a new PShape that is the transformed and aligned version of
 	 *         sourceShape.
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static PShape align(PShape alignShape, PShape baseShape, double alignmentRatio) {
 		final Geometry g1 = fromPShape(alignShape);

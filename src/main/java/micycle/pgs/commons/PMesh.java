@@ -23,7 +23,7 @@ import processing.core.PVector;
  * vertices.
  * 
  * @author Michael Carleton
- * @since 1.3.1
+ * @since 1.4.0
  */
 public class PMesh {
 

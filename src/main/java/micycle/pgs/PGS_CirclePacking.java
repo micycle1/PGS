@@ -80,7 +80,7 @@ public final class PGS_CirclePacking {
 	 * @return A list of PVectors, where each PVector represents a circle. The x and
 	 *         y components of the PVector represent the center of the circle, and
 	 *         the z component represents the radius of the circle.
-	 * @since 1.3.1
+	 * @since 1.4.0
 	 */
 	public static List<PVector> obstaclePack(PShape shape, Collection<PVector> pointObstacles, double areaCoverRatio) {
 		final Geometry geometry = fromPShape(shape);
