@@ -309,8 +309,8 @@ public class VisibilityPolygon {
 		Coordinate inter1 = intersectLines(segments.get(index1), position, destination);
 		Coordinate inter2 = intersectLines(segments.get(index2), position, destination);
 		if (!inter1.equals2D(inter2, epsilon)) {
-			double d1 = inter1.distance(position);
-			double d2 = inter2.distance(position);
+			double d1 = distSquared(inter1, position);
+			double d2 = distSquared(inter2, position);
 			return d1 < d2;
 		}
 		int end1 = 0;
@@ -328,6 +328,12 @@ public class VisibilityPolygon {
 		} else {
 			return a1 < a2;
 		}
+	}
+	
+	private static double distSquared(Coordinate p, Coordinate q) {
+		double dx = q.x - p.x;
+		double dy = q.y - p.y;
+		return dx * dx + dy * dy;
 	}
 
 	private void remove(int index, List<Integer> heap, Coordinate position, List<SegmentString> segments, Coordinate destination,

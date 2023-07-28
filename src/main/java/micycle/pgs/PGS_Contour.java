@@ -656,7 +656,8 @@ public final class PGS_Contour {
 	}
 
 	/**
-	 * Calculates the longest center line passing through a given shape.
+	 * Calculates the longest center line passing through a given shape. Note that
+	 * shapes with sparse vertices will need densified beforehand.
 	 * <p>
 	 * The center line is determined based on the medial axis of the shape; it
 	 * endpoints are always leaf vertices of the medial axis, and the line will pass

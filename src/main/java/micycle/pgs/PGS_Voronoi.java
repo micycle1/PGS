@@ -214,7 +214,9 @@ public final class PGS_Voronoi {
 
 		PShape facesShape = PGS_Conversion.toPShape(faces);
 		for (int i = 0; i < faces.size(); i++) {
-			facesShape.getChild(i).setName(Integer.toString((int) faces.get(i).getUserData()));
+			if (faces.get(i).getUserData() != null) {
+				facesShape.getChild(i).setName(Integer.toString((int) faces.get(i).getUserData()));
+			}
 		}
 		return facesShape;
 	}

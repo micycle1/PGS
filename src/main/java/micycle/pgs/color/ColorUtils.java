@@ -77,13 +77,11 @@ public class ColorUtils {
 		return (color & 16777215) | alpha << 24;
 	}
 
-	/**
-	 * Compose a 32 bit sARGB int from float[] 0...1
-	 * 
-	 * @param in
-	 * @return
-	 */
 	static int composeclr(double[] RGBA) {
+		return (int) (RGBA[3] * 255) << 24 | (int) (RGBA[0] * 255) << 16 | (int) (RGBA[1] * 255) << 8 | (int) (RGBA[2] * 255);
+	}
+	
+	static int composeclr(float[] RGBA) {
 		return (int) (RGBA[3] * 255) << 24 | (int) (RGBA[0] * 255) << 16 | (int) (RGBA[1] * 255) << 8 | (int) (RGBA[2] * 255);
 	}
 
@@ -135,6 +133,9 @@ public class ColorUtils {
 	 * @return RGB color integer
 	 */
 	public static int sinebow(double t) {
+		if (t > 1) {
+			t %= 1;
+		}
 		t = 0.5f - t;
 		double[] cols = new double[] { sin2(t), sin2(t + (1 / 3d)), sin2(t + (2 / 3d)), 1 };
 		return composeclr(cols);
