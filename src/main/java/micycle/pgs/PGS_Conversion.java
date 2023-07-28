@@ -868,7 +868,7 @@ public final class PGS_Conversion {
 	public static SimpleGraph<PVector, PEdge> toGraph(PShape shape) {
 		final SimpleGraph<PVector, PEdge> graph = new SimpleWeightedGraph<>(PEdge.class);
 		for (PShape face : getChildren(shape)) {
-			for (int i = 0; i < face.getVertexCount(); i++) {
+			for (int i = 0; i < face.getVertexCount() - (face.isClosed() ? 0 : 1); i++) {
 				final PVector a = face.getVertex(i);
 				final PVector b = face.getVertex((i + 1) % face.getVertexCount());
 				if (a.equals(b)) {

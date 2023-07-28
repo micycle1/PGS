@@ -683,7 +683,7 @@ public class PGS_Meshing {
 	 * of which is mesh faces become more uniform in size and shape (isotropic).
 	 * <p>
 	 * This particular method iteratively smoothes the mesh until the displacement
-	 * of the most displaced vertex in the prior iteration is less than
+	 * value of the most displaced vertex in the prior iteration is less than
 	 * <code>displacementCutoff</code>.
 	 * <p>
 	 * In Laplacian smoothing, vertices are replaced with the (weighted) average of
@@ -695,8 +695,10 @@ public class PGS_Meshing {
 	 * Meshes with highly convex faces may result in issues.
 	 * 
 	 * @param mesh               a GROUP PShape where each child shape is a single
-	 *                           face comprising a conforming mesh
-	 * @param displacementCutoff the
+	 *                           face comprising a conforming mesh.
+	 * @param displacementCutoff the displacement threshold of the most displaced
+	 *                           vertex in a single iteration to stop the iterative
+	 *                           smoothing.
 	 * @param preservePerimeter  boolean flag to exclude the boundary vertices from
 	 *                           being smoothed (thus preserving the mesh
 	 *                           perimeter). Generally this should be set to true,
@@ -740,6 +742,26 @@ public class PGS_Meshing {
 			output = simplifier.simplify(tolerance);
 		}
 		return PGS_Conversion.toPShape(Arrays.asList(output));
+	}
+
+	/**
+	 * Extracts all inner edges from a mesh. Inner edges consist only of edges that
+	 * are shared by adjacent faces, and not edges comprising the mesh boundary nor
+	 * edges comprising holes within faces.
+	 * 
+	 * @param mesh The conforming mesh shape to extract inner edges from.
+	 * @return A shape representing the dissolved linework of inner mesh edges.
+	 * @since 1.3.1
+	 */
+	public static PShape extractInnerEdges(PShape mesh) {
+		List<PEdge> edges = PGS_SegmentSet.fromPShape(mesh);
+		Map<PEdge, Integer> bag = new HashMap<>(edges.size());
+		edges.forEach(edge -> {
+			bag.merge(edge, 1, Integer::sum);
+		});
+
+		List<PEdge> innerEdges = bag.entrySet().stream().filter(e -> e.getValue() > 1).map(e -> e.getKey()).collect(Collectors.toList());
+		return PGS_SegmentSet.dissolve(innerEdges);
 	}
 
 	/**
