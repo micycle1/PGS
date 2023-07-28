@@ -147,21 +147,34 @@ public final class PGS_Processing {
 	 */
 	public static PVector pointOnExterior(PShape shape, double perimeterPosition, double offsetDistance) {
 		perimeterPosition %= 1;
-
-		Geometry g = fromPShape(shape);
-		if (g instanceof Polygonal) {
-			if (g.getGeometryType().equals(Geometry.TYPENAME_MULTIPOLYGON)) {
-				g = g.getGeometryN(0);
-			}
-			LinearRing e = ((Polygon) g).getExteriorRing();
-			if (Orientation.isCCW(e.getCoordinates())) {
-				e = e.reverse();
-			}
-			g = e;
-		}
-		LengthIndexedLine l = new LengthIndexedLine(g);
+		LengthIndexedLine l = makeIndexedLine(shape);
 
 		Coordinate coord = l.extractPoint(perimeterPosition * l.getEndIndex(), offsetDistance);
+		return new PVector((float) coord.x, (float) coord.y);
+	}
+
+	/**
+	 * Extracts a point from the perimeter (exterior) of the given shape at some
+	 * distance along its perimeter.
+	 * 
+	 * @param shape             A lineal or polygonal shape. If the input is a GROUP
+	 *                          shape, a single point will be extracted from its
+	 *                          first child shape.
+	 * @param perimeterDistance Distance along shape perimeter to extract the point.
+	 *                          0 corresponds to the first vertex of the shape's
+	 *                          perimeter.
+	 * @param offsetDistance    A perpendicular offset distance from the shape's
+	 *                          perimeter. A value of 0 corresponds to exactly on
+	 *                          the shape's exterior/ Positive values offset the
+	 *                          point away from the shape (outwards); negative
+	 *                          values offset the point inwards towards its
+	 *                          interior.
+	 * @return
+	 * @since 1.4.0
+	 */
+	public static PVector pointOnExteriorByDistance(PShape shape, double perimeterDistance, double offsetDistance) {
+		LengthIndexedLine l = makeIndexedLine(shape);
+		Coordinate coord = l.extractPoint(perimeterDistance % l.getEndIndex(), offsetDistance);
 		return new PVector((float) coord.x, (float) coord.y);
 	}
 
@@ -196,18 +209,7 @@ public final class PGS_Processing {
 		// offset)
 		List<PVector> coords = new ArrayList<>(points);
 
-		Geometry g = fromPShape(shape);
-		if (g instanceof Polygonal) {
-			if (g.getGeometryType().equals(Geometry.TYPENAME_MULTIPOLYGON)) {
-				g = g.getGeometryN(0);
-			}
-			LinearRing e = ((Polygon) g).getExteriorRing();
-			if (Orientation.isCCW(e.getCoordinates())) {
-				e = e.reverse();
-			}
-			g = e;
-		}
-		LengthIndexedLine l = new LengthIndexedLine(g);
+		LengthIndexedLine l = makeIndexedLine(shape);
 
 		final double increment = 1d / points;
 		for (double distance = 0; distance < 1; distance += increment) {
@@ -248,18 +250,7 @@ public final class PGS_Processing {
 	 */
 	public static List<PVector> pointsOnExterior(PShape shape, double interPointDistance, double offsetDistance) {
 		// TODO points on holes
-		Geometry g = fromPShape(shape);
-		if (g instanceof Polygonal) {
-			if (g.getGeometryType().equals(Geometry.TYPENAME_MULTIPOLYGON)) {
-				g = g.getGeometryN(0);
-			}
-			LinearRing e = ((Polygon) g).getExteriorRing();
-			if (Orientation.isCCW(e.getCoordinates())) {
-				e = e.reverse();
-			}
-			g = e;
-		}
-		LengthIndexedLine l = new LengthIndexedLine(g);
+		LengthIndexedLine l = makeIndexedLine(shape);
 
 		final int points = (int) Math.round(l.getEndIndex() / interPointDistance);
 
@@ -271,6 +262,21 @@ public final class PGS_Processing {
 			coords.add(PGS.toPVector(coord));
 		}
 		return coords;
+	}
+
+	private static LengthIndexedLine makeIndexedLine(PShape shape) {
+		Geometry g = fromPShape(shape);
+		if (g instanceof Polygonal) {
+			if (g.getGeometryType().equals(Geometry.TYPENAME_MULTIPOLYGON)) {
+				g = g.getGeometryN(0);
+			}
+			LinearRing e = ((Polygon) g).getExteriorRing();
+			if (Orientation.isCCW(e.getCoordinates())) {
+				e = e.reverse();
+			}
+			g = e;
+		}
+		return new LengthIndexedLine(g);
 	}
 
 	/**
