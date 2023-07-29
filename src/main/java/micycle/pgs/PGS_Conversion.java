@@ -99,7 +99,7 @@ public final class PGS_Conversion {
 
 	/** Approximate distance between successive sample points on bezier curves */
 	static final float BEZIER_SAMPLE_DISTANCE = 2;
-	private static Field MATRIX_FIELD;
+	private static Field MATRIX_FIELD, PSHAPE_FILL_FIELD;
 	/**
 	 * A boolean flag that affects whether a PShape's style (fillColor, strokeColor,
 	 * strokeWidth) is preserved during <code>PShape->Geometry->PShape</code>
@@ -130,6 +130,8 @@ public final class PGS_Conversion {
 		try {
 			MATRIX_FIELD = PShape.class.getDeclaredField("matrix");
 			MATRIX_FIELD.setAccessible(true);
+			PSHAPE_FILL_FIELD = PShape.class.getDeclaredField("fillColor");
+			PSHAPE_FILL_FIELD.setAccessible(true);
 		} catch (NoSuchFieldException e) {
 			System.err.println(e.getLocalizedMessage());
 		}
@@ -1511,6 +1513,22 @@ public final class PGS_Conversion {
 		final PShape parent = new PShape(GROUP);
 		children.forEach(parent::addChild);
 		return parent;
+	}
+
+	/**
+	 * Retrieves the fill color of a PShape.
+	 * 
+	 * @param shape The PShape object for which to retrieve the fill color.
+	 * @return The integer representation of the fill color in ARGB format (32-bit).
+	 * @since 1.4.0
+	 */
+	public static int getFillColor(PShape shape) {
+		try {
+			return PSHAPE_FILL_FIELD.getInt(shape);
+		} catch (IllegalArgumentException | IllegalAccessException e) {
+			e.printStackTrace();
+			return 0;
+		}
 	}
 
 	/**
