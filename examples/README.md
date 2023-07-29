@@ -28,6 +28,10 @@ All examples are dynamic and/or interactive. Shown below are merely screenshots.
 
 <img src="../resources/examples/letterParticles.png" alt="" width="500"/>
 
+## moireVoronoi
+
+<img src="../resources/examples/moireVoronoi.png" alt="" width="500"/>
+
 ## minkShearLetters
 
 <img src="../resources/examples/minkShearLetters.png" alt="" width="500"/>
