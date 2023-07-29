@@ -12,8 +12,8 @@ void setup() {
   colorMode(HSB, 1, 1, 1, 1);
   
   List<PVector> randomPoints = PGS_PointSet.poisson(30, 30, width - 30, height - 30, 35);
-  polygon = PGS_Processing.concaveHullBFS(randomPoints, 25);
-  cells = PGS_Voronoi.voronoiCells(PGS_Processing.generateRandomPoints(polygon, 200));
+  polygon = PGS_Hull.concaveHullBFS(randomPoints, 0.01);
+  cells = PGS_Voronoi.innerVoronoi(PGS_Processing.generateRandomPoints(polygon, 200));
   PGS_Conversion.disableAllFill(cells);
   PGS_Conversion.setAllStrokeColor(cells, color(0, 0, 1, 1), 1);
 }
@@ -35,27 +35,8 @@ void draw() {
     final int linesN = ceil(l/d);
     float dx = cos(angle + HALF_PI) * d;
     float dy = sin(angle + HALF_PI) * d;
-
-    PShape lines = createShape(); // cell hatching
-    lines.setStroke(true);
-    lines.setStrokeWeight(1);
-    lines.setStrokeCap(ROUND);
-    lines.beginShape(PConstants.LINES);
-    PVector a, b;
-    for (int i = 0; i < linesN; i++) {
-      a = PVector.add(center, new PVector(dx * i, dy * i));
-      b = PVector.add(a, new PVector(cos(angle) * l, sin(angle) * l));
-      a.add(cos(angle) * -l, sin(angle) * -l);
-      lines.vertex(a.x, a.y);
-      lines.vertex(b.x, b.y);
-
-      a = PVector.add(center, new PVector(dx * -i, dy * -i));
-      b = PVector.add(a, new PVector(cos(angle) * l, sin(angle) * l));
-      a.add(cos(angle) * -l, sin(angle) * -l);
-      lines.vertex(a.x, a.y);
-      lines.vertex(b.x, b.y);
-    }
-    lines.endShape();
+    
+    PShape lines = PGS_SegmentSet.toPShape(PGS_SegmentSet.parallelSegments(center.x, center.y, l, d, angle, linesN*2));
 
     PShape o = PGS_ShapeBoolean.intersect(cell, lines); // crop lines to the cell
     final int col = color((noise(2*cell.getVertex(1).y/width, 2*cell.getVertex(2).x/height) + frameCount*0.002f - map(dist(center.x, center.y, mouseX, mouseY), 0, width * 0.75f, 0, .2f)) % 1, 1, .9f, 1);

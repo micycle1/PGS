@@ -1,7 +1,6 @@
 package micycle.pgs;
 
 import static micycle.pgs.PGS_Conversion.fromPShape;
-import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -30,10 +29,11 @@ import org.tinfour.common.PolygonConstraint;
 import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
 import org.tinfour.standard.IncrementalTin;
+import org.tinfour.utils.HilbertSort;
 import org.tinfour.utils.TriangleCollector;
 
 import micycle.pgs.PGS.LinearRingIterator;
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.Colors;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
 import processing.core.PConstants;
@@ -96,29 +96,7 @@ public final class PGS_Triangulation {
 	public static PShape delaunayTriangulation(PShape shape, @Nullable Collection<PVector> steinerPoints, boolean constrain,
 			int refinements, boolean pretty) {
 		final IIncrementalTin tin = delaunayTriangulationMesh(shape, steinerPoints, constrain, refinements, pretty);
-
-		final PShape triangulation = new PShape(PConstants.GROUP);
-
-		final Consumer<Vertex[]> triangleVertexConsumer = t -> {
-			final PShape triangle = new PShape(PShape.PATH);
-			triangle.beginShape();
-			triangle.vertex((float) t[0].x, (float) t[0].y);
-			triangle.vertex((float) t[1].x, (float) t[1].y);
-			triangle.vertex((float) t[2].x, (float) t[2].y);
-			triangle.endShape(PConstants.CLOSE);
-			triangulation.addChild(triangle);
-		};
-
-		if (constrain && !tin.getConstraints().isEmpty()) {
-			TriangleCollector.visitTrianglesConstrained(tin, triangleVertexConsumer);
-		} else {
-			TriangleCollector.visitTriangles(tin, triangleVertexConsumer);
-		}
-
-		PGS_Conversion.setAllFillColor(triangulation, RGB.WHITE);
-		PGS_Conversion.setAllStrokeColor(triangulation, RGB.PINK, 2);
-
-		return triangulation;
+		return toPShape(tin);
 	}
 
 	/**
@@ -230,35 +208,32 @@ public final class PGS_Triangulation {
 	}
 
 	/**
-	 * Generates a Delaunay Triangulation from the given shape. The triangulation
-	 * can be both constrained (meaning the triangulation is masked by the original
-	 * shape) and refined (meaning additional points are inserted, usually leading
-	 * to more uniform triangle shapes and sizes).
+	 * Generates a Delaunay Triangulation of the given shape and returns it in raw
+	 * form as a Triangulated Irregular Network (mesh).
 	 * <p>
-	 * This method returns the triangulation in its raw form: a Triangulated
-	 * Irregular Network (mesh).
+	 * The triangulation can be constrained to the shape's boundary and refined by
+	 * adding additional points, resulting in more uniform triangle shapes and
+	 * sizes.
 	 * 
-	 * @param shape         the shape whose vertices to generate a triangulation
-	 *                      from. <b>Can be null</b>.
+	 * @param shape         the shape to generate a triangulation from. <b>Can be
+	 *                      null</b>.
 	 * @param steinerPoints A list of additional points to insert into the
 	 *                      triangulation in addition to the vertices of the input
 	 *                      shape. <b>Can be null</b>.
-	 * @param constrain     Constrain the triangulation output using the shape
-	 *                      boundary (from point set). With shapes, you'll probably
-	 *                      want to this to be true.
-	 * @param refinements   The number of triangulation refinement/subdivision
-	 *                      passes to perform. Each pass inserts the centroids of
-	 *                      every existing triangle into the triangulation. Should
-	 *                      be 0 or greater (probably no more than 5).
-	 * @param pretty        Whether to maintain the Delaunay nature when
-	 *                      constraining the triangulation, and whether to check
-	 *                      that centroid locations lie within the shape during
-	 *                      refinement. When pretty=true, triangles in the
-	 *                      triangulation may be slightly more regular in
-	 *                      shape/size. There is a small performance overhead which
-	 *                      becomes more considerable at higher refinement levels.
-	 *                      When constrain=false and refinements=0, this argument
-	 *                      has no effect.
+	 * @param constrain     whether to constrain the triangulation to the shape's
+	 *                      boundary. If using a shape, it is recommended to set
+	 *                      this to true.
+	 * @param refinements   The number of times to subdivide the triangulation by
+	 *                      inserting the centroid of each triangle. Should be 0 or
+	 *                      greater, typically no more than 5.
+	 * @param pretty        Whether to maintain Delaunay nature when constraining
+	 *                      the triangulation and check that centroid locations are
+	 *                      within the shape during refinement. This can result in
+	 *                      more regular triangle shapes and sizes, but with a
+	 *                      performance overhead that increases with higher
+	 *                      refinement levels. Has no effect if
+	 *                      <code>constrain=false</code> and
+	 *                      <code>refinements=0</code>.
 	 * @return Triangulated Irregular Network object (mesh)
 	 * @see #delaunayTriangulation(PShape, Collection, boolean, int, boolean)
 	 * @see #delaunayTriangulationPoints(PShape, Collection, boolean, int, boolean)
@@ -268,20 +243,22 @@ public final class PGS_Triangulation {
 		Geometry g = shape == null ? PGS.GEOM_FACTORY.createEmpty(2) : fromPShape(shape);
 		final IncrementalTin tin = new IncrementalTin(10);
 
-		final ArrayList<Vertex> vertices = new ArrayList<>();
+		final List<Vertex> vertices = new ArrayList<>();
 		final Coordinate[] coords = g.getCoordinates();
-		for (int i = 0; i < coords.length; i++) {
-			vertices.add(new Vertex(coords[i].x, coords[i].y, 0, i));
+		int vIndex = 0;
+		for (vIndex = 0; vIndex < coords.length; vIndex++) {
+			vertices.add(new Vertex(coords[vIndex].x, coords[vIndex].y, Double.NaN, vIndex));
 		}
 
-		tin.add(vertices, null); // initial triangulation
-
-		int vertexIndex = coords.length;
 		if (steinerPoints != null) {
 			for (PVector v : steinerPoints) { // add steiner points
-				tin.add(new Vertex(v.x, v.y, 0, vertexIndex++));
+				vertices.add(new Vertex(v.x, v.y, Double.NaN, vIndex++));
 			}
 		}
+
+		HilbertSort hs = new HilbertSort();
+		hs.sort(vertices); // prevent degenerate insertion
+		tin.add(vertices, null); // initial triangulation
 
 		if (refinements > 0) {
 
@@ -300,10 +277,10 @@ public final class PGS_Triangulation {
 				 */
 				refinementVertices.clear();
 				TriangleCollector.visitSimpleTriangles(tin, t -> {
-					if (t.getArea() > 50) { // don't refine small triangles
+					if (t.getArea() > 99) { // don't refine small triangles
 						final Coordinate center = centroid(t); // use centroid rather than circumcircle center
 						if (pretty || pointLocator.locate(center) != Location.EXTERIOR) {
-							refinementVertices.add(new Vertex(center.x, center.y, 0));
+							refinementVertices.add(new Vertex(center.x, center.y, Double.NaN));
 						}
 					}
 				});
@@ -331,7 +308,7 @@ public final class PGS_Triangulation {
 						}
 
 						for (int i = 0; i < c.length; i++) {
-							points.add(new Vertex(c[i].x, c[i].y, 0));
+							points.add(new Vertex(c[i].x, c[i].y, Double.NaN));
 						}
 						/*
 						 * In Tinfour, the shape exterior must be CCW and the holes must be CW. This is
@@ -379,12 +356,7 @@ public final class PGS_Triangulation {
 	 * @see #poissonTriangulationPoints(PShape, double)
 	 */
 	public static PShape poissonTriangulation(PShape shape, double spacing) {
-		final Envelope e = fromPShape(shape).getEnvelopeInternal();
-
-		final List<PVector> poissonPoints = PGS_PointSet.poisson(e.getMinX(), e.getMinY(), e.getMinX() + e.getWidth(),
-				e.getMinY() + e.getHeight(), spacing, 0);
-
-		final IIncrementalTin tin = delaunayTriangulationMesh(shape, poissonPoints, true, 0, false);
+		final IIncrementalTin tin = poissonTriangulationMesh(shape, spacing);
 
 		final PShape triangulation = new PShape(PConstants.GROUP);
 
@@ -398,8 +370,8 @@ public final class PGS_Triangulation {
 			triangulation.addChild(triangle);
 		});
 
-		PGS_Conversion.setAllFillColor(triangulation, RGB.WHITE);
-		PGS_Conversion.setAllStrokeColor(triangulation, RGB.PINK, 2);
+		PGS_Conversion.setAllFillColor(triangulation, Colors.WHITE);
+		PGS_Conversion.setAllStrokeColor(triangulation, Colors.PINK, 2);
 
 		return triangulation;
 	}
@@ -415,12 +387,7 @@ public final class PGS_Triangulation {
 	 * @see #poissonTriangulation(PShape, double)
 	 */
 	public static List<PVector> poissonTriangulationPoints(PShape shape, double spacing) {
-		final Envelope e = fromPShape(shape).getEnvelopeInternal();
-
-		final List<PVector> poissonPoints = PGS_PointSet.poisson(e.getMinX(), e.getMinY(), e.getMinX() + e.getWidth(),
-				e.getMinY() + e.getHeight(), spacing, 0);
-
-		final IIncrementalTin tin = delaunayTriangulationMesh(shape, poissonPoints, true, 0, false);
+		final IIncrementalTin tin = poissonTriangulationMesh(shape, spacing);
 
 		final ArrayList<PVector> triangles = new ArrayList<>();
 		TriangleCollector.visitTrianglesConstrained(tin, t -> {
@@ -429,6 +396,28 @@ public final class PGS_Triangulation {
 			triangles.add(toPVector(t[2]));
 		});
 		return triangles;
+	}
+
+	/**
+	 * Creates a Delaunay triangulation of the shape where additional steiner
+	 * points, populated by poisson sampling, are included.
+	 * <p>
+	 * This method returns the triangulation in its raw form: a
+	 * TriangulatedIrregular Network (mesh).
+	 * 
+	 * @param shape
+	 * @param spacing (Minimum) spacing between poisson points
+	 * @return Triangulated Irregular Network object (mesh)
+	 * @see #poissonTriangulation(PShape, double)
+	 */
+	public static IIncrementalTin poissonTriangulationMesh(PShape shape, double spacing) {
+		final Envelope e = fromPShape(shape).getEnvelopeInternal();
+
+		final List<PVector> poissonPoints = PGS_PointSet.poisson(e.getMinX(), e.getMinY(), e.getMinX() + e.getWidth(),
+				e.getMinY() + e.getHeight(), spacing, 0);
+
+		final IIncrementalTin tin = delaunayTriangulationMesh(shape, poissonPoints, true, 0, false);
+		return tin;
 	}
 
 	/**
@@ -442,7 +431,40 @@ public final class PGS_Triangulation {
 	 */
 	public static PShape earCutTriangulation(PShape shape) {
 		PolygonTriangulator pt = new PolygonTriangulator(fromPShape(shape));
-		return toPShape(pt.getResult());
+		return PGS_Conversion.toPShape(pt.getResult());
+	}
+
+	/**
+	 * Converts a triangulated mesh object to a PShape representing the
+	 * triangulation.
+	 * 
+	 * @param triangulation the IIncrementalTin object to convert
+	 * @return a GROUP PShape, where each child shape is one triangle
+	 * @since 1.4.0
+	 */
+	public static PShape toPShape(IIncrementalTin triangulation) {
+		final PShape out = new PShape(PConstants.GROUP);
+
+		final Consumer<Vertex[]> triangleVertexConsumer = t -> {
+			final PShape triangle = new PShape(PShape.PATH);
+			triangle.beginShape();
+			triangle.vertex((float) t[0].x, (float) t[0].y);
+			triangle.vertex((float) t[1].x, (float) t[1].y);
+			triangle.vertex((float) t[2].x, (float) t[2].y);
+			triangle.endShape(PConstants.CLOSE);
+			out.addChild(triangle);
+		};
+
+		if (!triangulation.getConstraints().isEmpty()) {
+			TriangleCollector.visitTrianglesConstrained(triangulation, triangleVertexConsumer);
+		} else {
+			TriangleCollector.visitTriangles(triangulation, triangleVertexConsumer);
+		}
+
+		PGS_Conversion.setAllFillColor(out, Colors.WHITE);
+		PGS_Conversion.setAllStrokeColor(out, Colors.PINK, 2);
+
+		return out;
 	}
 
 	/**

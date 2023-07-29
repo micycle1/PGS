@@ -5,6 +5,103 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
+## **1.4.0** *(2023-07-29)*
+
+### Added
+*  `sobolLDS()` to `PGS_PointSet`. Generates a set of 2D deterministic stratified points from the Sobol low discrepancy sequence.
+*  `cluster()` to `PGS_PointSet`. Clusters a collection points into N groups (using k-means).
+* `double[][]` conversion methods to `PGS_Conversion`. Converts simple PShapes to and from their `double[p1, p2, ...][x, y]` representation.
+* `weightedMedian()` to `PGS_PointSet`. Finds the geometric median point of a set of weighted sample points.
+* `median()` to `PGS_ShapePredicates`. Computes the geometric median location of a shape's vertices.
+* `isConformingMesh()` to `PGS_ShapePredicates`. Determines whether a GROUP shape forms a conforming mesh / valid coverage.
+* `createRandomSFCurve()` to `PGS_Construction`. Creates a random space-filling curve.
+* `createTaijitu()` to `PGS_Construction`. Creates a _Taijitu_ shape (a geometric representation of the Taoist symbol of yin and yang).
+* `createArbelos()` to `PGS_Construction`.  Creates an _arbelos_ figure.
+* `createTeardrop()` to `PGS_Construction`.  Creates a teardrop figure.
+* `createGear()` to `PGS_Construction`.  Creates a gear figure.
+* `createSponge()` to `PGS_Construction`. Creates a sponge-like porous structure.
+* `createRandomBezierPolygon()` to `PGS_Construction`. Generates a smooth or spiky random polygon comprising Bezier curves.
+* `createSuperRandomPolygon()` to `PGS_Construction`. Generates a highly customisable random polygon based on a square grid of cells.
+* `maximumPerimeterSquare()` to `PGS_Optimisation`. Finds the largest square whose 4 vertices each lie on the perimeter of a shape.
+* `rectPack()` to `PGS_Optimisation`. Packs a collection of rectangles into rectangular 2D bin(s).
+* `reorderChildren()` to `PGS_Conversion`. Reorders the child shapes of a shape according to given comparator.
+* `scaleAreaTo()` to `PGS_Transformation`. Scales a given shape to a target shape area.
+* `scaleArea()` to `PGS_Transformation`. Scales the area of a given shape by a specified scale factor.
+* `circleCoverage()` to `PGS_Optimisation`. Covers a polygon with n circles.
+* Additional method signature for `PGS_Conversion.fromPVector()` that accepts a list of holes, each defined a list of by PVectors.
+* `simpleSubtract()` to `PGS_ShapeBoolean`. Subtracts inner holes that lie within a given shell from the shell, without geometric processing.
+* `fromQuadraticBezier()` and `fromCubicBezier()` to `PGS_Conversion`. Makes a PATH shape representing a bezier curve (having equidistant sampling) given by its parameters.
+* `simplifyHobby()` to `PGS_Morphology`. Creates a smooth Hobby Curve from the vertices of a shape.
+* `toPShape()` to `PGS_Triangulation`. Converts a triangulated mesh object to a PShape representing the triangulation -- helpful when working with the raw mesh.
+* `extractHoles()` to `PGS_Processing`. Extracts all the holes from a shape.
+* Additional method signature for `PGS_Processing.fromPVector()` that accepts a random seed.
+* `visibilityPolygon()` to `PGS_Optimisation`. Computes the area visible from a given point in a space, considering occlusions caused by obstacles.
+* Additional method signature for `PGS_CirclePacking.stochasticPack()` that accepts a random seed.
+* `filterChildren()` to `PGS_Processing`. Filters the children of a shape object based on a given Predicate function.
+* `fromGraph()` to `PGS_Conversion`. Converts a graph consisting of PVectors and PEdges into a PShape by polygonizing its edges.
+* `smoothMesh()` to `PGS_Meshing`. Smoothes a mesh via iterative weighted Laplacian smoothing.
+* `stochasticMerge()` to `PGS_Meshing`. Randomly merges together adjacent faces of a mesh.
+* `areaMerge()` to `PGS_Meshing`. Merges/dissolves small faces of a mesh into their neighboring faces.
+* `simplifyMesh()` to `PGS_Meshing`. Simplifies the boundaries of the faces in a mesh while preserving the original mesh topology.
+* `nodeNonMesh()` to `PGS_Meshing`. Transforms a non-conforming mesh shape into a conforming mesh via "noding".
+* `splitEdges()` to `PGS_Meshing`. Splits each edge of a given mesh shape into a specified number of equal parts.
+* `subdivideMesh()` to `PGS_Meshing`. Subdivides the faces of a mesh using the simple Catmull-Clark split approach.
+* `toCircles()` to `PGS_Conversion`. Creates a PShape having circle geometries representing a collection of circles.
+* `fromPShape()` to `PGS_SegmentSet`. Extracts a list of unique PEdge segments representing the given shape.
+* `stretch()` to `PGS_SegmentSet`. Stretches segments in a list by a specified factor.
+* `nest()` to `PGS_Processing`. Creates a nested shape having n levels of inner polygons.
+* `largestEmptyCircles()` to `PGS_Optimisation`. Finds the N largest empty circles amongst a set of obstacle geometries within a boundary.
+* Additional method signature for `PGS_CirclePacking.maximumInscribedPack()` that accepts a minimum radius threshold.
+* `getPolygonInteriorSegments()` to `PGS_SegmentSet`. Retains line segments from a set of line segments that are wholly contained within a given shape.
+* `minimumAreaRectangle()` to `PGS_Optimisation`. Computes the minimum-area rectangle that encloses a shape.
+* `binPack()` to `PGS_Optimisation`. Packs irregular polygonal shapes into rectangular containers (bins).
+* `smoothEllipticFourier()` to `PGS_Morphology`. Smoothes a shape using its elliptic fourier descriptors.
+* `efdSimilarity()` to `PGS_ShapePredicates`. Quantifies the similarity between two shapes, using elliptic fourier descriptors.
+* `dissolve()` to `PGS_SegmentSet`. Dissolves a collection of edges into a set of maximal-length linestrings.
+* `toCentroidDualGraph()` to `PGS_Conversion`. Converts a mesh-like PShape into its centroid-based undirected dual-graph.
+* `isValid()` to `PGS_ShapePredicates`. Checks if a PShape is valid, and reports the validation error if it is invalid.
+* `obstaclePack()` to `PGS_CirclePacking`. Packs circles of varying radii within a given shape, whilst respecting pointal obstacles.
+* `align()` to `PGS_Transformation`. Aligns one polygon shape to another, by finding the optimal transformation.
+* `extractInnerEdges()` to `PGS_Meshing`. Extracts all inner edges from a mesh.
+* `centerLine()` to `PGS_Contour`. Determines the longest center line passing through a given shape.
+* Additional signatures for `PGS_Conversion.toWKB()` and `.fromWKB()` that write/read the binary shape representation into a file.
+* `pointOnExteriorByDistance()` to `PGS_Processing`. Extracts a point from the perimeter (exterior) of the given shape at some distance along its perimeter.
+* A new mesh-coloring strategy: `RLF_BRUTE_FORCE_4COLOR`. Repeatedly calls (upto 250 times) the recursive largest-first (RLF) algorithm until a 4-coloring is found.
+
+### Changed
+* Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).
+* Reimplemented `PGS_Processing.simplifyDCE()`. New algorithm is much faster, particularly on large inputs.
+* Reimplemented `PGS_Processing.cleanCoverage()`. New algorithm is much faster, particularly on large inputs.
+* `toPVector()` now works on GROUP shapes (returning vertices from all child shapes). 
+* Improved *Doyle Spiral* implementation. Outputs on some combinations of argument inputs should be better.
+* `PGS_ShapePredicates.holes()` now supports GROUP shapes.
+* `PGS_Morphology.smoothGaussian()` now supports GROUP shapes.
+* Reimplemented `PGS_Hull.convexHull()`. New algorithm is faster, and particularly so on large input sizes.
+* Added a `relaxations` parameter to `innerVoronoi()` methods in `PGS_Voronoi`. Performs Lloyd's relaxations leading to centroidal voronoi.
+* Improved how shapes containing bezier vertices are sampled during conversion. Bezier elements are now sampled at exactly equidistant steps.
+* Replaced all instances of `System.currentTimeMillis()` with `System.nanoTime()`. Helps the randomness of outputs when called quickly within a loop.
+* Offset curve methods now handle (unclosed) path shapes.
+* Improved robustness of `PGS_ShapePredicates.maximumInteriorAngle()`.
+* The 4 simple `PGS_ShapeBoolean` methods now preserve the style of input shape `a` in their output.
+* `PGS_createRandomPolygon` can now accept a random seed.
+* Reimplemented `PGS_CirclePacking.maximumInscribedPack()`. New algorithm is faster, particularly so on higher circle counts.
+* Renamed `miniumumBoundingRectangle()` to `minimumWidthRectangle()`.
+* `intersectMesh()` and `subtractMesh()` now fully preserve the styling of original mesh faces.
+* `PGS_Contour.medialAxis()` now returns dissolved maximal-length lines, rather than line segments only.
+* `PGS_Processing.tangentAngle()` values correspond to the angle that the tangent line makes with the positive x-axis (east), orientated clockwise, regardless of polygon orientation.
+
+### Fixed
+* A slow collections size call included in `prunePointsWithinDistance()` was making it much slower than it should have been.
+* Shape Y coordinates were being inverted during `fromJava2D()` conversion.
+* The `from` and `to` arguments for `interpolate()` were the wrong way round.
+* Hearts produced by `PGS_Construction.createHeart()` were slightly squished in the vertical direction.
+* `PGS_ShapeBoolean.unionMesh()` now handles meshes with holes correctly (holes were filled in previously).
+* `PGS_Processing.extractPerimeter()` now behaves as expected when perimeter location values are negative.
+* Positive-valued offset arguments passed to `point[s]OnExterior()` methods could incorrectly produce offsets towards the interior of a shape. Such values will now always correspond to offset **away** from a shape's interior.
+* `PGS_ShapePredicates.holes()` now identifies and counts gaps in meshes as holes.
+* Quads made by `splitQuadrangulation` were unclosed and are now closed polygons.
+* `PGS_Conversion.toGraph()` no longer adds a spurious closing edges on LINE shapes.
+
 ## **1.3.0** *(2022-10-20)*
 
 ### Added

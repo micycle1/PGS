@@ -7,26 +7,36 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import javax.vecmath.Point3d;
+import javax.vecmath.Point4d;
+
 import org.locationtech.jts.algorithm.Angle;
 import org.locationtech.jts.algorithm.MinimumBoundingCircle;
 import org.locationtech.jts.algorithm.MinimumDiameter;
+import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
 import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.algorithm.match.HausdorffSimilarityMeasure;
+import org.locationtech.jts.coverage.CoverageUnion;
+import org.locationtech.jts.coverage.CoverageValidator;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.util.PolygonExtracter;
+import org.locationtech.jts.operation.valid.IsValidOp;
 
+import micycle.pgs.commons.EllipticFourierDesc;
+import micycle.pgs.commons.GeometricMedian;
 import micycle.trapmap.TrapMap;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Various shape metrics &amp; predicates
+ * Various shape metrics, predicates and descriptors.
  * 
  * @author Michael Carleton
  *
@@ -37,9 +47,9 @@ public final class PGS_ShapePredicates {
 	}
 
 	/**
-	 * Determines whether the outer shape contains the inner shape (meaning every
-	 * point of the inner shape is a point of the outer shape). A shape is
-	 * considered to contain itself itself.
+	 * Determines whether the outer shape fully contains the inner shape. A shape is
+	 * considered to contain itself. Points of the inner shape that lie on the
+	 * boundary of the outer shape are considered to be contained.
 	 * 
 	 * @param outer
 	 * @param inner
@@ -66,8 +76,8 @@ public final class PGS_ShapePredicates {
 	/**
 	 * Determines whether a shape contains every point from a list of points. It is
 	 * faster to use method rather than than calling
-	 * {@link #containsPoint(PShape, PVector)} repeatedly. Points that lie on the
-	 * boundary of the shape are considered to be contained.
+	 * {@link #containsPoint(PShape, PVector) containsPoint()} repeatedly. Any
+	 * points that lie on the boundary of the shape are considered to be contained.
 	 * 
 	 * @param shape
 	 * @param points list of points to check
@@ -161,7 +171,7 @@ public final class PGS_ShapePredicates {
 			try {
 				map = new TrapMap(PGS_Conversion.getChildren(PGS_Transformation.shear(groupShape, .00001, 0)));
 			} catch (Exception e2) {
-				System.err.println(e.getLocalizedMessage());
+				System.err.println(e.getMessage());
 				return new PShape();
 			}
 		}
@@ -171,6 +181,19 @@ public final class PGS_ShapePredicates {
 	/**
 	 * Determines whether the shapes intersect/overlap (meaning that have at least
 	 * one point in common).
+	 * <p>
+	 * Note that the input shapes may be lineal (open path) or polygonal (closed
+	 * path), and this affects the meaning of the method. The following intersection
+	 * tests are performed based on the type combinations of the shapes:
+	 * <ul>
+	 * <li>Polygon-line intersection: the polygon <b>area</b> and line share at
+	 * least one point in common. This means a path contained entirely inside a
+	 * polygon will return true as it needn't intersect with the polygon's
+	 * perimeter.</li>
+	 * <li>Line-line intersection: the two lines intersect at least once.</li>
+	 * <li>Polygon-polygon intersection: the two polygons share at least one point
+	 * in common (from their area or perimeter).</li>
+	 * </ul>
 	 * 
 	 * @param a
 	 * @param b
@@ -228,9 +251,11 @@ public final class PGS_ShapePredicates {
 	/**
 	 * Computes the centroid of a shape. A centroid is the center of mass of the
 	 * shape.
+	 * <p>
+	 * If the input is a polygon, the centroid will always lie inside it.
 	 * 
 	 * @param shape
-	 * @return null if point is empty (geometry empty)
+	 * @return null if geometry empty
 	 */
 	public static PVector centroid(PShape shape) {
 		Point point = fromPShape(shape).getCentroid();
@@ -238,6 +263,24 @@ public final class PGS_ShapePredicates {
 			return new PVector((float) point.getX(), (float) point.getY());
 		}
 		return null;
+	}
+
+	/**
+	 * Computes the geometric median location of a shape's vertices.
+	 * <p>
+	 * The median point is the point that minimises the sum of distances to the
+	 * shape vertices. If the input is a concave polygon, the median may not lie
+	 * inside it.
+	 * 
+	 * @param shape
+	 * @return median point
+	 * @since 1.4.0
+	 */
+	public static PVector median(PShape shape) {
+		List<PVector> points = PGS_Conversion.toPVector(shape);
+		Point4d[] wp = points.stream().map(p -> new Point4d(p.x, p.y, 0, 1)).toArray(Point4d[]::new);
+		Point3d median = GeometricMedian.median(wp, 1e-3, 50);
+		return new PVector((float) median.x, (float) median.y);
 	}
 
 	/**
@@ -319,10 +362,13 @@ public final class PGS_ShapePredicates {
 		Geometry g1 = fromPShape(a);
 		Geometry g2 = fromPShape(b);
 		Geometry overlap = g1.intersection(g2);
+		double aOverlap = overlap.getArea();
+		if (aOverlap == 0) {
+			return 0;
+		}
 		double a1 = g1.getArea();
 		double a2 = g2.getArea();
 		double total = a1 + a2;
-		double aOverlap = overlap.getArea();
 		double w1 = a1 / total;
 		double w2 = a2 / total;
 		return w1 * (aOverlap / a1) + w2 * (aOverlap / a2);
@@ -347,7 +393,7 @@ public final class PGS_ShapePredicates {
 	}
 
 	/**
-	 * Measures the elongation of a shape; the ratio of the shapes bounding box's
+	 * Measures the elongation of a shape; the ratio of a shape's bounding box
 	 * length to its width.
 	 * 
 	 * @param shape
@@ -369,25 +415,69 @@ public final class PGS_ShapePredicates {
 	}
 
 	/**
-	 * Computes the number of holes in a shape.
+	 * Computes the convexity of a shape using a simple area-based measure of
+	 * convexity.
 	 * 
-	 * @return
+	 * @param shape
+	 * @return a value in [0, 1]
+	 * @since 1.4.0
+	 */
+	public static double convexity(PShape shape) {
+		// also see 'A New Convexity Measure for Polygons'
+		Geometry g = fromPShape(shape);
+		return g.getArea() / g.convexHull().getArea();
+	}
+
+	/**
+	 * Counts the number of holes in a shape.
+	 * <p>
+	 * If the shape forms a polygon coverage (a mesh), then this method will count
+	 * holes from gaps within the mesh.
+	 * 
+	 * @param shape a polygonal shape (can be a GROUP shape having multiple
+	 *              polygons)
+	 * @return total number of holes in the shape
 	 */
 	public static int holes(PShape shape) {
-		return ((Polygon) fromPShape(shape)).getNumInteriorRing(); // NOTE assume a single polygon
+		Geometry g = fromPShape(shape);
+
+		/*
+		 * Attempt to convert to a polygon coverage to identify and count mesh holes.
+		 */
+		if (g.getNumGeometries() > 2) { // only 3 or more faces can form a mesh hole
+			Geometry[] geoms = new Geometry[g.getNumGeometries()];
+			for (int i = 0; i < g.getNumGeometries(); i++) {
+				geoms[i] = g.getGeometryN(i);
+			}
+			if (CoverageValidator.isValid(geoms)) {
+				g = CoverageUnion.union(geoms);
+			}
+		}
+
+		@SuppressWarnings("unchecked")
+		List<Polygon> polygons = PolygonExtracter.getPolygons(g);
+
+		int holes = 0;
+		for (Polygon p : polygons) {
+			holes += p.getNumInteriorRing();
+		}
+		return holes;
 	}
 
 	/**
 	 * Computes the maximum/largest interior angle of a polygon.
 	 * 
-	 * @param shape polygonal shape
+	 * @param shape simple polygonal shape
 	 * @return an angle in the range [0, 2PI]
 	 * @since 1.3.0
 	 */
 	public static double maximumInteriorAngle(PShape shape) {
-		final CoordinateList coords = new CoordinateList(fromPShape(shape).getCoordinates());
+		final Coordinate[] coordz = fromPShape(shape).getCoordinates();
+		final CoordinateList coords = new CoordinateList(coordz);
 		coords.remove(coords.size() - 1); // remove duplicate/closed coordinate
-		Collections.reverse(coords); // as CCW winding by default
+		if (Orientation.isCCW(coordz)) {
+			Collections.reverse(coords); // CCW -> CW
+		}
 		double maxAngle = 0;
 		for (int i = 0; i < coords.size(); i++) {
 			Coordinate p0 = coords.get(i);
@@ -396,6 +486,30 @@ public final class PGS_ShapePredicates {
 			maxAngle = Math.max(maxAngle, Angle.interiorAngle(p0, p1, p2));
 		}
 		return maxAngle;
+	}
+
+	/**
+	 * Quantifies the similarity between two shapes, by using the pairwise euclidean
+	 * distance between each shape's <i>Elliptic Fourier Descriptors</i> (EFD).
+	 * <p>
+	 * Smaller values indicate greater similarity or equivalence, and the measure is
+	 * translation and rotation invariant.
+	 * <p>
+	 * This method can be useful in shape recognition tasks where it is necessary to
+	 * quantify the difference or similarity between two shapes.
+	 *
+	 * @param a polygonal shape
+	 * @param b polygonal shape
+	 * @return The EFD distance between the two provided PShapes. Smaller values
+	 *         indicate greater similarity or equivalence between the shapes.
+	 * @since 1.4.0
+	 */
+	public static double efdSimilarity(PShape a, PShape b) {
+		int n = Math.min(a.getVertexCount(), b.getVertexCount()) / 2;
+		n = Math.min(n, 50); // max of 50 descriptors
+		EllipticFourierDesc efdA = new EllipticFourierDesc(((Polygon) fromPShape(a)).getExteriorRing(), n);
+		EllipticFourierDesc efdB = new EllipticFourierDesc(((Polygon) fromPShape(b)).getExteriorRing(), n);
+		return EllipticFourierDesc.computeEFDDistance(efdA.getEFD(), efdB.getEFD());
 	}
 
 	/**
@@ -468,6 +582,53 @@ public final class PGS_ShapePredicates {
 		final Geometry g = fromPShape(shape);
 		final double area = g.getArea();
 		return ((g.convexHull().getArea() - area) / area < 0.001);
+	}
+
+	/**
+	 * Determines whether a GROUP shape forms a conforming mesh / valid polygon
+	 * coverage.
+	 * <p>
+	 * Conforming meshes comprise faces that do not intersect; any adjacent faces
+	 * not only share edges, but every pair of shared edges are <b>identical</b>
+	 * (having the same coordinates) (such as a triangulation).
+	 * 
+	 * @param mesh shape to test
+	 * @return true if the shape is a conforming mesh
+	 * @since 1.4.0
+	 */
+	public static boolean isConformingMesh(PShape mesh) {
+		Geometry[] geoms = PGS_Conversion.getChildren(mesh).stream().map(f -> fromPShape(f)).toArray(Geometry[]::new);
+		return CoverageValidator.isValid(geoms);
+	}
+
+	/**
+	 * Checks if a PShape is valid, and reports the validation error if it is
+	 * invalid.
+	 * <p>
+	 * An invalid shape is one that violates the rules of geometric validity. Some
+	 * common reasons for a shape to be considered invalid include:
+	 * <ul>
+	 * <li>Self-intersection: The shape intersects itself at one or more points or
+	 * segments, creating overlapping or self-crossing areas.
+	 * <li>Invalid topology: The shape's topology is incorrect, such as having
+	 * dangling edges, disconnected components, or invalid ring configurations in
+	 * polygons.
+	 * <li>Degenerate geometry: The shape has collapsed or degenerate components,
+	 * such as zero-length lines, zero-area polygons, or overlapping vertices.
+	 * </ul>
+	 * 
+	 * @param shape The PShape to validate.
+	 * @return {@code true} if the shape is valid, {@code false} otherwise.
+	 * @since 1.4.0
+	 */
+	public static boolean isValid(PShape shape) {
+		IsValidOp validate = new IsValidOp(fromPShape(shape));
+		if (validate.getValidationError() == null) {
+			return true;
+		} else {
+			System.err.println(validate.getValidationError());
+			return false;
+		}
 	}
 
 }

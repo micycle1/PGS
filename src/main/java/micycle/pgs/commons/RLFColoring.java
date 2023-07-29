@@ -1,9 +1,15 @@
 package micycle.pgs.commons;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.jgrapht.Graph;
 import org.jgrapht.alg.interfaces.VertexColoringAlgorithm;
@@ -61,9 +67,9 @@ public class RLFColoring<V, E> implements VertexColoringAlgorithm<V> {
 	private final NeighborCache<V, E> neighborCache;
 
 	/**
-	 * These maps store the numbers AU(x) and AW(x). Each time a vertex is
-	 * removed from U (and its uncolored neighbours added to W) they are updated
-	 * (provided an efficient computing the value each call).
+	 * These maps store the numbers AU(x) and AW(x). Each time a vertex is removed
+	 * from U (and its uncolored neighbours added to W) they are updated (provided
+	 * an efficient computing the value each call).
 	 */
 	final Map<V, Integer> AU;
 	final Map<V, Integer> AW;
@@ -71,8 +77,16 @@ public class RLFColoring<V, E> implements VertexColoringAlgorithm<V> {
 	private int activeColor;
 
 	public RLFColoring(Graph<V, E> graph) {
+		this(graph, ThreadLocalRandom.current().nextLong());
+	}
+
+	public RLFColoring(Graph<V, E> graph, long seed) {
 		this.graph = Objects.requireNonNull(graph, "Graph cannot be null");
-		U = new HashSet<>(graph.vertexSet());
+
+		List<V> vertices = new ArrayList<>(graph.vertexSet());
+		Collections.shuffle(vertices, new Random(seed));
+		U = new LinkedHashSet<>(vertices);
+
 		W = new HashSet<>(graph.vertexSet().size());
 		C = CollectionUtil.newHashMapWithExpectedSize(graph.vertexSet().size());
 		neighborCache = new NeighborCache<>(graph);

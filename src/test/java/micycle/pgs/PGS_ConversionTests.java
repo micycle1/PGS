@@ -17,7 +17,7 @@ import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.PrecisionModel;
 
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.ColorUtils;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -417,7 +417,7 @@ class PGS_ConversionTests {
 		shape.vertex(0, 10);
 		shape.endShape(PShape.CLOSE);
 
-		int col = RGB.composeColor(50, 125, 175);
+		int col = ColorUtils.composeColor(50, 125, 175);
 		shape.setFill(col);
 		shape.setStrokeWeight(11.11f);
 		shape.setStroke(col);
@@ -520,6 +520,7 @@ class PGS_ConversionTests {
 		assertTrue(PGS_ShapePredicates.equalsNorm(shape, in));
 	}
 
+	@Test
 	void testJava2DIO() {
 		final PShape shape = new PShape(PShape.GEOMETRY);
 		shape.beginShape();
@@ -531,6 +532,21 @@ class PGS_ConversionTests {
 		Shape s = PGS_Conversion.toJava2D(shape);
 		PShape in = PGS_Conversion.fromJava2D(s);
 
+		assertTrue(PGS_ShapePredicates.equalsNorm(shape, in));
+	}
+	
+	@Test
+	void testArrayIO() {
+		final PShape shape = new PShape(PShape.GEOMETRY);
+		shape.beginShape();
+		shape.vertex(1, 1);
+		shape.vertex(10, 0);
+		shape.vertex(33, 10);
+		shape.endShape(PShape.CLOSE);
+		
+		double[][] s = PGS_Conversion.toArray(shape, true);
+		PShape in = PGS_Conversion.fromArray(s, false);
+		
 		assertTrue(PGS_ShapePredicates.equalsNorm(shape, in));
 	}
 

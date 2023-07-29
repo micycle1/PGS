@@ -2,6 +2,7 @@ package micycle.pgs;
 
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
+import static processing.core.PConstants.GROUP;
 import static micycle.pgs.PGS_Construction.createEllipse;
 
 import java.util.ArrayList;
@@ -11,27 +12,40 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.locationtech.jts.algorithm.MinimumAreaRectangle;
 import org.locationtech.jts.algorithm.MinimumBoundingCircle;
 import org.locationtech.jts.algorithm.MinimumDiameter;
 import org.locationtech.jts.algorithm.construct.LargestEmptyCircle;
 import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
+import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateList;
+import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.operation.distance.DistanceOp;
+import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
-import micycle.pgs.color.RGB;
+import almadina.rectpacking.RBPSolution;
+import almadina.rectpacking.Rect;
+import almadina.rectpacking.RectPacking.PackingHeuristic;
+import micycle.pgs.color.Colors;
 import micycle.pgs.commons.ClosestPointPair;
 import micycle.pgs.commons.FarthestPointPair;
+import micycle.pgs.commons.LargestEmptyCircles;
 import micycle.pgs.commons.MaximumInscribedAARectangle;
 import micycle.pgs.commons.MaximumInscribedRectangle;
 import micycle.pgs.commons.MinimumBoundingEllipse;
 import micycle.pgs.commons.MinimumBoundingTriangle;
+import micycle.pgs.commons.Nullable;
+import micycle.pgs.commons.VisibilityPolygon;
 import processing.core.PShape;
 import processing.core.PVector;
+import whitegreen.dalsoo.DalsooPack;
 
 /**
  * Solve geometric optimisation problems, such as bounding volumes, inscribed
@@ -106,7 +120,7 @@ public final class PGS_Optimisation {
 
 	/**
 	 * Finds the rectangle with a maximum area whose sides are parallel to the
-	 * x-axis and y-axis ("axis-aligned"), contained within a convex shape.
+	 * x-axis and y-axis ("axis-aligned"), contained/insribed within a convex shape.
 	 * <p>
 	 * This method computes the MIR for convex shapes only; if a concave shape is
 	 * passed in, the resulting rectangle will be computed based on its convex hull.
@@ -137,6 +151,71 @@ public final class PGS_Optimisation {
 	}
 
 	/**
+	 * Finds the largest area <i>perimeter square</i> of the input. A <i>perimeter
+	 * square</i> is a square whose 4 vertices each lie on the perimeter of the
+	 * input shape (within the given tolerance).
+	 * <p>
+	 * If the input is convex, the output forms a fully inscribed square; if the
+	 * input is concave the output is not necessarily inscribed.
+	 * <p>
+	 * The method does not respect holes (for now...).
+	 * 
+	 * @param shape
+	 * @param tolerance a value of 2-5 is usually suitable
+	 * @return shape representing the maximum square
+	 * @since 1.4.0
+	 */
+	public static PShape maximumPerimeterSquare(PShape shape, double tolerance) {
+		shape = PGS_Morphology.simplify(shape, tolerance / 2);
+		final Polygon p = (Polygon) PGS_Conversion.fromPShape(shape);
+		Geometry buffer = p.getExteriorRing().buffer(tolerance / 2, 4);
+		final Envelope e = buffer.getEnvelopeInternal();
+		buffer = DouglasPeuckerSimplifier.simplify(buffer, tolerance / 2);
+		final IndexedPointInAreaLocator pia = new IndexedPointInAreaLocator(buffer);
+		shape = PGS_Processing.densify(shape, Math.max(0.5, tolerance)); // min of 0.5
+		final List<PVector> points = PGS_Conversion.toPVector(shape);
+
+		double maxDiagonal = 0;
+		PVector[] maxAreaVertices = new PVector[0];
+		for (int i = 0; i < points.size(); i++) {
+			for (int j = 0; j < points.size(); j++) {
+				final PVector a = points.get(i);
+				final PVector b = points.get(j);
+				double dist = PGS.distanceSq(a, b);
+
+				if (dist < maxDiagonal) {
+					continue;
+				}
+
+				final PVector m = PVector.add(a, b).div(2);
+				final PVector n = new PVector(b.y - a.y, a.x - b.x).div(2);
+				final PVector c = PVector.sub(m, n);
+
+				final PVector d = PVector.add(m, n);
+				// do envelope checks first -- slightly faster
+				if (within(c, e) && within(d, e)) {
+					if (pia.locate(new Coordinate(c.x, c.y)) != Location.EXTERIOR) {
+						if (pia.locate(new Coordinate(d.x, d.y)) != Location.EXTERIOR) {
+							maxDiagonal = dist;
+							maxAreaVertices = new PVector[] { a, c, b, d, a }; // closed vertices
+						}
+					}
+				}
+			}
+		}
+
+		PShape out = PGS_Conversion.fromPVector(maxAreaVertices);
+		out.setStroke(true);
+		out.setStroke(micycle.pgs.color.Colors.PINK);
+		out.setStrokeWeight(4);
+		return out;
+	}
+
+	private static boolean within(PVector p, Envelope rect) {
+		return p.x >= rect.getMinX() && p.x <= rect.getMaxX() && p.y <= rect.getMaxY() && p.y >= rect.getMinY();
+	}
+
+	/**
 	 * Computes the Minimum Bounding Circle (MBC) for the points in a Geometry. The
 	 * MBC is the smallest circle which covers all the vertices of the input shape
 	 * (this is also known as the Smallest Enclosing Circle). This is equivalent to
@@ -150,16 +229,35 @@ public final class PGS_Optimisation {
 	}
 
 	/**
-	 * Computes the minimum bounding rectangle that encloses a shape. Unlike the
-	 * envelope for a shape, the rectangle returned by this method can have any
+	 * Computes the minimum-width bounding rectangle that encloses a shape. Unlike
+	 * the envelope for a shape, the rectangle returned by this method can have any
 	 * orientation (it's not axis-aligned).
+	 * <p>
+	 * The minimum-width enclosing rectangle does not necessarily have the minimum
+	 * possible area. Use {@link #minimumAreaRectangle(PShape)
+	 * minimumAreaRectangle()} to compute this.
 	 * 
-	 * @param shape
-	 * @return
+	 * @param shape The shape to compute the minimum bounding rectangle for.
+	 * @return A PShape object representing the minimum bounding rectangle.
 	 */
-	public static PShape minimumBoundingRectangle(PShape shape) {
-		Polygon md = (Polygon) MinimumDiameter.getMinimumRectangle(fromPShape(shape));
+	public static PShape minimumWidthRectangle(PShape shape) {
+		Geometry md = MinimumDiameter.getMinimumRectangle(fromPShape(shape));
 		return toPShape(md);
+	}
+
+	/**
+	 * Computes the minimum-area rectangle that encloses a shape.
+	 * <p>
+	 * The minimum-area enclosing rectangle does not necessarily have the minimum
+	 * possible width. Use {@link #minimumWidthRectangle(PShape)
+	 * minimumBoundingRectangle()} to compute this.
+	 * 
+	 * @param shape The shape to compute the minimum-area rectangle for.
+	 * @return A PShape object representing the minimum-area rectangle.
+	 * @since 1.4.0
+	 */
+	public static PShape minimumAreaRectangle(PShape shape) {
+		return toPShape(MinimumAreaRectangle.getMinimumRectangle(fromPShape(shape)));
 	}
 
 	/**
@@ -187,7 +285,7 @@ public final class PGS_Optimisation {
 
 		final PShape ellipse = new PShape(PShape.PATH);
 		ellipse.setFill(true);
-		ellipse.setFill(RGB.WHITE);
+		ellipse.setFill(Colors.WHITE);
 		ellipse.beginShape();
 		for (int i = 0; i < eEoords.length; i++) {
 			ellipse.vertex((float) eEoords[i][0], (float) eEoords[i][1]);
@@ -214,7 +312,7 @@ public final class PGS_Optimisation {
 	 * The minimum diameter is defined to be the width of the smallest band that
 	 * contains the shape, where a band is a strip of the plane defined by two
 	 * parallel lines. This can be thought of as the smallest hole that the geometry
-	 * can bemoved through, with a single rotation.
+	 * can be moved through, with a single rotation.
 	 * 
 	 * @param shape
 	 * @return
@@ -225,25 +323,239 @@ public final class PGS_Optimisation {
 	}
 
 	/**
-	 * Constructs the Largest Empty Circle for a set of obstacle geometries, up to a
-	 * specified tolerance. Valid obstacles are point and line shapes (such as a
-	 * POINTS PShape).
+	 * Computes the largest empty circle that does not intersect any obstacles (up
+	 * to a specified tolerance).
 	 * <p>
-	 * The Largest Empty Circle is the largest circle which has its center in the
-	 * convex hull of the obstacles (the boundary), and whose interior does not
-	 * intersect with any obstacle. The circle center is the point in the interior
-	 * of the boundary which has the farthest distance from the obstacles (up to
-	 * tolerance).
+	 * Valid obstacles are point, line or polygonal shapes.
+	 * <p>
+	 * The circle center lies within the interior of the convex hull of the
+	 * obstacles.
 	 * 
-	 * @param obstacles a shape representing the obstacles (points and lines)
-	 * @param tolerance the distance tolerance for computing the circle center point
-	 * @return
+	 * @param obstacles A PShape representing the obstacles.
+	 * @param tolerance A double representing the tolerance for the circle
+	 *                  computation.
+	 * @return A PShape representing the largest empty circle that does not
+	 *         intersect the obstacles and lies within the specified boundary.
 	 */
 	public static PShape largestEmptyCircle(PShape obstacles, double tolerance) {
-		LargestEmptyCircle lec = new LargestEmptyCircle(fromPShape(obstacles), Math.max(0.01, tolerance));
+		return largestEmptyCircle(obstacles, null, tolerance);
+	}
+
+	/**
+	 * Computes the largest empty circle that does not intersect any obstacles and
+	 * lies within the specified boundary (up to a specified tolerance).
+	 * <p>
+	 * Valid obstacles are point, line or polygonal shapes.
+	 * <p>
+	 * The circle center is the point in the interior of the boundary which has the
+	 * farthest distance from the obstacles (up to the tolerance).
+	 * 
+	 * @param obstacles A PShape representing the obstacles.
+	 * @param boundary  A PShape representing the polygonal boundary, or null if
+	 *                  there is no boundary constraint.
+	 * @param tolerance A double representing the tolerance for the circle
+	 *                  computation.
+	 * @return A PShape representing the largest empty circle that does not
+	 *         intersect the obstacles and lies within the specified boundary.
+	 */
+	public static PShape largestEmptyCircle(PShape obstacles, @Nullable PShape boundary, double tolerance) {
+		LargestEmptyCircle lec = new LargestEmptyCircle(fromPShape(obstacles), boundary == null ? null : fromPShape(boundary),
+				Math.max(0.01, tolerance));
 		double wh = lec.getRadiusLine().getLength() * 2;
 		Polygon circle = createEllipse(PGS.coordFromPoint(lec.getCenter()), wh, wh);
 		return toPShape(circle);
+	}
+
+	/**
+	 * Computes the {@code n} largest empty circles that do not intersect any
+	 * obstacles (nor each other) within an optional {@code boundary}.
+	 * <p>
+	 * The empty circles are found with a specified {@code tolerance} value, which
+	 * limits the precision of the computation.
+	 * <p>
+	 * Valid obstacles are point, line or polygonal shapes.
+	 *
+	 * @param obstacles PShape containing the obstacles in the 2D space
+	 * @param boundary  polygonal PShape defining the boundary of the space, or
+	 *                  {@code null} if no boundary is defined (in which case the
+	 *                  convex hull of obstacles is used as boundary).
+	 * @param n         the number of largest empty circles to find
+	 * @param tolerance the tolerance value for the computation
+	 * @return a list of {@code PVector} objects representing the centers and radii
+	 *         of the found largest empty circles as {@code PVector(x, y, r)}, where
+	 *         {@code x} and {@code y} are the center coordinates, and {@code r} is
+	 *         the radius
+	 * @since 1.4.0
+	 */
+	public static List<PVector> largestEmptyCircles(PShape obstacles, @Nullable PShape boundary, int n, double tolerance) {
+		tolerance = Math.max(0.01, tolerance);
+		LargestEmptyCircles lecs = new LargestEmptyCircles(obstacles == null ? null : fromPShape(obstacles),
+				boundary == null ? null : fromPShape(boundary), tolerance);
+
+		final List<PVector> out = new ArrayList<>();
+		for (int i = 0; i < n; i++) {
+			double[] c = lecs.findNextLEC();
+			out.add(new PVector((float) c[0], (float) c[1], (float) c[2]));
+		}
+
+		return out;
+	}
+
+	/**
+	 * Covers a polygon with n circles such that no circle’s center lies outside the
+	 * polygon. Circles will generally cover most of the shape and have some mutual
+	 * overlap.
+	 * 
+	 * @param shape shape to cover
+	 * @param n     number of circles to generate
+	 * @return A list of PVectors, each representing one circle: (.x, .y) represent
+	 *         the center point and .z represents radius.
+	 * @see #circleCoverage(PShape, int, long)
+	 * @since 1.4.0
+	 */
+	public static List<PVector> circleCoverage(PShape shape, int n) {
+		return circleCoverage(shape, n, System.nanoTime());
+	}
+
+	/**
+	 * Covers a polygon with n circles such that no circle’s center lies outside the
+	 * polygon. Circles will generally cover most of the shape and have some mutual
+	 * overlap.
+	 * 
+	 * @param shape shape to cover
+	 * @param n     number of circles to generate
+	 * @param seed  random seed
+	 * @return A list of PVectors, each representing one circle: (.x, .y) represent
+	 *         the center point and .z represents radius.
+	 * @see #circleCoverage(PShape, int)
+	 * @since 1.4.0
+	 */
+	public static List<PVector> circleCoverage(PShape shape, int n, long seed) {
+		// same as 'Simple Methods to Represent Shapes with Sample Spheres'
+		int nSeedPoints = (int) (PGS_ShapePredicates.area(shape) / 100); // ~one point every 10 units
+		List<PVector> points = PGS_Processing.generateRandomGridPoints(shape, nSeedPoints, false, 0.5, seed);
+		points.addAll(PGS_Conversion.toPVector(shape)); // incl. shape vertices
+
+		List<PVector> circles = new ArrayList<>(n);
+		PGS_PointSet.cluster(points, n, seed).forEach(group -> {
+			if (group.size() < 2) { // unlikely
+				return;
+			}
+			Geometry clusterPoints = PGS.GEOM_FACTORY.createMultiPointFromCoords(PGS.toCoords(group));
+			MinimumBoundingCircle mbc = new MinimumBoundingCircle(clusterPoints);
+			Coordinate mbcp = mbc.getCentre();
+			circles.add(new PVector((float) mbcp.x, (float) mbcp.y, (float) mbc.getRadius()));
+		});
+
+		return circles;
+	}
+
+	public enum RectPackHeuristic {
+
+		/**
+		 * Packs rectangles such that the wasted/empty area within the bin is minimised.
+		 * This heuristic tends to generate packings that are less dense but are better
+		 * at covering the whole area (particularly if there is much spare area) than
+		 * the other heuristics.
+		 */
+		BestAreaFit(PackingHeuristic.BestAreaFit),
+		/**
+		 * Packs rectangles such that the total touching perimeter length is maximised.
+		 * In practice, rectangles are packed against the left-most and upper-most
+		 * boundary of the bin first.
+		 */
+		TouchingPerimeter(PackingHeuristic.TouchingPerimeter),
+		/**
+		 * Packs rectangles such that the distance between the top-right corner of each
+		 * rectangle and that of the bin is maximised.
+		 */
+		TopRightCornerDistance(PackingHeuristic.TopRightCornerDistance);
+
+		private final PackingHeuristic h;
+
+		private RectPackHeuristic(PackingHeuristic h) {
+			this.h = h;
+		}
+	}
+
+	/**
+	 * Packs a collection of rectangles, according to the given packing heuristic,
+	 * into rectangular 2D bin(s). Within each bin rectangles are packed flush with
+	 * each other, having no overlap. Each rectangle is packed parallel to the edges
+	 * of the plane.
+	 * <p>
+	 * When packed rectangles fill one bin, any remaining rectangles will be packed
+	 * into additional bin(s).
+	 * 
+	 * @param rectangles a collection of rectangles (represented by PVectors),
+	 *                   specifying their width (.x) and height (.y)
+	 * @param binWidth   the width of each bin's area in which to pack the
+	 *                   rectangles
+	 * @param binHeight  the height of each bin's area in which to pack the
+	 *                   rectangles
+	 * @param heuristic  the packing heuristic to use. The heuristic determines
+	 *                   rules for how every subsequent rectangle is placed
+	 * @since 1.4.0
+	 * @return a GROUP PShape, where each immediate child is a GROUP shape
+	 *         corresponding to a bin; the child shapes of each bin are rectangles.
+	 *         Bins are positioned at (0, 0).
+	 */
+	public static PShape rectPack(List<PVector> rectangles, int binWidth, int binHeight, RectPackHeuristic heuristic) {
+		RBPSolution packer = new RBPSolution(binWidth, binHeight);
+		List<Rect> rects = rectangles.stream().map(p -> Rect.of(Math.round(p.x), Math.round(p.y))).collect(Collectors.toList());
+
+		packer.pack(rects, heuristic.h);
+
+		PShape bins = new PShape(GROUP);
+		packer.getBins().forEach(bin -> {
+			PShape binGroup = new PShape(GROUP);
+			bin.getPackedRects().forEach(r -> {
+				binGroup.addChild(PGS.createRect(r.x, r.y, r.width, r.height));
+			});
+			bins.addChild(binGroup);
+		});
+		return bins;
+	}
+
+	/**
+	 * Packs a list of irregular polygonal shapes into (potentially multiple)
+	 * rectangular containers (bins), while attempting to minimise the occupied
+	 * space of the packing.
+	 * <p>
+	 * Every bin has the dimensions given by the width and height parameters; when
+	 * packed shapes fill/overflow one bin, any remaining shapes will be packed into
+	 * additional bin(s). Multiple bins are arranged in a grid, having the maximum
+	 * number of columns specified by the <code>binColumns</code> parameter.
+	 * <p>
+	 * Bins are packed top-to-bottom vertically.
+	 * 
+	 * @param shapes     a list of PShapes to be packed within a bin(s)
+	 * @param binWidth   the width of each bin/container to pack the shapes into
+	 * @param binHeight  the height of each bin/container to pack the shapes into
+	 * @param binColumns the number of columns to arrange the bins into (>= 1, only
+	 *                   applies when there are multiple bins).
+	 * @param spacing    the amount of spacing between each packed shape (>= 0).
+	 * @return a new GROUP PShape object containing the packed shapes arranged in
+	 *         columns
+	 * @since 1.4.0
+	 */
+	public static PShape binPack(List<PShape> shapes, double binWidth, double binHeight, int binColumns, double spacing) {
+		if (shapes.isEmpty()) {
+			return new PShape();
+		}
+		binColumns = Math.max(1, binColumns); // enforce >= 1
+		double[][][] polys = new double[shapes.size()][0][0];
+		for (int i = 0; i < polys.length; i++) {
+			polys[i] = PGS_Conversion.toArray(shapes.get(i), false);
+		}
+
+		PShape packing = new PShape(GROUP);
+		DalsooPack pack = new DalsooPack(polys, spacing, null, 1, binWidth, binHeight, 0); // pack vertically
+		pack.packAll(true, false); // use abey pack -- most efficient method
+		pack.getPackedPolys(binColumns).forEach(p -> packing.addChild(PGS_Conversion.fromArray(p, true)));
+		PGS_Conversion.disableAllStroke(packing);
+
+		return packing;
 	}
 
 	/**
@@ -408,6 +720,45 @@ public final class PGS_Optimisation {
 		double xs = M + N * rs;
 		double ys = P + Q * rs;
 		return new PVector((float) xs, (float) ys, (float) rs);
+	}
+
+	/**
+	 * Computes a visibility polygon / isovist, the area visible from a given point
+	 * in a space, considering occlusions caused by obstacles. In this case,
+	 * obstacles comprise the line segments of input shape.
+	 * 
+	 * @param obstacles shape representing obstacles, which may have any manner of
+	 *                  polygon and line geometries.
+	 * @param viewPoint view point from which to compute visibility. If the input if
+	 *                  polygonal, the viewpoint may lie outside the polygon.
+	 * @return a polygonal shape representing the visibility polygon.
+	 * @since 1.4.0
+	 * @see #visibilityPolygon(PShape, Collection)
+	 */
+	public static PShape visibilityPolygon(PShape obstacles, PVector viewPoint) {
+		VisibilityPolygon vp = new VisibilityPolygon();
+		vp.addGeometry(fromPShape(obstacles));
+		return toPShape(vp.getIsovist(PGS.coordFromPVector(viewPoint), true));
+	}
+
+	/**
+	 * Computes a visibility polygon / isovist, the area visible from a set of given
+	 * points in space, considering occlusions caused by obstacles. In this case,
+	 * obstacles comprise the line segments of input shape.
+	 * 
+	 * @param obstacles  shape representing obstacles, which may have any manner of
+	 *                   polygon and line geometries.
+	 * @param viewPoints viewpoints from which to compute visibility. If the input
+	 *                   if polygonal, viewpoints may lie outside the polygon.
+	 * @return a polygonal shape representing the visibility polygon (possibly a
+	 *         GROUP shape of disjoint visibility polygons).
+	 * @since 1.4.0
+	 * @see #visibilityPolygon(PShape, PVector)
+	 */
+	public static PShape visibilityPolygon(PShape obstacles, Collection<PVector> viewPoints) {
+		VisibilityPolygon vp = new VisibilityPolygon();
+		vp.addGeometry(fromPShape(obstacles));
+		return toPShape(vp.getIsovist(new CoordinateList(PGS.toCoords(viewPoints)), true));
 	}
 
 }

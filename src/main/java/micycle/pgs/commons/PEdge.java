@@ -6,7 +6,7 @@ import processing.core.PVector;
  * An undirected edge / line segment joining 2 PVectors.
  * <p>
  * Note: PEdges <code>PEdge(a, b)</code> and <code>PEdge(b, a)</code> are
- * consided equal.
+ * considered equal.
  * 
  * @author Michael Carleton
  *
@@ -25,7 +25,7 @@ public class PEdge {
 	}
 
 	/**
-	 * Rounds (mutates) the vertices of this PEdge.
+	 * Rounds (mutates) the vertex coordinates of this PEdge to their closest ints.
 	 * 
 	 * @return this PEdge
 	 */
@@ -38,11 +38,57 @@ public class PEdge {
 	}
 
 	public PVector midpoint() {
-		return a.copy().add(b).div(2);
+		return PVector.add(a, b).div(2);
 	}
 
+	/**
+	 * Calculates the Euclidean distance of this PEdge.
+	 * 
+	 * @return
+	 */
 	public float length() {
 		return a.dist(b);
+	}
+
+	/**
+	 * Calculates the subsection of this PEdge as a new PEdge.
+	 * 
+	 * @param from the start of the subsection as a normalized value along the
+	 *             length of this PEdge. 'from' should be less than or equal to
+	 *             'to'.
+	 * @param to   the end of the subsection as a normalized value along the length
+	 *             of this PEdge. 'to' should be greater than or equal to 'from'.
+	 * @return A new PEdge representing the subsection of this PEdge between 'from'
+	 *         (from end <code>a</code>) and 'to' (towards end <code>b</code>).
+	 */
+	public PEdge slice(double from, double to) {
+		final double TOLERANCE = 1e-7;
+		if (Math.abs(from) < TOLERANCE) {
+			from = 0;
+		}
+		if (Math.abs(to - 1) < TOLERANCE) {
+			to = 1;
+		}
+		if (from < 0 || to > 1 || from > to) {
+			throw new IllegalArgumentException(
+					"Parameters 'from' and 'to' must be between 0 and 1, and 'from' must be less than or equal to 'to'.");
+		}
+
+		final PVector pointFrom;
+		if (from == 0) {
+			pointFrom = a.copy();
+		} else {
+			pointFrom = PVector.lerp(a, b, (float) from);
+		}
+
+		final PVector pointTo;
+		if (to == 1) {
+			pointTo = b.copy();
+		} else {
+			pointTo = PVector.lerp(a, b, (float) to);
+		}
+
+		return new PEdge(pointFrom, pointTo);
 	}
 
 	@Override
@@ -57,7 +103,7 @@ public class PEdge {
 	public boolean equals(Object obj) {
 		if (obj instanceof PEdge) {
 			PEdge other = (PEdge) obj;
-			return (other.a.equals(a) && other.b.equals(b)) || (other.a.equals(b) && other.b.equals(a));
+			return (equals(a, other.a) && equals(b, other.b)) || (equals(b, other.a) && equals(a, other.b));
 		}
 		return false;
 	}
@@ -72,5 +118,9 @@ public class PEdge {
 	@Override
 	public String toString() {
 		return a.toString() + " <-> " + b.toString();
+	}
+
+	private static boolean equals(PVector a, PVector b) {
+		return a.x == b.x && a.y == b.y;
 	}
 }

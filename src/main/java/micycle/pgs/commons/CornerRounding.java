@@ -3,7 +3,7 @@ package micycle.pgs.commons;
 import java.util.List;
 
 import micycle.pgs.PGS_Conversion;
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.Colors;
 import processing.core.PApplet;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -43,7 +43,7 @@ public final class CornerRounding {
 	
 	private static PShape roundPolygon(PShape shape, double extent) {
 		PShape rounded = new PShape(PShape.GEOMETRY);
-		PGS_Conversion.setAllFillColor(rounded, RGB.PINK);
+		PGS_Conversion.setAllFillColor(rounded, Colors.PINK);
 		rounded.beginShape();
 
 		final List<PVector> l = PGS_Conversion.toPVector(shape);

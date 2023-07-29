@@ -2,7 +2,7 @@
 
 # Processing Geometry Suite
 
-*Processing Geometry Suite* is a software project that provides easy access to 2D geometric algorithms in the form of a [Processing](https://processing.org/) library.
+*Processing Geometry Suite* is a software project that provides easy access to 2D geometric algorithms in the form of a [Processing](https://processing.org/) library. Over time it has grown to include an incredibly comprehensive range of algorithms.
 
 The focus of the library is on visualisation rather than providing underlying data structures. To this end all methods in the library are static and most of them take in and return [`PShapes`](https://processing.org/reference/PShape.html) or [`PVectors`](https://processing.org/reference/PVector.html).
 
@@ -25,7 +25,7 @@ Library functionality is split over the following classes:
 * `PGS_Hull`
   * Convex and concave hulls of polygons and point sets
 * `PGS_Meshing`
-  * Mesh generation (excluding triangulation) from shapes
+  * Mesh generation (excluding triangulation) and processing
 * `PGS_Morphology`
   * Methods that affect the geometry or topology of shapes (buffering, simplification, smoothing, etc.)
 * `PGS_Optimisation`
@@ -145,16 +145,19 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center"><b>Resize</td>
     <td align="center" valign="center"><b>Homothetic Transformation</td>
     <td align="center" valign="center"><b>Shear</td>
+    <td align="center" valign="center"><b>Align</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/transform/resize.gif"></td>
     <td valign="top" width="25%"><img src="resources/transform/homothetic.gif"></td>
     <td valign="top" width="25%"><img src="resources/transform/shear.gif"></td>
+    <td valign="top" width="25%"><img src="resources/transform/align.gif"></td>
   </tr>
     <tr>
     <td align="center" valign="center"></td>
     <td align="center" valign="center">Projection-transform a shape with respect to a fixed point.</td>
     <td align="center" valign="center"></td>
+    <td align="center" valign="center">Maximum-overlap alignment.</td>
   </tr>
 </table>
 
@@ -192,6 +195,7 @@ Much of the functionality (but by no means all) is demonstrated below:
 * Distance
 * Area
 * Centroid
+* Median
 
 ## *Contour*
 
@@ -230,9 +234,11 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
   <tr>
     <td align="center" valign="center"><b>Distance Field</td>
+    <td align="center" valign="center"><b>Center Line</td>
   </tr>
   <tr>
     <td valign="top"><img src="resources/contour/distanceField.png"></td>
+    <td valign="top"><img src="resources/contour/centerLine.gif"></td>
   </tr>
     </tr>
     <tr>
@@ -299,10 +305,14 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Variable Buffer</td>
     <td align="center" valign="center"><b>Precision Reduction</td>
+    <td align="center" valign="center"><b>Hobby Curve Simplification</td>
+    <td align="center" valign="center"><b>Elliptic Fourier Smoothing</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/morphology/variableBuffer.gif"></td>
     <td valign="top" width="25%"><img src="resources/morphology/reducePrecision.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/hobbySimplify.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/ellipticFourierSmooth.gif"></td>
   </tr>
 </table>
 
@@ -333,6 +343,7 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/morphology/snapHull.gif"></td>
   </tr>
   <tr>
+    <td align="center" valign="center"></td>
     <td align="center" valign="center">A variable-convexity hull.</td>
   </tr>
 </table>
@@ -397,7 +408,7 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Shape Intersection</td>
     <td align="center" valign="center" colspan="2"><b>Polygonize Lines</td>
-    <td align="center" valign="center"><b>Remove Hidden Lines</td>
+    <td align="center" valign="center"><b>Hidden Line Removal</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/geometry_processing/shapeIntersection.gif"></td>
@@ -421,6 +432,15 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/geometry_processing/tangentAngle.png"></td>
     <td valign="top" width="25%"><img src="resources/morphology/slivers.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/cleanCoverage.gif"></td>
+  </tr>
+  </tr>
+    <tr>
+    <td align="center" valign="center"><b>Extract Holes</td>
+    <td align="center" valign="center"><b>Nest</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/extractHoles.gif"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/nest.gif"></td>
   </tr>
 </table>
 
@@ -463,6 +483,12 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/voronoi/compoundVoronoi.gif"></td>
     <td valign="top" width="25%"><img src="resources/voronoi/compoundLines.png"></td>
   </tr>
+  <tr>
+    <td align="center" valign="center"><b>Centroidal Relaxation</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/voronoi/centroidal.gif"></td>
+  </tr>
 </table>
 
 ## *Meshing*
@@ -498,10 +524,27 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Split Quadrangulation</td>
     <td align="center" valign="center"><b>Spiral Quadrangulation</td>
+    <td align="center" valign="center"><b>Mesh Smoothing</td>
+    <td align="center" valign="center"><b>Mesh Subdivision</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/meshing/quadrangulation.png"></td>
     <td valign="top" width="25%"><img src="resources/meshing/spiralQuadrangulation.gif"></td>
+    <td valign="top" width="25%"><img src="resources/meshing/smooth.gif"></td>
+    <td valign="top" width="25%"><img src="resources/meshing/subdivide.gif"></td>
+  </tr>
+
+  <tr>
+    <td align="center" valign="center"><b>Mesh Simplification</td>
+    <td align="center" valign="center"><b>Stochastic Merge</td>
+    <td align="center" valign="center"><b>Area Merge</td>
+    <td align="center" valign="center"><b>Extract Inner Edges</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/meshing/simplifyMesh.gif"></td>
+    <td valign="top" width="25%"><img src="resources/meshing/stochasticMerge.gif"></td>
+    <td valign="top" width="25%"><img src="resources/meshing/areaMerge.gif"></td>
+    <td valign="top" width="25%"><img src="resources/meshing/innerEdges.gif"></td>
   </tr>
 </table>
 
@@ -511,13 +554,14 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Maximum Inscribed Circle</td>
     <td align="center" valign="center"><b>Minimum Bounding Rectangle</td>
-    <td align="center" valign="center" colspan="2"><b>Maximum Inscribed Rectangle</td>
+    <td align="center" valign="center"><b>Maximum Inscribed Rectangle</td>
+    <td align="center" valign="center"><b>Maximum Perimeter Square</td>
   </tr>
   <tr>
     <td valign="top"><img src="resources/optimisation/inscribedCircle.gif"></td>
     <td valign="top"><img src="resources/optimisation/minimumBoundingRectangle.png"></td>
     <td valign="top"><img src="resources/optimisation/mir.png"></td>
-    <td valign="top" ><img src="resources/optimisation/mir2.png"></td>
+    <td valign="top" ><img src="resources/optimisation/mis.png"></td>
   </tr>
 
   <tr>
@@ -545,15 +589,38 @@ Much of the functionality (but by no means all) is demonstrated below:
 
   <tr>
     <td align="center" valign="center"><b>Largest Empty Circle</td>
-    <td align="center" valign="center"><b>Closest Vertex</td>
+    <td align="center" valign="center"><b>Largest Empty Circles</td>
     <td align="center" valign="center"><b>Closest Point Pair</td>
     <td align="center" valign="center"><b>Farthest Point Pair</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/optimisation/lec.png"></td>
-    <td valign="top" width="25%"><img src="resources/pgs/closestVertex.gif"></td>
+    <td valign="top" width="25%"><img src="resources/optimisation/lecs.gif"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/closestPair.png"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/farthestPair.png"></td>
+  </tr>
+
+  <tr>
+    <td align="center" valign="center"><b>Closest Vertex</td>
+    <td align="center" valign="center"><b>Circle Covering</td>
+    <td align="center" valign="center" colspan="2"><b>Visibility Polygon / Isovist</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/pgs/closestVertex.gif"></td>
+    <td valign="top" width="25%"><img src="resources/optimisation/circleCoverage.gif"></td>
+    <td valign="top" width="25%"><img src="resources/optimisation/visibility.gif"></td>
+    <td valign="top" width="25%"><img src="resources/optimisation/visibility2.gif"></td>
+  </tr>
+
+  <tr>
+    <td align="center" valign="center" colspan="2"><b>Bin Pack</td>
+    <td align="center" valign="center" colspan="2"><b>Rectangle Bin Pack</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/optimisation/binPack1.png"></td>
+    <td valign="top" width="25%"><img src="resources/optimisation/binPack2.png"></td>
+    <td valign="top" width="25%"><img src="resources/optimisation/rectPack.gif"></td>
+    <td valign="top" width="25%"><img src="resources/optimisation/rectPackBins.gif"></td>
   </tr>
 
   <tr>
@@ -610,6 +677,13 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top"><img src="resources/circle_packing/hexLattice2.png"></td>
     <td valign="top"><img src="resources/circle_packing/tangentPack.gif"></td>
     <td valign="top"><img src="resources/circle_packing/tangentPack1.png"></td>
+  </tr>
+
+  <tr>
+    <td align="center" valign="center" colspan="2"><b>Obstacle</td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="resources/circle_packing/obstaclePack.gif"></td>
   </tr>
 </table>
 
@@ -682,9 +756,32 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Koch Snowflake</td>
     <td align="center" valign="center"><b>Blobbie</td>
+    <td align="center" valign="center"><b>RSFC</td>
+    <td align="center" valign="center"><b>Taijitu</td>
   </tr>
     <td valign="top" width="25%"><img src="resources/pgs/kochSnowflake.gif"></td>
     <td valign="top" width="25%"><img src="resources/pgs/blobbie.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/rsfc.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/taijitu.png"></td>
+  <tr>
+  <tr>
+    <td align="center" valign="center"><b>Arbelos</td>
+    <td align="center" valign="center"><b>Teardrop</td>
+    <td align="center" valign="center" colspan="2"><b>Sponge</td>
+  </tr>
+    <td valign="top" width="25%"><img src="resources/pgs/arbelos.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/teardrop.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/sponge1.png"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/sponge2.png"></td>
+  <tr>
+  <tr>
+    <td align="center" valign="center"><b>Gear</td>
+    <td align="center" valign="center"><b>Super Random Polygon</td>
+    <td align="center" valign="center"><b>Random Bezier Polygon</td>
+  </tr>
+    <td valign="top" width="25%"><img src="resources/pgs/gear.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/srpg.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/randomBezierShape.gif"></td>
   <tr>
   </tr>
 </table>
@@ -732,16 +829,26 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
+    <td align="center" valign="center"><b>Sobol LDS</td>
     <td align="center" valign="center"><b>N-Rooks LDS</td>
     <td align="center" valign="center"><b>Distance Prune</td>
     <td align="center" valign="center"><b>Hilbert Sort</td>
-    <td align="center" valign="center"><b>EMST</td>
   </tr>
   <tr>
+    <td valign="top" width="25%"><img src="resources/point_set/sobolLDS.gif"></td>
     <td valign="top" width="25%"><img src="resources/point_set/nRooksLDS.png"></td>
     <td valign="top" width="25%"><img src="resources/point_set/removeWithinDistance.gif"></td>
     <td valign="top" width="25%"><img src="resources/point_set/hilbertSort.gif"></td>
+  </tr>
+  <tr>
+    <td align="center" valign="center"><b>EMST</td>
+    <td align="center" valign="center"><b>Cluster</td>
+    <td align="center" valign="center"><b>Weighted Median</td>
+  </tr>
+  <tr>
     <td valign="top" width="25%"><img src="resources/point_set/emst.png"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/cluster.png"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/weightedMedian.png"></td>
   </tr>
 </table>
 
@@ -761,9 +868,11 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
   <tr>
     <td align="center" valign="center"><b>Parallel</td>
+    <td align="center" valign="center"><b>Polygon Interior Segments</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/segment_set/parallel.gif"></td>
+    <td valign="top" width="25%"><img src="resources/segment_set/interiorSegments.png"></td>
   </tr>
 </table>
 

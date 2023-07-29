@@ -1,10 +1,7 @@
 package micycle.pgs;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
 import org.jgrapht.alg.color.ColorRefinementAlgorithm;
 import org.jgrapht.alg.color.LargestDegreeFirstColoring;
@@ -14,36 +11,34 @@ import org.jgrapht.alg.color.SmallestDegreeLastColoring;
 import org.jgrapht.alg.interfaces.VertexColoringAlgorithm.Coloring;
 import org.jgrapht.graph.AbstractBaseGraph;
 import org.jgrapht.graph.DefaultEdge;
-import org.locationtech.jts.noding.SegmentString;
-
-import micycle.pgs.color.RGB;
+import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
+import micycle.pgs.color.Colors;
+import micycle.pgs.color.ColorUtils;
 import micycle.pgs.commons.GeneticColoring;
 import micycle.pgs.commons.RLFColoring;
 import processing.core.PShape;
-import processing.core.PVector;
 
 /**
- * Intelligently color meshes (or mesh-like shapes) such that no two adjacent
- * faces have the same color, while minimising the number of colors used.
+ * This class provides methods to color meshes and mesh-like shapes. It ensures
+ * that no two adjacent faces share the same color while also minimizing the
+ * total number of colors used.
  * <p>
- * The methods in this class distinguish between mesh-like shapes (<i>conforming
- * meshes</i>) and non-mesh-like shapes (<i>non-conforming meshes</i>). This
- * distinction is necessary because shapes that represent non-conforming meshes
- * require a single step of pre-processing ("noding") to first split edges
- * before coloring. The difference is described below:
+ * This class differentiates between "conforming meshes" and "non-conforming
+ * meshes".
  * 
  * <p style="margin-left: 40px">
- * <i>Conforming Meshes</i> : Consists of adjacent cells that not only share
- * edges, but every pair of shared edges are <b>identical</b> (having the same
- * coordinates) (such as a triangulation). <br>
- * <i>Non-Conforming Meshes</i> : Consists of adjacent cells that share edges
+ * <i>Conforming Meshes</i> : Consist of adjacent cells that share edges and
+ * every pair of shared edges are identical, meaning they have the same
+ * coordinates. An example of a conforming mesh is a triangulation. <br>
+ * <i>Non-Conforming Meshes</i> : Consist of adjacent cells that share edges
  * (i.e. edges may overlap) but adjacent edges do not necessarily have identical
  * start and end coordinates.
  * </p>
+ * For a non-conforming mesh, a pre-processing step called "noding" is required
+ * to split edges before coloring.
  * 
  * @author Michael Carleton
  * @since 1.2.0
- *
  */
 public final class PGS_Coloring {
 
@@ -51,9 +46,10 @@ public final class PGS_Coloring {
 	}
 
 	/**
-	 * Specifies the algorithm/heuristic used by the underlying graph coloring process to find
-	 * a coloring for mesh faces. RLF, followed by DSATUR generally produce the
-	 * "best" colorings (as measured by chromatic number, where lower is better).
+	 * Specifies the algorithm/heuristic used by the underlying graph coloring
+	 * process to find a coloring for mesh faces. RLF, followed by DSATUR generally
+	 * produce the "best" colorings (as measured by chromatic number, where lower is
+	 * better).
 	 */
 	public enum ColoringAlgorithm {
 		/**
@@ -89,6 +85,13 @@ public final class PGS_Coloring {
 		 * Recursive largest-first coloring (recommended).
 		 */
 		RLF,
+		/**
+		 * Repeatedly calls the recursive largest-first (RLF) algorithm until a
+		 * 4-coloring is found. The operation will break after 250 attempts if a
+		 * 4-coloring is still not found; in this case, the result from the final
+		 * attempt is returned.
+		 */
+		RLF_BRUTE_FORCE_4COLOR,
 		/**
 		 * Finds a coloring using a genetic algorithm. Unlike all other algorithms this
 		 * specifically targets a chromaticity of 4 (falls back to 5 if no solution is
@@ -144,6 +147,7 @@ public final class PGS_Coloring {
 		}
 		coloring.getColors().forEach((face, color) -> {
 			int c = colorPalette[color % colorPalette.length]; // NOTE use modulo to avoid OOB exception
+			face.setFill(true); // just in case
 			face.setFill(c);
 		});
 
@@ -162,7 +166,7 @@ public final class PGS_Coloring {
 	 * @return the input shape (whose faces have now been colored)
 	 */
 	public static PShape colorMesh(PShape shape, ColoringAlgorithm coloringAlgorithm, String[] colorPalette) {
-		return colorMesh(shape, coloringAlgorithm, RGB.hexToColor(colorPalette));
+		return colorMesh(shape, coloringAlgorithm, ColorUtils.hexToColor(colorPalette));
 	}
 
 	/**
@@ -176,7 +180,7 @@ public final class PGS_Coloring {
 	 *         color class (integer)
 	 */
 	public static Map<PShape, Integer> colorNonMesh(PShape shape, ColoringAlgorithm coloringAlgorithm) {
-		final PShape mesh = nodeNonMesh(shape);
+		final PShape mesh = PGS_Meshing.nodeNonMesh(shape);
 		return colorMesh(mesh, coloringAlgorithm);
 	}
 
@@ -192,9 +196,9 @@ public final class PGS_Coloring {
 	 *         colored)
 	 */
 	public static PShape colorNonMesh(PShape shape, ColoringAlgorithm coloringAlgorithm, int[] colorPalette) {
-		final PShape mesh = nodeNonMesh(shape);
+		final PShape mesh = PGS_Meshing.nodeNonMesh(shape);
 		colorMesh(mesh, coloringAlgorithm, colorPalette);
-		PGS_Conversion.setAllStrokeColor(mesh, RGB.WHITE, 2);
+		PGS_Conversion.setAllStrokeColor(mesh, Colors.WHITE, 2);
 		return mesh;
 	}
 
@@ -211,9 +215,9 @@ public final class PGS_Coloring {
 	 *         colored)
 	 */
 	public static PShape colorNonMesh(PShape shape, ColoringAlgorithm coloringAlgorithm, String[] colorPalette) {
-		final PShape mesh = nodeNonMesh(shape);
+		final PShape mesh = PGS_Meshing.nodeNonMesh(shape);
 		colorMesh(mesh, coloringAlgorithm, colorPalette);
-		PGS_Conversion.setAllStrokeColor(mesh, RGB.WHITE, 2);
+		PGS_Conversion.setAllStrokeColor(mesh, Colors.WHITE, 2);
 		return mesh;
 	}
 
@@ -227,11 +231,11 @@ public final class PGS_Coloring {
 	 */
 	private static Coloring<PShape> findColoring(Collection<PShape> shapes, ColoringAlgorithm coloringAlgorithm) {
 		final AbstractBaseGraph<PShape, DefaultEdge> graph = PGS_Conversion.toDualGraph(shapes);
-		final Coloring<PShape> coloring;
+		Coloring<PShape> coloring;
 
 		switch (coloringAlgorithm) {
 			case RANDOM : // randomly ordered sequential
-				coloring = new RandomGreedyColoring<>(graph, new Random()).getColoring();
+				coloring = new RandomGreedyColoring<>(graph, new XoRoShiRo128PlusRandom()).getColoring();
 				break;
 			case SMALLEST_DEGREE_LAST :
 				coloring = new SmallestDegreeLastColoring<>(graph).getColoring();
@@ -248,34 +252,18 @@ public final class PGS_Coloring {
 			case GENETIC :
 				coloring = new GeneticColoring<>(graph).getColoring();
 				break;
+			case RLF_BRUTE_FORCE_4COLOR :
+				int iterations = 0;
+				do {
+					coloring = new RLFColoring<>(graph).getColoring();
+					iterations++;
+				} while (coloring.getNumberColors() > 4 && iterations < 250);
+				break;
 			case RLF :
 			default :
-				coloring = new RLFColoring<>(graph).getColoring();
+				coloring = new RLFColoring<>(graph, 1337).getColoring(); // NOTE fixed seed of 1337
 		}
 		return coloring;
-	}
-
-	/**
-	 * Converts a non-conforming mesh shape into a conforming mesh by "noding" it.
-	 * This essentially means splitting edges into two at points where they
-	 * intersect (touch) another edge.
-	 * 
-	 * @param shape a GROUP PShape
-	 * @return the input shape, having been noded and polygonized
-	 */
-	private static PShape nodeNonMesh(PShape shape) {
-		final List<SegmentString> segmentStrings = new ArrayList<>(shape.getChildCount() * 3);
-
-		for (PShape face : shape.getChildren()) {
-			for (int i = 0; i < face.getVertexCount(); i++) {
-				final PVector a = face.getVertex(i);
-				final PVector b = face.getVertex((i + 1) % face.getVertexCount());
-				if (!a.equals(b)) {
-					segmentStrings.add(PGS.createSegmentString(a, b));
-				}
-			}
-		}
-		return PGS.polygonizeSegments(segmentStrings, true);
 	}
 
 }

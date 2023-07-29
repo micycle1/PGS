@@ -5,6 +5,8 @@ import static micycle.pgs.PGS_Conversion.toPShape;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
+import java.util.stream.Collectors;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
@@ -12,7 +14,9 @@ import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.util.AffineTransformation;
 import org.locationtech.jts.geom.util.GeometryFixer;
+import org.locationtech.jts.geom.util.PolygonExtracter;
 import org.locationtech.jts.operation.buffer.BufferParameters;
 import org.locationtech.jts.operation.linemerge.LineMerger;
 import org.locationtech.jts.shape.GeometricShapeBuilder;
@@ -21,18 +25,24 @@ import org.locationtech.jts.shape.fractal.KochSnowflakeBuilder;
 import org.locationtech.jts.shape.fractal.SierpinskiCarpetBuilder;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
-import micycle.pgs.color.RGB;
+import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
+import micycle.pgs.PGS_Contour.OffsetStyle;
+import micycle.pgs.color.Colors;
+import micycle.pgs.commons.BezierShapeGenerator;
 import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.RandomPolygon;
+import micycle.pgs.commons.RandomSpaceFillingCurve;
 import micycle.pgs.commons.Star;
 import micycle.spacefillingcurves.SierpinskiFiveSteps;
 import micycle.spacefillingcurves.SierpinskiFourSteps;
 import micycle.spacefillingcurves.SierpinskiTenSteps;
 import micycle.spacefillingcurves.SierpinskiThreeSteps;
 import micycle.spacefillingcurves.SpaceFillingCurve;
+import micycle.srpg.SRPolygonGenerator;
 import net.jafama.FastMath;
 import processing.core.PConstants;
 import processing.core.PShape;
+import processing.core.PVector;
 
 /**
  * Construct uncommon/interesting 2D geometries.
@@ -57,13 +67,29 @@ public class PGS_Construction {
 	 * @param n         number of polygon vertices/sides
 	 * @param maxWidth  maximum width of generated random polygon
 	 * @param maxHeight maximum height of generated random polygon
-	 * @return
-	 * @see {@link #createRandomPolygonExact(int, double, double)} to specify exact
-	 *      dimensions
+	 * @return a PShape representing the generated polygon
+	 * @see {@link #createRandomPolygonExact(int, double, double)
+	 *      createRandomPolygonExact()} to specify exact dimensions
 	 */
 	public static PShape createRandomPolygon(int n, double maxWidth, double maxHeight) {
+		return createRandomPolygon(n, maxWidth, maxHeight, System.nanoTime());
+	}
+
+	/**
+	 * Generates a random simple convex polygon (n-gon), having a given random seed.
+	 * 
+	 * @param n         number of polygon vertices/sides
+	 * @param maxWidth  maximum width of generated random polygon
+	 * @param maxHeight maximum height of generated random polygon
+	 * @param seed      a seed value used to generate the random polygon (optional)
+	 * @return a PShape representing the generated polygon
+	 * @see {@link #createRandomPolygonExact(int, double, double, long)
+	 *      createRandomPolygonExact()} to specify exact dimensions
+	 */
+	public static PShape createRandomPolygon(int n, double maxWidth, double maxHeight, long seed) {
 		return PGS_Transformation.translateEnvelopeTo(
-				PGS_Conversion.fromPVector(RandomPolygon.generateRandomConvexPolygon(n, maxWidth, maxHeight)), maxWidth / 2, maxHeight / 2);
+				PGS_Conversion.fromPVector(RandomPolygon.generateRandomConvexPolygon(n, maxWidth, maxHeight, seed)), maxWidth / 2,
+				maxHeight / 2);
 	}
 
 	/**
@@ -73,11 +99,25 @@ public class PGS_Construction {
 	 * @param n      number of polygon vertices/sides
 	 * @param width  width of generated random polygon
 	 * @param height height of generated random polygon
-	 * @return
+	 * @return a PShape representing the generated polygon
 	 */
 	public static PShape createRandomPolygonExact(int n, double width, double height) {
-		return PGS_Transformation.resize(PGS_Conversion.fromPVector(RandomPolygon.generateRandomConvexPolygon(n, width, height)), width,
-				height);
+		return createRandomPolygonExact(n, width, height, System.nanoTime());
+	}
+
+	/**
+	 * Generates a random simple convex polygon (n-gon), where the output's bounding
+	 * box has the dimensions of those specified.
+	 * 
+	 * @param n      number of polygon vertices/sides
+	 * @param width  width of generated random polygon
+	 * @param height height of generated random polygon
+	 * @param seed   a seed value used to generate the random polygon
+	 * @return a PShape representing the generated polygon
+	 */
+	public static PShape createRandomPolygonExact(int n, double width, double height, long seed) {
+		return PGS_Transformation.resize(PGS_Conversion.fromPVector(RandomPolygon.generateRandomConvexPolygon(n, width, height, seed)),
+				width, height);
 	}
 
 	/**
@@ -135,7 +175,7 @@ public class PGS_Construction {
 		// http://paulbourke.net/geometry/supershape/
 		PShape shape = new PShape(PShape.PATH);
 		shape.setFill(true);
-		shape.setFill(RGB.WHITE);
+		shape.setFill(Colors.WHITE);
 		shape.beginShape();
 
 		final int points = 180;
@@ -205,6 +245,80 @@ public class PGS_Construction {
 	}
 
 	/**
+	 * 
+	 * Creates a <i>Taijitu</i> shape (a geometric representation of the Taoist
+	 * symbol of yin and yang).
+	 * 
+	 * @param centerX the x-coordinate of the center of the shape
+	 * @param centerY the y-coordinate of the center of the shape
+	 * @param radius  the radius of the shape
+	 * @return a PShape representing the Taijitu shape
+	 * @since 1.4.0
+	 */
+	public static PShape createTaijitu(double centerX, double centerY, double radius) {
+		Coordinate center = new Coordinate(centerX, centerY);
+		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
+		shapeFactory.setCentre(center);
+		shapeFactory.setWidth(radius * 2);
+		shapeFactory.setHeight(radius * 2);
+
+		Geometry a = shapeFactory.createArcPolygon(-Math.PI / 2, Math.PI);
+		Geometry b = createEllipse(center.x, centerY + radius / 2, radius, radius);
+		Geometry c = createEllipse(center.x, centerY - radius / 2, radius, radius);
+
+		Geometry yinG = a.union(b).difference(c).getGeometryN(0);
+		AffineTransformation t = AffineTransformation.rotationInstance(Math.PI, centerX, centerY);
+		Geometry yangG = t.transform(yinG);
+
+		PShape yin = toPShape(yinG);
+		PShape yang = toPShape(yangG);
+		yin.setFill(0);
+		yang.setFill(255);
+
+		return PGS_Conversion.flatten(yin, yang);
+	}
+
+	/**
+	 * Creates an Arbelos shape, a mathematical figure bounded by three semicircles.
+	 * <p>
+	 * The position of the central notch is arbitrary and can be located anywhere
+	 * along the diameter.
+	 * 
+	 * @param centerX       the x-coordinate of the center of the shape
+	 * @param centerY       the y-coordinate of the center of the shape
+	 * @param radius        radius of the largest (enclosing) circle
+	 * @param notchPosition the fractional position, between 0 and 1, along the
+	 *                      diameter where the notch will be
+	 * @since 1.4.0
+	 * @return a PShape representing the Arbelos shape
+	 */
+	public static PShape createArbelos(double centerX, double centerY, double radius, double notchPosition) {
+		centerY += radius / 2;
+		final double rA = radius * notchPosition;
+		final double rB = radius * (1 - notchPosition);
+		final double xA = (centerX - radius) + rA;
+		final double xB = xA + rA + rB;
+
+		final Coordinate center = new Coordinate(centerX, centerY);
+		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
+		shapeFactory.setCentre(center);
+		shapeFactory.setWidth(radius * 2);
+		shapeFactory.setHeight(radius * 2);
+
+		Geometry a = shapeFactory.createArcPolygon(Math.PI, Math.PI);
+		Geometry b = createEllipse(xA, centerY, rA * 2, rA * 2);
+		Geometry c = createEllipse(xB, centerY, rB * 2, rB * 2);
+		Geometry curve = a.difference(b).difference(c).buffer(1e-3);
+		@SuppressWarnings("unchecked")
+		List<Polygon> polygons = PolygonExtracter.getPolygons(curve);
+		polygons.sort((m, n) -> Integer.compare(n.getNumPoints(), m.getNumPoints()));
+
+		PShape arbelos = toPShape(polygons.get(0));
+		arbelos.setStroke(false);
+		return arbelos;
+	}
+
+	/**
 	 * Creates a star shape, having a specified number of rays.
 	 * 
 	 * @param centerX     The x coordinate of the center
@@ -229,13 +343,13 @@ public class PGS_Construction {
 	 * <p>
 	 * In order for the shape to not self intersect a + b should be less than 1.
 	 * 
-	 * @param centerX The x coordinate of the center
-	 * @param centerY The y coordinate of the center
+	 * @param centerX  The x coordinate of the center
+	 * @param centerY  The y coordinate of the center
 	 * @param maxWidth
-	 * @param a blob parameter. a + b should be less than 1
-	 * @param b blob parameter.a + b should be less than 1
-	 * @param c blob parameter
-	 * @param d blob parameter
+	 * @param a        blob parameter. a + b should be less than 1
+	 * @param b        blob parameter.a + b should be less than 1
+	 * @param c        blob parameter
+	 * @param d        blob parameter
 	 * @return
 	 * @since 1.3.0
 	 */
@@ -284,23 +398,90 @@ public class PGS_Construction {
 		// https://mathworld.wolfram.com/HeartCurve.html
 		PShape heart = new PShape(PShape.PATH);
 		heart.setFill(true);
-		heart.setFill(RGB.WHITE);
+		heart.setFill(Colors.WHITE);
 		heart.beginShape();
 
-		final int points = 180;
+		final double length = 6.3855 * width; // Arc length of parametric curve from wolfram alpha
+		final int points = (int) length / 2; // sample every 2 units along curve (roughly)
 		final double angleInc = Math.PI * 2 / points;
 		double angle = 0;
 		while (angle < Math.PI * 2) {
 			final double s = FastMath.sin(angle);
 			double vx = s * s * s;
 			double vy = 13 * FastMath.cos(angle) - 5 * FastMath.cos(2 * angle) - 2 * FastMath.cos(3 * angle) - FastMath.cos(4 * angle);
-			vy /= 17; // normalise to 1
+			vy /= 16; // normalise to 1
 			heart.vertex((float) (centerX + vx * width / 2), (float) (centerY - vy * width / 2));
 			angle += angleInc;
 		}
 
 		heart.endShape(PConstants.CLOSE);
 		return heart;
+	}
+
+	/**
+	 * Creates a teardrop shape from a parametric curve.
+	 * 
+	 * @param centerX The x coordinate of the center of the teardrop
+	 * @param centerY The y coordinate of the center of the teardrop
+	 * @param height  height of the teardrop
+	 * @param m       order of the curve. Values of [2...5] give good results
+	 * @return
+	 * @since 1.4.0
+	 */
+	public static PShape createTeardrop(final double centerX, final double centerY, double height, final double m) {
+		// https://mathworld.wolfram.com/TeardropCurve.html
+		height /= 2; // get height in terms of radius
+		PShape curve = new PShape(PShape.PATH);
+		curve.setFill(true);
+		curve.setFill(Colors.WHITE);
+		curve.beginShape();
+		final double angleInc = Math.PI * 2 / 360;
+		double angle = 0;
+
+		while (angle < Math.PI * 2) {
+			double x = FastMath.cos(angle);
+			double y = FastMath.sin(angle) * FastMath.pow(FastMath.sin(0.5 * angle), m);
+			curve.vertex((float) (centerX + x * height), (float) (centerY + y * height * 1));
+			angle += angleInc;
+		}
+		curve.endShape(PConstants.CLOSE);
+
+		return PGS_Transformation.rotate(curve, new PVector((float) centerX, (float) centerY), -Math.PI / 2);
+	}
+
+	/**
+	 * Creates a gear shape from a parametric gear curve.
+	 * 
+	 * @param centerX The x coordinate of the center of the gear
+	 * @param centerY The y coordinate of the center of the gear
+	 * @param radius  maximum radius of gear teeth
+	 * @param n       number of gear teeth
+	 * @return the gear shape
+	 * @since 1.4.0
+	 */
+	public static PShape createGear(final double centerX, final double centerY, final double radius, final int n) {
+		// https://mathworld.wolfram.com/GearCurve.html
+		PShape curve = new PShape(PShape.PATH);
+		curve.setFill(true);
+		curve.setFill(Colors.WHITE);
+		curve.beginShape();
+
+		final double cirumference = 2 * Math.PI * radius;
+		final int samples = (int) (cirumference / 5); // 1 point every 5 distance
+		final double angleInc = Math.PI * 2 / samples;
+		double angle = 0;
+
+		final double a = 1; // wolfram default
+		final double b = 10; // wolfram default
+		while (angle < Math.PI * 2) {
+			double r = a + (1 / b) * FastMath.tanh(b * FastMath.sin(n * angle));
+			r *= radius;
+			curve.vertex((float) (centerX + r * FastMath.cos(angle)), (float) (centerY + r * FastMath.sin(angle)));
+			angle += angleInc;
+		}
+		curve.endShape(PConstants.CLOSE);
+
+		return curve;
 	}
 
 	/**
@@ -363,6 +544,53 @@ public class PGS_Construction {
 	}
 
 	/**
+	 * Creates a sponge-like porous structure.
+	 * <p>
+	 * The sponge structure is formed by randomly merging adjacent cells of a
+	 * Voronoi tessellation and then smoothing them; the final structure is obtained
+	 * by subtracting that result from a rectangle.
+	 *
+	 * @param width      the width of the sponge bounds
+	 * @param height     the height of the sponge bounds
+	 * @param generators the number of generator points for the underlying Voronoi
+	 *                   tessellation. Should be >5.
+	 * @param thickness  thickness of sponge structure walls
+	 * @param smoothing  the cell smoothing factor which determines how rounded the
+	 *                   cells are. a value of 6 is a good starting point.
+	 * @param classes    the number of classes to use for the cell merging process,
+	 *                   where lower results in more merging (or larger "blob-like"
+	 *                   shapes).
+	 * @param seed       the seed for the random number generator
+	 * @return the sponge shape
+	 * @since 1.4.0
+	 */
+	public static PShape createSponge(double width, double height, int generators, double thickness, double smoothing, int classes,
+			long seed) {
+		// A Simple and Effective Geometric Representation for Irregular Porous
+		// Structure Modeling
+		List<PVector> points = PGS_PointSet.random(thickness, thickness / 2, width - thickness / 2, height - thickness / 2, generators,
+				seed);
+		if (points.size() < 6) {
+			return new PShape();
+		}
+		PShape voro = PGS_Voronoi.innerVoronoi(points, 2);
+
+		List<PShape> blobs = PGS_Conversion.getChildren(PGS_Meshing.stochasticMerge(voro, classes, seed)).stream().map(c -> {
+			c = PGS_Morphology.buffer(c, -thickness / 2, OffsetStyle.MITER);
+			c = PGS_Morphology.smoothGaussian(c, smoothing);
+			return c;
+		}).collect(Collectors.toList());
+
+		/*
+		 * Although faster, can't use .simpleSubtract() here because holes (cell
+		 * islands) are *sometimes* nested.
+		 */
+		PShape s = PGS_ShapeBoolean.subtract(PGS.createRect(0, 0, width, height), PGS_Conversion.flatten(blobs));
+		s.setStroke(false);
+		return s;
+	}
+
+	/**
 	 * Creates an linear/archimedean spiral shape, where the distance between any 2
 	 * successive windings is constant.
 	 * 
@@ -408,7 +636,7 @@ public class PGS_Construction {
 			Geometry lineString = PGS.GEOM_FACTORY.createLineString(coords.toCoordinateArray());
 			PShape spiral = PGS_Conversion.toPShape(lineString);
 			spiral.setStrokeWeight(10);
-			spiral.setStroke(RGB.WHITE);
+			spiral.setStroke(Colors.WHITE);
 			spiral.setStrokeCap(PConstants.ROUND);
 			return spiral;
 		} else {
@@ -457,7 +685,7 @@ public class PGS_Construction {
 		LineString lineString = PGS.GEOM_FACTORY.createLineString(yin.toCoordinateArray());
 		PShape spiral = PGS_Conversion.toPShape(lineString);
 		spiral.setStrokeWeight(10);
-		spiral.setStroke(RGB.WHITE);
+		spiral.setStroke(Colors.WHITE);
 		spiral.setStrokeCap(PConstants.ROUND);
 		spiral.setFill(false);
 		return spiral;
@@ -495,7 +723,7 @@ public class PGS_Construction {
 		spiral.setFill(false);
 		spiral.setStroke(true);
 		spiral.setStrokeWeight(spacing * 0.333f);
-		spiral.setStroke(RGB.WHITE);
+		spiral.setStroke(Colors.WHITE);
 		spiral.setStrokeJoin(PConstants.MITER);
 		spiral.setStrokeCap(PConstants.SQUARE);
 		spiral.beginShape();
@@ -519,6 +747,124 @@ public class PGS_Construction {
 		}
 		spiral.endShape();
 		return spiral;
+	}
+
+	/**
+	 * Creates a random space-filling curve.
+	 * <p>
+	 * A space-filling curve is a continuous curve that (in this case) traverses
+	 * every cell of a grid exactly once.
+	 * 
+	 * @param nColumns   number of columns in the underlying grid
+	 * @param nRows      number of rows in the underlying grid
+	 * @param cellWidth  visual/pixel width of each cell
+	 * @param cellHeight visual/pixel width of each cell
+	 * @return a stroked PATH PShape
+	 * @see #createRandomSFCurve(int, int, double, double, long)
+	 * @since 1.4.0
+	 */
+	public static PShape createRandomSFCurve(int nColumns, int nRows, double cellWidth, double cellHeight) {
+		return createRandomSFCurve(nColumns, nRows, cellWidth, cellHeight, System.nanoTime());
+	}
+
+	/**
+	 * Creates a random space-filling curve, having a specific random seed.
+	 * <p>
+	 * A space-filling curve is a continuous curve that (in this case) traverses
+	 * every cell of a grid exactly once.
+	 * 
+	 * @param nColumns   number of columns in the underlying grid
+	 * @param nRows      number of rows in the underlying grid
+	 * @param cellWidth  visual/pixel width of each cell
+	 * @param cellHeight visual/pixel width of each cell
+	 * @param seed       random seed
+	 * @return a stroked PATH PShape
+	 * @see #createRandomSFCurve(int, int, double, double)
+	 * @since 1.4.0
+	 */
+	public static PShape createRandomSFCurve(int nColumns, int nRows, double cellWidth, double cellHeight, long seed) {
+		RandomSpaceFillingCurve factory = new RandomSpaceFillingCurve(nColumns, nRows, seed);
+		PShape curve = factory.getCurve((float) cellWidth, (float) cellHeight);
+		curve.setFill(255);
+		curve.setStroke(0);
+		curve.setStrokeWeight(3);
+
+		return curve;
+	}
+
+	/**
+	 * Generates a highly customisable random polygon based on a square grid of NxN
+	 * cells.
+	 * <p>
+	 * The number of vertices of the polygon generated is not configurable, but
+	 * depends on the size of <code>cells</code> and the percentage
+	 * <code>markPercent</code>: for larger values of <code>cells</code>, the more
+	 * vertices the polygon tends to have for a given markPercent.
+	 * <p>
+	 * Visually pleasing "random" polygons can be achieved by selecting fairly small
+	 * values for markFraction, e.g., <code>markFraction=0.1</code> or even
+	 * <code>markPercent=0.01</code>.
+	 * 
+	 * @param dimensions   pixel dimensions of the polygon in its longest axis.
+	 * @param cells        the number of cells in the X and Y directions of the
+	 *                     grid.
+	 * @param markFraction The fraction of vertices marked on the grid. The larger
+	 *                     the percentage, the more vertices the polygon tends to
+	 *                     have. Should generally be between 0...0.5.
+	 * @param holes        If true, generates a holes in the polygon.
+	 * @param orthogonal   Whether the polygon vertices lie exactly on integer grid
+	 *                     points and only form horizontal and vertical lines.
+	 * @param smoothing    The number of rounds of corner cutting to apply to the
+	 *                     polygon. A small positive integer value is recommended. A
+	 *                     value of 3 is probably sufficient.
+	 * @param depth        The number of rounds of recursive refinement to apply to
+	 *                     the polygon generated. A small positive integer value is
+	 *                     recommended. This is akin to increasing the depth of
+	 *                     fractal curve.
+	 * @param seed         the seed for the random number generator
+	 * @since 1.4.0
+	 */
+	public static PShape createSuperRandomPolygon(double dimensions, int cells, double markFraction, int smoothing, int depth,
+			boolean orthogonal, boolean holes, long seed) {
+		Random r = new XoRoShiRo128PlusRandom(seed);
+		SRPolygonGenerator generator = new SRPolygonGenerator(cells, cells, markFraction, holes, orthogonal, !orthogonal, smoothing, depth,
+				!orthogonal, r);
+		List<List<double[]>> rings = generator.getPolygon();
+		PShape exterior = PGS_Conversion.fromArray(rings.get(0).toArray(new double[0][0]), true);
+		List<PShape> interiorRings = rings.subList(1, rings.size()).stream()
+				.map(l -> PGS_Conversion.fromArray(l.toArray(new double[0][0]), true)).collect(Collectors.toList());
+
+		PShape polygon = PGS_ShapeBoolean.simpleSubtract(exterior, PGS_Conversion.flatten(interiorRings));
+		polygon = PGS_Transformation.resizeByMajorAxis(polygon, dimensions);
+		polygon.setStroke(false);
+		return PGS_Transformation.translateToOrigin(polygon);
+	}
+
+	/**
+	 * Generates a smooth or spiky random polygon comprising Bezier curves.
+	 * 
+	 * @param nPoints   The number of bezier curves the polygon consists of.
+	 * @param scale     Polygon scale. Determines the maximum width or height the
+	 *                  polygon could have.
+	 * @param radius    The radius relative to the distance between adjacent points.
+	 *                  The radius is used to position the control points of the
+	 *                  bezier curve, should be between 0 and 1. Larger values
+	 *                  result in sharper features on the curve.
+	 * @param spikiness A measure of the curve's smoothness. If 0, the curve's angle
+	 *                  through each point will be the average between the direction
+	 *                  to adjacent points. As it increases, the angle will be
+	 *                  determined mostly by one adjacent point, making the curve
+	 *                  more "spiky".
+	 * @param seed      the seed for the random number generator
+	 * @return the random polygon shape
+	 * @since 1.4.0
+	 */
+	public static PShape createRandomBezierPolygon(int nPoints, double scale, double radius, double spikiness, long seed) {
+		BezierShapeGenerator bsg = new BezierShapeGenerator(nPoints, 3, radius, spikiness);
+		Geometry shape = PGS.GEOM_FACTORY.createPolygon(bsg.generate(false, false, scale, seed));
+		PShape poly = toPShape(shape);
+		poly.setStroke(false);
+		return PGS_Transformation.translateToOrigin(poly);
 	}
 
 	/**
@@ -555,7 +901,7 @@ public class PGS_Construction {
 
 		final PShape curve = new PShape(PShape.PATH);
 		curve.setFill(true);
-		curve.setFill(RGB.WHITE);
+		curve.setFill(Colors.WHITE);
 		curve.beginShape();
 		half1.forEach(p -> curve.vertex((float) p[0], (float) p[1]));
 		curve.endShape(PConstants.CLOSE);
@@ -680,10 +1026,16 @@ public class PGS_Construction {
 		return out;
 	}
 
+	static Polygon createEllipse(double x, double y, double width, double height) {
+		return createEllipse(new Coordinate(x, y), width, height);
+	}
+
 	static Polygon createEllipse(Coordinate center, double width, double height) {
+		final double circumference = Math.PI * ((width + height) / 2);
 		shapeFactory.setCentre(center);
 		shapeFactory.setWidth(width);
 		shapeFactory.setHeight(height);
+		shapeFactory.setNumPoints(Math.max(21, (int) Math.round(circumference / 7))); // sample every 7 units
 		return shapeFactory.createEllipse();
 	}
 

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import net.jafama.FastMath;
 import processing.core.PVector;
 
 /**
@@ -104,7 +105,7 @@ public class SpiralQuadrangulation {
 				PVector last = rgSpiral.get(rgSpiral.size() - 1);
 				PVector last2 = rgSpiral.get(rgSpiral.size() - 2);
 
-				anglecur = Math.atan(-(last.y - last2.y) / (last.x - last2.x));
+				anglecur = FastMath.atan(-(last.y - last2.y) / (last.x - last2.x));
 				if (last.x < last2.x) {
 					anglecur += Math.PI;
 					// anglecur is in [-pi/2,+3pi/2]
@@ -121,7 +122,7 @@ public class SpiralQuadrangulation {
 
 			for (PVector v : rgVertices) {
 				// Compute wrap angle
-				double angle = Math.atan(-(v.y - vcur.y) / (v.x - vcur.x));
+				double angle = FastMath.atan(-(v.y - vcur.y) / (v.x - vcur.x));
 				if (v.x < vcur.x) {
 					angle += Math.PI;
 				}
@@ -170,7 +171,7 @@ public class SpiralQuadrangulation {
 
 		for (PVector v : vertices) {
 			// Compute wrap angle
-			double angle = Math.atan(-(v.y - vMinx.y) / (v.x - vMinx.x));
+			double angle = FastMath.atan(-(v.y - vMinx.y) / (v.x - vMinx.x));
 			if (v.x < vMinx.x) {
 				angle += Math.PI;
 			}
@@ -488,7 +489,7 @@ public class SpiralQuadrangulation {
 	 * @return an angle between [-pi/2, +3pi/2]
 	 */
 	private static double angleBetween(PVector v1, PVector v2) {
-		double angle = Math.atan(-(v2.y - v1.y) / (v2.x - v1.x));
+		double angle = FastMath.atan(-(v2.y - v1.y) / (v2.x - v1.x));
 		if (v2.x < v1.x) {
 			angle += Math.PI;
 		}

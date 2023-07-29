@@ -5,7 +5,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.SplittableRandom;
 
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.Colors;
+import micycle.pgs.color.ColorUtils;
 import processing.core.PConstants;
 import processing.core.PShape;
 
@@ -80,9 +81,9 @@ public class SquareTriangleTiling {
 		this.maxTiles = maxTiles;
 		this.tileSize = (float) tileSize;
 
-		colors.add(RGB.composeColor(200, 30, 99));
-		colors.add(RGB.PINK);
-		colors.add(RGB.WHITE);
+		colors.add(ColorUtils.composeColor(200, 30, 99));
+		colors.add(Colors.PINK);
+		colors.add(Colors.WHITE);
 
 		// store frequent calculations
 		for (int i = 0; i < 12; i++) {
@@ -99,7 +100,7 @@ public class SquareTriangleTiling {
 	}
 
 	public PShape getTiling() {
-		return getTiling(System.currentTimeMillis());
+		return getTiling(System.nanoTime());
 	}
 
 	public PShape getTiling(long seed) {

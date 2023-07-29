@@ -36,7 +36,7 @@ public final class PoissonDistribution {
 	private SplittableRandom random;
 
 	public PoissonDistribution() {
-		this(System.currentTimeMillis());
+		this(System.nanoTime());
 	}
 
 	public PoissonDistribution(final long seed) {

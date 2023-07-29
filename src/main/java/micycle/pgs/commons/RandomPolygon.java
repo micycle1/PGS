@@ -4,17 +4,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Random;
-import java.util.concurrent.ThreadLocalRandom;
 
+import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import processing.core.PVector;
 
 /**
  * Random Convex Polygons
  */
 public class RandomPolygon {
-
-	private static final Random RAND = ThreadLocalRandom.current();
 	
 	private RandomPolygon() {
 	}
@@ -24,15 +21,16 @@ public class RandomPolygon {
 	 * @param n number of vertices
 	 * @return
 	 */
-	public static List<PVector> generateRandomConvexPolygon(int n, double xMax, double yMax) {
+	public static List<PVector> generateRandomConvexPolygon(int n, double xMax, double yMax, long seed) {
+		XoRoShiRo128PlusRandom rand = new XoRoShiRo128PlusRandom(seed);
 		// Generate two lists of random X and Y coordinates
 
 		List<Double> xPool = new ArrayList<>(n);
 		List<Double> yPool = new ArrayList<>(n);
 
 		for (int i = 0; i < n; i++) {
-			xPool.add(RAND.nextDouble() * xMax);
-			yPool.add(RAND.nextDouble() * yMax);
+			xPool.add(rand.nextDouble() * xMax);
+			yPool.add(rand.nextDouble() * yMax);
 		}
 
 		// Sort them
@@ -54,7 +52,7 @@ public class RandomPolygon {
 		for (int i = 1; i < n - 1; i++) {
 			double x = xPool.get(i);
 
-			if (RAND.nextBoolean()) {
+			if (rand.nextBoolean()) {
 				xVec.add(x - lastTop);
 				lastTop = x;
 			} else {
@@ -71,7 +69,7 @@ public class RandomPolygon {
 		for (int i = 1; i < n - 1; i++) {
 			double y = yPool.get(i);
 
-			if (RAND.nextBoolean()) {
+			if (rand.nextBoolean()) {
 				yVec.add(y - lastLeft);
 				lastLeft = y;
 			} else {
@@ -84,7 +82,7 @@ public class RandomPolygon {
 		yVec.add(lastRight - maxY);
 
 		// Randomly pair up the X- and Y-components
-		Collections.shuffle(yVec);
+		Collections.shuffle(yVec, rand);
 
 		// Combine the paired up components into vectors
 		List<PVector> vec = new ArrayList<>(n);

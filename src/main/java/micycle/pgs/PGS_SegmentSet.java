@@ -2,7 +2,11 @@ package micycle.pgs;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.SplittableRandom;
 import java.util.stream.Collectors;
 
@@ -10,13 +14,25 @@ import org.jgrapht.alg.interfaces.MatchingAlgorithm;
 import org.jgrapht.alg.matching.blossom.v5.KolmogorovWeightedPerfectMatching;
 import org.jgrapht.alg.matching.blossom.v5.ObjectiveSense;
 import org.jgrapht.graph.SimpleGraph;
+import org.locationtech.jts.algorithm.RobustLineIntersector;
+import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
+import org.locationtech.jts.dissolve.LineDissolver;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineSegment;
+import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.Location;
+import org.locationtech.jts.geom.util.LineStringExtracter;
+import org.locationtech.jts.geom.util.LinearComponentExtracter;
+import org.locationtech.jts.noding.MCIndexSegmentSetMutualIntersector;
 import org.locationtech.jts.noding.NodedSegmentString;
+import org.locationtech.jts.noding.SegmentIntersector;
+import org.locationtech.jts.noding.SegmentSetMutualIntersector;
 import org.locationtech.jts.noding.SegmentString;
+import org.locationtech.jts.noding.SegmentStringUtil;
 import org.tinfour.common.IIncrementalTin;
 
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.Colors;
 import micycle.pgs.commons.FastAtan2;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
@@ -138,9 +154,7 @@ public class PGS_SegmentSet {
 	 * number of points is odd, the last point is discarded.
 	 * <p>
 	 * The <code>graphMatchedSegments</code> methods are arguably the best
-	 * approaches for random segment set generation. Graph matched / graph perfect
-	 * matching. In this method, the input point set is triangulated and a matching
-	 * ran on that.
+	 * approaches for random segment set generation.
 	 * 
 	 * @param points point set from which to compute segments
 	 * @return set of non-intersecting line segments
@@ -171,9 +185,7 @@ public class PGS_SegmentSet {
 	 * triangulation. If the number of points is odd, the last point is discarded.
 	 * <p>
 	 * The <code>graphMatchedSegments</code> methods are arguably the best
-	 * approaches for random segment set generation. Graph matched / graph perfect
-	 * matching. In this method, the input point set is triangulated and a matching
-	 * ran on that.
+	 * approaches for random segment set generation.
 	 * 
 	 * @param points point set from which to compute segments
 	 * @return set of non-intersecting line segments
@@ -207,7 +219,7 @@ public class PGS_SegmentSet {
 	 * @see #stochasticSegments(double, double, int, double, double, long)
 	 */
 	public static List<PEdge> stochasticSegments(double width, double height, int n) {
-		return stochasticSegments(width, height, n, 1, Math.min(width, height), System.currentTimeMillis());
+		return stochasticSegments(width, height, n, 1, Math.min(width, height), System.nanoTime());
 	}
 
 	/**
@@ -227,7 +239,7 @@ public class PGS_SegmentSet {
 	 * @see #stochasticSegments(double, double, int, double, double, long)
 	 */
 	public static List<PEdge> stochasticSegments(double width, double height, int n, double length) {
-		return stochasticSegments(width, height, n, length, length, System.currentTimeMillis());
+		return stochasticSegments(width, height, n, length, length, System.nanoTime());
 	}
 
 	/**
@@ -366,8 +378,8 @@ public class PGS_SegmentSet {
 	 * Converts a collection of {@link micycle.pgs.commons.PEdge PEdges} into a
 	 * <code>LINES</code> shape, having the (optional) styling provided.
 	 * 
-	 * @param segments     collection of segments
-	 * @param strokeColor  nullable/optional (default = {@link RGB#PINK})
+	 * @param segments     collection of PEdge segments
+	 * @param strokeColor  nullable/optional (default = {@link Colors#PINK})
 	 * @param strokeCap    nullable/optional (default = <code>ROUND</code>)
 	 * @param strokeWeight nullable/optional (default = <code>2</code>)
 	 * @return shape representing segments
@@ -382,6 +394,86 @@ public class PGS_SegmentSet {
 		lines.endShape();
 
 		return lines;
+	}
+
+	/**
+	 * Dissolves the edges from a collection of {@link micycle.pgs.commons.PEdge
+	 * PEdges} into a set of maximal-length LineStrings in which each unique segment
+	 * appears only once. This method works by fusing segments that share endpoints
+	 * into longer linear strings.
+	 * <p>
+	 * This method may be preferred to {@link #toPShape(Collection) toPShape()} when
+	 * the input segments form a linear string(s).
+	 * 
+	 * @param segments Collection of PEdge objects to dissolve into maximal-length
+	 *                 LineStrings
+	 * @return A PShape object representing the dissolved LineStrings
+	 * @since 1.4.0
+	 */
+	public static PShape dissolve(Collection<PEdge> segments) {
+		Geometry g = SegmentStringUtil.toGeometry(fromPEdges(segments), PGS.GEOM_FACTORY);
+		if (g.isEmpty()) {
+			return new PShape();
+		}
+		Geometry dissolved = LineDissolver.dissolve(g);
+		return PGS_Conversion.toPShape(dissolved);
+	}
+
+	/**
+	 * Extracts a list of unique PEdge segments representing the given shape.
+	 * <p>
+	 * This method iterates through all the child shapes of the input shape,
+	 * creating PEdge segments for each pair of consecutive vertices.
+	 *
+	 * @param shape The shape from which to extract the edges. Supports holes and
+	 *              GROUP shapes.
+	 * @return A list of unique PEdge segments representing the edges of the input
+	 *         shape and its child shapes.
+	 * @since 1.4.0
+	 */
+	public static List<PEdge> fromPShape(PShape shape) {
+		List<PEdge> edges = new ArrayList<>(shape.getFamily() != PShape.GROUP ? shape.getVertexCount() : shape.getChildCount() * 4);
+		@SuppressWarnings("unchecked")
+		List<LineString> strings = LinearComponentExtracter.getLines(PGS_Conversion.fromPShape(shape));
+		strings.forEach(s -> {
+			Coordinate[] coords = s.getCoordinates();
+			boolean closed = coords[0].equals2D(coords[coords.length - 1]);
+			for (int i = 0; i < coords.length - (closed ? 0 : 1); i++) {
+				Coordinate a = coords[i];
+				Coordinate b = coords[(i + 1) % coords.length];
+				if (a.equals(b)) {
+					continue;
+				}
+				final PEdge e = new PEdge(a.x, a.y, b.x, b.y);
+				edges.add(e);
+			}
+		});
+		return edges;
+	}
+
+	/**
+	 * Stretches each PEdge segment in the provided list by a specified factor. The
+	 * stretch is applied by scaling the distance between the edge's vertices, while
+	 * keeping the midpoint of the edge constant.
+	 *
+	 * @param segments The list of PEdges to be stretched.
+	 * @param factor   The factor by which to stretch each PEdge. A value greater
+	 *                 than 1 will stretch the edges, while a value between 0 and 1
+	 *                 will shrink them.
+	 * @return A new List of PEdges representing the stretched edges.
+	 * @since 1.4.0
+	 */
+	public static List<PEdge> stretch(List<PEdge> segments, double factor) {
+		List<PEdge> stretchedEdges = new ArrayList<>(segments.size());
+
+		for (PEdge edge : segments) {
+			PVector midpoint = PVector.add(edge.a, edge.b).mult(0.5f);
+			PVector newA = PVector.add(midpoint, PVector.sub(edge.a, midpoint).mult((float) factor));
+			PVector newB = PVector.add(midpoint, PVector.sub(edge.b, midpoint).mult((float) factor));
+			stretchedEdges.add(new PEdge(newA, newB));
+		}
+
+		return stretchedEdges;
 	}
 
 	/**
@@ -431,7 +523,58 @@ public class PGS_SegmentSet {
 		return filtered;
 	}
 
-	private static List<PEdge> toPEdges(List<LineSegment> segments) {
+	/**
+	 * Retains line segments from a set of line segments that are wholly contained
+	 * within a given shape.
+	 *
+	 * @param segments a list of line segments to check for containment within the
+	 *                 shape
+	 * @param shape    the polygonal shape to check for interior segments
+	 * @return a list of interior segments contained within the shape
+	 * @since 1.4.0
+	 */
+	public static List<PEdge> getPolygonInteriorSegments(List<PEdge> segments, PShape shape) {
+		Geometry g = PGS_Conversion.fromPShape(shape);
+		final Collection<?> segmentStrings = SegmentStringUtil.extractBasicSegmentStrings(g);
+		final SegmentSetMutualIntersector mci = new MCIndexSegmentSetMutualIntersector(segmentStrings);
+
+		Map<SegmentString, PEdge> map = new HashMap<>(segments.size());
+		segments.forEach(e -> map.put(PGS.createSegmentString(e.a, e.b), e));
+
+		List<PEdge> interiorSegments = new ArrayList<>();
+		IndexedPointInAreaLocator locator = new IndexedPointInAreaLocator(g);
+		RobustLineIntersector lineIntersector = new RobustLineIntersector();
+		Set<SegmentString> segSet = new HashSet<>(fromPEdges(segments));
+		Set<SegmentString> segSet2 = new HashSet<>();
+
+		mci.process(fromPEdges(segments), new SegmentIntersector() {
+			@Override
+			public void processIntersections(SegmentString e0, int segIndex0, SegmentString e1, int segIndex1) {
+				lineIntersector.computeIntersection(e0.getCoordinate(0), e0.getCoordinate(1), e1.getCoordinate(0), e1.getCoordinate(1));
+
+				if (lineIntersector.getIntersectionNum() > 0) { // no intersection -- either inside or outside
+					if (locator.locate(e0.getCoordinate(0)) != Location.EXTERIOR) { // one point is inside
+						interiorSegments.add(map.get(e1));
+					}
+				} else {
+					segSet2.add(e0);
+				}
+			}
+
+			@Override
+			public boolean isDone() {
+				return false;
+			}
+		});
+
+		segSet.removeAll(segSet2);
+		segSet.removeIf(
+				s -> locator.locate(s.getCoordinate(1)) == Location.EXTERIOR || locator.locate(s.getCoordinate(0)) == Location.EXTERIOR);
+
+		return fromSegmentString(segSet);
+	}
+
+	private static List<PEdge> toPEdges(Collection<LineSegment> segments) {
 		List<PEdge> edges = new ArrayList<>(segments.size());
 		segments.forEach(s -> {
 			PEdge e = new PEdge(s.p0.x, s.p0.y, s.p1.x, s.p1.y);
@@ -439,6 +582,26 @@ public class PGS_SegmentSet {
 		});
 
 		return edges;
+	}
+
+	private static List<PEdge> fromSegmentString(Collection<SegmentString> segments) {
+		List<PEdge> edges = new ArrayList<>(segments.size());
+		segments.forEach(s -> {
+			PEdge e = new PEdge(s.getCoordinate(0).x, s.getCoordinate(0).y, s.getCoordinate(1).x, s.getCoordinate(1).y);
+			edges.add(e);
+		});
+
+		return edges;
+	}
+
+	private static List<SegmentString> fromPEdges(Collection<PEdge> edges) {
+		List<SegmentString> segments = new ArrayList<>(edges.size());
+		edges.forEach(e -> {
+			SegmentString s = PGS.createSegmentString(e.a, e.b);
+			segments.add(s);
+		});
+
+		return segments;
 	}
 
 	private static boolean ccw(Coordinate A, Coordinate B, Coordinate C) {

@@ -9,7 +9,7 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 class PGS_ShapePredicatesTests {
-	
+
 	private static final double EPSILON = 1E-4;
 
 	static PShape square, triangle;
@@ -45,16 +45,31 @@ class PGS_ShapePredicatesTests {
 		assertEquals(new PVector(5, 5), PGS_ShapePredicates.centroid(square));
 		assertEquals(new PVector(0, 0), PGS_ShapePredicates.centroid(triangle));
 	}
-	
+
 	@Test
 	void testDiameter() {
-		assertEquals(10*Math.sqrt(2), PGS_ShapePredicates.diameter(square), EPSILON);
+		assertEquals(10 * Math.sqrt(2), PGS_ShapePredicates.diameter(square), EPSILON);
 	}
 
 	@Test
 	void testMaximumInteriorAngle() {
 		assertEquals(Math.PI / 2, PGS_ShapePredicates.maximumInteriorAngle(square));
 		assertEquals(Math.PI / 3, PGS_ShapePredicates.maximumInteriorAngle(triangle), EPSILON);
+	}
+
+	@Test
+	void testHoles() {
+		assertEquals(0, PGS_ShapePredicates.holes(square));
+		PShape withHole = PGS_ShapeBoolean.subtract(square, PGS_Transformation.scale(square, 0.5));
+		assertEquals(1, PGS_ShapePredicates.holes(withHole));
+		PShape groupHoles = PGS_Conversion.flatten(withHole, withHole);
+		assertEquals(2, PGS_ShapePredicates.holes(groupHoles));
+
+		PShape coverage = PGS_Processing.split(withHole); // test coverage; no face has a hole, but together they form a mesh with a hole
+		assertEquals(1, PGS_ShapePredicates.holes(coverage));
+
+		coverage.removeChild(0); // remove a mesh face; mesh no longer forms a hole
+		assertEquals(0, PGS_ShapePredicates.holes(coverage));
 	}
 
 }

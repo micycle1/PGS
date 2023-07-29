@@ -3,9 +3,9 @@ package micycle.pgs.commons;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 import java.util.SplittableRandom;
 
+import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import processing.core.PVector;
 
 /**
@@ -46,7 +46,7 @@ public final class PoissonDistributionJRUS {
 	private List<PVector> points;
 
 	public PoissonDistributionJRUS() {
-		this(System.currentTimeMillis());
+		this(System.nanoTime());
 	}
 
 	public PoissonDistributionJRUS(final long seed) {
@@ -99,9 +99,9 @@ public final class PoissonDistributionJRUS {
 
 	/**
 	 * Generates a poisson point set having <code>N</code> points. After generating
-	 * an initial set of ~N (hereafter <code>N'</code>) points (the actual number
-	 * tends to overshoot the target by a few percent), <code>N'-N</code> points are
-	 * removed from the inital set.
+	 * an initial set of approximately N (hereafter <code>N'</code>) points (the
+	 * actual number tends to overshoot the target by a few percent),
+	 * <code>N'-N</code> points are removed from the initial set.
 	 * 
 	 * @param xmin x-coordinate of boundary minimum
 	 * @param ymin y-coordinate of boundary minimum
@@ -116,7 +116,11 @@ public final class PoissonDistributionJRUS {
 		double radius2 = (Math.sqrt(0.5) * ((xmax - xmin) * (ymax - ymin))) / n;
 		double radius = Math.sqrt(radius2);
 		List<PVector> pointz = generate(xmin, ymin, xmax, ymax, radius, 11);
-		Collections.shuffle(pointz, new Random(1337));
+		/*
+		 * TODO rather than shuffle the entire list, perform Fisher–Yates shuffle on the
+		 * last k items (those that will be removed) only.
+		 */
+		Collections.shuffle(pointz, new XoRoShiRo128PlusRandom(1337));
 		return pointz.subList(0, Math.min(pointz.size(), n)); // use min() in case undershoot
 	}
 
@@ -207,6 +211,8 @@ public final class PoissonDistributionJRUS {
 	}
 
 	/**
+	 * Inclusive random?
+	 * 
 	 * @param min - The minimum.
 	 * @param max - The maximum.
 	 * @return A random double between these numbers (inclusive the minimum and

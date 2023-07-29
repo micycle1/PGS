@@ -8,6 +8,7 @@ import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 
+import net.jafama.FastMath;
 import net.metaopt.swarm.FitnessFunction;
 import net.metaopt.swarm.pso.Particle;
 import net.metaopt.swarm.pso.Swarm;
@@ -112,7 +113,7 @@ public class MaximumInscribedRectangle {
 
 		Coordinate[] coords = new Coordinate[5];
 		PVector base = new PVector((float) x, (float) y);
-		PVector dir1 = new PVector((float) Math.cos(a), (float) Math.sin(a));
+		PVector dir1 = new PVector((float) FastMath.cos(a), (float) FastMath.sin(a));
 		PVector dir2 = dir1.copy().rotate((float) Math.PI * 0.5f);
 		PVector base2 = base.copy().add(dir1.copy().mult((float) w));
 		coords[0] = coordFromPVector(base);

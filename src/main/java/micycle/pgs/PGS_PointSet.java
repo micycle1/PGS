@@ -1,22 +1,33 @@
 package micycle.pgs;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 import java.util.SplittableRandom;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import javax.vecmath.Point3d;
+import javax.vecmath.Point4d;
+
+import org.apache.commons.math3.ml.clustering.Clusterable;
+import org.apache.commons.math3.ml.clustering.Clusterer;
+import org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer;
+import org.apache.commons.math3.ml.distance.EuclideanDistance;
 import org.apache.commons.math3.random.RandomGenerator;
-import org.apache.commons.math3.random.Well19937c;
+import org.apache.commons.math3.util.FastMath;
 import org.apache.commons.math3.util.Pair;
+
 import org.jgrapht.alg.interfaces.SpanningTreeAlgorithm;
 import org.jgrapht.alg.spanning.PrimMinimumSpanningTree;
 import org.jgrapht.graph.SimpleGraph;
 import org.tinfour.common.IIncrementalTin;
 import org.tinspin.index.kdtree.KDTree;
 
+import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
+import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
+import micycle.pgs.commons.GeometricMedian;
 import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.PoissonDistributionJRUS;
 import processing.core.PShape;
@@ -42,6 +53,9 @@ public final class PGS_PointSet {
 	/**
 	 * Returns a filtered copy of the input, containing no points that are within
 	 * the <code>distanceTolerance</code> of each other.
+	 * <p>
+	 * This method can be used to convert a random point set into a blue-noise-like
+	 * (poisson) point set.
 	 * 
 	 * @param points            list of points to filter
 	 * @param distanceTolerance a point that is within this distance of a previously
@@ -53,7 +67,7 @@ public final class PGS_PointSet {
 		final List<PVector> newPoints = new ArrayList<>();
 		for (PVector p : points) {
 			final double[] coords = new double[] { p.x, p.y };
-			if (tree.getNodeCount() == 0 || tree.query1NN(coords).dist() > distanceTolerance) {
+			if (tree.size() == 0 || tree.query1NN(coords).dist() > distanceTolerance) {
 				tree.insert(coords, p);
 				newPoints.add(p);
 			}
@@ -112,7 +126,7 @@ public final class PGS_PointSet {
 			nHilbert = 4;
 		}
 
-		// could also use SortedMap<index -> point> 
+		// could also use SortedMap<index -> point>
 		List<Pair<Integer, PVector>> ranks = new ArrayList<>(points.size());
 		double hScale = (1 << nHilbert) - 1.0;
 		// scale coordinates to 2^n - 1
@@ -128,6 +142,72 @@ public final class PGS_PointSet {
 	}
 
 	/**
+	 * Clusters points into N groups, using k-means clustering.
+	 * <p>
+	 * K-means finds the N cluster centers and assigns points to the nearest cluster
+	 * center, such that the squared (euclidean) distances from the cluster are
+	 * minimised.
+	 * 
+	 * @param points list of points to cluster
+	 * @param groups desired number of clustered groups
+	 * @since 1.4.0
+	 * @see #cluster(Collection, int, long)
+	 * @return list of groups, where each group is a list of PVectors
+	 */
+	public static List<List<PVector>> cluster(Collection<PVector> points, int groups) {
+		return cluster(points, groups, System.nanoTime());
+	}
+
+	/**
+	 * Clusters points into N groups, using k-means clustering.
+	 * <p>
+	 * K-means finds the N cluster centers and assigns points to the nearest cluster
+	 * center, such that the squared (euclidean) distances from the cluster are
+	 * minimised.
+	 * 
+	 * @param points list of points to cluster
+	 * @param groups desired number of clustered groups
+	 * @param seed   random seed
+	 * @since 1.4.0
+	 * @return list of groups, where each group is a list of PVectors
+	 * @see #cluster(Collection, int)
+	 */
+	public static List<List<PVector>> cluster(Collection<PVector> points, int groups, long seed) {
+		RandomGenerator r = new XoRoShiRo128PlusRandomGenerator(seed);
+		Clusterer<CPVector> kmeans = new KMeansPlusPlusClusterer<>(groups, 25, new EuclideanDistance(), r);
+		List<CPVector> pointz = points.stream().map(p -> new CPVector(p)).collect(Collectors.toList());
+
+		List<List<PVector>> clusters = new ArrayList<>(groups);
+		kmeans.cluster(pointz).forEach(cluster -> {
+			clusters.add(cluster.getPoints().stream().map(p -> p.p).collect(Collectors.toList()));
+		});
+
+		return clusters;
+	}
+
+	/**
+	 * Finds the geometric median point of a set of weighted sample points.
+	 * <p>
+	 * The median point is the point that minimises the sum of (weighted) distances
+	 * to the sample points.
+	 * <p>
+	 * Points are expressed as PVectors; the z coordinate is used as the weight for
+	 * each point. Weights must be positive. If every point has a weight of 0 (z=0),
+	 * the function returns the median as if each point had an equal non-zero weight
+	 * (set to 1).
+	 * 
+	 * @param points list of points, where the z coordinate is point weight
+	 * @since 1.4.0
+	 * @return 2D median point
+	 */
+	public static PVector weightedMedian(Collection<PVector> points) {
+		boolean allZero = points.stream().allMatch(p -> p.z == 0);
+		Point4d[] wp = points.stream().map(p -> new Point4d(p.x, p.y, 0, allZero ? 1 : p.z)).toArray(Point4d[]::new);
+		Point3d median = GeometricMedian.median(wp, 1e-3, 50);
+		return new PVector((float) median.x, (float) median.y);
+	}
+
+	/**
 	 * Generates a set of random (uniform) points that lie within a bounding
 	 * rectangle.
 	 * 
@@ -140,7 +220,7 @@ public final class PGS_PointSet {
 	 * @see #random(double, double, double, double, int, long) seeded random()
 	 */
 	public static List<PVector> random(double xMin, double yMin, double xMax, double yMax, int n) {
-		return random(xMin, yMin, xMax, yMax, n, System.currentTimeMillis());
+		return random(xMin, yMin, xMax, yMax, n, System.nanoTime());
 	}
 
 	/**
@@ -183,7 +263,7 @@ public final class PGS_PointSet {
 	 * @see #gaussian(double, double, double, int, long) seeded gaussian()
 	 */
 	public static List<PVector> gaussian(double centerX, double centerY, double sd, int n) {
-		return gaussian(centerX, centerY, sd, n, System.currentTimeMillis());
+		return gaussian(centerX, centerY, sd, n, System.nanoTime());
 	}
 
 	/**
@@ -204,7 +284,7 @@ public final class PGS_PointSet {
 	 * @see #gaussian(double, double, double, int) non-seeded gaussian()
 	 */
 	public static List<PVector> gaussian(double centerX, double centerY, double sd, int n, long seed) {
-		final RandomGenerator random = new Well19937c(seed);
+		final RandomGenerator random = new XoRoShiRo128PlusRandomGenerator(seed);
 		final List<PVector> points = new ArrayList<>(n);
 		for (int i = 0; i < n; i++) {
 			final float x = (float) (sd * random.nextGaussian() + centerX);
@@ -328,33 +408,36 @@ public final class PGS_PointSet {
 	}
 
 	/**
-	 * Generates a set of points that are randomly distribted on a ring.
+	 * Generates a set of n points that are randomly distributed on a ring
+	 * (annulus).
 	 * 
 	 * @param centerX     x coordinate of the center/mean of the ring
 	 * @param centerY     x coordinate of the center/mean of the ring
 	 * @param innerRadius radius of the ring's hole
-	 * @param outerRadius maximum radius of the ring
+	 * @param outerRadius outer radius of the ring
 	 * @param maxAngle    angle of the ring (in radians). Can be negative
-	 * @param n           number of points to generate
-	 * @return
+	 * @param n           the number of random points to generate
+	 * @return a list of PVector objects representing the (x, y) coordinates of the
+	 *         random points
 	 * @see #ring(double, double, double, double, double, int, long) seeded ring()
 	 */
 	public static List<PVector> ring(double centerX, double centerY, double innerRadius, double outerRadius, double maxAngle, int n) {
-		return ring(centerX, centerY, innerRadius, outerRadius, maxAngle, n, System.currentTimeMillis());
+		return ring(centerX, centerY, innerRadius, outerRadius, maxAngle, n, System.nanoTime());
 	}
 
 	/**
-	 * Generates a set of points that are randomly distribted on a ring.
+	 * Generates a set of points that are randomly distributed on a ring (annulus).
 	 * 
 	 * @param centerX     x coordinate of the center/mean of the ring
 	 * @param centerY     x coordinate of the center/mean of the ring
 	 * @param innerRadius radius of the ring's hole
-	 * @param outerRadius maximum radius of the ring
+	 * @param outerRadius outer radius of the ring
 	 * @param maxAngle    angle of the ring (in radians). Can be negative
-	 * @param n           number of points to generate
+	 * @param n           the number of random points to generate
 	 * @param seed        number used to initialize the underlying pseudorandom
 	 *                    number generator
-	 * @return
+	 * @return a list of PVector objects representing the (x, y) coordinates of the
+	 *         random points
 	 * @see #ring(double, double, double, double, double, int) non-seeded ring()
 	 */
 	public static List<PVector> ring(double centerX, double centerY, double innerRadius, double outerRadius, double maxAngle, int n,
@@ -393,7 +476,7 @@ public final class PGS_PointSet {
 	 * @see #poisson(double, double, double, double, double, long) seeded poisson()
 	 */
 	public static List<PVector> poisson(double xMin, double yMin, double xMax, double yMax, double minDist) {
-		return poisson(xMin, yMin, xMax, yMax, minDist, System.currentTimeMillis());
+		return poisson(xMin, yMin, xMax, yMax, minDist, System.nanoTime());
 	}
 
 	/**
@@ -501,6 +584,11 @@ public final class PGS_PointSet {
 	 * from a low discrepancy sequence (LDS) based on an irrational number (the
 	 * plastic constant).
 	 * <p>
+	 * The <i>plastic LDS</i> has been <a href=
+	 * "http://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/">shown</a>
+	 * to have superior low discrepancy properties amongst the quasirandom
+	 * sequences, and is therefore recommended.
+	 * <p>
 	 * Low discrepancy sequences are deterministic (not randomized) number sequences
 	 * that are low discrepancy - meaning the points tend not to clump together and
 	 * leave holes; the resulting point set is more evenly spaced than a simple
@@ -518,8 +606,8 @@ public final class PGS_PointSet {
 		final double w = xMax - xMin;
 		final double h = yMax - yMin;
 		final double p = 1.32471795724474602596; // plastic constant
-		final double a1 = 1.0f / p;
-		final double a2 = 1.0f / (p * p);
+		final double a1 = 1.0 / p; // inverse of plastic number
+		final double a2 = 1.0 / (p * p);
 
 		final List<PVector> points = new ArrayList<>(n);
 		for (int i = 0; i < n; i++) {
@@ -551,7 +639,7 @@ public final class PGS_PointSet {
 	 *      irrationalJitteredLDS()
 	 */
 	public static List<PVector> plasticJitteredLDS(double xMin, double yMin, double xMax, double yMax, int n) {
-		return plasticJitteredLDS(xMin, yMin, xMax, yMax, n, System.currentTimeMillis());
+		return plasticJitteredLDS(xMin, yMin, xMax, yMax, n, System.nanoTime());
 	}
 
 	/**
@@ -583,9 +671,9 @@ public final class PGS_PointSet {
 
 		final SplittableRandom random = new SplittableRandom(seed);
 		final double p = 1.32471795724474602596; // plastic constant
-		final double a1 = 1.0f / p;
-		final double a2 = 1.0f / (p * p);
-		final double c_magicNumber = 0.732f;
+		final double a1 = 1.0 / p;
+		final double a2 = 1.0 / (p * p);
+		final double c_magicNumber = 0.732;
 
 		final List<PVector> points = new ArrayList<>(n);
 		for (int i = 0; i < n; i++) {
@@ -683,7 +771,7 @@ public final class PGS_PointSet {
 	 * @see #nRooksLDS(double, double, double, double, int, long)
 	 */
 	public static List<PVector> nRooksLDS(double xMin, double yMin, double xMax, double yMax, int n) {
-		return nRooksLDS(xMin, yMin, xMax, yMax, n, System.currentTimeMillis());
+		return nRooksLDS(xMin, yMin, xMax, yMax, n, System.nanoTime());
 	}
 
 	/**
@@ -711,7 +799,7 @@ public final class PGS_PointSet {
 		final double h = yMax - yMin;
 
 		final List<Integer> rookPositions = IntStream.range(0, n).boxed().collect(Collectors.toList());
-		Collections.shuffle(rookPositions, new Random(seed));
+		Collections.shuffle(rookPositions, new XoRoShiRo128PlusRandom(seed));
 
 		final float offset = 1.0f / (n * 2);
 
@@ -727,6 +815,76 @@ public final class PGS_PointSet {
 		}
 
 		return points;
+	}
+
+	/**
+	 * Generates a 2D set of deterministic stratified points (bounded by a
+	 * rectangle) from the Sobol low discrepancy sequence (LDS).
+	 * <p>
+	 * A Sobol sequence is a low-discrepancy sequence with the property that for all
+	 * values of N,its subsequence (x1, ... xN) has a low discrepancy. It can be
+	 * used to generate pseudo-randompoints in a space S, which are
+	 * equi-distributed.
+	 * 
+	 * @param xMin x-coordinate of boundary minimum
+	 * @param yMin y-coordinate of boundary minimum
+	 * @param xMax x-coordinate of boundary maximum
+	 * @param yMax y-coordinate of boundary maximum
+	 * @param n    number of points to generate
+	 * @since 1.4.0
+	 * @return
+	 */
+	public static List<PVector> sobolLDS(double xMin, double yMin, double xMax, double yMax, int n) {
+		final double w = xMax - xMin;
+		final double h = yMax - yMin;
+		final int dimension = 2;
+		final int BITS = 52;
+		final double SCALE = FastMath.pow(2, BITS);
+		final long[][] direction = new long[dimension][BITS + 1];
+		final long[] x = new long[dimension];
+		final int[] m = new int[] { 0, 1 };
+		final int a = 0;
+		final int s = m.length - 1;
+
+		for (int i = 1; i <= BITS; i++) {
+			direction[0][i] = 1l << (BITS - i);
+		}
+
+		// init direction vector
+		final int d = 1;
+		for (int i = 1; i <= s; i++) {
+			direction[d][i] = ((long) m[i]) << (BITS - i);
+		}
+		for (int i = s + 1; i <= BITS; i++) {
+			direction[d][i] = direction[d][i - s] ^ (direction[d][i - s] >> s);
+			for (int k = 1; k <= s - 1; k++) {
+				direction[d][i] ^= ((a >> (s - 1 - k)) & 1) * direction[d][i - k];
+			}
+		}
+
+		List<PVector> output = new ArrayList<>(n);
+		for (int i = 1; i < n; i++) {
+
+			// find the index c of the rightmost 0
+			int c = 1;
+			int value = i - 1;
+			while ((value & 1) == 1) {
+				value >>= 1;
+				c++;
+			}
+
+			x[0] ^= direction[0][c];
+			x[1] ^= direction[1][c];
+			double vX = x[0] / SCALE;
+			vX *= w;
+			vX += xMin;
+			double vY = x[1] / SCALE;
+			vY *= h;
+			vY += yMin;
+			output.add(new PVector((float) vX, (float) vY));
+		}
+
+		return output;
 	}
 
 	/**
@@ -808,6 +966,21 @@ public final class PGS_PointSet {
 				q = q / base;
 				denominator *= base;
 			}
+		}
+	}
+
+	private static class CPVector implements Clusterable {
+		final PVector p;
+		final double[] point;
+
+		CPVector(PVector p) {
+			this.p = p;
+			point = new double[] { p.x, p.y };
+		}
+
+		@Override
+		public double[] getPoint() {
+			return point;
 		}
 	}
 

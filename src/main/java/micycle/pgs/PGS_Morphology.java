@@ -2,7 +2,9 @@ package micycle.pgs;
 
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
+import static processing.core.PConstants.GROUP;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -27,18 +29,20 @@ import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.simplify.VWSimplifier;
 
+import micycle.hobbycurves.HobbyCurve;
 import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.PGS_Contour.OffsetStyle;
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.Colors;
 import micycle.pgs.commons.ChaikinCut;
 import micycle.pgs.commons.CornerRounding;
 import micycle.pgs.commons.DiscreteCurveEvolution;
+import micycle.pgs.commons.EllipticFourierDesc;
 import micycle.pgs.commons.GaussianLineSmoothing;
 import micycle.pgs.commons.ShapeInterpolation;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
-import uk.osgb.algorithm.minkowski_sum.Minkowski_Sum;
+import uk.osgb.algorithm.minkowski_sum.MinkowskiSum;
 import micycle.uniformnoise.UniformNoise;
 
 /**
@@ -50,7 +54,7 @@ import micycle.uniformnoise.UniformNoise;
 public final class PGS_Morphology {
 
 	static {
-		Minkowski_Sum.setGeometryFactory(PGS.GEOM_FACTORY);
+		MinkowskiSum.setGeometryFactory(PGS.GEOM_FACTORY);
 	}
 
 	private PGS_Morphology() {
@@ -95,7 +99,7 @@ public final class PGS_Morphology {
 	 * @param startDistance the starting buffer amount
 	 * @param endDistance   the terminating buffer amount
 	 * @return a polygonal shape representing the variable buffer region (which may
-	 *         beempty)
+	 *         be empty)
 	 * @since 1.3.0
 	 */
 	public static PShape variableBuffer(PShape shape, double startDistance, double endDistance) {
@@ -119,6 +123,7 @@ public final class PGS_Morphology {
 	 * @see #dilationErosion(PShape, double)
 	 */
 	public static PShape erosionDilation(PShape shape, double buffer) {
+		buffer = Math.abs(buffer);
 		return toPShape(fromPShape(shape).buffer(-buffer).buffer(buffer));
 	}
 
@@ -136,6 +141,7 @@ public final class PGS_Morphology {
 	 * @see #erosionDilation(PShape, double)
 	 */
 	public static PShape dilationErosion(PShape shape, double buffer) {
+		buffer = Math.abs(buffer);
 		return toPShape(fromPShape(shape).buffer(buffer).buffer(-buffer));
 	}
 
@@ -149,8 +155,9 @@ public final class PGS_Morphology {
 	 * @param shape
 	 * @param distanceTolerance the tolerance to use
 	 * @return simplifed copy of the shape
-	 * @see #simplifyVW(PShape, double)
-	 * @see #simplifyTopology(PShape, double)
+	 * @see #simplifyVW(PShape, double) simplifyVW()
+	 * @see #simplifyTopology(PShape, double) simplifyTopology()
+	 * @see {@link PGS_Meshing#simplifyMesh(PShape, double, boolean) simplifyMesh()}
 	 */
 	public static PShape simplify(PShape shape, double distanceTolerance) {
 		return toPShape(DouglasPeuckerSimplifier.simplify(fromPShape(shape), distanceTolerance));
@@ -165,8 +172,8 @@ public final class PGS_Morphology {
 	 *                          distance.This is converted to an area tolerance by
 	 *                          squaring it.
 	 * @return simplifed copy of the shape
-	 * @see #simplify(PShape, double)
-	 * @see #simplifyTopology(PShape, double)
+	 * @see #simplify(PShape, double) simplify()
+	 * @see #simplifyTopology(PShape, double) simplifyTopology()
 	 */
 	public static PShape simplifyVW(PShape shape, double distanceTolerance) {
 		return toPShape(VWSimplifier.simplify(fromPShape(shape), distanceTolerance));
@@ -179,8 +186,8 @@ public final class PGS_Morphology {
 	 * @param shape
 	 * @param distanceTolerance the tolerance to use
 	 * @return simplifed copy of the shape
-	 * @see #simplify(PShape, double)
-	 * @see #simplifyVW(PShape, double)
+	 * @see #simplify(PShape, double) simplify()
+	 * @see #simplifyVW(PShape, double) simplifyVW()
 	 */
 	public static PShape simplifyTopology(PShape shape, double distanceTolerance) {
 		return toPShape(TopologyPreservingSimplifier.simplify(fromPShape(shape), distanceTolerance));
@@ -194,38 +201,53 @@ public final class PGS_Morphology {
 	 * intended to reflect their contribution to the overall shape of the polygonal
 	 * curve.
 	 * 
-	 * @param shape          a polygonal (can include holes) or lineal shape. GROUP
-	 *                       shapes are not supported.
-	 * @param removeFraction the fraction of least relevant kinks/vertices to remove
-	 *                       (per ring). 0...1
-	 * @return simplifed copy of the input shape
+	 * @param shape                 The input shape to be simplified, which can be a
+	 *                              polygonal (inclusive of holes) or a lineal
+	 *                              shape. Note that GROUP shapes are not supported
+	 *                              by this method.
+	 * @param vertexRemovalFraction The proportion of the least significant kinks or
+	 *                              vertices to be removed from each ring in the
+	 *                              shape. This value should be in the range of 0 to
+	 *                              1.
+	 * @return A new, simplified copy of the input shape, with the least significant
+	 *         kinks or vertices removed according to the provided fraction.
 	 * @since 1.3.0
 	 * @see PGS_Morphology#simplifyDCE(PShape, int)
 	 */
-	public static PShape simplifyDCE(PShape shape, double removeFraction) {
-		removeFraction = 1 - removeFraction; // since dce class is preserve-based, not remove-based
+	public static PShape simplifyDCE(PShape shape, double vertexRemovalFraction) {
+		vertexRemovalFraction = 1 - vertexRemovalFraction; // since dce class is preserve-based, not remove-based
 		Geometry g = fromPShape(shape);
-		if (g instanceof Polygon) {
-			LinearRing[] rings = new LinearRingIterator(g).getLinearRings();
-			LinearRing[] dceRings = new LinearRing[rings.length];
-			for (int i = 0; i < rings.length; i++) {
-				LinearRing ring = rings[i];
-				DiscreteCurveEvolution dce = new DiscreteCurveEvolution(
-						Math.max(4, (int) Math.round(removeFraction * ring.getNumPoints())));
-				dceRings[i] = PGS.GEOM_FACTORY.createLinearRing(dce.process(ring));
-			}
-			LinearRing[] holes = null;
-			if (dceRings.length > 1) {
-				holes = Arrays.copyOfRange(dceRings, 1, dceRings.length);
-			}
-			return toPShape(PGS.GEOM_FACTORY.createPolygon(dceRings[0], holes));
-		} else if (g instanceof LineString) {
-			LineString l = (LineString) g;
-			DiscreteCurveEvolution dce = new DiscreteCurveEvolution(Math.max(4, (int) Math.round(removeFraction * l.getNumPoints())));
-			return toPShape(PGS.GEOM_FACTORY.createLineString(dce.process(l)));
-		} else {
-			System.err.println(g.getGeometryType() + " are not supported for the simplifyDCE() method (yet).");
-			return shape;
+		switch (g.getGeometryType()) {
+			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
+			case Geometry.TYPENAME_MULTIPOLYGON :
+			case Geometry.TYPENAME_MULTILINESTRING :
+				PShape group = new PShape(GROUP);
+				for (int i = 0; i < g.getNumGeometries(); i++) {
+					group.addChild(simplifyDCE(toPShape(g.getGeometryN(i)), vertexRemovalFraction));
+				}
+				return group;
+			case Geometry.TYPENAME_LINEARRING :
+			case Geometry.TYPENAME_POLYGON :
+				// process each ring individually
+				LinearRing[] rings = new LinearRingIterator(g).getLinearRings();
+				LinearRing[] dceRings = new LinearRing[rings.length];
+				for (int i = 0; i < rings.length; i++) {
+					LinearRing ring = rings[i];
+					DiscreteCurveEvolution dce = new DiscreteCurveEvolution((int) Math.round(vertexRemovalFraction * ring.getNumPoints()));
+					dceRings[i] = PGS.GEOM_FACTORY.createLinearRing(dce.process(ring));
+				}
+				LinearRing[] holes = null;
+				if (dceRings.length > 1) {
+					holes = Arrays.copyOfRange(dceRings, 1, dceRings.length);
+				}
+				return toPShape(PGS.GEOM_FACTORY.createPolygon(dceRings[0], holes));
+			case Geometry.TYPENAME_LINESTRING :
+				LineString l = (LineString) g;
+				DiscreteCurveEvolution dce = new DiscreteCurveEvolution((int) Math.round(vertexRemovalFraction * l.getNumPoints()));
+				return toPShape(PGS.GEOM_FACTORY.createLineString(dce.process(l)));
+			default :
+				System.err.println(g.getGeometryType() + " are not supported for the simplifyDCE() method."); // pointal geoms
+				return new PShape(); // return empty (so element is invisible if not processed)
 		}
 	}
 
@@ -246,14 +268,14 @@ public final class PGS_Morphology {
 	 * @see #simplifyDCE(PShape, double)
 	 */
 	public static PShape simplifyDCE(PShape shape, int targetNumVertices) {
-		targetNumVertices += 1; // as to not count the closing vertex in the number
 		Geometry g = fromPShape(shape);
 		if (g instanceof Polygon) {
+			targetNumVertices += 1; // as to not count the closing vertex in the number
 			LinearRing[] rings = new LinearRingIterator(g).getLinearRings();
 			LinearRing[] dceRings = new LinearRing[rings.length];
 			for (int i = 0; i < rings.length; i++) {
 				LinearRing ring = rings[i];
-				DiscreteCurveEvolution dce = new DiscreteCurveEvolution(Math.max(4, targetNumVertices));
+				DiscreteCurveEvolution dce = new DiscreteCurveEvolution(targetNumVertices);
 				dceRings[i] = PGS.GEOM_FACTORY.createLinearRing(dce.process(ring));
 			}
 			LinearRing[] holes = null;
@@ -263,12 +285,46 @@ public final class PGS_Morphology {
 			return toPShape(PGS.GEOM_FACTORY.createPolygon(dceRings[0], holes));
 		} else if (g instanceof LineString) {
 			LineString l = (LineString) g;
-			DiscreteCurveEvolution dce = new DiscreteCurveEvolution(Math.max(4, targetNumVertices));
+			DiscreteCurveEvolution dce = new DiscreteCurveEvolution(targetNumVertices);
 			return toPShape(PGS.GEOM_FACTORY.createLineString(dce.process(l)));
 		} else {
 			System.err.println(g.getGeometryType() + " are not supported for the simplifyDCE() method (yet).");
 			return shape;
 		}
+	}
+
+	/**
+	 * Creates a <a href="https://github.com/micycle1/Hobby-Curves"><i>Hobby
+	 * Curve</i></a> from the vertices of the shape. This tends to simplify/round
+	 * the <b>geometry</b> of shape, but may actually increase the number of
+	 * vertices due to increased curvature.
+	 * <p>
+	 * You may want to consider simplifying a shape (reducing vertex count) with
+	 * other methods before applying Hobby simplification.
+	 * 
+	 * @param shape   vertices to use as basis for the Hobby Curve
+	 * @param tension a parameter that controls the tension of the curve (how
+	 *                tightly it is "pulled" towards underlying vertices). Suitable
+	 *                domain is [0.666...3].
+	 * @return a Hobby Curve
+	 * @since 1.4.0
+	 */
+	public static PShape simplifyHobby(PShape shape, double tension) {
+		tension = Math.max(tension, 0.668); // prevent degeneracy
+		double[][] vertices = PGS_Conversion.toArray(shape, false);
+		HobbyCurve curve = new HobbyCurve(vertices, tension, shape.isClosed(), 0.5, 0.5);
+		List<PVector> points = new ArrayList<>();
+		for (double[] b : curve.getBeziers()) {
+			int i = 0;
+			PVector p1 = new PVector((float) b[i++], (float) b[i++]);
+			PVector cp1 = new PVector((float) b[i++], (float) b[i++]);
+			PVector cp2 = new PVector((float) b[i++], (float) b[i++]);
+			PVector p2 = new PVector((float) b[i++], (float) b[i]);
+			PShape bezier = PGS_Conversion.fromCubicBezier(p1, cp1, cp2, p2);
+			points.addAll(PGS_Conversion.toPVector(bezier));
+		}
+
+		return PGS_Conversion.fromPVector(points);
 	}
 
 	/**
@@ -298,7 +354,7 @@ public final class PGS_Morphology {
 	public static PShape minkSum(PShape source, PShape addition) {
 		// produces handled errors with geometries that have straight lines (like a
 		// square)
-		Geometry sum = Minkowski_Sum.minkSum(fromPShape(source), fromPShape(addition), true, true);
+		Geometry sum = MinkowskiSum.minkSum(fromPShape(source), fromPShape(addition), true, true);
 		return toPShape(sum);
 	}
 
@@ -311,7 +367,7 @@ public final class PGS_Morphology {
 	 * @see #minkSum(PShape, PShape)
 	 */
 	public static PShape minkDifference(PShape source, PShape subtract) {
-		Geometry sum = Minkowski_Sum.minkDiff(fromPShape(source), fromPShape(subtract), true, true);
+		Geometry sum = MinkowskiSum.minkDiff(fromPShape(source), fromPShape(subtract), true, true);
 		return toPShape(sum);
 	}
 
@@ -344,91 +400,181 @@ public final class PGS_Morphology {
 	 */
 	public static PShape smoothGaussian(PShape shape, double sigma) {
 		Geometry g = fromPShape(shape);
-		if (g.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
-			LinearRingIterator lri = new LinearRingIterator(g);
-			LineString[] rings = lri.getLinearRings();
-			LinearRing[] ringSmoothed = new LinearRing[rings.length];
-			for (int i = 0; i < rings.length; i++) {
-				Coordinate[] coords = GaussianLineSmoothing.get(rings[i], Math.max(sigma, 1), 1).getCoordinates();
-				if (coords.length > 2) {
-					ringSmoothed[i] = PGS.GEOM_FACTORY.createLinearRing(coords);
-				} else {
-					ringSmoothed[i] = PGS.GEOM_FACTORY.createLinearRing();
-				}
-			}
 
-			LinearRing[] holes = null;
-			if (ringSmoothed.length > 1) {
-				holes = Arrays.copyOfRange(ringSmoothed, 1, ringSmoothed.length);
-			}
-			return toPShape(PGS.GEOM_FACTORY.createPolygon(ringSmoothed[0], holes));
+		switch (g.getGeometryType()) {
+			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
+			case Geometry.TYPENAME_MULTIPOLYGON :
+			case Geometry.TYPENAME_MULTILINESTRING :
+				PShape group = new PShape(GROUP);
+				for (int i = 0; i < g.getNumGeometries(); i++) {
+					group.addChild(smoothGaussian(toPShape(g.getGeometryN(i)), sigma));
+				}
+				return group;
+			case Geometry.TYPENAME_POLYGON :
+				LinearRingIterator lri = new LinearRingIterator(g);
+				LineString[] rings = lri.getLinearRings();
+				LinearRing[] ringSmoothed = new LinearRing[rings.length];
+				for (int i = 0; i < rings.length; i++) {
+					Coordinate[] coords = GaussianLineSmoothing.get(rings[i], Math.max(sigma, 1), 1).getCoordinates();
+					if (coords.length > 2) {
+						ringSmoothed[i] = PGS.GEOM_FACTORY.createLinearRing(coords);
+					} else {
+						ringSmoothed[i] = PGS.GEOM_FACTORY.createLinearRing();
+					}
+				}
+
+				LinearRing[] holes = null;
+				if (ringSmoothed.length > 1) {
+					holes = Arrays.copyOfRange(ringSmoothed, 1, ringSmoothed.length);
+				}
+				return toPShape(PGS.GEOM_FACTORY.createPolygon(ringSmoothed[0], holes));
+			case Geometry.TYPENAME_LINEARRING :
+			case Geometry.TYPENAME_LINESTRING :
+				LineString l = (LineString) g;
+				return toPShape(GaussianLineSmoothing.get(l, Math.max(sigma, 1), 1));
+			default :
+				System.err.println(g.getGeometryType() + " are not supported for the smoothGaussian() method."); // pointal geoms
+				return new PShape(); // return empty (so element is invisible if not processed)
 		}
-		if (g.getGeometryType().equals(Geometry.TYPENAME_LINEARRING) || g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
-			LineString l = (LineString) g;
-			return toPShape(GaussianLineSmoothing.get(l, Math.max(sigma, 1), 1));
-		}
-		System.err.println(g.getGeometryType() + " are not supported for the smoothGaussian() method (yet).");
-		return shape;
 	}
 
 	/**
-	 * Rounds the corners of a shape by substituting a circular arc for each corner.
-	 * Each corner is rounded in proportion to the smallest length of its 2
-	 * constituent lines.
+	 * Calculates the Elliptic Fourier Descriptors (EFD) of a specified shape,
+	 * yielding a simplified/smoothed shape representation based on the specified
+	 * number of descriptors.
+	 * <p>
+	 * The EFD technique is an approach for shape analysis and simplification that
+	 * decomposes a shape into a sequence of elliptic harmonic components. These
+	 * components encapsulate the contour details of the shape: lower-order
+	 * harmonics capture the broad geometry of the shape, while higher-order
+	 * harmonics register the detailed, high-frequency contour characteristics,
+	 * analogous to Principal Component Analysis (PCA). This technique is
+	 * particularly effective for generating condensed or smoother versions of
+	 * complex shapes.
 	 * 
-	 * @param shape
-	 * @param extent 0...1 (where 0 is no rounding, and 1 is the maximum rounding
-	 *               whilst keeping shape valid). Values greater than 1 are allowed
-	 *               by output undefined results.
-	 * @return
+	 * @param shape       A polygonal shape to be transformed using the EFD.
+	 * @param descriptors The desired level of the EFD, denoting the quantity of
+	 *                    harmonics to be retained in the output. The maximum value
+	 *                    is half the total number of vertices in the shape, while
+	 *                    the minimum allowable value is 2. As the number of
+	 *                    harmonics is increased, the output tends towards the input
+	 *                    shape.
+	 * @return A new PShape, simplified through the application of the Elliptic
+	 *         Fourier Descriptors up to the indicated order. This shape will always
+	 *         have the same number of vertices as the original.
+	 * @since 1.4.0
+	 */
+	public static PShape smoothEllipticFourier(PShape shape, int descriptors) {
+		Geometry g = fromPShape(shape);
+		switch (g.getGeometryType()) {
+			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
+			case Geometry.TYPENAME_MULTIPOLYGON :
+			case Geometry.TYPENAME_MULTILINESTRING :
+				PShape group = new PShape(GROUP);
+				for (int i = 0; i < g.getNumGeometries(); i++) {
+					group.addChild(smoothEllipticFourier(toPShape(g.getGeometryN(i)), descriptors));
+				}
+				return group;
+			case Geometry.TYPENAME_POLYGON :
+				LinearRingIterator lri = new LinearRingIterator(g);
+				LinearRing[] rings = lri.getLinearRings();
+				LinearRing[] ringProcessed = new LinearRing[rings.length];
+				for (int i = 0; i < rings.length; i++) {
+					descriptors = Math.min(rings[i].getCoordinates().length / 2, descriptors); // max=#vertices/2
+					descriptors = Math.max(2, descriptors); // min=2
+					final EllipticFourierDesc efd = new EllipticFourierDesc(rings[i], descriptors);
+					Coordinate[] coords = efd.createPolygon();
+					ringProcessed[i] = PGS.GEOM_FACTORY.createLinearRing(coords);
+				}
+
+				LinearRing[] holes = null;
+				if (ringProcessed.length > 1) {
+					holes = Arrays.copyOfRange(ringProcessed, 1, ringProcessed.length);
+				}
+				return toPShape(PGS.GEOM_FACTORY.createPolygon(ringProcessed[0], holes));
+			case Geometry.TYPENAME_LINEARRING :
+				descriptors = Math.min(shape.getVertexCount() / 2, descriptors); // max=#vertices/2
+				descriptors = Math.max(2, descriptors); // min=2
+				LinearRing l = (LinearRing) g;
+				final EllipticFourierDesc efd = new EllipticFourierDesc(l, descriptors);
+				return toPShape(PGS.GEOM_FACTORY.createLinearRing(efd.createPolygon()));
+			case Geometry.TYPENAME_LINESTRING :
+			default :
+				System.err.println(g.getGeometryType() + " are not supported for the smoothEllipticFourier() method."); // pointal/string
+																														// geoms
+				return new PShape(); // return empty (so element is invisible if not processed)
+		}
+	}
+
+	/**
+	 * Modifies the corners of a specified shape by replacing each angular corner
+	 * with a smooth, circular arc. The radius of each arc is determined
+	 * proportionally to the shorter of the two lines forming the corner.
+	 * 
+	 * @param shape  The original PShape object whose corners are to be rounded.
+	 * @param extent Specifies the degree of corner rounding, with a range from 0 to
+	 *               1. A value of 0 corresponds to no rounding, whereas a value of
+	 *               1 yields maximum rounding while still maintaining the validity
+	 *               of the shape. Values above 1 are accepted but may produce
+	 *               unpredictable results.
+	 * @return A new PShape object with corners rounded to the specified extent.
 	 */
 	public static PShape round(PShape shape, double extent) {
 		return CornerRounding.round(shape, extent);
 	}
 
 	/**
-	 * Smoothes a shape via iterated corner cutting (chaikin cutting). More
-	 * iterations results in more smoothing.
+	 * Smoothes a shape by recursively cutting its corners, a technique introduced
+	 * by George Chaikin in 1974.
+	 * <p>
+	 * This method can be used to generate smooth-looking curves from a limited
+	 * number of points. More iterations result in more smoothing.
 	 * 
-	 * @param shape
-	 * @param ratio      Between 0...1. Determines how far along each edge to
-	 *                   perform the cuts. 0 is no cutting; 1 is maximal cutting
-	 *                   (cut at the midpoint of each edge).
-	 * @param iterations number of cutting iterations/recursions to perform. A value
-	 *                   of 1 simply cuts the corners; higher values effectively
-	 *                   smooth the cut. Values greater than ~10 generally have no
-	 *                   additional effect.
-	 * @return a cut copy of the input shape
+	 * @param shape      The shape to be smoothed
+	 * @param ratio      A ratio (between 0 and 1) determining how far along each
+	 *                   edge to perform the two cuts. For example, a ratio of 0.5
+	 *                   will cut the underlying edge twice, at 0.25x and 0.75x
+	 *                   along its length. A value of 1 will cut each edge once,
+	 *                   directly at its midpoint. It is recommended to use a value
+	 *                   of 0.5 for this parameter.
+	 * @param iterations The number of cutting iterations/recursions to perform. A
+	 *                   value of 1 will simply cut the corners once, higher values
+	 *                   will effectively smooth the cut. Values greater than ~10
+	 *                   generally have no additional visual effect.
+	 * @return A copy of the input shape with corners cut.
 	 * @since 1.1.0
 	 */
 	public static PShape chaikinCut(PShape shape, double ratio, int iterations) {
-		ratio = Math.max(ratio, 0.0001);
-		ratio = Math.min(ratio, 0.9999);
+		ratio = Math.max(ratio, 1e-6);
+		ratio = Math.min(ratio, 1 - 1e-6);
 		ratio /= 2; // constrain to 0...0.5
 		PShape cut = ChaikinCut.chaikin(shape, (float) ratio, iterations);
-		PGS_Conversion.setAllFillColor(cut, RGB.WHITE);
-		PGS_Conversion.setAllStrokeColor(cut, RGB.PINK, 3);
+		PGS_Conversion.setAllFillColor(cut, Colors.WHITE);
+		PGS_Conversion.setAllStrokeColor(cut, Colors.PINK, 3);
 		return cut;
 	}
 
 	/**
-	 * Warps/perturbs a shape by displacing vertices along a line between each
-	 * vertex and the shape centroid.
-	 * 
+	 * Distorts a polygonal shape by radially displacing its vertices along the line
+	 * connecting each vertex with the shape's centroid, creating a warping or
+	 * perturbing effect.
 	 * <p>
-	 * Inputs may be densified before warping.
+	 * The shape's input vertices can optionally be densified prior to the warping
+	 * operation.
 	 * 
-	 * @param shape      a polygonal shape
-	 * @param magnitude  magnitude of the displacement. The value defines the
-	 *                   maximum euclidean displacement of a vertex compared to the
-	 *                   shape centroid
-	 * @param warpOffset offset angle that determines at which angle to begin the
-	 *                   displacement.
-	 * @param densify    whether to densify the shape (using distance=1) before
-	 *                   warping. When true, shapes with long edges will undergo
-	 *                   warping along the whole edge (rather than only at the
-	 *                   original vertices).
-	 * @return
+	 * @param shape      A polygonal PShape object to be distorted.
+	 * @param magnitude  The degree of the displacement, which determines the
+	 *                   maximum Euclidean distance a vertex will be moved in
+	 *                   relation to the shape's centroid.
+	 * @param warpOffset An offset angle, which establishes the starting angle for
+	 *                   the displacement process.
+	 * @param densify    A boolean parameter determining whether the shape should be
+	 *                   densified (by inserting additional vertices at a distance
+	 *                   of 1) before warping. If true, shapes with long edges will
+	 *                   experience warping along their entire length, not just at
+	 *                   the original vertices.
+	 * @return A new PShape object that has been radially warped according to the
+	 *         specified parameters.
 	 */
 	public static PShape radialWarp(PShape shape, double magnitude, double warpOffset, boolean densify) {
 		Geometry g = fromPShape(shape);
@@ -460,6 +606,9 @@ public final class PGS_Morphology {
 			perturbation *= magnitude * 2;
 			coord.add(heading.normalize().mult(perturbation)); // add perturbation to vertex
 		});
+		if (!coords.get(0).equals(coords.get(coords.size() - 1))) {
+			coords.add(coords.get(0));
+		}
 		return PGS_Conversion.fromPVector(coords);
 	}
 
@@ -469,15 +618,15 @@ public final class PGS_Morphology {
 	 * perimeter at some frequency.
 	 * 
 	 * @param shape     single polygonal shape
-	 * @param magnitude maxiumum perpendicular displacement along the shape
-	 *                  perimeter
-	 * @param frequency sine wave frequency
+	 * @param magnitude maximum perpendicular displacement along the shape perimeter
+	 * @param frequency sine wave frequency. Values less than 1 will result in an
+	 *                  offset that does not smoothly join up.
 	 * @param phase     sine wave phase. corresponds to the fraction (0...1) around
 	 *                  the shape perimeter where the wave starts (0 displacement).
 	 * @return
 	 * @since 1.3.0
 	 */
-	public static PShape sineWarp(PShape shape, double magnitude, int frequency, double phase) {
+	public static PShape sineWarp(PShape shape, double magnitude, double frequency, double phase) {
 		Geometry g = fromPShape(shape);
 		if (g instanceof Polygonal) {
 			if (g.getGeometryType().equals(Geometry.TYPENAME_MULTIPOLYGON)) {
@@ -613,13 +762,13 @@ public final class PGS_Morphology {
 	 * @see #interpolate(PShape, PShape, int)
 	 */
 	public static PShape interpolate(PShape from, PShape to, double interpolationFactor) {
-		final Geometry toGeom = fromPShape(to);
 		final Geometry fromGeom = fromPShape(from);
+		final Geometry toGeom = fromPShape(to);
 		if (toGeom.getGeometryType().equals(Geometry.TYPENAME_POLYGON) && fromGeom.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
-			final ShapeInterpolation tween = new ShapeInterpolation(toGeom, fromGeom);
+			final ShapeInterpolation tween = new ShapeInterpolation(fromGeom, toGeom);
 			return toPShape(PGS.GEOM_FACTORY.createPolygon(tween.tween(interpolationFactor)));
 		} else {
-			System.err.println("morph() accepts holeless single polygons only (for now).");
+			System.err.println("interpolate() accepts holeless single polygons only (for now).");
 			return from;
 		}
 	}
@@ -644,10 +793,10 @@ public final class PGS_Morphology {
 	 * @see #interpolate(PShape, PShape, double)
 	 */
 	public static PShape interpolate(PShape from, PShape to, int frames) {
-		final Geometry toGeom = fromPShape(to);
 		final Geometry fromGeom = fromPShape(from);
+		final Geometry toGeom = fromPShape(to);
 		if (toGeom.getGeometryType().equals(Geometry.TYPENAME_POLYGON) && fromGeom.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
-			final ShapeInterpolation tween = new ShapeInterpolation(toGeom, fromGeom);
+			final ShapeInterpolation tween = new ShapeInterpolation(fromGeom, toGeom);
 			final float fraction = 1f / (frames - 1);
 			PShape out = new PShape();
 			for (int i = 0; i < frames; i++) {
@@ -655,7 +804,7 @@ public final class PGS_Morphology {
 			}
 			return out;
 		} else {
-			System.err.println("morph() accepts holeless single polygons only (for now).");
+			System.err.println("interpolate() accepts holeless single polygons only (for now).");
 			return from;
 		}
 	}
@@ -668,7 +817,7 @@ public final class PGS_Morphology {
 	 * 
 	 * @param shape     shape to reduce
 	 * @param precision the exact grid size with which to round shape vertices.
-	 *                  shoule be non-zero and positive
+	 *                  should be non-zero and positive
 	 * @return reduced copy of input
 	 * @since 1.3.0
 	 */

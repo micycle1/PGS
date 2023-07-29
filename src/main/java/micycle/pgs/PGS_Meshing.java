@@ -1,12 +1,19 @@
 package micycle.pgs;
 
+import static micycle.pgs.PGS_Conversion.getChildren;
+
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.apache.commons.math3.random.RandomGenerator;
+import org.jgrapht.alg.connectivity.ConnectivityInspector;
 import org.jgrapht.alg.interfaces.VertexColoringAlgorithm.Coloring;
 import org.jgrapht.alg.spanning.GreedyMultiplicativeSpanner;
 import org.jgrapht.alg.util.NeighborCache;
@@ -14,11 +21,13 @@ import org.jgrapht.graph.AbstractBaseGraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 import org.locationtech.jts.algorithm.Orientation;
+import org.locationtech.jts.coverage.CoverageSimplifier;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.index.strtree.STRtree;
+import org.locationtech.jts.noding.SegmentString;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.tinfour.common.IConstraint;
 import org.tinfour.common.IIncrementalTin;
@@ -28,10 +37,13 @@ import org.tinfour.common.Vertex;
 import org.tinfour.utils.TriangleCollector;
 import org.tinspin.index.PointIndex;
 import org.tinspin.index.kdtree.KDTree;
-
-import micycle.pgs.color.RGB;
+import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
+import micycle.pgs.PGS_Conversion.PShapeData;
+import micycle.pgs.color.Colors;
+import micycle.pgs.commons.AreaMerge;
 import micycle.pgs.commons.IncrementalTinDual;
 import micycle.pgs.commons.PEdge;
+import micycle.pgs.commons.PMesh;
 import micycle.pgs.commons.RLFColoring;
 import micycle.pgs.commons.SpiralQuadrangulation;
 import processing.core.PConstants;
@@ -39,13 +51,13 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Mesh generation (excluding triangulation).
+ * Mesh generation (excluding triangulation) and processing.
  * <p>
  * Many of the methods within this class process an existing Delaunay
  * triangulation; you may first generate such a triangulation from a shape using
  * the
  * {@link PGS_Triangulation#delaunayTriangulationMesh(PShape, Collection, boolean, int, boolean)
- * delaunayTriangulationMesh()} method
+ * delaunayTriangulationMesh()} method.
  * 
  * @author Michael Carleton
  * @since 1.2.0
@@ -286,8 +298,8 @@ public class PGS_Meshing {
 		// TODO SEE HOT: Hodge-Optimized Triangulations - use voronoi dual / HOT
 		final IncrementalTinDual dual = new IncrementalTinDual(triangulation);
 		final PShape dualMesh = dual.getMesh();
-		PGS_Conversion.setAllFillColor(dualMesh, RGB.WHITE);
-		PGS_Conversion.setAllStrokeColor(dualMesh, RGB.PINK, 2);
+		PGS_Conversion.setAllFillColor(dualMesh, Colors.WHITE);
+		PGS_Conversion.setAllStrokeColor(dualMesh, Colors.PINK, 2);
 		return dualMesh;
 	}
 
@@ -338,9 +350,9 @@ public class PGS_Meshing {
 				final PVector sI = PVector.add(cSeg, sC).div(2); // interior steiner point
 
 				// anti-clockwise, starting at original vertex
-				quads.addChild(PGS_Conversion.fromPVector(p1, sC, sI, sA));
-				quads.addChild(PGS_Conversion.fromPVector(p2, sA, sI, sB));
-				quads.addChild(PGS_Conversion.fromPVector(p3, sB, sI, sC));
+				quads.addChild(PGS_Conversion.fromPVector(p1, sC, sI, sA, p1));
+				quads.addChild(PGS_Conversion.fromPVector(p2, sA, sI, sB, p2));
+				quads.addChild(PGS_Conversion.fromPVector(p3, sB, sI, sC, p3));
 			}
 		});
 
@@ -350,8 +362,8 @@ public class PGS_Meshing {
 		 * https://acdl.mit.edu/ESP/Publications/IMR28.pdf
 		 */
 
-		PGS_Conversion.setAllFillColor(quads, RGB.WHITE);
-		PGS_Conversion.setAllStrokeColor(quads, RGB.PINK, 2);
+		PGS_Conversion.setAllFillColor(quads, Colors.WHITE);
+		PGS_Conversion.setAllStrokeColor(quads, Colors.PINK, 2);
 
 		return quads;
 	}
@@ -398,7 +410,7 @@ public class PGS_Meshing {
 			}
 		});
 
-		Coloring<IQuadEdge> coloring = new RLFColoring<>(graph).getColoring();
+		Coloring<IQuadEdge> coloring = new RLFColoring<>(graph, 1337).getColoring();
 
 		final HashSet<IQuadEdge> perimeter = new HashSet<>(triangulation.getPerimeter());
 		if (!unconstrained) {
@@ -552,6 +564,312 @@ public class PGS_Meshing {
 	public static PShape spiralQuadrangulation(List<PVector> points) {
 		SpiralQuadrangulation sq = new SpiralQuadrangulation(points);
 		return PGS.polygonizeEdges(sq.getQuadrangulationEdges());
+	}
+
+	/**
+	 * Transforms a non-conforming mesh shape into a <i>conforming mesh</i> by
+	 * performing a "noding" operation. "noding" refers to the process of splitting
+	 * edges into two at points where they intersect or touch another edge. It is a
+	 * way of ensuring consistency and accuracy in the spatial topology of the mesh.
+	 * 
+	 * @param shape a GROUP PShape which represents a mesh-like shape, but one that
+	 *              isn't conforming (i.e. adjacent edges do not necessarily have
+	 *              identical start and end coordinates)
+	 * @return the input shape, having been noded and polygonized
+	 * @since <code>public</code> since 1.4.0
+	 */
+	public static PShape nodeNonMesh(PShape shape) {
+		final List<SegmentString> segmentStrings = new ArrayList<>(shape.getChildCount() * 3);
+
+		for (PShape face : shape.getChildren()) {
+			for (int i = 0; i < face.getVertexCount(); i++) {
+				final PVector a = face.getVertex(i);
+				final PVector b = face.getVertex((i + 1) % face.getVertexCount());
+				if (!a.equals(b)) {
+					segmentStrings.add(PGS.createSegmentString(a, b));
+				}
+			}
+		}
+		return PGS.polygonizeSegments(segmentStrings, true);
+	}
+
+	/**
+	 * Randomly merges together / dissolves adjacent faces of a mesh.
+	 * <p>
+	 * The procedure randomly assigns a integer ID to each face and then groups of
+	 * mutually adjacent faces that share an ID (belong to the same group) are
+	 * merged into one.
+	 * 
+	 * @param mesh     the conforming mesh shape to perform the operation on
+	 * @param nClasses the number of classes to assign to mesh faces; fewer classes
+	 *                 means adjacent faces are more likely to share a class and be
+	 *                 merged.
+	 * @param seed     the seed for the random number generator
+	 * @return a new GROUP PShape representing the result of the operation
+	 * @since 1.4.0
+	 */
+	public static PShape stochasticMerge(PShape mesh, int nClasses, long seed) {
+		final RandomGenerator random = new XoRoShiRo128PlusRandomGenerator(seed);
+		SimpleGraph<PShape, DefaultEdge> graph = PGS_Conversion.toDualGraph(mesh);
+		Map<PShape, Integer> classes = new HashMap<>();
+		graph.vertexSet().forEach(v -> classes.put(v, random.nextInt(Math.max(nClasses, 1))));
+
+		/*
+		 * Handle "island" faces, which are faces whose neighbours all have the same
+		 * class (which differ from the island itself).
+		 */
+		NeighborCache<PShape, DefaultEdge> cache = new NeighborCache<>(graph);
+		graph.vertexSet().forEach(v -> {
+			final int vClass = classes.get(v);
+			List<PShape> neighbours = cache.neighborListOf(v);
+			final int nClass1 = classes.get(neighbours.get(0));
+			if (vClass == nClass1) {
+				return; // certainly not an island
+			}
+
+			neighbours.removeIf(n -> classes.get(n) == nClass1);
+			if (neighbours.isEmpty()) {
+				classes.put(v, nClass1); // reassign face class
+			}
+		});
+
+		List<DefaultEdge> toRemove = new ArrayList<>();
+		graph.edgeSet().forEach(e -> {
+			PShape a = graph.getEdgeSource(e);
+			PShape b = graph.getEdgeTarget(e);
+			if (!classes.get(a).equals(classes.get(b))) {
+				toRemove.add(e);
+			}
+		});
+		graph.removeAllEdges(toRemove);
+		ConnectivityInspector<PShape, DefaultEdge> ci = new ConnectivityInspector<>(graph);
+
+		List<PShape> blobs = ci.connectedSets().stream().map(group -> PGS_ShapeBoolean.unionMesh(PGS_Conversion.flatten(group)))
+				.collect(Collectors.toList());
+
+		return applyOriginalStyling(PGS_Conversion.flatten(blobs), mesh);
+	}
+
+	/**
+	 * Smoothes a mesh via iterative weighted <i>Laplacian smoothing</i>. The
+	 * general effect of which is mesh faces become more uniform in size and shape
+	 * (isotropic).
+	 * <p>
+	 * In Laplacian smoothing, vertices are replaced with the (weighted) average of
+	 * the positions of their adjacent vertices; it is computationally inexpensive
+	 * and fairly effective (faces become more isotropic), but it does not guarantee
+	 * improvement in element quality.
+	 * <p>
+	 * Meshes with more faces take more iterations to converge to stable point.
+	 * Meshes with highly convex faces may result in issues.
+	 * 
+	 * @param mesh              a GROUP PShape where each child shape is a single
+	 *                          face comprising a conforming mesh
+	 * @param iterations        number of smoothing passes to perform. Most meshes
+	 *                          will converge very well by around 50-100 passes.
+	 * @param preservePerimeter boolean flag to exclude the boundary vertices from
+	 *                          being smoothed (thus preserving the mesh perimeter).
+	 *                          Generally this should be set to true, otherwise the
+	 *                          mesh will shrink as it is smoothed.
+	 * @return The smoothed mesh. Input face styling is preserved.
+	 * @since 1.4.0
+	 */
+	public static PShape smoothMesh(PShape mesh, int iterations, boolean preservePerimeter, double taubin, double t2) {
+		PMesh m = new PMesh(mesh);
+		for (int i = 0; i < iterations; i++) {
+			m.smoothTaubin(0.25, -0.251, preservePerimeter);
+		}
+		return m.getMesh();
+	}
+
+	/**
+	 * Smoothes a mesh via iterative weighted <i>Laplacian smoothing</i>. The
+	 * general effect of which is mesh faces become more uniform in size and shape
+	 * (isotropic).
+	 * <p>
+	 * This particular method iteratively smoothes the mesh until the displacement
+	 * value of the most displaced vertex in the prior iteration is less than
+	 * <code>displacementCutoff</code>.
+	 * <p>
+	 * In Laplacian smoothing, vertices are replaced with the (weighted) average of
+	 * the positions of their adjacent vertices; it is computationally inexpensive
+	 * and fairly effective (faces become more isotropic), but it does not guarantee
+	 * improvement in element quality.
+	 * <p>
+	 * Meshes with more faces take more iterations to converge to stable point.
+	 * Meshes with highly convex faces may result in issues.
+	 * 
+	 * @param mesh               a GROUP PShape where each child shape is a single
+	 *                           face comprising a conforming mesh.
+	 * @param displacementCutoff the displacement threshold of the most displaced
+	 *                           vertex in a single iteration to stop the iterative
+	 *                           smoothing.
+	 * @param preservePerimeter  boolean flag to exclude the boundary vertices from
+	 *                           being smoothed (thus preserving the mesh
+	 *                           perimeter). Generally this should be set to true,
+	 *                           otherwise the mesh will shrink as it is smoothed.
+	 * @return The smoothed mesh. Input face styling is preserved.
+	 * @since 1.4.0
+	 */
+	public static PShape smoothMesh(PShape mesh, double displacementCutoff, boolean preservePerimeter) {
+		displacementCutoff = Math.max(displacementCutoff, 1e-3);
+		PMesh m = new PMesh(mesh);
+
+		double displacement;
+		do {
+			displacement = m.smoothTaubin(0.25, -0.251, preservePerimeter);
+		} while (displacement > displacementCutoff);
+		return m.getMesh();
+	}
+
+	/**
+	 * Simplifies the boundaries of the faces in a mesh while preserving the
+	 * original mesh topology.
+	 * 
+	 * @param mesh              GROUP shape comprising the faces of a conforming
+	 *                          mesh
+	 * @param tolerance         the simplification tolerance for area-based
+	 *                          simplification. Roughly equal to the maximum
+	 *                          distance by which a simplified line can change from
+	 *                          the original.
+	 * @param preservePerimeter whether to only simplify inner-boundaries and
+	 *                          leaving outer boundary edges unchanged.
+	 * @return GROUP shape comprising the simplfied mesh faces
+	 * @since 1.4.0
+	 */
+	public static PShape simplifyMesh(PShape mesh, double tolerance, boolean preservePerimeter) {
+		Geometry[] geometries = PGS_Conversion.getChildren(mesh).stream().map(s -> PGS_Conversion.fromPShape(s)).toArray(Geometry[]::new);
+		CoverageSimplifier simplifier = new CoverageSimplifier(geometries);
+		Geometry[] output;
+		if (preservePerimeter) {
+			output = simplifier.simplifyInner(tolerance);
+		} else {
+			output = simplifier.simplify(tolerance);
+		}
+		return applyOriginalStyling(PGS_Conversion.toPShape(Arrays.asList(output)), mesh);
+	}
+
+	/**
+	 * Subdivides the faces of a mesh using the Catmull-Clark split approach,
+	 * wherein each face is divided into N parts, where N is the number of vertices
+	 * in the shape. Each edge is split according to <code>edgeSplitRatio</code> and
+	 * connected to the face centroid.
+	 * <p>
+	 * This subdivision method is most effective on meshes whose faces are convex
+	 * and have a low vertex count (i.e., less than 6), where edge division points
+	 * correspond between adjacent faces. This method may fail on meshes with highly
+	 * concave faces because centroid-vertex visibility is not guaranteed.
+	 * 
+	 * @param mesh           The mesh containing faces to subdivide.
+	 * @param edgeSplitRatio The distance ratio [0...1] along each edge where the
+	 *                       faces are subdivided. A value of 0.5 is mid-edge
+	 *                       division (recommended value for a simple subvision).
+	 * @return A new GROUP PShape representing the subdivided mesh.
+	 * @since 1.4.0
+	 */
+	public static PShape subdivideMesh(PShape mesh, double edgeSplitRatio) {
+		edgeSplitRatio %= 1;
+		PShape newMesh = new PShape(PShape.GROUP);
+		for (PShape face : getChildren(mesh)) {
+			List<PVector> vertices = PGS_Conversion.toPVector(face);
+			List<PVector> midPoints = new ArrayList<>();
+			PVector centroid = new PVector();
+			for (int i = 0; i < vertices.size(); i++) {
+				PVector a = vertices.get(i);
+				PVector b = vertices.get((i + 1) % vertices.size());
+				midPoints.add(PVector.lerp(a, b, (float) edgeSplitRatio));
+				centroid.add(a);
+			}
+			// TODO find "visibility center" of concave shape
+			centroid.div(vertices.size()); // NOTE simple centroid, assuming convex
+
+			for (int i = 0; i < vertices.size(); i++) {
+				PVector a = vertices.get(i);
+				PVector b = midPoints.get(i);
+				PVector c = centroid.copy();
+				PVector d = midPoints.get(i - 1 < 0 ? vertices.size() - 1 : i - 1);
+				newMesh.addChild(PGS_Conversion.fromPVector(a, b, c, d, a));
+			}
+		}
+		return newMesh;
+	}
+
+	/**
+	 * Extracts all inner edges from a mesh. Inner edges consist only of edges that
+	 * are shared by adjacent faces, and not edges comprising the mesh boundary nor
+	 * edges comprising holes within faces.
+	 * 
+	 * @param mesh The conforming mesh shape to extract inner edges from.
+	 * @return A shape representing the dissolved linework of inner mesh edges.
+	 * @since 1.4.0
+	 */
+	public static PShape extractInnerEdges(PShape mesh) {
+		List<PEdge> edges = PGS_SegmentSet.fromPShape(mesh);
+		Map<PEdge, Integer> bag = new HashMap<>(edges.size());
+		edges.forEach(edge -> {
+			bag.merge(edge, 1, Integer::sum);
+		});
+
+		List<PEdge> innerEdges = bag.entrySet().stream().filter(e -> e.getValue() > 1).map(e -> e.getKey()).collect(Collectors.toList());
+		return PGS_SegmentSet.dissolve(innerEdges);
+	}
+
+	/**
+	 * Recursively merges smaller faces of a mesh into their adjacent faces. The
+	 * procedure continues until there are no resulting faces with an area smaller
+	 * than the specified threshold.
+	 * 
+	 * @param mesh          a GROUP shape representing a conforming mesh the mesh to
+	 *                      perform area merging on
+	 * @param areaThreshold The maximum permissible area threshold for merging
+	 *                      faces. Any faces smaller than this threshold will be
+	 *                      consolidated into their neighboring faces.
+	 * @return GROUP shape comprising the merged mesh faces
+	 * @since 1.4.0
+	 */
+	public static PShape areaMerge(PShape mesh, double areaThreshold) {
+		PShape merged = AreaMerge.areaMerge(mesh, areaThreshold);
+		return applyOriginalStyling(merged, mesh);
+	}
+
+	/**
+	 * Splits each edge of a given mesh shape into a specified number of
+	 * equal-length parts and creates a new shape from the resulting smaller edges.
+	 * This method preserves the overall topology of the original mesh.
+	 * 
+	 * @param split The PShape representing a polygon to be split into smaller
+	 *              edges.
+	 * @param parts The number of equal parts each edge of the polygon should be
+	 *              split into. Should be a positive integer, but if less than 1,
+	 *              it's reset to 1.
+	 * @return A new mesh PShape created from the split edges.
+	 * @since 1.4.0
+	 */
+	public static PShape splitEdges(PShape split, int parts) {
+		parts = Math.max(1, parts);
+		HashSet<PEdge> edges = new HashSet<>(PGS_SegmentSet.fromPShape(split));
+		List<PEdge> splitEdges = new ArrayList<>(edges.size() * parts);
+
+		for (PEdge edge : edges) {
+			double from = 0;
+			double step = 1.0 / parts;
+			for (int i = 0; i < parts; i++) {
+				double to = from + step;
+				PEdge subEdge = edge.slice(from, to);
+				splitEdges.add(subEdge);
+				from = to;
+			}
+		}
+
+		return PGS.polygonizeEdges(splitEdges);
+	}
+
+	private static PShape applyOriginalStyling(final PShape newMesh, final PShape oldMesh) {
+		final PShapeData data = new PShapeData(oldMesh.getChild(0)); // use first child; assume global.
+		for (int i = 0; i < newMesh.getChildCount(); i++) {
+			data.applyTo(newMesh.getChild(i));
+		}
+		return newMesh;
 	}
 
 	/**

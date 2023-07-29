@@ -12,6 +12,7 @@ import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.util.AffineTransformation;
 import org.locationtech.jts.operation.distance.IndexedFacetDistance;
 
+import micycle.pgs.commons.ProcrustesAlignment;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -32,7 +33,8 @@ public final class PGS_Transformation {
 	}
 
 	/**
-	 * Scales the shape relative to its center point.
+	 * Scales the dimensions of the shape by a scaling factor relative to its center
+	 * point.
 	 * 
 	 * @param shape
 	 * @param scale X and Y axis scale factor
@@ -72,6 +74,41 @@ public final class PGS_Transformation {
 		Geometry g = fromPShape(shape);
 		AffineTransformation t = AffineTransformation.scaleInstance(scale, scale, 0, 0);
 		return toPShape(t.transform(g));
+	}
+
+	/**
+	 * Scales the area of a given shape by a specified scale factor. The shape is
+	 * scaled relative to its center point.
+	 * 
+	 * @param shape The PShape to be scaled.
+	 * @param scale The scale factor by which the area of the shape should be
+	 *              scaled.
+	 * @return A new PShape representing the scaled shape.
+	 * @since 1.4.0
+	 */
+	public static PShape scaleArea(PShape shape, double scale) {
+		Geometry geometry = fromPShape(shape);
+		double scalingFactor = Math.sqrt(scale);
+		Coordinate c = geometry.getCentroid().getCoordinate();
+		AffineTransformation t = AffineTransformation.scaleInstance(scalingFactor, scalingFactor, c.x, c.y);
+		return toPShape(t.transform(geometry));
+	}
+
+	/**
+	 * Scales the given PShape to the target area, relative to its center point.
+	 * 
+	 * @param shape      The PShape to be scaled.
+	 * @param targetArea The target area for the shape.
+	 * @return The scaled PShape (now having an area of <code>targetArea</code>).
+	 * @since 1.4.0
+	 */
+	public static PShape scaleAreaTo(PShape shape, double targetArea) {
+		Geometry geometry = fromPShape(shape);
+		double area = geometry.getArea();
+		double scalingFactor = Math.sqrt(targetArea / area);
+		Coordinate c = geometry.getCentroid().getCoordinate();
+		AffineTransformation t = AffineTransformation.scaleInstance(scalingFactor, scalingFactor, c.x, c.y);
+		return toPShape(t.transform(geometry));
 	}
 
 	/**
@@ -228,7 +265,7 @@ public final class PGS_Transformation {
 	 * 
 	 * @param shape shape to translate
 	 * @param x     the value to translate by in the x direction
-	 * @param y     the value to translate by in the x direction
+	 * @param y     the value to translate by in the y direction
 	 * @return translated copy of input
 	 */
 	public static PShape translate(PShape shape, double x, double y) {
@@ -253,20 +290,28 @@ public final class PGS_Transformation {
 	}
 
 	/**
-	 * Translates a shape such that its <b>centroid</b> is equivalent to the given
-	 * coordinates.
-	 * <p>
-	 * The centroid of a polygon corresponds to its "center of mass".
-	 * 
-	 * @param shape shape to translate
-	 * @param x     target centroid X
-	 * @param y     target centroid Y
-	 * @return translated shape
+	 * Translates a shape such that its <b>centroid</b> aligns with the specified
+	 * (x, y) coordinates. The centroid of a polygon is its "center of mass" or
+	 * geometric center.
+	 *
+	 * @param shape The PShape instance to be translated.
+	 * @param x     The horizontal coordinate to which the centroid of the shape's
+	 *              bounding polygon should be aligned. Measured in pixels from the
+	 *              left of the container.
+	 * @param y     The vertical coordinate to which the centroid of the shape's
+	 *              bounding polygon should be aligned. Measured in pixels from the
+	 *              top of the container.
+	 * @return A new PShape instance that is a translation of the input shape such
+	 *         that the centroid of its bounding polygon aligns with the specified
+	 *         coordinates.
 	 * @since 1.3.0 (superceeds {@link #translateTo(PShape, double, double)
 	 *        translateTo()}
 	 */
 	public static PShape translateCentroidTo(PShape shape, double x, double y) {
 		Geometry g = fromPShape(shape);
+		if (g.getNumPoints() == 0) {
+			return shape;
+		}
 		Point c = g.getCentroid();
 		double translateX = x - c.getX();
 		double translateY = y - c.getY();
@@ -291,6 +336,9 @@ public final class PGS_Transformation {
 	 */
 	public static PShape translateEnvelopeTo(PShape shape, double x, double y) {
 		Geometry g = fromPShape(shape);
+		if (g.getNumPoints() == 0) {
+			return shape;
+		}
 		Point c = g.getEnvelope().getCentroid();
 		double translateX = x - c.getX();
 		double translateY = y - c.getY();
@@ -299,13 +347,19 @@ public final class PGS_Transformation {
 	}
 
 	/**
-	 * Translates a shape such that the <b>upper-left corner</b> of its bounding box
-	 * is equivalent to the given coordinates.
-	 * 
-	 * @param shape shape to translate
-	 * @param x
-	 * @param y
-	 * @return translated shape
+	 * Translates the given shape such that the upper-left corner of its bounding
+	 * box aligns with the specified (x, y) coordinates.
+	 *
+	 * @param shape The PShape instance to be translated.
+	 * @param x     The horizontal coordinate to which the upper-left corner of the
+	 *              shape's bounding box is to be aligned. Measured in pixels from
+	 *              the left of the container.
+	 * @param y     The vertical coordinate to which the upper-left corner of the
+	 *              shape's bounding box is to be aligned. Measured in pixels from
+	 *              the top of the container.
+	 * @return A new PShape instance that is a translation of the input shape such
+	 *         that the upper-left corner of its bounding box aligns with the
+	 *         specified coordinates.
 	 * @since 1.3.0
 	 */
 	public static PShape translateCornerTo(PShape shape, double x, double y) {
@@ -316,11 +370,13 @@ public final class PGS_Transformation {
 	}
 
 	/**
-	 * Translates a shape such that the top-left corner of its bounding box is at
-	 * (0, 0) (in Processing coordinates).
-	 * 
-	 * @param shape
-	 * @return translated copy of input
+	 * Translates the given shape such that the upper-left corner of its bounding
+	 * box aligns with the origin point (0, 0) of the Processing coordinate system.
+	 *
+	 * @param shape The PShape instance to be translated.
+	 * @return A new PShape instance that is a translation of the input shape such
+	 *         that the upper-left corner of its bounding box aligns with the origin
+	 *         point (0, 0).
 	 */
 	public static PShape translateToOrigin(PShape shape) {
 		final Geometry g = fromPShape(shape);
@@ -364,6 +420,73 @@ public final class PGS_Transformation {
 			holes[j] = geom.getFactory().createLinearRing(hole_coord_);
 		}
 		return toPShape(PGS.GEOM_FACTORY.createPolygon(lr, holes));
+	}
+
+	/**
+	 * Aligns one polygon shape to another, using Procrustes analysis to find the
+	 * optimal transformation. The transformation includes translation, rotation and
+	 * scaling to maximize overlap between the two shapes.
+	 * 
+	 * @param alignShape the polygon shape to be transformed and aligned to the
+	 *                   other shape.
+	 * @param baseShape  the shape that the other shape will be aligned to.
+	 * @return a new PShape that is the transformed and aligned version of
+	 *         sourceShape.
+	 * @since 1.4.0
+	 */
+	public static PShape align(PShape sourceShape, PShape transformShape) {
+		return align(sourceShape, transformShape, 1);
+	}
+
+	/**
+	 * Aligns one polygon shape to another, using Procrustes analysis to find the
+	 * optimal transformation. The transformation includes translation, rotation and
+	 * scaling to maximize overlap between the two shapes.
+	 * <p>
+	 * This method signature aligns the shape according to a provided ratio,
+	 * indicating how much alignment transformation to apply.
+	 * 
+	 * @param alignShape     the polygon shape to be transformed and aligned to the
+	 *                       other shape.
+	 * @param baseShape      the shape that the other shape will be aligned to.
+	 * @param alignmentRatio a value in [0,1] indicating how much to transform the
+	 *                       shape from its original position to its most aligned
+	 *                       position. 0 means no transformation, 1 means maximum
+	 *                       alignment.
+	 * @return a new PShape that is the transformed and aligned version of
+	 *         sourceShape.
+	 * @since 1.4.0
+	 */
+	public static PShape align(PShape alignShape, PShape baseShape, double alignmentRatio) {
+		final Geometry g1 = fromPShape(alignShape);
+		final Geometry g2 = fromPShape(baseShape);
+		if (!g1.getGeometryType().equals(Geometry.TYPENAME_POLYGON) || !g2.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
+			throw new IllegalArgumentException("Inputs to align() must be polygons.");
+		}
+		if (((Polygon) g1).getNumInteriorRing() > 0 || ((Polygon) g2).getNumInteriorRing() > 0) {
+			throw new IllegalArgumentException("Polygon inputs to align() must be holeless.");
+		}
+
+		// both shapes need same vertex quantity
+		final int vertices = Math.min(alignShape.getVertexCount(), baseShape.getVertexCount()) - 1;
+		PShape sourceShapeT = alignShape;
+		PShape transformShapeT = baseShape;
+		if (alignShape.getVertexCount() > vertices) {
+			sourceShapeT = PGS_Morphology.simplifyDCE(alignShape, vertices);
+		}
+		if (baseShape.getVertexCount() > vertices) {
+			transformShapeT = PGS_Morphology.simplifyDCE(baseShape, vertices);
+		}
+
+		double[] m = ProcrustesAlignment.transform((Polygon) fromPShape(sourceShapeT), (Polygon) fromPShape(transformShapeT));
+
+		Coordinate c = g2.getCentroid().getCoordinate();
+		double scale = 1 + (m[2] - 1) * alignmentRatio;
+		AffineTransformation transform = AffineTransformation.scaleInstance(scale, scale, c.x, c.y).rotate(m[3] * alignmentRatio, c.x, c.y)
+				.translate(m[0] * alignmentRatio, m[1] * alignmentRatio);
+		Geometry aligned = transform.transform(g2);
+
+		return toPShape(aligned);
 	}
 
 	/**
@@ -447,12 +570,16 @@ public final class PGS_Transformation {
 	}
 
 	/**
-	 * Objects are sheared around their relative position to the origin.
+	 * Shears a given shape by specified angles along the x and y axis and returns
+	 * the result as a new PShape. Shapes are sheared around their relative position
+	 * to the origin.
 	 * 
-	 * @param shape
-	 * @param angleX radians
-	 * @param angleY radians
-	 * @return
+	 * @param shape  The shape to be sheared.
+	 * @param angleX The angle by which the shape should be sheared along the
+	 *               x-axis, in radians.
+	 * @param angleY The angle by which the shape should be sheared along the
+	 *               y-axis, in radians.
+	 * @return A new shape representing the sheared shape.
 	 */
 	public static PShape shear(PShape shape, double angleX, double angleY) {
 		Geometry g = fromPShape(shape);

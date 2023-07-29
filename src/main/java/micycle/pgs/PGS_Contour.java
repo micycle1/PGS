@@ -13,24 +13,29 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+
 import javax.vecmath.Point3d;
 
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 import org.joml.Vector2d;
 import org.joml.Vector2dc;
+import org.locationtech.jts.algorithm.Angle;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.dissolve.LineDissolver;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
+import org.locationtech.jts.geom.MultiLineString;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.locationtech.jts.operation.buffer.BufferOp;
 import org.locationtech.jts.operation.buffer.BufferParameters;
-import org.locationtech.jts.operation.linemerge.LineMerger;
+import org.locationtech.jts.operation.buffer.OffsetCurve;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.IQuadEdge;
@@ -47,14 +52,18 @@ import org.twak.camp.Skeleton;
 import org.twak.utils.collections.Loop;
 import org.twak.utils.collections.LoopL;
 
+import com.google.common.collect.Lists;
+
 import kendzi.math.geometry.skeleton.SkeletonConfiguration;
 import kendzi.math.geometry.skeleton.SkeletonOutput;
 import micycle.medialAxis.MedialAxis;
 import micycle.medialAxis.MedialAxis.MedialDisk;
 import micycle.pgs.PGS.GeometryIterator;
 import micycle.pgs.PGS.LinearRingIterator;
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.Colors;
+import micycle.pgs.color.ColorUtils;
 import micycle.pgs.commons.PEdge;
+import net.jafama.FastMath;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -72,7 +81,7 @@ import processing.core.PVector;
  */
 public final class PGS_Contour {
 
-	/**
+	/*
 	 * TODO implement 'Base Point Split Algorithm for Generating Polygon Skeleton
 	 * Lines'
 	 */
@@ -81,39 +90,39 @@ public final class PGS_Contour {
 	}
 
 	/**
-	 * Computes the medial axis of the given shape, which provides a
-	 * characterization of the skeleton of a shape.
+	 * Computes the medial axis of the given shape, providing a characterization of
+	 * the skeleton of a shape.
 	 * <p>
-	 * The 3 parameters can be used to prune the medial axis according to different
-	 * features (at the same time).
+	 * The method employs three parameters to prune (simplify) the resulting medial
+	 * axis according to distinct features.
 	 *
-	 * @param shape
-	 * @param axialThreshold    Prune edges based on their axial gradient. The axial
-	 *                          gradient measures the change in the width of the
-	 *                          shape per unit length of the axis (measured per edge
-	 *                          segment). Between 0...1, where 0 is no pruning and 1
-	 *                          is maximal pruning for this feature.
-	 * @param distanceThreshold Prune edges based on the spatial distance between
-	 *                          the medial axis root and edge's tail coordinate.
-	 *                          Between 0...1, where 0 is no pruning and 1 is
-	 *                          maximal pruning for this feature.
-	 * @param areaThreshold     Prune edges based on the sum of each edge and its
-	 *                          descendants underlying feature area. Between 0...1,
-	 *                          where 0 is no pruning and 1 is maximal pruning for
-	 *                          this feature.
-	 * @return PShape of lines where lines represent medial axis edges
+	 * @param shape             The PShape to calculate the medial axis for.
+	 * @param axialThreshold    A value in the range of 0 to 1 that determines the
+	 *                          level of pruning based on the axial gradient. The
+	 *                          axial gradient evaluates the variation in the
+	 *                          shape's width per unit length along the axis,
+	 *                          measured per edge segment. A value of 0 results in
+	 *                          no pruning, while a value of 1 leads to the maximum
+	 *                          possible pruning.
+	 * @param distanceThreshold A value between 0 and 1 that determines the level of
+	 *                          pruning based on the spatial distance from the root
+	 *                          of the medial axis to the tail coordinate of each
+	 *                          edge. A value of 0 results in no pruning, while a
+	 *                          value of 1 results in maximum possible pruning.
+	 * @param areaThreshold     A value between 0 and 1 that determines the level of
+	 *                          pruning based on the aggregate feature area of each
+	 *                          edge and its descendants in the medial axis. A value
+	 *                          of 0 results in no pruning, while a value of 1
+	 *                          results in the maximum possible pruning.
+	 * @return A GROUP PShape containing maximal-length lines representing the
+	 *         pruned edges of the medial axis.
 	 */
 	public static PShape medialAxis(PShape shape, double axialThreshold, double distanceThreshold, double areaThreshold) {
 		final Geometry g = fromPShape(shape);
 		final MedialAxis m = new MedialAxis(g);
-
-		final PShape lines = PGS.prepareLinesPShape(RGB.PINK, PShape.ROUND, 4);
-		m.getPrunedEdges(axialThreshold, distanceThreshold, areaThreshold).forEach(e -> {
-			lines.vertex((float) e.head.position.x, (float) e.head.position.y);
-			lines.vertex((float) e.tail.position.x, (float) e.tail.position.y);
-		});
-		lines.endShape();
-		return lines;
+		return PGS_SegmentSet.dissolve(m.getPrunedEdges(axialThreshold, distanceThreshold, areaThreshold).stream()
+				.map(e -> new PEdge(e.head.position.x, e.head.position.y, e.tail.position.x, e.tail.position.y))
+				.collect(Collectors.toList()));
 	}
 
 	/**
@@ -143,7 +152,7 @@ public final class PGS_Contour {
 		final IIncrementalTin triangulation = PGS_Triangulation.delaunayTriangulationMesh(shape);
 		final SimpleGraph<SimpleTriangle, DefaultEdge> graph = PGS_Triangulation.toDualGraph(triangulation);
 
-		PShape axis = PGS.prepareLinesPShape(null, null, 4);
+		final List<PEdge> edges = new ArrayList<>(graph.vertexSet().size());
 
 		for (SimpleTriangle t : graph.vertexSet()) {
 			/*
@@ -164,8 +173,7 @@ public final class PGS_Contour {
 						interiorEdge = t.getEdgeA();
 					}
 					PVector centroid = centroid(t);
-					axis.vertex(centroid.x, centroid.y);
-					axis.vertex(midpoint(interiorEdge).x, midpoint(interiorEdge).y);
+					edges.add(new PEdge(centroid.x, centroid.y, midpoint(interiorEdge).x, midpoint(interiorEdge).y));
 					break;
 				case 2 : // Sleeve triangle (one edge in perimeter)
 					final IQuadEdge interiorEdgeA; // 2 edges are interior
@@ -182,8 +190,7 @@ public final class PGS_Contour {
 					}
 					PVector midpoint1 = midpoint(interiorEdgeA);
 					PVector midpoint2 = midpoint(interiorEdgeB);
-					axis.vertex(midpoint1.x, midpoint1.y);
-					axis.vertex(midpoint2.x, midpoint2.y);
+					edges.add(new PEdge(midpoint1.x, midpoint1.y, midpoint2.x, midpoint2.y));
 					break;
 				case 3 : // Junction triangle (no edge in perimeter)
 					/*
@@ -207,26 +214,15 @@ public final class PGS_Contour {
 					final PVector midpointL = midpoint(longest);
 					final PVector midpointA = midpoint(shortA);
 					final PVector midpointB = midpoint(shortB);
-					axis.vertex(midpointA.x, midpointA.y);
-					axis.vertex(midpointL.x, midpointL.y);
-					axis.vertex(midpointB.x, midpointB.y);
-					axis.vertex(midpointL.x, midpointL.y);
+					edges.add(new PEdge(midpointA.x, midpointA.y, midpointL.x, midpointL.y)); // A<->L
+					edges.add(new PEdge(midpointB.x, midpointB.y, midpointL.x, midpointL.y)); // B<->L
 					break;
 				default :
 					break;
 			}
 		}
-		axis.endShape();
 
-		final LineMerger lm = new LineMerger();
-		for (int i = 0; i < axis.getVertexCount(); i += 2) {
-			axis.getVertex(i);
-			axis.getVertex(i + 1);
-			final LineString l = PGS.createLineString(axis.getVertex(i), axis.getVertex(i + 1));
-			lm.add(l);
-		}
-
-		return toPShape(lm.getMergedLineStrings());
+		return PGS_SegmentSet.dissolve(edges);
 	}
 
 	/**
@@ -326,7 +322,7 @@ public final class PGS_Contour {
 				PShape face = PGS_Conversion.fromPVector(faceVertices);
 				face.setStroke(true);
 				face.setStrokeWeight(2);
-				face.setStroke(RGB.composeColor(147, 112, 219));
+				face.setStroke(ColorUtils.composeColor(147, 112, 219));
 				faces.addChild(face);
 			});
 		} catch (Exception ignore) {
@@ -340,7 +336,7 @@ public final class PGS_Contour {
 		});
 		bones.endShape();
 
-		final PShape branches = prepareLinesPShape(RGB.composeColor(40, 235, 180), null, null);
+		final PShape branches = prepareLinesPShape(ColorUtils.composeColor(40, 235, 180), null, null);
 		branchEdges.forEach(e -> {
 			branches.vertex(e.a.x, e.a.y);
 			branches.vertex(e.b.x, e.b.y);
@@ -403,7 +399,7 @@ public final class PGS_Contour {
 			PShape face = PGS_Conversion.fromPVector(faceVertices);
 			face.setStroke(true);
 			face.setStrokeWeight(2);
-			face.setStroke(RGB.composeColor(147, 112, 219));
+			face.setStroke(ColorUtils.composeColor(147, 112, 219));
 			faces.addChild(face);
 		});
 
@@ -414,7 +410,7 @@ public final class PGS_Contour {
 		});
 		bones.endShape();
 
-		final PShape branches = prepareLinesPShape(RGB.composeColor(40, 235, 180), null, null);
+		final PShape branches = prepareLinesPShape(ColorUtils.composeColor(40, 235, 180), null, null);
 		branchEdges.forEach(e -> {
 			branches.vertex(e.a.x, e.a.y);
 			branches.vertex(e.b.x, e.b.y);
@@ -493,19 +489,19 @@ public final class PGS_Contour {
 
 		double[] intervals = generateDoubleSequence(0, maxDist, intervalSpacing);
 
-		/**
-		 * A null valuator tells the builder to just use the z values from the vertices
-		 * rather than applying any adjustments to their values.
+		/*
+		 * "A null valuator tells the builder to just use the z values from the vertices
+		 * rather than applying any adjustments to their values."
 		 */
 		final ContourBuilderForTin builder = new ContourBuilderForTin(tin, null, intervals, true);
 
-		List<org.tinfour.contour.Contour> contours = builder.getContours();
+		List<Contour> contours = builder.getContours();
 
 		PShape parent = new PShape(PConstants.GROUP);
 		parent.setKind(PConstants.GROUP);
 
 		LineDissolver ld = new LineDissolver();
-		for (org.tinfour.contour.Contour contour : contours) {
+		for (Contour contour : contours) {
 			Coordinate[] coords = new Coordinate[contour.getCoordinates().length / 2];
 			for (int i = 0; i < contour.getCoordinates().length; i += 2) {
 				float vx = (float) contour.getCoordinates()[i];
@@ -593,7 +589,7 @@ public final class PGS_Contour {
 			isoline.setFamily(PShape.PATH);
 			isoline.setStroke(true);
 			isoline.setStrokeWeight(2);
-			isoline.setStroke(RGB.PINK);
+			isoline.setStroke(Colors.PINK);
 
 			isoline.beginShape();
 			for (int i = 0; i < coords.length; i += 2) {
@@ -641,6 +637,119 @@ public final class PGS_Contour {
 	}
 
 	/**
+	 * Calculates the longest center line passing through a given shape (using
+	 * default straightness weighting and smoothing parameters).
+	 * <p>
+	 * The center line is determined based on the medial axis of the shape; it
+	 * endpoints are always leaf vertices of the medial axis, and the line will pass
+	 * through the center coordinate of the shape's largest inscribed circle.
+	 * 
+	 * @param shape The non-GROUP PShape representing the input shape for which the
+	 *              longest center line is to be calculated.
+	 * @return A new PShape representing the smoothed longest center line of the
+	 *         input shape.
+	 * @see #centerLine(PShape, double, double)
+	 * @since 1.4.0
+	 */
+	public static PShape centerLine(PShape shape) {
+		return centerLine(shape, 0.7, 50);
+	}
+
+	/**
+	 * Calculates the longest center line passing through a given shape. Note that
+	 * shapes with sparse vertices will need densified beforehand.
+	 * <p>
+	 * The center line is determined based on the medial axis of the shape; it
+	 * endpoints are always leaf vertices of the medial axis, and the line will pass
+	 * through the center coordinate of the shape's largest inscribed circle.
+	 * <p>
+	 * The method can promote paths that are straighter, even if they are somewhat
+	 * shorter than the longest possible line, by weighting them according to
+	 * <code>straightnessWeighting</code>.
+	 * <p>
+	 * This method can be used to find the placement position for overlayed curved
+	 * text label.
+	 * 
+	 * @param shape                 The non-GROUP PShape representing the input
+	 *                              shape for which the longest center line is to be
+	 *                              calculated.
+	 * @param straightnessWeighting A value in [0...1] to determine how straighter
+	 *                              paths should be weighted (preferred over the
+	 *                              longest possible center line). 0 is no
+	 *                              additional weighting - the longest path is
+	 *                              chosen despite how concave it is - and 1 is
+	 *                              maximum weighting. A good starting value to use
+	 *                              is ~0.7.
+	 * @param smoothing             Gaussian smoothing parameter. A good starting
+	 *                              value to use is ~50.
+	 * @return A new PShape representing the smoothed longest center line of the
+	 *         input shape.
+	 * @since 1.4.0
+	 */
+	public static PShape centerLine(PShape shape, double straightnessWeighting, double smoothing) {
+		/*
+		 * For general polygons, the medial root always trifurcates into 3 distinct
+		 * paths/sub-trees. I assume the longest center line passes through the root, so
+		 * we know that one vertex (origin) of the longest line belongs to the one of
+		 * the paths and the other vertex (terminus) belongs to one of the two other
+		 * paths. So we look at the euclidean distance between pairs of leaf vertices,
+		 * where each leaf in the pair belongs to a distinct path, and select the pair
+		 * that maximises this distance to be the longest center line. One additional
+		 * factor is we multiply the euclidean distance by the angle the line makes with
+		 * the root node in order to promote paths that are straighter, even if they are
+		 * somewhat shorter.
+		 */
+		MedialAxis m = new MedialAxis(fromPShape(shape));
+
+		List<micycle.medialAxis.MedialAxis.Edge> longestPath = new ArrayList<>();
+		List<MedialDisk> subTree1 = m.getDescendants(m.getRoot().children.get(0)).stream().filter(d -> d.degree == 0)
+				.collect(Collectors.toList());
+		List<MedialDisk> subTree2 = m.getDescendants(m.getRoot().children.get(1)).stream().filter(d -> d.degree == 0)
+				.collect(Collectors.toList());
+		if (m.getRoot().children.size() == 2) {
+			// special case of elliptical (etc.) shapes
+			longestPath = new ArrayList<>(m.getEdges());
+		} else {
+			List<MedialDisk> subTree3 = m.getDescendants(m.getRoot().children.get(2)).stream().filter(d -> d.degree == 0)
+					.collect(Collectors.toList());
+
+			MedialDisk longestPathD1 = null;
+			MedialDisk longestPathD2 = null;
+
+			final List<List<MedialDisk>> diskPairs = new ArrayList<>();
+			diskPairs.addAll(Lists.cartesianProduct(subTree1, subTree2));
+			diskPairs.addAll(Lists.cartesianProduct(subTree1, subTree3));
+			diskPairs.addAll(Lists.cartesianProduct(subTree2, subTree3));
+
+			double maxWeight = Double.NEGATIVE_INFINITY;
+			for (List<MedialDisk> diskPair : diskPairs) {
+				final MedialDisk d1 = diskPair.get(0);
+				final MedialDisk d2 = diskPair.get(1);
+				double angle = Angle.angleBetween(d1.position, m.getRoot().position, d2.position);
+				// could also use euclid distanc between d1 and d2
+				angle = FastMath.pow(1 + angle, straightnessWeighting);
+				double pathweight = (d1.distance + d2.distance) * Math.max((angle - 1), 1);
+				if (pathweight > maxWeight) {
+					maxWeight = pathweight;
+					longestPathD1 = d1;
+					longestPathD2 = d2;
+				}
+			}
+
+			longestPath.addAll(m.getEdgesToRoot(longestPathD1));
+			longestPath.addAll(m.getEdgesToRoot(longestPathD2));
+		}
+
+		List<LineString> strings = longestPath.stream().map(e -> e.lineString).collect(Collectors.toList());
+		MultiLineString stringsGeometry = GEOM_FACTORY.createMultiLineString(GeometryFactory.toLineStringArray(strings));
+		PShape longestPathShape = toPShape(LineDissolver.dissolve(stringsGeometry));
+		longestPathShape = PGS_Morphology.simplify(longestPathShape, 1);
+		longestPathShape = PGS_Morphology.smoothGaussian(longestPathShape, smoothing);
+
+		return longestPathShape;
+	}
+
+	/**
 	 * Specifies the join style for offset curves.
 	 */
 	public enum OffsetStyle {
@@ -655,44 +764,48 @@ public final class PGS_Contour {
 	}
 
 	/**
-	 * Produces inwards offset curves from the shape. Curves will be generated until
-	 * they collapse.
-	 *
-	 * @param shape   a single polygon or multipolygon (GROUP PShape)
-	 * @param spacing spacing between successive offset curves. Should be >=1.
-	 * @param style   specifies the curve join style (BEVEL, MITER, ROUND) to use
-	 * @return A GROUP PShape, where each child shape is a single curve shape, or a
-	 *         GROUP shape of curves created at the same step
-	 * @see #offsetCurvesOutward(PShape, OffsetStyle, double, int)
+	 * Generates inward-facing offset curves from a shape. Curves are generated
+	 * until they collapse.
+	 * 
+	 * @param shape   a path, polygon or multipolygon (GROUP) shape
+	 * @param style   the type of curve join (BEVEL, MITER, or ROUND)
+	 * @param spacing the distance between each curve, must be >=1
+	 * @return a GROUP PShape where each child is a single curve or a group of
+	 *         curves created at the same step
+	 * @see {@link #offsetCurvesOutward(PShape, OffsetStyle, double, int)
+	 *      offsetCurvesOutward()} for outward-facing curves.
 	 */
 	public static PShape offsetCurvesInward(PShape shape, OffsetStyle style, double spacing) {
 		return offsetCurves(shape, style, spacing, 0, false);
 	}
 
 	/**
-	 * Produces N inwards offset curves from the shape.
-	 *
-	 * @param shape   a single polygon or multipolygon (GROUP PShape)
-	 * @param spacing spacing between successive offset curves. Should be >=1.
-	 * @param style   specifies the curve join style (BEVEL, MITER, ROUND) to use
-	 * @return A GROUP PShape, where each child shape is a single curve shape, or a
-	 *         GROUP shape of curves created at the same step
-	 * @see #offsetCurvesOutward(PShape, OffsetStyle, double, int)
+	 * Generates N inward-facing offset curves from a shape.
+	 * 
+	 * @param shape   a path, polygon or multipolygon (GROUP) shape
+	 * @param style   the type of curve join (BEVEL, MITER, or ROUND)
+	 * @param spacing the distance between each curve, must be >=1
+	 * @param curves  the number of curves to generate (including the original shape
+	 *                outline)
+	 * @return a GROUP PShape where each child is a single curve or a group of
+	 *         curves created at the same step
+	 * @see {@link #offsetCurvesOutward(PShape, OffsetStyle, double, int)
+	 *      offsetCurvesOutward()} for outward-facing curves.
 	 */
 	public static PShape offsetCurvesInward(PShape shape, OffsetStyle style, double spacing, int curves) {
 		return offsetCurves(shape, style, spacing, curves, false);
 	}
 
 	/**
-	 * Produces N offset curves that emanate outwards from the shape.
+	 * Generates N outward-facing offset curves from a shape.
 	 *
-	 * @param shape   a single polygon or multipolygon (GROUP PShape)
-	 * @param spacing spacing between successive offset curves. Should be >=1.
-	 * @param curves  the number of offset curves to create (including the original
-	 *                shape outline)
-	 * @param style   specifies the curve join style (BEVEL, MITER, ROUND) to use
-	 * @return A GROUP PShape, where each child shape is a single curve shape, or a
-	 *         GROUP shape of curves created at the same step
+	 * @param shape   a path, polygon or multipolygon (GROUP) shape
+	 * @param style   the type of curve join (BEVEL, MITER, or ROUND)
+	 * @param spacing the distance between each curve, must be >=1
+	 * @param curves  the number of curves to generate (including the original shape
+	 *                outline)
+	 * @return a GROUP PShape where each child is a single curve or a group of
+	 *         curves created at the same step
 	 * @see #offsetCurvesInward(PShape, OffsetStyle, double)
 	 */
 	public static PShape offsetCurvesOutward(PShape shape, OffsetStyle style, double spacing, final int curves) {
@@ -700,10 +813,20 @@ public final class PGS_Contour {
 	}
 
 	/**
-	 * Generic method for offset curves.
+	 * Generic method for producing offset curves from shapes.
 	 */
 	private static PShape offsetCurves(PShape shape, OffsetStyle style, double spacing, final int curves, boolean outwards) {
 		Geometry g = fromPShape(shape);
+
+		// handle non-polygonal / path shapes
+		if (g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
+			List<Geometry> strings = new ArrayList<>(curves);
+			for (int i = 0; i < curves; i++) {
+				strings.add(
+						OffsetCurve.getCurve(g, spacing * (outwards ? 1 : -1) * i, 8, style.style, BufferParameters.DEFAULT_MITRE_LIMIT));
+			}
+			return toPShape(strings);
+		}
 
 		if (g.getCoordinates().length > 2000) {
 			g = DouglasPeuckerSimplifier.simplify(g, 1);

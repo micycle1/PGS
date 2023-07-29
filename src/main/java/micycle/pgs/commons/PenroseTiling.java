@@ -7,7 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.ColorUtils;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -60,9 +60,9 @@ public class PenroseTiling {
 
 			triangle.setFill(true);
 			if (t.alt) {
-				triangle.setFill(RGB.composeColor(255, 0, 255));
+				triangle.setFill(ColorUtils.composeColor(255, 0, 255));
 			} else {
-				triangle.setFill(RGB.composeColor(255, 255, 0));
+				triangle.setFill(ColorUtils.composeColor(255, 255, 0));
 			}
 			triangle.setStroke(true);
 			triangle.setStrokeWeight(2);

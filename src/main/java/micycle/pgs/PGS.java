@@ -14,6 +14,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
@@ -28,10 +29,11 @@ import org.locationtech.jts.noding.snap.SnappingNoder;
 import org.locationtech.jts.operation.linemerge.LineMerger;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 
-import micycle.pgs.color.RGB;
+import micycle.pgs.color.Colors;
 import micycle.pgs.commons.FastPolygonizer;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
+import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -56,14 +58,14 @@ final class PGS {
 	/**
 	 * Create a LINES PShape, ready for vertices (shape.vertex(x, y) calls).
 	 * 
-	 * @param strokeColor  nullable (default = {@link RGB#PINK})
+	 * @param strokeColor  nullable (default = {@link Colors#PINK})
 	 * @param strokeCap    nullable (default = <code>ROUND</code>)
 	 * @param strokeWeight nullable (default = <code>2</code>)
 	 * @return LINES PShape ready for vertex calls
 	 */
 	static final PShape prepareLinesPShape(@Nullable Integer strokeColor, @Nullable Integer strokeCap, @Nullable Integer strokeWeight) {
 		if (strokeColor == null) {
-			strokeColor = RGB.PINK;
+			strokeColor = Colors.PINK;
 		}
 		if (strokeCap == null) {
 			strokeCap = ROUND;
@@ -82,21 +84,18 @@ final class PGS {
 	}
 
 	/**
-	 * Euclidean distance between two coordinates
-	 */
-	static final double distance(Coordinate a, Coordinate b) {
-		double deltaX = a.y - b.y;
-		double deltaY = a.x - b.x;
-		return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-	}
-
-	/**
 	 * Euclidean distance between two points
 	 */
 	static final double distance(Point a, Point b) {
-		double deltaX = a.getY() - b.getY();
-		double deltaY = a.getX() - b.getX();
+		double deltaX = a.getX() - b.getX();
+		double deltaY = a.getY() - b.getY();
 		return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+	}
+	
+	static final double distanceSq(PVector a, PVector b) {
+		float dx = a.x - b.x;
+		float dy = a.y - b.y;
+		return (dx * dx + dy * dy);
 	}
 
 	static final LineString createLineString(PVector a, PVector b) {
@@ -110,17 +109,42 @@ final class PGS {
 	static final Point createPoint(double x, double y) {
 		return GEOM_FACTORY.createPoint(new Coordinate(x, y));
 	}
+	
+	/**
+	 * Creates a stroked rectangle.
+	 */
+	static final PShape createRect(double x, double y, double w, double h) {
+		final PShape rect = new PShape(PShape.PATH);
+		rect.setFill(true);
+		rect.setFill(255);
+		rect.setStroke(true);
+		rect.setStrokeWeight(4);
+		rect.setStroke(Colors.PINK);
+		rect.beginShape();
+		rect.vertex((float) x, (float) y);
+		rect.vertex((float) (x + w), (float) y);
+		rect.vertex((float) (x + w), (float) (y + h));
+		rect.vertex((float) x, (float) (y + h));
+		rect.endShape(PConstants.CLOSE);
+		return rect;
+	}
 
-	static final Point pointFromPVector(PVector p) {
+	static final Point pointFromPVector(final PVector p) {
 		return GEOM_FACTORY.createPoint(new Coordinate(p.x, p.y));
 	}
 
-	static final Coordinate coordFromPoint(Point p) {
+	static final Coordinate coordFromPoint(final Point p) {
 		return new Coordinate(p.getX(), p.getY());
 	}
 
-	static final Coordinate coordFromPVector(PVector p) {
+	static final Coordinate coordFromPVector(final PVector p) {
 		return new Coordinate(p.x, p.y);
+	}
+	
+	static final Coordinate[] toCoords(final Collection<PVector> points) {
+		CoordinateList coords = new CoordinateList();
+		points.forEach(p -> coords.add(coordFromPVector(p)));
+		return coords.toCoordinateArray();
 	}
 
 	static final PVector toPVector(Coordinate c) {
@@ -199,8 +223,8 @@ final class PGS {
 	/**
 	 * Polygonizes a set of edges.
 	 * 
-	 * @param edges a collection of NODED (i.e. non intersecting / must onlymeet at
-	 *              their endpoints) edges. The collection can containduplicates.
+	 * @param edges a collection of NODED (i.e. non intersecting / must only meet at
+	 *              their endpoints) edges. The collection can contain duplicates.
 	 * @return a GROUP PShape, where each child shape represents a polygon face
 	 *         formed by the given edges
 	 */
@@ -222,13 +246,13 @@ final class PGS {
 		if (node) {
 			segments = nodeSegmentStrings(segments);
 		}
-		final Collection<PEdge> meshEdges = new ArrayList<>(segments.size());
+		final List<PEdge> meshEdges = new ArrayList<>(segments.size());
 		segments.forEach(ss -> { // ss is not necessarily a single edge (can be many connected edges)
 			for (int i = 0; i < ss.size() - 1; i++) {
 				meshEdges.add(new PEdge(toPVector(ss.getCoordinate(i)), toPVector(ss.getCoordinate(i + 1))));
 			}
 		});
-		Collections.shuffle((List<?>) meshEdges);
+		Collections.shuffle(meshEdges);
 		return polygonizeEdges(meshEdges);
 	}
 
@@ -275,7 +299,7 @@ final class PGS {
 		 * are generally caused by nearly coincident line segments, or by very short
 		 * line segments. Snapping mitigates both of these situations.".
 		 */
-		final Noder noder = new SnappingNoder(0.01);
+		final Noder noder = new SnappingNoder(1e-2);
 		noder.computeNodes(segments);
 		return noder.getNodedSubstrings();
 	}
@@ -435,6 +459,9 @@ final class PGS {
 			ArrayList<LinearRing> rings = new ArrayList<>(g.getNumGeometries());
 			for (int i = 0; i < g.getNumGeometries(); i++) {
 				Polygon poly = (Polygon) g.getGeometryN(i);
+//				if (poly.getNumPoints() == 0) {
+//					continue;
+//				}
 				rings.add(poly.getExteriorRing());
 				for (int j = 0; j < poly.getNumInteriorRing(); j++) {
 					rings.add(poly.getInteriorRingN(j));

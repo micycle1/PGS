@@ -4,6 +4,10 @@ A collection of example Processing sketches using *Processing Geometry Suite*. T
 
 All examples are dynamic and/or interactive. Shown below are merely screenshots.
 
+## blowUp
+
+<img src="../resources/examples/blowUp.png" alt="" width="500"/>
+
 ## contourMap
 
 <img src="../resources/examples/contourMap.png" alt="" width="500"/>
@@ -27,6 +31,10 @@ All examples are dynamic and/or interactive. Shown below are merely screenshots.
 ## letterParticles
 
 <img src="../resources/examples/letterParticles.png" alt="" width="500"/>
+
+## moireVoronoi
+
+<img src="../resources/examples/moireVoronoi.png" alt="" width="500"/>
 
 ## minkShearLetters
 

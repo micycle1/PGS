@@ -2,13 +2,16 @@ package micycle.pgs;
 
 import static micycle.pgs.PGS.GEOM_FACTORY;
 import static micycle.pgs.PGS.coordFromPVector;
-import static micycle.pgs.color.RGB.decomposeclrRGB;
+import static micycle.pgs.color.ColorUtils.decomposeclrRGB;
 import static processing.core.PConstants.BEZIER_VERTEX;
 import static processing.core.PConstants.CURVE_VERTEX;
 import static processing.core.PConstants.GROUP;
 import static processing.core.PConstants.QUADRATIC_VERTEX;
 
 import java.awt.Shape;
+import java.awt.geom.AffineTransform;
+import java.awt.geom.PathIterator;
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -20,14 +23,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.apache.commons.io.FileUtils;
 import org.jgrapht.alg.drawing.IndexedFRLayoutAlgorithm2D;
 import org.jgrapht.alg.drawing.LayoutAlgorithm2D;
 import org.jgrapht.alg.drawing.model.Box2D;
@@ -62,6 +66,10 @@ import org.scoutant.polyline.PolylineDecoder;
 import it.rambow.master.javautils.PolylineEncoder;
 import it.rambow.master.javautils.Track;
 import it.rambow.master.javautils.Trackpoint;
+import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
+import micycle.betterbeziers.CubicBezier;
+import micycle.pgs.color.Colors;
+import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
 import processing.core.PConstants;
 import processing.core.PMatrix;
@@ -69,28 +77,29 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Conversion between <i>Processing</i> <code>PShapes</code> and <i>JTS</i>
- * <code>Geometries</code> (amongst other formats). Also includes helper/utility
- * methods for PShapes.
+ * Facilitates conversion between <i>Processing's</i> {@code PShapes} and
+ * <i>JTS's</i> {@code Geometries}, along with various other formats. It also
+ * offers additional utility methods to assist with handling {@code PShapes}.
  * <p>
- * Methods in this class are used by the library internally but are kept
- * accessible for more advanced user use cases.
+ * Though certain conversion methods are utilised internally by the library,
+ * they have been kept public to cater to more complex user requirements.
  * <p>
- * Notably, JTS geometries do not support bezier curves so any bezier curves are
- * finely subdivided into straight linestrings during <code>PShape</code> -> JTS
- * <code>Geometry</code> conversion.
+ * Note: JTS {@code Geometries} do not provide support for bezier curves. As
+ * such, bezier curves are linearised/divided into straight line segments during
+ * the conversion process from {@code PShape} to JTS {@code Geometry}.
  * <p>
- * This class features 2 boolean flags that affect conversion that you may wish
- * to look at: {@link #PRESERVE_STYLE} and {@link #HANDLE_MULTICONTOUR}.
- *
+ * Two configurable boolean flags influence the conversion process:
+ * {@link #PRESERVE_STYLE} (set to true by default), and
+ * {@link #HANDLE_MULTICONTOUR} (set to false by default). Users are encouraged
+ * to review these flags as part of more complicated workflows with this class.
+ * 
  * @author Michael Carleton
- *
  */
 public final class PGS_Conversion {
 
 	/** Approximate distance between successive sample points on bezier curves */
-	private static final float BEZIER_SAMPLE_DISTANCE = 2;
-	private static Field MATRIX_FIELD;
+	static final float BEZIER_SAMPLE_DISTANCE = 2;
+	private static Field MATRIX_FIELD, PSHAPE_FILL_FIELD;
 	/**
 	 * A boolean flag that affects whether a PShape's style (fillColor, strokeColor,
 	 * strokeWidth) is preserved during <code>PShape->Geometry->PShape</code>
@@ -99,20 +108,21 @@ public final class PGS_Conversion {
 	 */
 	public static boolean PRESERVE_STYLE = true;
 	/**
-	 * A boolean flag that enables a subroutine during {@link #fromPShape(PShape)
-	 * fromPShape()} conversion to properly convert <b>single</b> PShapes that
-	 * consist of multiple contours that in turn represent multiple distinct shapes.
-	 * When <code>false</code>, {@link #fromPShape(PShape) fromPShape()} assumes
-	 * that in shapes having multiple contours, every contour beyond the first
-	 * represents a hole, which is generally sufficient.
+	 * A boolean flag that, when true, enables a specialised subroutine during the
+	 * {@link #fromPShape(PShape) fromPShape()} conversion to correctly convert
+	 * <b>single</b> PShapes comprised of multiple contours, each representing a
+	 * separate shape. If set to <code>false</code>, the {@link #fromPShape(PShape)
+	 * fromPShape()} method assumes that in multi-contour shapes, every contour
+	 * beyond the first represents a hole, which is generally an adequate
+	 * assumption.
 	 * <p>
-	 * This feature is off by default because it introduces some overhead as polygon
-	 * rings orientation must be determined (amongst other such stuff), and is
-	 * rarely needed (unless one is working with fonts, I have found). Default =
+	 * This feature is disabled by default because it necessitates additional
+	 * computation, such as determining polygon ring orientations, and is seldom
+	 * required (unless one is dealing with fonts, I have observed). Default =
 	 * <code>false</code>.
 	 * <p>
-	 * See <a href="https://github.com/micycle1/PGS/issues/67">github</a> for more
-	 * information.
+	 * For more information, refer to the discussion on this topic at
+	 * <a href="https://github.com/micycle1/PGS/issues/67">GitHub</a>.
 	 */
 	public static boolean HANDLE_MULTICONTOUR = false;
 
@@ -120,6 +130,8 @@ public final class PGS_Conversion {
 		try {
 			MATRIX_FIELD = PShape.class.getDeclaredField("matrix");
 			MATRIX_FIELD.setAccessible(true);
+			PSHAPE_FILL_FIELD = PShape.class.getDeclaredField("fillColor");
+			PSHAPE_FILL_FIELD.setAccessible(true);
 		} catch (NoSuchFieldException e) {
 			System.err.println(e.getLocalizedMessage());
 		}
@@ -129,12 +141,44 @@ public final class PGS_Conversion {
 	}
 
 	/**
-	 * Converts a JTS Geometry to an equivalent PShape. MultiGeometries (collections
-	 * of geometries) become GROUP PShapes containing the appropriate children
-	 * PShapes.
-	 *
-	 * @param g JTS geometry to convert
-	 * @return
+	 * Converts a JTS Geometry into a corresponding PShape. In the case of
+	 * MultiGeometries (which include collections of geometries), the result is a
+	 * GROUP PShape containing the appropriate child PShapes.
+	 * <p>
+	 * The conversion process follows the geometry types supported by JTS, namely:
+	 * <ul>
+	 * <li>{@link Geometry#TYPENAME_GEOMETRYCOLLECTION GEOMETRYCOLLECTION}:
+	 * Converted to a GROUP PShape if it contains multiple geometries. For single
+	 * geometry collections, it extracts and converts the single geometry.</li>
+	 * <li>{@link Geometry#TYPENAME_MULTIPOLYGON MULTIPOLYGON}: Similar to
+	 * GeometryCollection, MultiPolygons are converted to a GROUP PShape, with each
+	 * polygon converted to a child PShape.</li>
+	 * <li>{@link Geometry#TYPENAME_MULTILINESTRING MULTILINESTRING}:
+	 * MultiLineStrings are handled in the same way as GeometryCollections and
+	 * MultiPolygons, converted to a GROUP PShape containing child PShapes.</li>
+	 * <li>{@link Geometry#TYPENAME_LINEARRING LINEARRING} and
+	 * {@link Geometry#TYPENAME_LINESTRING LINESTRING}: These are converted to a
+	 * PATH PShape, preserving the closed or open nature of the original
+	 * LineString.</li>
+	 * <li>{@link Geometry#TYPENAME_POLYGON POLYGON}: Converted to a PATH PShape,
+	 * with each contour of the polygon represented as a series of vertices in the
+	 * PShape. Inner contours, or 'holes' in the polygon, are handled
+	 * separately.</li>
+	 * <li>{@link Geometry#TYPENAME_POINT POINT} and
+	 * {@link Geometry#TYPENAME_MULTIPOINT MULTIPOINT}: These are converted to a
+	 * GEOMETRY PShape with each point represented as a vertex.</li>
+	 * </ul>
+	 * <p>
+	 * Please note that any unsupported geometry types will result in an error
+	 * message.
+	 * <p>
+	 * If {@link #PRESERVE_STYLE} is enabled and the geometry includes user data in
+	 * the form of PShapeData, the style from the data is applied to the resulting
+	 * PShape.
+	 * 
+	 * @param g The JTS geometry to convert.
+	 * @return A PShape that represents the input geometry, or a new, empty PShape
+	 *         if the input is null.
 	 */
 	public static PShape toPShape(final Geometry g) {
 		if (g == null) {
@@ -143,9 +187,9 @@ public final class PGS_Conversion {
 		PShape shape = new PShape();
 		// apply PGS style by default
 		shape.setFill(true);
-		shape.setFill(micycle.pgs.color.RGB.WHITE);
+		shape.setFill(micycle.pgs.color.Colors.WHITE);
 		shape.setStroke(true);
-		shape.setStroke(micycle.pgs.color.RGB.PINK);
+		shape.setStroke(micycle.pgs.color.Colors.PINK);
 		shape.setStrokeWeight(4);
 		shape.setStrokeJoin(PConstants.ROUND);
 		shape.setStrokeCap(PConstants.ROUND);
@@ -163,6 +207,7 @@ public final class PGS_Conversion {
 					}
 				}
 				break;
+			// TODO treat closed linestrings as unfilled & unclosed paths?
 			case Geometry.TYPENAME_LINEARRING : // LinearRings are closed by definition
 			case Geometry.TYPENAME_LINESTRING : // LineStrings may be open
 				final LineString l = (LineString) g;
@@ -234,16 +279,28 @@ public final class PGS_Conversion {
 	}
 
 	/**
-	 * Converts a collection of JTS Geometries to an equivalent GROUP PShape. If the
-	 * collection contains only one geometry, an equivalent PShape will be output
-	 * directly (not a GROUP shape).
+	 * 
+	 * Converts a collection of JTS Geometries into a corresponding GROUP PShape.
+	 * This method loops through the provided geometries, converting each individual
+	 * geometry into a PShape, and then adds it as a child to the GROUP PShape.
+	 * <p>
+	 * In case the collection only contains a single geometry, this method will
+	 * instead return a PShape that directly corresponds to that single geometry. It
+	 * will not be wrapped in a GROUP shape in this case.
+	 * 
+	 * @param geometries A collection of JTS Geometries to convert into a PShape.
+	 * @return A PShape that represents the collection of input geometries. If the
+	 *         collection contains only a single geometry, the return is a PShape
+	 *         directly equivalent to that geometry. Otherwise, the return is a
+	 *         GROUP PShape containing child PShapes for each geometry in the
+	 *         collection.
 	 */
 	public static PShape toPShape(Collection<? extends Geometry> geometries) {
 		PShape shape = new PShape(GROUP);
 		shape.setFill(true);
-		shape.setFill(micycle.pgs.color.RGB.WHITE);
+		shape.setFill(micycle.pgs.color.Colors.WHITE);
 		shape.setStroke(true);
-		shape.setStroke(micycle.pgs.color.RGB.PINK);
+		shape.setStroke(micycle.pgs.color.Colors.PINK);
 		shape.setStrokeWeight(4);
 
 		geometries.forEach(g -> shape.addChild(toPShape(g)));
@@ -255,13 +312,44 @@ public final class PGS_Conversion {
 	}
 
 	/**
-	 * Converts a PShape to an equivalent JTS Geometry.
+	 * 
+	 * Transforms a PShape into a corresponding JTS Geometry.
 	 * <p>
-	 * PShapes with bezier curves are sampled at regular intervals (in which case
-	 * the resulting geometry will have more vertices than the input PShape).
-	 *
-	 * @param shape
-	 * @return a JTS Geometry equivalent to the input PShape
+	 * During this transformation, any bezier curve elements within the input PShape
+	 * are linearised, meaning they are sampled at regular, equidistant intervals.
+	 * This process results in the created geometry having a greater number of
+	 * vertices than the original PShape.
+	 * <p>
+	 * Additionally, please be aware that the method does not preserve multi-level
+	 * child shape hierarchies present in the input PShape. All child shapes are
+	 * flattened to the same level in the output geometry.
+	 * <p>
+	 * The conversion process depends on the PShape's type and can be broadly
+	 * categorized as follows:
+	 * <ul>
+	 * <li>{@link PConstants#GROUP}: The method recursively converts each child of
+	 * the PShape into a corresponding Geometry and groups these into a
+	 * GeometryCollection.</li>
+	 * <li>{@link PShape#GEOMETRY} and {@link PShape#PATH}: Here, the method further
+	 * distinguishes between the kinds of the shape. For POLYGON, PATH and
+	 * unspecified kinds, it creates a Geometry from the vertices of the PShape. For
+	 * special paths (e.g., POINTS, LINES), it uses a separate conversion
+	 * routine.</li>
+	 * <li>{@link PShape#PRIMITIVE}: It converts the PShape using a separate routine
+	 * dedicated to primitive shapes.</li>
+	 * </ul>
+	 * <p>
+	 * If {@link #PRESERVE_STYLE} is enabled, the method preserves the style of the
+	 * PShape in the output Geometry as user data.
+	 * <p>
+	 * Lastly, any affine transformations applied to the PShape (which do not
+	 * directly affect its vertices) are also applied to the resulting Geometry
+	 * (baked into its coordinates).
+	 * 
+	 * @param shape The PShape to convert into a JTS Geometry.
+	 * @return A JTS Geometry that corresponds to the input PShape, or an empty 2D
+	 *         Geometry if the PShape is null or the type of the PShape is
+	 *         unsupported.
 	 */
 	public static Geometry fromPShape(PShape shape) {
 		Geometry g = GEOM_FACTORY.createEmpty(2);
@@ -367,6 +455,9 @@ public final class PGS_Conversion {
 	/**
 	 * Creates a JTS Polygon from a geometry or path PShape, whose 'kind' is a
 	 * polygon or path.
+	 * <p>
+	 * Note that repeated vertices are not preserved during conversion (to maximise
+	 * compatibility with geometric algorithms).
 	 */
 	private static Geometry fromVertices(PShape shape) {
 
@@ -451,27 +542,35 @@ public final class PGS_Conversion {
 	}
 
 	/**
-	 * Converts a single PShape, which <i>***may***</i> have multiple contours that
-	 * represent multiple polygons (and may even contain nested polygons with holes)
-	 * into its valid JTS representation.
 	 * <p>
-	 * This kind of shape is not possible to produce from JTS (since multiple
-	 * polygons will always be represented as standalone objects within a
-	 * MultiGeometry, leading to a GROUP shape), but Processing allows single PATH
-	 * PShapes to have multiple contour groups, and thus represent multiple polygons
-	 * despite being a "single" shape.
+	 * Transforms a {@code PShape} object, which might contain multiple contours
+	 * representing several polygons (including nested polygons with holes), into a
+	 * valid JTS representation.
 	 * <p>
-	 * Since the PShape has no information about which contours represent holes, and
-	 * nor any information about which contours should be grouped together to
-	 * represent the same shapes, this must be determined within this method.
+	 * The input shape may not be directly producible using JTS because JTS
+	 * represents multiple polygons as separate objects within a
+	 * {@code MultiGeometry}, resulting in a {@code GROUP} shape. However,
+	 * Processing allows <b>single</b> {@code PATH} PShapes to include multiple
+	 * contour groups, representing multiple polygons despite being considered a
+	 * "single" shape.
+	 * <p>
+	 * The {@code PShape} does not carry information about which contours represent
+	 * holes or how contours should be grouped to represent the same shapes. This
+	 * method determines this internally.
 	 * 
-	 * @param contours list of contours/rings. The contour at index==0 must be a
-	 *                 polygonal and is assumed to be an exterior ring.
-	 * @param sort     whether to sort the contours by orientation (clockwise
-	 *                 contours first), which can fix tricky cases
-	 * @param reverse  whether to reverse the contour collection, which can fix
-	 *                 tricky cases
-	 * @return Polygon or MultiPolygon
+	 * @param contours A {@code List} of contours/rings. The contour at
+	 *                 {@code index==0} is assumed to be polygonal and considered an
+	 *                 exterior ring.
+	 * @param sort     A boolean value determining whether to sort the contours by
+	 *                 orientation (clockwise contours first), which can solve some
+	 *                 complex cases.
+	 * @param reverse  A boolean value indicating whether to reverse the contour
+	 *                 collection, which can also solve complex cases.
+	 * @return Returns either a {@code Polygon} or {@code MultiPolygon} depending on
+	 *         the input shape.
+	 * 
+	 * @see Geometry
+	 * @see CoordinateList
 	 */
 	private static Geometry fromMultiContourShape(List<CoordinateList> contours, boolean sort, boolean reverse) {
 		if (reverse) {
@@ -589,10 +688,24 @@ public final class PGS_Conversion {
 	}
 
 	/**
-	 * Creates a JTS Polygon from a primitive PShape. Primitive PShapes are those
-	 * where createShape() is used to create them, and can take any of these types:
-	 * POINT, LINE, TRIANGLE, QUAD, RECT, ELLIPSE, ARC, BOX, SPHERE. They do not
-	 * have directly accessible vertex data.
+	 * Creates a JTS Polygon from a primitive PShape. Primitive PShapes are
+	 * generated by invoking the <code>createShape()</code> method from Processing.
+	 * <p>
+	 * Supported primitives include POINT, LINE, TRIANGLE, QUAD, RECT, ELLIPSE, and
+	 * ARC. Other types such as BOX and SPHERE (3D primitives), or any non-polygon
+	 * primitives are not supported and will print an error message.
+	 * <p>
+	 * Primitive PShapes do not have directly accessible vertex data. This method
+	 * generates equivalent JTS Polygons by accessing the shape's parameters (e.g.,
+	 * width, height, coordinates) via the <code>getParam()</code> method.
+	 * <p>
+	 * In the event where a non-supported primitive is supplied, an empty JTS
+	 * Polygon is returned.
+	 *
+	 * @param shape The primitive PShape to be converted to a JTS Polygon
+	 * @return A JTS Geometry (Polygon) representing the input primitive PShape. For
+	 *         non-supported or non-polygon primitives, an empty JTS Polygon is
+	 *         returned.
 	 */
 	private static Geometry fromPrimitive(PShape shape) {
 		final GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
@@ -659,6 +772,17 @@ public final class PGS_Conversion {
 	}
 
 	/**
+	 * Transforms a variable arg list of points into a POINTS PShape.
+	 * 
+	 * @param vertices
+	 * @return a POINTS PShape
+	 * @since 1.4.0
+	 */
+	public static final PShape toPointsPShape(PVector... vertices) {
+		return toPointsPShape(Arrays.asList(vertices));
+	}
+
+	/**
 	 * Transforms a list of points into a POINTS PShape.
 	 *
 	 * @since 1.2.0
@@ -668,8 +792,8 @@ public final class PGS_Conversion {
 		shape.setFamily(PShape.GEOMETRY);
 		shape.setStrokeCap(PConstants.ROUND);
 		shape.setStroke(true);
-		shape.setStroke(micycle.pgs.color.RGB.WHITE);
-		shape.setStrokeWeight(5);
+		shape.setStroke(micycle.pgs.color.Colors.PINK);
+		shape.setStrokeWeight(6);
 		shape.beginShape(PConstants.POINTS);
 		points.forEach(p -> shape.vertex(p.x, p.y));
 		shape.endShape();
@@ -677,41 +801,78 @@ public final class PGS_Conversion {
 	}
 
 	/**
-	 * Returns the vertices of a PShape as an <b>unclosed</b> list of PVector
-	 * coordinates.
-	 *
-	 * @param shape a non-GROUP PShape
-	 * @return
+	 * Creates a PShape having circle geometries representing a collection of
+	 * circles.
+	 * 
+	 * @param circles The collection of PVector objects representing the circles.
+	 *                The x and y components represent the center of the circle, and
+	 *                the z component represents the radius.
+	 * @return The PShape object representing the collection of circles.
+	 * @since 1.4.0
+	 */
+	public static final PShape toCircles(Collection<PVector> circles) {
+		return toPShape(circles.stream().map(c -> PGS_Construction.createEllipse(c.x, c.y, c.z, c.z)).collect(Collectors.toList()));
+	}
+
+	/**
+	 * 
+	 * Extracts the vertices of a PShape into a list of PVectors.
+	 * <p>
+	 * The function navigates through all children of the given shape if it is of
+	 * the GROUP type, recursively flattening their vertices and adding them to the
+	 * list. In the case of PShape primitives, where the <code>getVertex()</code>
+	 * method fails, the shape is converted to its equivalent path representation
+	 * before vertex extraction.
+	 * <p>
+	 * If the input shape represents a closed polygon, the method returns an
+	 * "unclosed" version of the shape. This means that the duplicate vertex that
+	 * closes the shape (which is identical to the first vertex) is omitted from the
+	 * output.
+	 * <p>
+	 * The resulting list contains all vertices from the input PShape in the order
+	 * they appear in the shape.
+	 * 
+	 * @param shape the PShape from which vertices are to be extracted
+	 * @return a list of PVector objects representing the vertices of the input
+	 *         shape
 	 */
 	public static List<PVector> toPVector(PShape shape) {
-		if (shape.getFamily() == PShape.PRIMITIVE) {
-			// getVertex() doesn't work on PShape primitives
-			shape = toPShape(fromPrimitive(shape));
-		}
-		final ArrayList<PVector> vertices = new ArrayList<>();
-		for (int i = 0; i < shape.getVertexCount(); i++) {
-			vertices.add(shape.getVertex(i));
-		}
-		if (!vertices.isEmpty() && vertices.get(0).equals(vertices.get(vertices.size() - 1))) {
+		// use getChildren() incase shape is GROUP
+		final List<PVector> vertices = new ArrayList<>();
+		getChildren(shape).forEach(s -> {
+			if (s.getFamily() == PShape.PRIMITIVE) {
+				// getVertex() doesn't work on PShape primitives
+				s = toPShape(fromPrimitive(s));
+			}
+			for (int i = 0; i < s.getVertexCount(); i++) {
+				vertices.add(s.getVertex(i));
+			}
+		});
+		if (!vertices.isEmpty() && shape.getChildCount() > 0 && vertices.get(0).equals(vertices.get(vertices.size() - 1))) {
 			vertices.remove(vertices.size() - 1);
 		}
 		return vertices;
 	}
 
 	/**
-	 * Converts a shape into a simple graph; graph vertices represent shape
-	 * vertices, and graph edges represent shape edges (formed from adjacent
-	 * vertices in polygonal shapes).
-	 *
-	 * @param shape the shape to convert
-	 * @return graph representation of the input shape
+	 * Transforms a given PShape into a simple graph representation. In this
+	 * representation, the vertices of the graph correspond to the vertices of the
+	 * shape, and the edges of the graph correspond to the edges of the shape. This
+	 * transformation is specifically applicable to polygonal shapes where edges are
+	 * formed by adjacent vertices.
+	 * <p>
+	 * The edge weights in the graph are set to the length of the corresponding edge
+	 * in the shape.
+	 * 
+	 * @param shape the PShape to convert into a graph
+	 * @return A SimpleGraph object that represents the structure of the input shape
 	 * @since 1.3.0
 	 * @see #toDualGraph(PShape)
 	 */
 	public static SimpleGraph<PVector, PEdge> toGraph(PShape shape) {
 		final SimpleGraph<PVector, PEdge> graph = new SimpleWeightedGraph<>(PEdge.class);
 		for (PShape face : getChildren(shape)) {
-			for (int i = 0; i < face.getVertexCount(); i++) {
+			for (int i = 0; i < face.getVertexCount() - (face.isClosed() ? 0 : 1); i++) {
 				final PVector a = face.getVertex(i);
 				final PVector b = face.getVertex((i + 1) % face.getVertexCount());
 				if (a.equals(b)) {
@@ -727,6 +888,19 @@ public final class PGS_Conversion {
 		}
 
 		return graph;
+	}
+
+	/**
+	 * Converts a given SimpleGraph consisting of PVectors and PEdges into a PShape
+	 * by polygonizing its edges. If the graph represented a shape with holes, these
+	 * will not be preserved during the conversion.
+	 * 
+	 * @param graph the graph to be converted into a PShape.
+	 * @return a PShape representing the polygonized edges of the graph.
+	 * @since 1.4.0
+	 */
+	public static PShape fromGraph(SimpleGraph<PVector, PEdge> graph) {
+		return PGS.polygonizeEdges(graph.edgeSet());
 	}
 
 	/**
@@ -752,7 +926,7 @@ public final class PGS_Conversion {
 	public static <V, E> PShape fromGraph(SimpleGraph<V, E> graph, double normalizationFactor, double boundsX, double boundsY) {
 		normalizationFactor = Math.min(Math.max(normalizationFactor, 0.001), 1);
 		LayoutAlgorithm2D<V, E> layout;
-		layout = new IndexedFRLayoutAlgorithm2D<>(50, 0.7, normalizationFactor, new Random(1337));
+		layout = new IndexedFRLayoutAlgorithm2D<>(50, 0.7, normalizationFactor, new XoRoShiRo128PlusRandom(1337));
 		LayoutModel2D<V> model = new MapLayoutModel2D<>(new Box2D(boundsX, boundsY));
 		layout.layout(graph, model);
 
@@ -799,6 +973,47 @@ public final class PGS_Conversion {
 		return toDualGraph(getChildren(mesh));
 	}
 
+	/**
+	 * Converts a mesh-like PShape into its centroid-based undirected dual-graph.
+	 * <p>
+	 * The output is a <i>dual graph</i> of the input; it has a vertex for each
+	 * centroid of the face of the input, and an edge (connecting the centroids) for
+	 * each pair of faces that are adjacent. Each vertex represents the geometric
+	 * center or centroid of the respective face in the mesh.
+	 *
+	 * @param mesh a GROUP PShape, whose children constitute the polygonal faces of
+	 *             a <b>conforming mesh</b>. A conforming mesh consists of adjacent
+	 *             cells that not only share edges, but every pair of shared edges
+	 *             are identical (having the same coordinates) (such as a
+	 *             triangulation).
+	 * @return the centroid-based dual graph of the input mesh; an undirected graph
+	 *         containing no graph loops or multiple edges. Each vertex in the graph
+	 *         represents the centroid of a face in the input mesh, and each edge
+	 *         represents adjacency between two faces.
+	 * @since 1.4.0
+	 * @see #toDualGraph(PShape)
+	 * @see PGS_ShapePredicates#centroid(PShape)
+	 */
+	public static SimpleGraph<PVector, PEdge> toCentroidDualGraph(PShape mesh) {
+		final SimpleGraph<PShape, DefaultEdge> toplogy = toDualGraph(getChildren(mesh));
+		Map<PShape, PVector> centroids = toplogy.vertexSet().stream().collect(Collectors.toMap(x -> x, PGS_ShapePredicates::centroid));
+
+		SimpleGraph<PVector, PEdge> graph = new SimpleGraph<>(PEdge.class);
+		centroids.values().forEach(v -> graph.addVertex(v));
+		toplogy.edgeSet().forEach(e -> {
+			PVector c1 = centroids.get(toplogy.getEdgeSource(e));
+			PVector c2 = centroids.get(toplogy.getEdgeTarget(e));
+			PEdge edge = new PEdge(c1, c2);
+			graph.addEdge(c1, c2, edge);
+		});
+
+		return graph;
+	}
+
+	/**
+	 * @param meshFaces collection of faces comprising a conforming mesh.
+	 * @return
+	 */
 	static SimpleGraph<PShape, DefaultEdge> toDualGraph(Collection<PShape> meshFaces) {
 		final SimpleGraph<PShape, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
 		// map of which edge belong to each face; used to detect half-edges
@@ -818,7 +1033,7 @@ public final class PGS_Conversion {
 				if (neighbour != null) {
 					// edge seen before, so faces must be adjacent; create edge between faces
 					if (neighbour.equals(face)) { // probably bad input (3 edges the same)
-						System.err.println("toGraph: Bad input — saw the same edge 3 times.");
+						System.err.println("toDualGraph(): Bad input — saw the same edge 3 times.");
 						continue; // continue to prevent self-loop in graph
 					}
 					graph.addEdge(neighbour, face);
@@ -883,6 +1098,25 @@ public final class PGS_Conversion {
 	}
 
 	/**
+	 * Converts a shape into <i>Well-Known Binary</i> format and writes the bytes to
+	 * a file.
+	 * 
+	 * @param shape    shape to process
+	 * @param filename Absolute file path (with filename and extension). Prefix with
+	 *                 "./" for a relative path.
+	 * @since 1.4.0
+	 */
+	public static void toWKB(PShape shape, String filename) {
+		WKBWriter writer = new WKBWriter();
+		byte[] bytes = writer.write(fromPShape(shape));
+		try {
+			FileUtils.writeByteArrayToFile(new File(filename), bytes);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	/**
 	 * Converts a geometry in <i>Well-Known Binary</i> format into a PShape.
 	 *
 	 * @param shapeWKB byte representation of shape to process
@@ -897,6 +1131,27 @@ public final class PGS_Conversion {
 		} catch (ParseException e) {
 			return new PShape();
 		}
+	}
+
+	/**
+	 * Reads a shape from a (binary) file containing the <i>Well-Known Binary</i>
+	 * representation of it.
+	 * 
+	 * @param filename Absolute file path (with filename and extension). Prefix with
+	 *                 "./" for a relative path.
+	 * @return a PShape specified by the WKB in the file
+	 */
+	public static PShape fromWKB(String filename) {
+		byte[] shapeWKB;
+		try {
+			shapeWKB = FileUtils.readFileToByteArray(new File(filename));
+			WKBReader reader = new WKBReader();
+			return toPShape(reader.read(shapeWKB));
+		} catch (IOException | ParseException e) {
+			e.printStackTrace();
+			return new PShape();
+		}
+
 	}
 
 	/**
@@ -936,7 +1191,7 @@ public final class PGS_Conversion {
 		Track line = new Track();
 		toPVector(shape).forEach(p -> line.addTrackpoint(new Trackpoint(p.x, p.y)));
 		line.addTrackpoint(line.getTrackpoints().get(0)); // close
-		// PolylineEncoder.createEncodings() writes to console, so supress that...
+		// PolylineEncoder.createEncodings() writes to console, so suppress that...
 		PrintStream old = System.out;
 		System.setOut(new PrintStream(new OutputStream() {
 			public void write(int b) throws IOException {
@@ -1018,9 +1273,11 @@ public final class PGS_Conversion {
 	 * @return a PShape representing the Java2D shape
 	 * @since 1.3.0
 	 */
+
 	public static PShape fromJava2D(Shape shape) {
 		if (shape != null) {
-			return toPShape(ShapeReader.read(shape, BEZIER_SAMPLE_DISTANCE, GEOM_FACTORY));
+			PathIterator pathIt = shape.getPathIterator(AffineTransform.getScaleInstance(1, 1), BEZIER_SAMPLE_DISTANCE);
+			return toPShape(ShapeReader.read(pathIt, GEOM_FACTORY));
 		} else {
 			return new PShape();
 		}
@@ -1045,10 +1302,10 @@ public final class PGS_Conversion {
 
 		PShape shape = new PShape();
 		shape.setFamily(PShape.PATH);
-		shape.setFill(micycle.pgs.color.RGB.WHITE);
+		shape.setFill(Colors.WHITE);
 		shape.setFill(closed);
-		shape.setStroke(!closed);
-		shape.setStroke(micycle.pgs.color.RGB.WHITE);
+		shape.setStroke(true);
+		shape.setStroke(closed ? Colors.PINK : Colors.WHITE);
 		shape.setStrokeWeight(2);
 
 		shape.beginShape();
@@ -1062,14 +1319,123 @@ public final class PGS_Conversion {
 	}
 
 	/**
-	 * Generates a simple closed polygon (assumes no holes) from the list of
-	 * vertices (varargs).
+	 * Generates a shape from a list of vertices. If the list of vertices is closed
+	 * (first and last vertices are the same), the vertices are interpreted as a
+	 * closed polygon (having no holes); if the list is unclosed, they are treated
+	 * as a linestring.
 	 *
 	 * @param vertices list of (un)closed shape vertices
+	 * @return a PATH PShape (either open linestring or closed polygon)
 	 * @see #fromPVector(List)
 	 */
 	public static PShape fromPVector(PVector... vertices) {
 		return fromPVector(Arrays.asList(vertices));
+	}
+
+	/**
+	 * Generates a polygonal shape from lists of vertices representing its shell and
+	 * holes.
+	 * <p>
+	 * In theory, the shell should be orientated CW and the holes CCW, but this
+	 * method will detect orientation and handle it accordingly, so the orientation
+	 * of input does not matter.
+	 * 
+	 * @param shell vertices of the shell of the polygon
+	 * @param holes (optional) list of holes
+	 * @return
+	 * @since 1.4.0
+	 */
+	public static PShape fromPVector(List<PVector> shell, @Nullable List<List<PVector>> holes) {
+		boolean closed = false;
+		if (!shell.isEmpty() && shell.get(0).equals(shell.get(shell.size() - 1))) {
+			closed = true;
+		}
+
+		PShape shape = new PShape();
+		shape.setFamily(PShape.PATH);
+		shape.setFill(true);
+		shape.setFill(Colors.WHITE);
+		shape.setStroke(true);
+		shape.setStroke(Colors.PINK);
+		shape.setStrokeWeight(4);
+
+		shape.beginShape();
+		if (!PGS.isClockwise(shell)) {
+			Collections.reverse(shell);
+		}
+		for (int i = 0; i < shell.size() - (closed ? 1 : 0); i++) {
+			PVector v = shell.get(i);
+			shape.vertex(v.x, v.y);
+		}
+
+		if (holes != null) {
+			holes.forEach(hole -> {
+				if (hole.size() < 3) {
+					return;
+				}
+				final boolean holeClosed = hole.get(0).equals(hole.get(hole.size() - 1));
+				if (PGS.isClockwise(hole)) {
+					Collections.reverse(hole);
+				}
+				shape.beginContour();
+				for (int i = 0; i < hole.size() - (holeClosed ? 1 : 0); i++) {
+					PVector v = hole.get(i);
+					shape.vertex(v.x, v.y);
+				}
+				shape.endContour();
+			});
+		}
+
+		shape.endShape(PConstants.CLOSE);
+
+		return shape;
+	}
+
+	/**
+	 * Converts a simple PShape into an array of its coordinates.
+	 * 
+	 * @param shape      a simple shape (closed polygon or open line) represented by
+	 *                   a coordinate array [[x1, y1], [x2, y2]...]
+	 * @param keepClosed flag to determine whether to keep the (last) closing vertex
+	 *                   in the output if the input forms a closed polygon
+	 * @return coordinate array in the form [[x1, y1], [x2, y2]]
+	 * @since 1.4.0 an array of coordinates representing the PShape
+	 * @see #fromArray(double[][])
+	 */
+	public static double[][] toArray(PShape shape, boolean keepClosed) {
+		List<PVector> points = toPVector(shape); // CLOSE
+		if (shape.isClosed() && keepClosed) {
+			points.add(points.get(0)); // since toPVector returns unclosed view
+		}
+		double[][] out = new double[points.size()][2];
+		for (int i = 0; i < points.size(); i++) {
+			PVector point = points.get(i);
+			out[i][0] = point.x;
+			out[i][1] = point.y;
+		}
+		return out;
+	}
+
+	/**
+	 * Creates a PShape from an array of doubles representing coordinates.
+	 * 
+	 * @param shape coordinate array representing a simple shape (closed polygon or
+	 *              open line) [[x1, y1], [x2, y2]...]
+	 * @param close close the coordinates (if unclosed)
+	 * @return a PShape represented by the coordinates
+	 * @since 1.4.0
+	 * @see #toArray(PShape)
+	 */
+	public static PShape fromArray(double[][] shape, boolean close) {
+		List<PVector> points = new ArrayList<>(shape.length);
+		for (double[] p : shape) {
+			points.add(new PVector((float) p[0], (float) p[1]));
+		}
+		// add closing vertex if close==true and data isn't already closed
+		if (close && !points.get(0).equals(points.get(points.size() - 1))) {
+			points.add(new PVector((float) shape[0][0], (float) shape[0][1]));
+		}
+		return fromPVector(points);
 	}
 
 	/**
@@ -1143,10 +1509,26 @@ public final class PGS_Conversion {
 	 * @param children
 	 * @return a GROUP PShape consisting of the given children
 	 */
-	public static PShape fromChildren(List<PShape> children) {
+	public static PShape fromChildren(Collection<PShape> children) {
 		final PShape parent = new PShape(GROUP);
 		children.forEach(parent::addChild);
 		return parent;
+	}
+
+	/**
+	 * Retrieves the fill color of a PShape.
+	 * 
+	 * @param shape The PShape object for which to retrieve the fill color.
+	 * @return The integer representation of the fill color in ARGB format (32-bit).
+	 * @since 1.4.0
+	 */
+	public static int getFillColor(PShape shape) {
+		try {
+			return PSHAPE_FILL_FIELD.getInt(shape);
+		} catch (IllegalArgumentException | IllegalAccessException e) {
+			e.printStackTrace();
+			return 0;
+		}
 	}
 
 	/**
@@ -1221,6 +1603,25 @@ public final class PGS_Conversion {
 	}
 
 	/**
+	 * Reorders the child shapes of a given shape.
+	 * <p>
+	 * Creates a new GROUP shape, having the same children as the input, but in a
+	 * different order; child shapes of the new shape are ordered according to the
+	 * given comparator.
+	 * 
+	 * @param shape      a GROUP shape
+	 * @param comparator PShape comparison function
+	 * @return a new GROUP PShape object having its children in a different order.
+	 *         Child shapes reference the same objects as the input.
+	 * @since 1.4.0
+	 */
+	public static PShape reorderChildren(PShape shape, Comparator<PShape> comparator) {
+		List<PShape> children = getChildren(shape);
+		children.sort(comparator);
+		return flatten(children);
+	}
+
+	/**
 	 * Calls setFill(false) on a PShape and all its children. This method mutates
 	 * the input shape.
 	 *
@@ -1265,7 +1666,7 @@ public final class PGS_Conversion {
 
 	/**
 	 * Produces a deep copy / clone of the input shape. Handles GROUP, PRIMITIVE,
-	 * GEOMETRY and PATH PShapes.
+	 * GEOMETRY and PATH PShapes. Clones both geometry and styling.
 	 *
 	 * @param shape the PShape to copy
 	 * @return a deep copy of the given shape
@@ -1310,6 +1711,77 @@ public final class PGS_Conversion {
 		}
 
 		return copy;
+	}
+
+	/**
+	 * Creates a PATH PShape representing a quadratic bezier curve, given by its
+	 * parameters.
+	 * 
+	 * @param start
+	 * @param controlPoint
+	 * @param end
+	 * @return
+	 * @since 1.4.0
+	 */
+	public static PShape fromQuadraticBezier(PVector start, PVector controlPoint, PVector end) {
+		// convert to cubic bezier form
+		PVector cp1 = start.copy().add(controlPoint.copy().sub(start).mult(2 / 3f));
+		PVector cp2 = end.copy().add(controlPoint.copy().sub(end).mult(2 / 3f));
+		return fromCubicBezier(start, cp1, cp2, end);
+	}
+
+	/**
+	 * Creates a PATH PShape representing a cubic bezier curve, given by its
+	 * parameters.
+	 * 
+	 * @param start
+	 * @param controlPoint1
+	 * @param controlPoint2
+	 * @param end
+	 * @return
+	 * @since 1.4.0
+	 */
+	public static PShape fromCubicBezier(PVector start, PVector controlPoint1, PVector controlPoint2, PVector end) {
+		CubicBezier bezier = new CubicBezier(start.x, start.y, controlPoint1.x, controlPoint1.y, controlPoint2.x, controlPoint2.y, end.x,
+				end.y);
+		double[][] samples = bezier.sampleEquidistantPoints(BEZIER_SAMPLE_DISTANCE);
+		final List<PVector> coords = new ArrayList<>(samples.length);
+		for (double[] sample : samples) {
+			coords.add(new PVector((float) sample[0], (float) sample[1]));
+		}
+		return fromPVector(coords);
+	}
+
+	/**
+	 * Subdivide/interpolate/discretise along a quadratic bezier curve, given by its
+	 * start, end and control points
+	 *
+	 * @return list of points along curve
+	 */
+	private static List<Coordinate> getQuadraticBezierPoints(PVector start, PVector controlPoint, PVector end, float sampleDistance) {
+		// convert to cubic form
+		PVector cp1 = start.copy().add(controlPoint.copy().sub(start).mult(2 / 3f));
+		PVector cp2 = end.copy().add(controlPoint.copy().sub(end).mult(2 / 3f));
+		return getCubicBezierPoints(start, cp1, cp2, end, sampleDistance);
+	}
+
+	/**
+	 * Generates a list of equidistant samples along a cubic bezier curve.
+	 *
+	 * @param sampleDistance distance between successive samples on the curve
+	 * @return
+	 */
+	private static List<Coordinate> getCubicBezierPoints(PVector start, PVector controlPoint1, PVector controlPoint2, PVector end,
+			float sampleDistance) {
+		CubicBezier bezier = new CubicBezier(start.x, start.y, controlPoint1.x, controlPoint1.y, controlPoint2.x, controlPoint2.y, end.x,
+				end.y);
+		double[][] samples = bezier.sampleEquidistantPoints(sampleDistance);
+		final List<Coordinate> coords = new ArrayList<>(samples.length);
+		for (double[] sample : samples) {
+			coords.add(new Coordinate(sample[0], sample[1]));
+		}
+
+		return coords;
 	}
 
 	/**
@@ -1406,120 +1878,6 @@ public final class PGS_Conversion {
 		return vertexGroups;
 	}
 
-	/**
-	 * Subdivide/interpolate/discretise along a quadratic bezier curve, given by its
-	 * start, end and control points
-	 *
-	 * @return list of points along curve
-	 */
-	private static List<Coordinate> getQuadraticBezierPoints(PVector start, PVector controlPoint, PVector end, float sampleDistance) {
-		final List<Coordinate> coords;
-
-		if (start.dist(end) <= sampleDistance) {
-			coords = new ArrayList<>(2);
-			coords.add(coordFromPVector(start));
-			coords.add(coordFromPVector(end));
-			return coords;
-		}
-
-		final float length = bezierLengthQuadratic(start, controlPoint, end);
-		final int samples = (int) Math.ceil(length / sampleDistance); // sample every x unit length (approximately)
-		coords = new ArrayList<>(samples);
-
-		coords.add(coordFromPVector(start));
-		for (int j = 1; j < samples; j++) { // start at 1 -- don't sample at t=0
-			final PVector bezierPoint = getQuadraticBezierCoordinate(start, controlPoint, end, j / (float) samples);
-			coords.add(coordFromPVector(bezierPoint));
-		}
-		coords.add(coordFromPVector(end));
-
-		return coords;
-	}
-
-	/**
-	 *
-	 * @param start
-	 * @param controlPoint
-	 * @param end
-	 * @param t            0...1
-	 * @return
-	 */
-	private static PVector getQuadraticBezierCoordinate(PVector start, PVector controlPoint, PVector end, float t) {
-		float x = (1 - t) * (1 - t) * start.x + 2 * (1 - t) * t * controlPoint.x + t * t * end.x;
-		float y = (1 - t) * (1 - t) * start.y + 2 * (1 - t) * t * controlPoint.y + t * t * end.y;
-		return new PVector(x, y);
-	}
-
-	/**
-	 * Approximate bezier length using Gravesen's approach. The insight is that the
-	 * actual bezier length is always somewhere between the distance between the
-	 * endpoints (the length of the chord) and the perimeter of the control polygon.
-	 * For a quadratic Bézier, 2/3 the first + 1/3 the second is a reasonably good
-	 * estimate.
-	 *
-	 * @return
-	 */
-	private static float bezierLengthQuadratic(PVector start, PVector controlPoint, PVector end) {
-		// https://raphlinus.github.io/curves/2018/12/28/bezier-arclength.html
-		final float chord = PVector.sub(end, start).mag();
-		final float cont_net = PVector.sub(start, controlPoint).mag() + PVector.sub(end, controlPoint).mag();
-		return (2 * chord + cont_net) / 3f;
-
-	}
-
-	/**
-	 * Generates a list of samples of a cubic bezier curve.
-	 *
-	 * @param sampleDistance distance between successive samples on the curve
-	 * @return
-	 */
-	private static List<Coordinate> getCubicBezierPoints(PVector start, PVector controlPoint1, PVector controlPoint2, PVector end,
-			float sampleDistance) {
-		final List<Coordinate> coords;
-
-		if (start.dist(end) <= sampleDistance) {
-			coords = new ArrayList<>(2);
-			coords.add(coordFromPVector(start));
-			coords.add(coordFromPVector(end));
-			return coords;
-		}
-
-		final float length = bezierLengthCubic(start, controlPoint1, controlPoint2, end);
-		final int samples = (int) Math.ceil(length / sampleDistance); // sample every x unit length (approximately)
-		coords = new ArrayList<>(samples);
-
-		coords.add(coordFromPVector(start));
-		for (int j = 1; j < samples; j++) { // start at 1 -- don't sample at t=0
-			final PVector bezierPoint = getCubicBezierCoordinate(start, controlPoint1, controlPoint2, end, j / (float) samples);
-			coords.add(coordFromPVector(bezierPoint));
-		}
-		coords.add(coordFromPVector(end));
-		return coords;
-	}
-
-	private static PVector getCubicBezierCoordinate(PVector start, PVector controlPoint1, PVector controlPoint2, PVector end, float t) {
-		final float t1 = 1.0f - t;
-		float x = start.x * t1 * t1 * t1 + 3 * controlPoint1.x * t * t1 * t1 + 3 * controlPoint2.x * t * t * t1 + end.x * t * t * t;
-		float y = start.y * t1 * t1 * t1 + 3 * controlPoint1.y * t * t1 * t1 + 3 * controlPoint2.y * t * t * t1 + end.y * t * t * t;
-		return new PVector(x, y);
-	}
-
-	/**
-	 * Approximate bezier length using Gravesen's approach. The insight is that the
-	 * actual bezier length is always somewhere between the distance between the
-	 * endpoints (the length of the chord) and the perimeter of the control polygon.
-	 *
-	 * @return
-	 */
-	private static float bezierLengthCubic(PVector start, PVector controlPoint1, PVector controlPoint2, PVector end) {
-		// https://stackoverflow.com/a/37862545/9808792
-		final float chord = PVector.sub(end, start).mag();
-		final float cont_net = PVector.sub(start, controlPoint1).mag() + PVector.sub(controlPoint2, controlPoint1).mag()
-				+ PVector.sub(end, controlPoint2).mag();
-		return (cont_net + chord) / 2;
-
-	}
-
 	static class PShapeData {
 
 		private static Field fillColorF, fillF, strokeColorF, strokeWeightF, strokeF;
@@ -1545,7 +1903,7 @@ public final class PGS_Conversion {
 		float strokeWeight;
 		boolean fill, stroke;
 
-		private PShapeData(PShape shape) {
+		PShapeData(PShape shape) {
 			try {
 				fillColor = fillColorF.getInt(shape);
 				fill = fillF.getBoolean(shape);
@@ -1574,6 +1932,29 @@ public final class PGS_Conversion {
 		public String toString() {
 			return String.format("fillColor: %s; strokeColor: %s; strokeWeight: %.1f", Arrays.toString(decomposeclrRGB(fillColor)),
 					Arrays.toString(decomposeclrRGB(strokeColor)), strokeWeight);
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + (fill ? 1231 : 1237);
+			result = prime * result + fillColor;
+			result = prime * result + (stroke ? 1231 : 1237);
+			result = prime * result + strokeColor;
+			result = prime * result + Float.floatToIntBits(strokeWeight);
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null || getClass() != obj.getClass())
+				return false;
+			PShapeData other = (PShapeData) obj;
+			return fillColor == other.fillColor && strokeColor == other.strokeColor && strokeWeight == other.strokeWeight
+					&& fill == other.fill && stroke == other.stroke;
 		}
 	}
 }
