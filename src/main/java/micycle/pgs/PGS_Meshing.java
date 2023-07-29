@@ -649,8 +649,9 @@ public class PGS_Meshing {
 	}
 
 	/**
-	 * Smoothes a mesh via iterative weighted <i>Laplacian smoothing</i>. The effect
-	 * of which is mesh faces become more uniform in size and shape (isotropic).
+	 * Smoothes a mesh via iterative weighted <i>Laplacian smoothing</i>. The
+	 * general effect of which is mesh faces become more uniform in size and shape
+	 * (isotropic).
 	 * <p>
 	 * In Laplacian smoothing, vertices are replaced with the (weighted) average of
 	 * the positions of their adjacent vertices; it is computationally inexpensive
@@ -668,20 +669,21 @@ public class PGS_Meshing {
 	 *                          being smoothed (thus preserving the mesh perimeter).
 	 *                          Generally this should be set to true, otherwise the
 	 *                          mesh will shrink as it is smoothed.
-	 * @return the smoothed mesh
+	 * @return The smoothed mesh. Input face styling is preserved.
 	 * @since 1.4.0
 	 */
-	public static PShape smoothMesh(PShape mesh, int iterations, boolean preservePerimeter) {
+	public static PShape smoothMesh(PShape mesh, int iterations, boolean preservePerimeter, double taubin, double t2) {
 		PMesh m = new PMesh(mesh);
 		for (int i = 0; i < iterations; i++) {
-			m.smoothWeighted(preservePerimeter);
+			m.smoothTaubin(0.25, -0.251, preservePerimeter);
 		}
 		return m.getMesh();
 	}
 
 	/**
-	 * Smoothes a mesh via iterative weighted <i>Laplacian smoothing</i>. The effect
-	 * of which is mesh faces become more uniform in size and shape (isotropic).
+	 * Smoothes a mesh via iterative weighted <i>Laplacian smoothing</i>. The
+	 * general effect of which is mesh faces become more uniform in size and shape
+	 * (isotropic).
 	 * <p>
 	 * This particular method iteratively smoothes the mesh until the displacement
 	 * value of the most displaced vertex in the prior iteration is less than
@@ -704,7 +706,7 @@ public class PGS_Meshing {
 	 *                           being smoothed (thus preserving the mesh
 	 *                           perimeter). Generally this should be set to true,
 	 *                           otherwise the mesh will shrink as it is smoothed.
-	 * @return the smoothed mesh
+	 * @return The smoothed mesh. Input face styling is preserved.
 	 * @since 1.4.0
 	 */
 	public static PShape smoothMesh(PShape mesh, double displacementCutoff, boolean preservePerimeter) {
@@ -713,7 +715,7 @@ public class PGS_Meshing {
 
 		double displacement;
 		do {
-			displacement = m.smoothWeighted(preservePerimeter);
+			displacement = m.smoothTaubin(0.25, -0.251, preservePerimeter);
 		} while (displacement > displacementCutoff);
 		return m.getMesh();
 	}

@@ -1648,7 +1648,7 @@ public final class PGS_Conversion {
 
 	/**
 	 * Produces a deep copy / clone of the input shape. Handles GROUP, PRIMITIVE,
-	 * GEOMETRY and PATH PShapes.
+	 * GEOMETRY and PATH PShapes. Clones both geometry and styling.
 	 *
 	 * @param shape the PShape to copy
 	 * @return a deep copy of the given shape
