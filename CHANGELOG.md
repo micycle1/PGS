@@ -5,7 +5,7 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
-## **1.4.0** *(2023-06-xx)*
+## **1.4.0** *(2023-07-29)*
 
 ### Added
 *  `sobolLDS()` to `PGS_PointSet`. Generates a set of 2D deterministic stratified points from the Sobol low discrepancy sequence.
@@ -45,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `simplifyMesh()` to `PGS_Meshing`. Simplifies the boundaries of the faces in a mesh while preserving the original mesh topology.
 * `nodeNonMesh()` to `PGS_Meshing`. Transforms a non-conforming mesh shape into a conforming mesh via "noding".
 * `splitEdges()` to `PGS_Meshing`. Splits each edge of a given mesh shape into a specified number of equal parts.
+* `subdivideMesh()` to `PGS_Meshing`. Subdivides the faces of a mesh using the simple Catmull-Clark split approach.
 * `toCircles()` to `PGS_Conversion`. Creates a PShape having circle geometries representing a collection of circles.
 * `fromPShape()` to `PGS_SegmentSet`. Extracts a list of unique PEdge segments representing the given shape.
 * `stretch()` to `PGS_SegmentSet`. Stretches segments in a list by a specified factor.

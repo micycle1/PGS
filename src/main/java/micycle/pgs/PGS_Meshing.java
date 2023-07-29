@@ -1,5 +1,7 @@
 package micycle.pgs;
 
+import static micycle.pgs.PGS_Conversion.getChildren;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -745,6 +747,51 @@ public class PGS_Meshing {
 			output = simplifier.simplify(tolerance);
 		}
 		return applyOriginalStyling(PGS_Conversion.toPShape(Arrays.asList(output)), mesh);
+	}
+
+	/**
+	 * Subdivides the faces of a mesh using the Catmull-Clark split approach,
+	 * wherein each face is divided into N parts, where N is the number of vertices
+	 * in the shape. Each edge is split according to <code>edgeSplitRatio</code> and
+	 * connected to the face centroid.
+	 * <p>
+	 * This subdivision method is most effective on meshes whose faces are convex
+	 * and have a low vertex count (i.e., less than 6), where edge division points
+	 * correspond between adjacent faces. This method may fail on meshes with highly
+	 * concave faces because centroid-vertex visibility is not guaranteed.
+	 * 
+	 * @param mesh           The mesh containing faces to subdivide.
+	 * @param edgeSplitRatio The distance ratio [0...1] along each edge where the
+	 *                       faces are subdivided. A value of 0.5 is mid-edge
+	 *                       division (recommended value for a simple subvision).
+	 * @return A new GROUP PShape representing the subdivided mesh.
+	 * @since 1.4.0
+	 */
+	public static PShape subdivideMesh(PShape mesh, double edgeSplitRatio) {
+		edgeSplitRatio %= 1;
+		PShape newMesh = new PShape(PShape.GROUP);
+		for (PShape face : getChildren(mesh)) {
+			List<PVector> vertices = PGS_Conversion.toPVector(face);
+			List<PVector> midPoints = new ArrayList<>();
+			PVector centroid = new PVector();
+			for (int i = 0; i < vertices.size(); i++) {
+				PVector a = vertices.get(i);
+				PVector b = vertices.get((i + 1) % vertices.size());
+				midPoints.add(PVector.lerp(a, b, (float) edgeSplitRatio));
+				centroid.add(a);
+			}
+			// TODO find "visibility center" of concave shape
+			centroid.div(vertices.size()); // NOTE simple centroid, assuming convex
+
+			for (int i = 0; i < vertices.size(); i++) {
+				PVector a = vertices.get(i);
+				PVector b = midPoints.get(i);
+				PVector c = centroid.copy();
+				PVector d = midPoints.get(i - 1 < 0 ? vertices.size() - 1 : i - 1);
+				newMesh.addChild(PGS_Conversion.fromPVector(a, b, c, d, a));
+			}
+		}
+		return newMesh;
 	}
 
 	/**
