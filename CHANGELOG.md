@@ -101,8 +101,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_ShapePredicates.holes()` now identifies and counts gaps in meshes as holes.
 * Quads made by `splitQuadrangulation` were unclosed and are now closed polygons.
 * `PGS_Conversion.toGraph()` no longer adds a spurious closing edges on LINE shapes.
-### Removed
-*
 
 ## **1.3.0** *(2022-10-20)*
 
