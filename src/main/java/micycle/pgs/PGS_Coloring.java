@@ -86,6 +86,13 @@ public final class PGS_Coloring {
 		 */
 		RLF,
 		/**
+		 * Repeatedly calls the recursive largest-first (RLF) algorithm until a
+		 * 4-coloring is found. The operation will break after 250 attempts if a
+		 * 4-coloring is still not found; in this case, the result from the final
+		 * attempt is returned.
+		 */
+		RLF_BRUTE_FORCE_4COLOR,
+		/**
 		 * Finds a coloring using a genetic algorithm. Unlike all other algorithms this
 		 * specifically targets a chromaticity of 4 (falls back to 5 if no solution is
 		 * found).
@@ -224,7 +231,7 @@ public final class PGS_Coloring {
 	 */
 	private static Coloring<PShape> findColoring(Collection<PShape> shapes, ColoringAlgorithm coloringAlgorithm) {
 		final AbstractBaseGraph<PShape, DefaultEdge> graph = PGS_Conversion.toDualGraph(shapes);
-		final Coloring<PShape> coloring;
+		Coloring<PShape> coloring;
 
 		switch (coloringAlgorithm) {
 			case RANDOM : // randomly ordered sequential
@@ -245,9 +252,16 @@ public final class PGS_Coloring {
 			case GENETIC :
 				coloring = new GeneticColoring<>(graph).getColoring();
 				break;
+			case RLF_BRUTE_FORCE_4COLOR :
+				int iterations = 0;
+				do {
+					coloring = new RLFColoring<>(graph).getColoring();
+					iterations++;
+				} while (coloring.getNumberColors() > 4 && iterations < 250);
+				break;
 			case RLF :
 			default :
-				coloring = new RLFColoring<>(graph).getColoring();
+				coloring = new RLFColoring<>(graph, 1337).getColoring(); // NOTE fixed seed of 1337
 		}
 		return coloring;
 	}

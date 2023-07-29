@@ -65,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `centerLine()` to `PGS_Contour`. Determines the longest center line passing through a given shape.
 * Additional signatures for `PGS_Conversion.toWKB()` and `.fromWKB()` that write/read the binary shape representation into a file.
 * `pointOnExteriorByDistance()` to `PGS_Processing`. Extracts a point from the perimeter (exterior) of the given shape at some distance along its perimeter.
+* A new mesh-coloring strategy: `RLF_BRUTE_FORCE_4COLOR`. Repeatedly calls (upto 250 times) the recursive largest-first (RLF) algorithm until a 4-coloring is found.
 
 ### Changed
 * Reimplemented `PGS_Processing.equalParition()`. New algorithm is ~2x faster. Also removed `precise` parameter from method signature (no longer necessary).

@@ -36,6 +36,7 @@ import org.tinfour.utils.TriangleCollector;
 import org.tinspin.index.PointIndex;
 import org.tinspin.index.kdtree.KDTree;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
+import micycle.pgs.PGS_Conversion.PShapeData;
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.AreaMerge;
 import micycle.pgs.commons.IncrementalTinDual;
@@ -407,7 +408,7 @@ public class PGS_Meshing {
 			}
 		});
 
-		Coloring<IQuadEdge> coloring = new RLFColoring<>(graph).getColoring();
+		Coloring<IQuadEdge> coloring = new RLFColoring<>(graph, 1337).getColoring();
 
 		final HashSet<IQuadEdge> perimeter = new HashSet<>(triangulation.getPerimeter());
 		if (!unconstrained) {
@@ -643,7 +644,8 @@ public class PGS_Meshing {
 
 		List<PShape> blobs = ci.connectedSets().stream().map(group -> PGS_ShapeBoolean.unionMesh(PGS_Conversion.flatten(group)))
 				.collect(Collectors.toList());
-		return PGS_Conversion.flatten(blobs);
+
+		return applyOriginalStyling(PGS_Conversion.flatten(blobs), mesh);
 	}
 
 	/**
@@ -740,7 +742,7 @@ public class PGS_Meshing {
 		} else {
 			output = simplifier.simplify(tolerance);
 		}
-		return PGS_Conversion.toPShape(Arrays.asList(output));
+		return applyOriginalStyling(PGS_Conversion.toPShape(Arrays.asList(output)), mesh);
 	}
 
 	/**
@@ -778,7 +780,7 @@ public class PGS_Meshing {
 	 */
 	public static PShape areaMerge(PShape mesh, double areaThreshold) {
 		PShape merged = AreaMerge.areaMerge(mesh, areaThreshold);
-		return merged;
+		return applyOriginalStyling(merged, mesh);
 	}
 
 	/**
@@ -811,6 +813,14 @@ public class PGS_Meshing {
 		}
 
 		return PGS.polygonizeEdges(splitEdges);
+	}
+
+	private static PShape applyOriginalStyling(final PShape newMesh, final PShape oldMesh) {
+		final PShapeData data = new PShapeData(oldMesh.getChild(0)); // use first child; assume global.
+		for (int i = 0; i < newMesh.getChildCount(); i++) {
+			data.applyTo(newMesh.getChild(i));
+		}
+		return newMesh;
 	}
 
 	/**
