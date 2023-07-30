@@ -549,6 +549,20 @@ class PGS_ConversionTests {
 		
 		assertTrue(PGS_ShapePredicates.equalsNorm(shape, in));
 	}
+	
+	@Test
+	void testToFromGraph() {
+		var segsS = PGS_SegmentSet.toPShape(PGS_SegmentSet.graphMatchedSegments(PGS_PointSet.poisson(50, 50, 950, 950, 20, 0)));
+
+		segsS = PGS_Voronoi.compoundVoronoi(segsS);
+		var meshIn = PGS_Meshing.simplifyMesh(segsS, 2, false);
+		meshIn = PGS_Meshing.stochasticMerge(meshIn, 4, 13137); 
+		
+		var meshOut = PGS_Conversion.fromGraph(PGS_Conversion.toGraph(meshIn));
+		
+		assertTrue(PGS_ShapePredicates.equalsNorm(meshIn, meshOut));
+		
+	}
 
 	private static boolean pointsAreEqual(Coordinate c, PVector p) {
 		return (c.x == p.x && c.y == p.y);

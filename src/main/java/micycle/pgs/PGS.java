@@ -229,7 +229,7 @@ final class PGS {
 	 *         formed by the given edges
 	 */
 	static final PShape polygonizeEdges(Collection<PEdge> edges) {
-		return FastPolygonizer.polygonize(edges);
+		return polygonizeEdgesRobust(edges);
 	}
 
 	/**
