@@ -35,7 +35,7 @@ import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
 import org.tinfour.utils.TriangleCollector;
-import org.tinspin.index.PointIndex;
+import org.tinspin.index.PointMap;
 import org.tinspin.index.kdtree.KDTree;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
 import micycle.pgs.PGS_Conversion.PShapeData;
@@ -161,17 +161,13 @@ public class PGS_Meshing {
 			}
 		});
 
-		final PointIndex<Vertex> tree = KDTree.create(2, (p1, p2) -> {
-			final double deltaX = p1[0] - p2[0];
-			final double deltaY = p1[1] - p2[1];
-			return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-		});
+		final PointMap<Vertex> tree = KDTree.create(2);
 		vertices.forEach(v -> tree.insert(new double[] { v.x, v.y }, v));
 
 		final HashSet<IQuadEdge> nonGabrielEdges = new HashSet<>(); // base references to edges that should be removed
 		edges.forEach(edge -> {
 			final double[] midpoint = midpoint(edge);
-			final Vertex near = tree.query1NN(midpoint).value();
+			final Vertex near = tree.query1nn(midpoint).value();
 			if (near != edge.getA() && near != edge.getB()) {
 				if (!preservePerimeter || (preservePerimeter && !edge.isConstrainedRegionBorder())) {
 					nonGabrielEdges.add(edge); // base reference

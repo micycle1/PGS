@@ -67,7 +67,7 @@ public final class PGS_PointSet {
 		final List<PVector> newPoints = new ArrayList<>();
 		for (PVector p : points) {
 			final double[] coords = new double[] { p.x, p.y };
-			if (tree.size() == 0 || tree.query1NN(coords).dist() > distanceTolerance) {
+			if (tree.size() == 0 || tree.query1nn(coords).dist() > distanceTolerance) {
 				tree.insert(coords, p);
 				newPoints.add(p);
 			}
