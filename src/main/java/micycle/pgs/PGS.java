@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
+import org.jgrapht.graph.SimpleWeightedGraph;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
@@ -30,7 +31,6 @@ import org.locationtech.jts.operation.linemerge.LineMerger;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 
 import micycle.pgs.color.Colors;
-import micycle.pgs.commons.FastPolygonizer;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
 import processing.core.PConstants;
@@ -91,7 +91,7 @@ final class PGS {
 		double deltaY = a.getY() - b.getY();
 		return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 	}
-	
+
 	static final double distanceSq(PVector a, PVector b) {
 		float dx = a.x - b.x;
 		float dy = a.y - b.y;
@@ -109,7 +109,7 @@ final class PGS {
 	static final Point createPoint(double x, double y) {
 		return GEOM_FACTORY.createPoint(new Coordinate(x, y));
 	}
-	
+
 	/**
 	 * Creates a stroked rectangle.
 	 */
@@ -140,7 +140,7 @@ final class PGS {
 	static final Coordinate coordFromPVector(final PVector p) {
 		return new Coordinate(p.x, p.y);
 	}
-	
+
 	static final Coordinate[] toCoords(final Collection<PVector> points) {
 		CoordinateList coords = new CoordinateList();
 		points.forEach(p -> coords.add(coordFromPVector(p)));
@@ -394,6 +394,27 @@ final class PGS {
 		}
 
 		return vertices;
+	}
+
+	static SimpleWeightedGraph<PVector, PEdge> makeCompleteGraph(List<PVector> points) {
+		SimpleWeightedGraph<PVector, PEdge> graph = new SimpleWeightedGraph<>(PEdge.class);
+
+		// Add all vertices before starting the edge creation process
+		for (PVector vertex : points) {
+			graph.addVertex(vertex);
+		}
+
+		// Create edges between all pairs of vertices
+		for (int i = 0; i < points.size(); i++) {
+			PVector a = points.get(i);
+			for (int j = i + 1; j < points.size(); j++) {
+				PVector b = points.get(j);
+				PEdge e = new PEdge(a, b);
+				graph.addEdge(a, b, e);
+				graph.setEdgeWeight(e, e.length());
+			}
+		}
+		return graph;
 	}
 
 	/**

@@ -18,13 +18,17 @@ import org.apache.commons.math3.ml.distance.EuclideanDistance;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.commons.math3.util.Pair;
-
+import org.jgrapht.alg.interfaces.HamiltonianCycleAlgorithm;
 import org.jgrapht.alg.interfaces.SpanningTreeAlgorithm;
 import org.jgrapht.alg.spanning.PrimMinimumSpanningTree;
+import org.jgrapht.alg.tour.FarthestInsertionHeuristicTSP;
+import org.jgrapht.alg.tour.TwoOptHeuristicTSP;
 import org.jgrapht.graph.SimpleGraph;
 import org.tinfour.common.IIncrementalTin;
+import org.tinfour.common.Vertex;
 import org.tinspin.index.kdtree.KDTree;
 
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
 import micycle.pgs.commons.GeometricMedian;
@@ -73,6 +77,47 @@ public final class PGS_PointSet {
 			}
 		}
 		return newPoints;
+	}
+
+	/**
+	 * Prunes a list of points by removing points that are considered not
+	 * sufficiently dense.
+	 * <p>
+	 * A point's density is assessed based on its distance to its nearest neighbor;
+	 * if the nearest neighbor of a point is farther away than the specified
+	 * distance tolerance, the point is considered sparse and removed. In other
+	 * words, only points that have at least one neighbor within the distance
+	 * tolerance are kept.
+	 *
+	 * @param points            A List of {@code PVector} points to be analysed and
+	 *                          pruned.
+	 * @param distanceTolerance The maximum allowable distance for a point to be
+	 *                          considered dense. Points with their nearest neighbor
+	 *                          distance greater than the distance tolerance are
+	 *                          pruned.
+	 * @return A List of {@code PVector} points where each point has at least one
+	 *         neighbor within the distance tolerance, i.e., the list of points
+	 *         after sparse points have been removed.
+	 * @since 2.0
+	 */
+	public static List<PVector> pruneSparsePoints(Collection<PVector> points, double distanceTolerance) {
+		var tin = PGS_Triangulation.delaunayTriangulationMesh(points);
+		var vertexDistanceMap = new Object2DoubleOpenHashMap<Vertex>();
+		final double toleranceSquared = distanceTolerance * distanceTolerance;
+
+		// Iterate over TIN edges to compute & store minimum distances
+		for (var edge : tin.edges()) {
+			var A = edge.getA();
+			var B = edge.getB();
+			double distance = A.getDistanceSq(B);
+			// Update the minimum distances using merge
+			vertexDistanceMap.merge(A, distance, Math::min);
+			vertexDistanceMap.merge(B, distance, Math::min);
+		}
+
+		// Collect vertices within the distance tolerance
+		return vertexDistanceMap.object2DoubleEntrySet().stream().filter(entry -> entry.getDoubleValue() <= toleranceSquared)
+				.map(entry -> new PVector((float) entry.getKey().getX(), (float) entry.getKey().getY())).toList();
 	}
 
 	/**
@@ -908,6 +953,34 @@ public final class PGS_PointSet {
 		SimpleGraph<PVector, PEdge> graph = PGS_Triangulation.toGraph(triangulation);
 		SpanningTreeAlgorithm<PEdge> st = new PrimMinimumSpanningTree<>(graph); // faster than kruskal algorithm
 		return PGS_SegmentSet.toPShape(st.getSpanningTree().getEdges());
+	}
+
+	/**
+	 * Computes an <i>approximate</i> Traveling Salesman path for the set of points
+	 * provided. Utilises a heuristic based TSP solver, starting with the farthest
+	 * insertion method followed by 2-opt heuristic improvements for tour
+	 * optimization.
+	 * 
+	 * <p>
+	 * Note: The algorithm's runtime grows rapidly as the number of points
+	 * increases. Large datasets (>1000) may result in long computation times and
+	 * should be used with caution.
+	 * 
+	 * @param points the list of points to compute the path
+	 * @return A closed polygon whose perimeter represents the shortest possible
+	 *         route that visits each point exactly once (and returns to the path's
+	 *         starting point).
+	 * @since 2.0
+	 */
+	public static PShape findShortestTour(List<PVector> points) {
+		HamiltonianCycleAlgorithm<PVector, PEdge> tsp = new FarthestInsertionHeuristicTSP<>();
+		TwoOptHeuristicTSP<PVector, PEdge> tspImprover = new TwoOptHeuristicTSP<>();
+
+		var graph = PGS.makeCompleteGraph(points);
+		var tour = tsp.getTour(graph);
+		tour = tspImprover.improveTour(tour);
+
+		return PGS_Conversion.fromPVector(tour.getVertexList());
 	}
 
 	/**
