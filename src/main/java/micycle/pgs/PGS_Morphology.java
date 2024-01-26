@@ -7,12 +7,14 @@ import static processing.core.PConstants.GROUP;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.BiFunction;
 
 import org.locationtech.jts.densify.Densifier;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.Lineal;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
@@ -108,6 +110,58 @@ public final class PGS_Morphology {
 			g = ((Polygon) g).getExteriorRing(); // variable buffer applies to linestrings only
 		}
 		return toPShape(VariableBuffer.buffer(g, startDistance, endDistance));
+	}
+
+	/**
+	 * Applies a variable buffer to a shape. The buffer width at each vertex is
+	 * determined by a callback function that considers the vertex's properties and
+	 * its relative position along the shape's boundary.
+	 * <p>
+	 * Example usage:
+	 * 
+	 * <pre>
+	 * {@code
+	 * PShape bufferedShape = bufferWithCallback(inputShape, (coordinate, fraction) -> {
+	 * 	// Example logic: buffer width decreases linearly from 10 units at the
+	 * 	// start to 1 unit at the end
+	 * 	return 10 - (fraction * (10 - 1));
+	 * });
+	 * }
+	 * </pre>
+	 *
+	 * @param shape          A single polygon or lineal shape
+	 * @param bufferCallback A callback function that receives the vertex coordinate
+	 *                       and a double representing tractional distance (0...1)
+	 *                       of the vertex along the shape's boundary. The function
+	 *                       may use properties of the vertex, along with its
+	 *                       position, to determine the buffer width at that point.
+	 * @return A new shape representing the original shape buffered with variable
+	 *         widths as specified by the callback function. The width at each
+	 *         vertex is calculated independently.
+	 * @since 2.0
+	 */
+	public static PShape variableBuffer(PShape shape, BiFunction<Coordinate, Double, Double> bufferCallback) {
+		final Geometry inputGeometry = fromPShape(shape);
+		if (!(inputGeometry instanceof Lineal || inputGeometry instanceof Polygon)) {
+			throw new IllegalArgumentException("The geometry must be linear or a non-multi polygonal shape.");
+		}
+		var coords = inputGeometry.getCoordinates();
+		double[] bufferDistances = new double[coords.length];
+		double totalLength = inputGeometry.getLength();
+		double running_length = 0;
+		Coordinate previousCoordinate = coords[0];
+
+		for (int i = 1; i < coords.length; i++) {
+			running_length += previousCoordinate.distance(coords[i]);
+			double fractionalDistance = running_length / totalLength; // 0...1
+			bufferDistances[i] = bufferCallback.apply(coords[i], fractionalDistance);
+			previousCoordinate = coords[i];
+		}
+
+		bufferDistances[0] = bufferCallback.apply(coords[0], 0.0);
+
+		VariableBuffer variableBuffer = new VariableBuffer(inputGeometry, bufferDistances);
+		return toPShape(variableBuffer.getResult());
 	}
 
 	/**
