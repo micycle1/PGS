@@ -2,6 +2,7 @@ package micycle.pgs;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.jgrapht.alg.color.ColorRefinementAlgorithm;
 import org.jgrapht.alg.color.LargestDegreeFirstColoring;
@@ -87,9 +88,9 @@ public final class PGS_Coloring {
 		RLF,
 		/**
 		 * Repeatedly calls the recursive largest-first (RLF) algorithm until a
-		 * 4-coloring is found. The operation will break after 250 attempts if a
-		 * 4-coloring is still not found; in this case, the result from the final
-		 * attempt is returned.
+		 * 4-coloring (or less) is found. The operation will break after 250 attempts if
+		 * a 4-coloring (or less) is still not found; in this case, the result from the
+		 * final attempt is returned.
 		 */
 		RLF_BRUTE_FORCE_4COLOR,
 		/**
@@ -254,8 +255,10 @@ public final class PGS_Coloring {
 				break;
 			case RLF_BRUTE_FORCE_4COLOR :
 				int iterations = 0;
+				long seed = 1337;
 				do {
-					coloring = new RLFColoring<>(graph).getColoring();
+					coloring = new RLFColoring<>(graph, seed).getColoring();
+					seed = ThreadLocalRandom.current().nextLong();
 					iterations++;
 				} while (coloring.getNumberColors() > 4 && iterations < 250);
 				break;

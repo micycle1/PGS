@@ -842,11 +842,13 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
   <tr>
     <td align="center" valign="center"><b>EMST</td>
+    <td align="center" valign="center"><b>Shortest Tour (TSP)</td>
     <td align="center" valign="center"><b>Cluster</td>
     <td align="center" valign="center"><b>Weighted Median</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/point_set/emst.png"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/tsp.png"></td>
     <td valign="top" width="25%"><img src="resources/point_set/cluster.png"></td>
     <td valign="top" width="25%"><img src="resources/point_set/weightedMedian.png"></td>
   </tr>

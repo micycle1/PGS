@@ -110,7 +110,7 @@ public class FarthestInsertionHeuristicTSP<V, E> extends HamiltonianCycleAlgorit
 	 */
 	@Override
 	public GraphPath<V, E> getTour(Graph<V, E> graph) {
-		checkGraph(graph); // NOTE don't check -- PGS will prepare valid complete graph
+//		checkGraph(graph); // NOTE don't check -- PGS will prepare valid complete graph
 		if (graph.vertexSet().size() == 1) {
 			return getSingletonTour(graph);
 		}

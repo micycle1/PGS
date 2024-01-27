@@ -33,8 +33,8 @@ public final class PGS_Transformation {
 	}
 
 	/**
-	 * Scales the dimensions of the shape by a scaling factor relative to its center
-	 * point.
+	 * Scales the dimensions of the shape by a scaling factor relative to its
+	 * centroid.
 	 * 
 	 * @param shape
 	 * @param scale X and Y axis scale factor
@@ -48,7 +48,7 @@ public final class PGS_Transformation {
 	}
 
 	/**
-	 * Scales the shape relative to its center point.
+	 * Scales the shape relative to its centroid.
 	 * 
 	 * @param shape
 	 * @param scaleX X-axis scale factor
@@ -56,6 +56,23 @@ public final class PGS_Transformation {
 	 * @return
 	 */
 	public static PShape scale(PShape shape, double scaleX, double scaleY) {
+		Geometry g = fromPShape(shape);
+		Point c = g.getCentroid();
+		AffineTransformation t = AffineTransformation.scaleInstance(scaleX, scaleY, c.getX(), c.getY());
+		return toPShape(t.transform(g));
+	}
+	
+	/**
+	 * Scale a shape around a point.
+	 * 
+	 * @param shape
+	 * @param scaleX
+	 * @param scaleY
+	 * @param point
+	 * @return
+	 * @since 2.0
+	 */
+	public static PShape scale(PShape shape, double scaleX, double scaleY, PVector point) {
 		Geometry g = fromPShape(shape);
 		Point c = g.getCentroid();
 		AffineTransformation t = AffineTransformation.scaleInstance(scaleX, scaleY, c.getX(), c.getY());
@@ -78,7 +95,7 @@ public final class PGS_Transformation {
 
 	/**
 	 * Scales the area of a given shape by a specified scale factor. The shape is
-	 * scaled relative to its center point.
+	 * scaled relative to its centroid.
 	 * 
 	 * @param shape The PShape to be scaled.
 	 * @param scale The scale factor by which the area of the shape should be
@@ -95,7 +112,7 @@ public final class PGS_Transformation {
 	}
 
 	/**
-	 * Scales the given PShape to the target area, relative to its center point.
+	 * Scales the given PShape to the target area, relative to its centroid.
 	 * 
 	 * @param shape      The PShape to be scaled.
 	 * @param targetArea The target area for the shape.
@@ -113,7 +130,7 @@ public final class PGS_Transformation {
 
 	/**
 	 * Resizes a shape (based on its envelope) to the given dimensions, relative to
-	 * its center point.
+	 * its centroid.
 	 * 
 	 * @param shape
 	 * @param targetWidth  width of the output copy
@@ -134,8 +151,8 @@ public final class PGS_Transformation {
 
 	/**
 	 * Resizes a shape (based on its envelope) to the given width relative to its
-	 * center point; the height is resized accordingly to maintain the shape's
-	 * aspect ratio.
+	 * centroid; the height is resized accordingly to maintain the shape's aspect
+	 * ratio.
 	 * 
 	 * @param shape       the shape to resize
 	 * @param targetWidth width of the output
@@ -158,7 +175,7 @@ public final class PGS_Transformation {
 
 	/**
 	 * Resizes a shape (based on its envelope) to the given height relative to its
-	 * center point; the width is resized accordingly to maintain the shape's aspect
+	 * centroid; the width is resized accordingly to maintain the shape's aspect
 	 * ratio.
 	 * 
 	 * @param shape        the shape to resize
@@ -182,7 +199,7 @@ public final class PGS_Transformation {
 
 	/**
 	 * Resizes a shape (based on the longest axis of its envelope) to the given size
-	 * relative to its center point.
+	 * relative to its centroid.
 	 * <p>
 	 * For example, if the shape's width is larger than its height, the width is set
 	 * to <code>targetSize</code> and the height is resized to maintain the shape's
@@ -396,6 +413,7 @@ public final class PGS_Transformation {
 	 * @param center coordinate of the center/origin position of the operation
 	 * @param scaleX X scale factor
 	 * @param scaleY Y scale factor
+	 * @deprecated
 	 */
 	public static PShape homotheticTransformation(PShape shape, PVector center, double scaleX, double scaleY) {
 		Polygon geom = (Polygon) fromPShape(shape);

@@ -156,7 +156,7 @@ public final class PGS_ShapeBoolean {
 	public static PShape union(PShape... shapes) {
 		return union(Arrays.asList(shapes));
 	}
-	
+
 	/**
 	 * @see #unionMesh(PShape)
 	 * @param faces collection of faces comprising a mesh
@@ -355,7 +355,7 @@ public final class PGS_ShapeBoolean {
 
 	/**
 	 * Calculates the complement (or inverse) of the provided shape within a
-	 * rectangular boundary of specified width and height.
+	 * rectangular boundary of specified width and height, anchored at (0, 0).
 	 * <p>
 	 * The resulting shape corresponds to the portion of the rectangle not covered
 	 * by the input shape. The operation is essentially a subtraction of the input

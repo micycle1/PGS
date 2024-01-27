@@ -131,59 +131,10 @@ public final class PGS_PointSet {
 	 * @since 1.3.0
 	 */
 	public static List<PVector> hilbertSort(List<PVector> points) {
-		double xMin, xMax, yMin, yMax;
-		if (points.isEmpty()) {
+		if (points.isEmpty() || points.size() < 24) {
 			return points;
 		}
-
-		// find bounds
-		PVector v = points.get(0);
-		xMin = v.x;
-		xMax = v.x;
-		yMin = v.y;
-		yMax = v.y;
-
-		for (PVector PVector : points) {
-			if (PVector.x < xMin) {
-				xMin = PVector.x;
-			} else if (PVector.x > xMax) {
-				xMax = PVector.x;
-			}
-			if (PVector.y < yMin) {
-				yMin = PVector.y;
-			} else if (PVector.y > yMax) {
-				yMax = PVector.y;
-			}
-		}
-
-		double xDelta = xMax - xMin;
-		double yDelta = yMax - yMin;
-		if (xDelta == 0 || yDelta == 0) {
-			return points;
-		}
-		if (points.size() < 24) {
-			return points;
-		}
-
-		double hn = Math.log(points.size()) / 0.693147180559945 / 2.0;
-		int nHilbert = (int) Math.floor(hn + 0.5);
-		if (nHilbert < 4) {
-			nHilbert = 4;
-		}
-
-		// could also use SortedMap<index -> point>
-		List<Pair<Integer, PVector>> ranks = new ArrayList<>(points.size());
-		double hScale = (1 << nHilbert) - 1.0;
-		// scale coordinates to 2^n - 1
-		for (PVector vh : points) {
-			int ix = (int) (hScale * (vh.x - xMin) / xDelta);
-			int iy = (int) (hScale * (vh.y - yMin) / yDelta);
-			ranks.add(new Pair<>(xy2Hilbert(ix, iy, nHilbert), vh));
-		}
-
-		ranks.sort((a, b) -> Integer.compare(a.getFirst(), b.getFirst()));
-
-		return ranks.stream().map(Pair::getSecond).collect(Collectors.toList());
+		return hilbertSortRaw(points).stream().map(Pair::getSecond).collect(Collectors.toList());
 	}
 
 	/**
@@ -966,9 +917,10 @@ public final class PGS_PointSet {
 	 * increases. Large datasets (>1000) may result in long computation times and
 	 * should be used with caution.
 	 * 
-	 * @param points the list of points to compute the path
-	 * @return A closed polygon whose perimeter represents the shortest possible
-	 *         route that visits each point exactly once (and returns to the path's
+	 * @param points the list of points for which to compute the approximate
+	 *               shortest tour
+	 * @return A closed polygon whose perimeter traces the shortest possible route
+	 *         that visits each point exactly once (and returns to the path's
 	 *         starting point).
 	 * @since 2.0
 	 */
@@ -981,6 +933,55 @@ public final class PGS_PointSet {
 		tour = tspImprover.improveTour(tour);
 
 		return PGS_Conversion.fromPVector(tour.getVertexList());
+	}
+
+	private static List<Pair<Integer, PVector>> hilbertSortRaw(List<PVector> points) {
+		double xMin, xMax, yMin, yMax;
+
+		// find bounds
+		PVector v = points.get(0);
+		xMin = v.x;
+		xMax = v.x;
+		yMin = v.y;
+		yMax = v.y;
+
+		for (PVector PVector : points) {
+			if (PVector.x < xMin) {
+				xMin = PVector.x;
+			} else if (PVector.x > xMax) {
+				xMax = PVector.x;
+			}
+			if (PVector.y < yMin) {
+				yMin = PVector.y;
+			} else if (PVector.y > yMax) {
+				yMax = PVector.y;
+			}
+		}
+
+		double xDelta = xMax - xMin;
+		double yDelta = yMax - yMin;
+		// if (xDelta == 0 || yDelta == 0) {
+		// return points;
+		// }
+
+		double hn = Math.log(points.size()) / 0.693147180559945 / 2.0;
+		int nHilbert = (int) Math.floor(hn + 0.5);
+		if (nHilbert < 4) {
+			nHilbert = 4;
+		}
+
+		// could also use SortedMap<index -> point>
+		List<Pair<Integer, PVector>> ranks = new ArrayList<>(points.size());
+		double hScale = (1 << nHilbert) - 1.0;
+		// scale coordinates to 2^n - 1
+		for (PVector vh : points) {
+			int ix = (int) (hScale * (vh.x - xMin) / xDelta);
+			int iy = (int) (hScale * (vh.y - yMin) / yDelta);
+			ranks.add(new Pair<>(xy2Hilbert(ix, iy, nHilbert), vh));
+		}
+
+		ranks.sort((a, b) -> Integer.compare(a.getFirst(), b.getFirst()));
+		return ranks;
 	}
 
 	/**
