@@ -41,6 +41,7 @@ import micycle.pgs.commons.DiscreteCurveEvolution;
 import micycle.pgs.commons.EllipticFourierDesc;
 import micycle.pgs.commons.GaussianLineSmoothing;
 import micycle.pgs.commons.ShapeInterpolation;
+import micycle.pgs.commons.DiscreteCurveEvolution.DCETerminationCallback;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -133,8 +134,8 @@ public final class PGS_Morphology {
 	 * @param bufferCallback A callback function that receives the vertex coordinate
 	 *                       and a double representing tractional distance (0...1)
 	 *                       of the vertex along the shape's boundary. The function
-	 *                       may use properties of the vertex, along with its
-	 *                       position, to determine the buffer width at that point.
+	 *                       may use properties of the vertex, or its position, to
+	 *                       determine the buffer width at that point.
 	 * @return A new shape representing the original shape buffered with variable
 	 *         widths as specified by the callback function. The width at each
 	 *         vertex is calculated independently.
@@ -250,26 +251,31 @@ public final class PGS_Morphology {
 	/**
 	 * Simplifies a shape via <i>Discrete Curve Evolution</i>.
 	 * <p>
-	 * Discrete curve evolution involves a stepwise elimination of kinks that are
-	 * least relevant to the shape of the polygonal curve. The relevance of kinks is
-	 * intended to reflect their contribution to the overall shape of the polygonal
-	 * curve.
+	 * This algorithm simplifies a shape by iteratively removing kinks from the
+	 * shape, starting with those having the least shape-relevance.
+	 * <p>
+	 * The simplification process terminates according to a user-specified callback
+	 * that decides whether the DCE algorithm should terminate based on the current
+	 * kink (having a candidate vertex), using its coordinates, relevance score, and
+	 * the number of vertices remaining in the simplified geometry. Implementations
+	 * can use this method to provide custom termination logic which may depend on
+	 * various factors, such as a threshold relevance score, a specific number of
+	 * vertices to preserve, or other criteria.
 	 * 
-	 * @param shape                 The input shape to be simplified, which can be a
-	 *                              polygonal (inclusive of holes) or a lineal
-	 *                              shape. Note that GROUP shapes are not supported
-	 *                              by this method.
-	 * @param vertexRemovalFraction The proportion of the least significant kinks or
-	 *                              vertices to be removed from each ring in the
-	 *                              shape. This value should be in the range of 0 to
-	 *                              1.
+	 * @param shape               The input shape to be simplified, which can be a
+	 *                            polygonal (inclusive of holes) or a lineal shape.
+	 *                            Note that GROUP shapes are not supported by this
+	 *                            method.
+	 * @param terminationCallback The callback used to determine when the
+	 *                            simplification process should terminate.
+	 *                            {@code true} if the DCE process should terminate;
+	 *                            {@code false} otherwise.
 	 * @return A new, simplified copy of the input shape, with the least significant
 	 *         kinks or vertices removed according to the provided fraction.
-	 * @since 1.3.0
+	 * @since 2.0
 	 * @see PGS_Morphology#simplifyDCE(PShape, int)
 	 */
-	public static PShape simplifyDCE(PShape shape, double vertexRemovalFraction) {
-		vertexRemovalFraction = 1 - vertexRemovalFraction; // since dce class is preserve-based, not remove-based
+	public static PShape simplifyDCE(PShape shape, DCETerminationCallback terminationCallback) {
 		Geometry g = fromPShape(shape);
 		switch (g.getGeometryType()) {
 			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
@@ -277,7 +283,7 @@ public final class PGS_Morphology {
 			case Geometry.TYPENAME_MULTILINESTRING :
 				PShape group = new PShape(GROUP);
 				for (int i = 0; i < g.getNumGeometries(); i++) {
-					group.addChild(simplifyDCE(toPShape(g.getGeometryN(i)), vertexRemovalFraction));
+					group.addChild(simplifyDCE(toPShape(g.getGeometryN(i)), terminationCallback));
 				}
 				return group;
 			case Geometry.TYPENAME_LINEARRING :
@@ -287,8 +293,8 @@ public final class PGS_Morphology {
 				LinearRing[] dceRings = new LinearRing[rings.length];
 				for (int i = 0; i < rings.length; i++) {
 					LinearRing ring = rings[i];
-					DiscreteCurveEvolution dce = new DiscreteCurveEvolution((int) Math.round(vertexRemovalFraction * ring.getNumPoints()));
-					dceRings[i] = PGS.GEOM_FACTORY.createLinearRing(dce.process(ring));
+					Coordinate[] dce = DiscreteCurveEvolution.process(ring, terminationCallback);
+					dceRings[i] = PGS.GEOM_FACTORY.createLinearRing(dce);
 				}
 				LinearRing[] holes = null;
 				if (dceRings.length > 1) {
@@ -297,53 +303,11 @@ public final class PGS_Morphology {
 				return toPShape(PGS.GEOM_FACTORY.createPolygon(dceRings[0], holes));
 			case Geometry.TYPENAME_LINESTRING :
 				LineString l = (LineString) g;
-				DiscreteCurveEvolution dce = new DiscreteCurveEvolution((int) Math.round(vertexRemovalFraction * l.getNumPoints()));
-				return toPShape(PGS.GEOM_FACTORY.createLineString(dce.process(l)));
+				Coordinate[] dce = DiscreteCurveEvolution.process(l, terminationCallback);
+				return toPShape(PGS.GEOM_FACTORY.createLineString(dce));
 			default :
 				System.err.println(g.getGeometryType() + " are not supported for the simplifyDCE() method."); // pointal geoms
 				return new PShape(); // return empty (so element is invisible if not processed)
-		}
-	}
-
-	/**
-	 * Simplifies a shape via <i>Discrete Curve Evolution</i>.
-	 * <p>
-	 * Discrete curve evolution involves a stepwise elimination of kinks that are
-	 * least relevant to the shape of the polygonal curve. The relevance of kinks is
-	 * intended to reflect their contribution to the overall shape of the polygonal
-	 * curve.
-	 * 
-	 * @param shape             a polygonal (can include holes) or lineal shape.
-	 *                          GROUP shapes are not supported.
-	 * @param targetNumVertices the number of vertices that should remain/be
-	 *                          preserved in <b>each ring</b> of the input
-	 * @return simplifed copy of the input shape
-	 * @since 1.3.0
-	 * @see #simplifyDCE(PShape, double)
-	 */
-	public static PShape simplifyDCE(PShape shape, int targetNumVertices) {
-		Geometry g = fromPShape(shape);
-		if (g instanceof Polygon) {
-			targetNumVertices += 1; // as to not count the closing vertex in the number
-			LinearRing[] rings = new LinearRingIterator(g).getLinearRings();
-			LinearRing[] dceRings = new LinearRing[rings.length];
-			for (int i = 0; i < rings.length; i++) {
-				LinearRing ring = rings[i];
-				DiscreteCurveEvolution dce = new DiscreteCurveEvolution(targetNumVertices);
-				dceRings[i] = PGS.GEOM_FACTORY.createLinearRing(dce.process(ring));
-			}
-			LinearRing[] holes = null;
-			if (dceRings.length > 1) {
-				holes = Arrays.copyOfRange(dceRings, 1, dceRings.length);
-			}
-			return toPShape(PGS.GEOM_FACTORY.createPolygon(dceRings[0], holes));
-		} else if (g instanceof LineString) {
-			LineString l = (LineString) g;
-			DiscreteCurveEvolution dce = new DiscreteCurveEvolution(targetNumVertices);
-			return toPShape(PGS.GEOM_FACTORY.createLineString(dce.process(l)));
-		} else {
-			System.err.println(g.getGeometryType() + " are not supported for the simplifyDCE() method (yet).");
-			return shape;
 		}
 	}
 
