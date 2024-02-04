@@ -4,7 +4,6 @@ import static micycle.pgs.PGS_Conversion.fromPShape;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.SplittableRandom;
 import java.util.function.Predicate;
@@ -25,8 +24,8 @@ import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
 import org.tinspin.index.Index.PointEntryKnn;
 import org.tinspin.index.PointDistance;
+import org.tinspin.index.PointMap;
 import org.tinspin.index.covertree.CoverTree;
-
 import micycle.pgs.commons.FrontChainPacker;
 import micycle.pgs.commons.LargestEmptyCircles;
 import micycle.pgs.commons.RepulsionCirclePack;
@@ -200,8 +199,7 @@ public final class PGS_CirclePacking {
 	public static List<PVector> stochasticPack(final PShape shape, final int points, final double minRadius, boolean triangulatePoints,
 			long seed) {
 
-		final CoverTree<PVector> tree = CoverTree.create(3, 2, circleDistanceMetric);
-		final List<PVector> out = new ArrayList<>();
+		final PointMap<PVector> tree = CoverTree.create(3, 2, circleDistanceMetric);
 
 		List<PVector> steinerPoints = PGS_Processing.generateRandomPoints(shape, points, seed);
 		if (triangulatePoints) {
@@ -210,33 +208,34 @@ public final class PGS_CirclePacking {
 					.map(PGS_CirclePacking::centroid).collect(Collectors.toList());
 		}
 
-		// Model shape vertices as circles of radius 0, to constrain packed circles
-		// within shape edge
-		final List<PVector> vertices = PGS_Conversion.toPVector(shape);
-		Collections.shuffle(vertices); // shuffle vertices to reduce tree imbalance during insertion
-		vertices.forEach(p -> tree.insert(new double[] { p.x, p.y, 0 }, p));
+		IndexedFacetDistance indexedFacetDistance = new IndexedFacetDistance(fromPShape(shape));
+		var alpha = shape.getVertex(0); // seed the tree
+		tree.insert(new double[] { alpha.x, alpha.y, 0 }, alpha);
 
 		/*
 		 * "To find the circle nearest to a center (x, y), do a proximity search at (x,
 		 * y, R), where R is greater than or equal to the maximum radius of a circle."
 		 */
-		float largestR = 0; // the radius of the largest circle in the tree
-
+		double largestR = 0; // the radius of the largest circle in the tree
+		final List<PVector> out = new ArrayList<>();
 		for (PVector p : steinerPoints) {
 			final PointEntryKnn<PVector> nn = tree.query1nn(new double[] { p.x, p.y, largestR }); // find nearest-neighbour circle
 
 			/*
 			 * nn.dist() does not return the radius (since it's a distance metric used to
-			 * find nearest circle), so calculate maximum radius for candidate circle using
-			 * 2d euclidean distance between center points minus radius of nearest circle.
+			 * find nearest circle), so now calculate maximum radius for candidate circle
+			 * using 2d euclidean distance between center points minus radius of nearest
+			 * circle.
 			 */
 			final float dx = p.x - nn.value().x;
 			final float dy = p.y - nn.value().y;
-			final float radius = (float) (Math.sqrt(dx * dx + dy * dy) - nn.value().z);
-			if (radius > minRadius) {
-				largestR = (radius >= largestR) ? radius : largestR;
-				p.z = radius;
-				tree.insert(new double[] { p.x, p.y, radius }, p); // insert circle into tree
+			final double distanceToNN = (Math.sqrt(dx * dx + dy * dy) - nn.value().z);
+			final double distanceToBoundary = indexedFacetDistance.distance(PGS.pointFromPVector(p));
+			final double packedDistance = Math.min(distanceToNN, distanceToBoundary);
+			if (packedDistance > minRadius) {
+				largestR = (packedDistance >= largestR) ? packedDistance : largestR;
+				p.z = (float) packedDistance;
+				tree.insert(new double[] { p.x, p.y, packedDistance }, p); // insert circle into tree
 				out.add(p);
 			}
 		}

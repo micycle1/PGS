@@ -5,6 +5,25 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
+## **2.0** *(2023-xx-xx)*
+
+### Added
+* `findShortestTour()` to `PGS_PointSet`. Computes an <i>approximate</i> Traveling Salesman path for a set of points.
+* `pruneSparsePoints()` to  `PGS_PointSet`. Prunes a list of points by removing points that are considered not sufficiently dense (far away from their nearest neighbours); a counterpart to `prunePointsWithinDistance()`.
+* Additional method signature for `PGS_Morphology.variableBuffer()` that accepts a callback function to define the buffer value at each vertex.
+* `boundsCenter()` to `PGS_Transformation`. Computes the center of the bounding box of a shape.
+* Additional method signature for `delaunayTriangulation(points)` that supports a boundary constraint.
+
+### Changes
+* Packed circles from `PGS_CirclePacking.stochasticPack()` will now always lie within a shape bounds.
+
+### Fixed
+* `urquhartFaces()`, `relativeNeighborFaces()`, `gabrielFaces()` and `spannerFaces()` from `PGS_Meshing` now preserve holes from the input.
+
+## Removed
+* `simplifyDCE(shape, targetNumVertices)` and `simplifyDCE(shape, vertexRemovalFraction)` in favour a single method that accepts a user-defined termination callback that is supplied with the current vertex candidate's coordinate, relevance score, and the number of vertices remaining.
+
+
 ## **1.4.0** *(2023-07-29)*
 
 ### Added
