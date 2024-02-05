@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changes
 * Packed circles from `PGS_CirclePacking.stochasticPack()` will now always lie within a shape bounds.
+* `PGS_Processing.pointsOnExterior()` methods now respect GROUP shapes and holes (inner rings) and will populate them with points.
 
 ### Fixed
 * `urquhartFaces()`, `relativeNeighborFaces()`, `gabrielFaces()` and `spannerFaces()` from `PGS_Meshing` now preserve holes from the input.
