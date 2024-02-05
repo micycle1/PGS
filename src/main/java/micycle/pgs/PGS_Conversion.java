@@ -135,6 +135,17 @@ public final class PGS_Conversion {
 		} catch (NoSuchFieldException e) {
 			System.err.println(e.getLocalizedMessage());
 		}
+
+		try {
+			// use JTS "next gen" overlay. configurable via system property but will often
+			// load before, hence use reflection
+			Class<?> geometryOverlayClass = Class.forName("org.locationtech.jts.geom.GeometryOverlay");
+			Field isOverlayNGField = geometryOverlayClass.getDeclaredField("isOverlayNG");
+			isOverlayNGField.setAccessible(true);
+			isOverlayNGField.setBoolean(null, true);
+		} catch (ClassNotFoundException | NoSuchFieldException | IllegalAccessException e) {
+			e.printStackTrace();
+		}
 	}
 
 	private PGS_Conversion() {
@@ -1405,7 +1416,7 @@ public final class PGS_Conversion {
 	public static double[][] toArray(PShape shape, boolean keepClosed) {
 		List<PVector> points = toPVector(shape); // CLOSE
 		if (shape.isClosed() && keepClosed) {
-			points.add(points.get(0)); // since toPVector returns unclosed view
+			points.add(points.get(0).copy()); // since toPVector returns unclosed view
 		}
 		double[][] out = new double[points.size()][2];
 		for (int i = 0; i < points.size(); i++) {
@@ -1600,6 +1611,20 @@ public final class PGS_Conversion {
 			child.setStroke(PGS.getPShapeFillColor(child));
 		});
 		return shape;
+	}
+
+	/**
+	 * Retrieves the styling data associated with the specified PShape object. The
+	 * method creates an instance of PShapeData containing the fill, stroke, fill
+	 * color, stroke color, and stroke weight extracted from the PShape.
+	 *
+	 * @param shape the PShape instance from which to extract styling information.
+	 * @return a PShapeData object with the extracted styling properties of the
+	 *         shape.
+	 * @since 2.0
+	 */
+	public static PShapeData getShapeStylingData(PShape shape) {
+		return new PShapeData(shape);
 	}
 
 	/**
@@ -1878,7 +1903,14 @@ public final class PGS_Conversion {
 		return vertexGroups;
 	}
 
-	static class PShapeData {
+	/**
+	 * PShapeData is a utility class for storing and manipulating the visual
+	 * properties of PShapes from the Processing library. It encapsulates the
+	 * stroke, fill, stroke color, stroke weight, and fill color attributes by
+	 * directly accessing and modifying the corresponding fields of a given PShape
+	 * using reflection.
+	 */
+	public static class PShapeData {
 
 		private static Field fillColorF, fillF, strokeColorF, strokeWeightF, strokeF;
 
@@ -1899,9 +1931,9 @@ public final class PGS_Conversion {
 			}
 		}
 
-		int fillColor, strokeColor;
-		float strokeWeight;
-		boolean fill, stroke;
+		public int fillColor, strokeColor;
+		public float strokeWeight;
+		public boolean fill, stroke;
 
 		PShapeData(PShape shape) {
 			try {
@@ -1920,7 +1952,7 @@ public final class PGS_Conversion {
 		 *
 		 * @param other
 		 */
-		void applyTo(PShape other) {
+		public void applyTo(PShape other) {
 			other.setFill(fill);
 			other.setFill(fillColor);
 			other.setStroke(stroke);
