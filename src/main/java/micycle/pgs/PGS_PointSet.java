@@ -26,8 +26,8 @@ import org.jgrapht.alg.tour.TwoOptHeuristicTSP;
 import org.jgrapht.graph.SimpleGraph;
 import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.Vertex;
-import org.tinspin.index.kdtree.KDTree;
-
+import org.tinspin.index.IndexConfig;
+import org.tinspin.index.PointMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
@@ -67,7 +67,7 @@ public final class PGS_PointSet {
 	 * @return
 	 */
 	public static List<PVector> prunePointsWithinDistance(List<PVector> points, double distanceTolerance) {
-		final KDTree<PVector> tree = KDTree.create(2);
+		final PointMap<Object> tree = PointMap.Factory.createKdTree(IndexConfig.create(2).setDefensiveKeyCopy(false));
 		final List<PVector> newPoints = new ArrayList<>();
 		for (PVector p : points) {
 			final double[] coords = new double[] { p.x, p.y };

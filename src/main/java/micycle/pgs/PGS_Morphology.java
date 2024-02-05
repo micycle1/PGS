@@ -254,18 +254,21 @@ public final class PGS_Morphology {
 	 * This algorithm simplifies a shape by iteratively removing kinks from the
 	 * shape, starting with those having the least shape-relevance.
 	 * <p>
-	 * The simplification process terminates according to a user-specified callback
-	 * that decides whether the DCE algorithm should terminate based on the current
-	 * kink (having a candidate vertex), using its coordinates, relevance score, and
-	 * the number of vertices remaining in the simplified geometry. Implementations
-	 * can use this method to provide custom termination logic which may depend on
-	 * various factors, such as a threshold relevance score, a specific number of
-	 * vertices to preserve, or other criteria.
+	 * The simplification process terminates according to a user-specified
+	 * {@link DCETerminationCallback#shouldTerminate(Coordinate, double, int)
+	 * callback} that decides whether the DCE algorithm should terminate based on
+	 * the current kink (having a candidate vertex), using its coordinates,
+	 * relevance score, and the number of vertices remaining in the simplified
+	 * geometry. Implementations can use this method to provide custom termination
+	 * logic which may depend on various factors, such as a threshold relevance
+	 * score, a specific number of vertices to preserve, or other criteria.
+	 * <p>
+	 * Note: the termination callback is applied per ring (boundary, hole, line,
+	 * etc) in the input.
 	 * 
 	 * @param shape               The input shape to be simplified, which can be a
 	 *                            polygonal (inclusive of holes) or a lineal shape.
-	 *                            Note that GROUP shapes are not supported by this
-	 *                            method.
+	 *                            GROUP shapes are supported.
 	 * @param terminationCallback The callback used to determine when the
 	 *                            simplification process should terminate.
 	 *                            {@code true} if the DCE process should terminate;

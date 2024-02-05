@@ -17,11 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changes
 * Packed circles from `PGS_CirclePacking.stochasticPack()` will now always lie within a shape bounds.
 * `PGS_Processing.pointsOnExterior()` methods now respect GROUP shapes and holes (inner rings) and will populate them with points.
+* `PGS_Morphology.simplifyDCE()` now supports GROUP shapes and polygon holes.
 
 ### Fixed
 * `urquhartFaces()`, `relativeNeighborFaces()`, `gabrielFaces()` and `spannerFaces()` from `PGS_Meshing` now preserve holes from the input.
 
-## Removed
+### Removed
 * `simplifyDCE(shape, targetNumVertices)` and `simplifyDCE(shape, vertexRemovalFraction)` in favour a single method that accepts a user-defined termination callback that is supplied with the current vertex candidate's coordinate, relevance score, and the number of vertices remaining.
 
 

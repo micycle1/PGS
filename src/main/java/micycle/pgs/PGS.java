@@ -18,8 +18,10 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.GeometryFilter;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
+import org.locationtech.jts.geom.MultiPolygon;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.PrecisionModel;
@@ -29,7 +31,6 @@ import org.locationtech.jts.noding.SegmentString;
 import org.locationtech.jts.noding.snap.SnappingNoder;
 import org.locationtech.jts.operation.linemerge.LineMerger;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
-
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
@@ -266,7 +267,7 @@ final class PGS {
 	 *         formed by the given edges
 	 */
 	@SuppressWarnings("unchecked")
-	static final PShape polygonizeEdgesRobust(Collection<PEdge> edges) {
+	private static final PShape polygonizeEdgesRobust(Collection<PEdge> edges) {
 		final Set<PEdge> edgeSet = new HashSet<>(edges);
 		final Polygonizer polygonizer = new Polygonizer();
 		polygonizer.setCheckRingsValid(false);
@@ -415,6 +416,43 @@ final class PGS {
 			}
 		}
 		return graph;
+	}
+
+	/**
+	 * Extracts all the polygons from a given geometry. If the geometry instance is
+	 * a MultiPolygon, each individual polygon is extracted and added to the result
+	 * list. Other geometry types contained within the input geometry are ignored.
+	 */
+	static List<Polygon> extractPolygons(Geometry g) {
+		List<Polygon> polygons = new ArrayList<>(g.getNumGeometries());
+		final GeometryFilter filter = new GeometryFilter() {
+			public void filter(Geometry geom) {
+				if (geom instanceof Polygon) {
+					polygons.add((Polygon) geom);
+				} else if (geom instanceof MultiPolygon) {
+					for (int i = 0; i < geom.getNumGeometries(); i++) {
+						polygons.add((Polygon) geom.getGeometryN(i));
+					}
+				}
+			}
+		};
+
+		g.apply(filter);
+		return polygons;
+	}
+
+	/**
+	 * Extracts all the LinearRings from a given polygon. This includes both the
+	 * exterior ring and all interior rings (if any).
+	 */
+	static List<LinearRing> extractLinearRings(Polygon polygon) {
+		List<LinearRing> rings = new ArrayList<>(1 + polygon.getNumInteriorRing());
+		rings.add((LinearRing) polygon.getExteriorRing());
+		for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
+			rings.add((LinearRing) polygon.getInteriorRingN(i));
+		}
+
+		return rings;
 	}
 
 	/**
