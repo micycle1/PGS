@@ -97,7 +97,12 @@ public class DiscreteCurveEvolution {
 	 */
 	public static Coordinate[] process(LineString lineString, DCETerminationCallback terminationCallback) {
 		final boolean closed = lineString.isClosed();
-		final Coordinate[] coords = lineString.getCoordinates();
+		Coordinate[] coords = lineString.getCoordinates();
+		if (closed && coords.length > 2) {
+			Coordinate[] newCoords = new Coordinate[coords.length - 1];
+			System.arraycopy(coords, 0, newCoords, 0, coords.length - 1);
+			coords = newCoords;
+		}
 
 		/*
 		 * Initialise kinks (initially unlinked to each other), then link each one to

@@ -486,7 +486,7 @@ public final class PGS_Transformation {
 		}
 
 		// both shapes need same vertex quantity
-		final int vertices = Math.min(alignShape.getVertexCount(), baseShape.getVertexCount()) - 1;
+		final int vertices = Math.min(alignShape.getVertexCount(), baseShape.getVertexCount());
 		PShape sourceShapeT = alignShape;
 		PShape transformShapeT = baseShape;
 		if (alignShape.getVertexCount() > vertices) {
