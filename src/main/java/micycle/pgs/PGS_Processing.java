@@ -179,27 +179,24 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Efficiently extracts multiple points from the perimeter of a shape, evenly
-	 * distributed along its boundary.
+	 * Extracts multiple points evenly distributed along the boundary of individual
+	 * rings within a shape, including both exterior and interior rings (i.e.,
+	 * holes).
 	 * <p>
-	 * This method provides a faster alternative to calling other methods repeatedly
-	 * when you need to obtain multiple points along the exterior of the shape. The
-	 * extracted points will be evenly distributed along the shape's perimeter,
-	 * allowing you to efficiently sample the boundary.
+	 * This method enhances the performance of boundary sampling by directly
+	 * extracting points from each linear ring of the shape's polygons. It is more
+	 * efficient than multiple individual point extractions, and it supports
+	 * sampling from holes (interior rings) as well.
 	 * 
-	 * @param shape          The shape from which to extract points. It should be a
-	 *                       lineal or polygonal shape. If the input is a GROUP
-	 *                       shape, a single point will be extracted from its first
-	 *                       child.
-	 * @param points         The number of points to return, evenly distributed
-	 *                       around the perimeter of the shape.
-	 * @param offsetDistance The offset distance along a line perpendicular to the
-	 *                       perimeter. Positive values will offset the points away
-	 *                       from the shape's boundary (outwards), while negative
-	 *                       values will offset the points inwards towards its
-	 *                       interior.
-	 * @return An array of PVector objects representing the extracted points on the
-	 *         shape's perimeter.
+	 * @param shape          The shape from which to extract points. Should have
+	 *                       polygonal members.
+	 * @param pointsPerRing  The number of points to extract per ring, evenly
+	 *                       distributed around each ring's boundary.
+	 * @param offsetDistance The offset distance measured perpendicular to each
+	 *                       point on the ring's boundary. Positive values offset
+	 *                       outwards, while negative values offset inwards.
+	 * @return A list of PVector objects, each representing a point on the perimeter
+	 *         or interior rings of the shape.
 	 * @see #pointOnExterior(PShape, double, double)
 	 * @see #pointsOnExterior(PShape, double, double)
 	 * @since 1.3.0
@@ -207,60 +204,71 @@ public final class PGS_Processing {
 	public static List<PVector> pointsOnExterior(PShape shape, int points, double offsetDistance) {
 		// TODO another method that returns concave hull of returned points (when
 		// offset)
-		List<PVector> coords = new ArrayList<>(points);
+		List<Polygon> polygons = PGS.extractPolygons(fromPShape(shape));
+		List<PVector> coords = new ArrayList<>();
+		polygons.forEach(polygon -> {
+			PGS.extractLinearRings(polygon).forEach(ring -> {
+				if (Orientation.isCCW(ring.getCoordinates())) {
+					ring = ring.reverse();
+				}
+				final LengthIndexedLine l = new LengthIndexedLine(ring);
+				final double increment = 1d / points;
+				for (double distance = 0; distance < 1; distance += increment) {
+					final Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
+					coords.add(PGS.toPVector(coord));
+				}
+			});
+		});
 
-		LengthIndexedLine l = makeIndexedLine(shape);
-
-		final double increment = 1d / points;
-		for (double distance = 0; distance < 1; distance += increment) {
-			final Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
-			coords.add(PGS.toPVector(coord));
-		}
 		return coords;
 	}
 
 	/**
-	 * Generates a list of points that lie on the exterior/perimeter of the given
-	 * shape.
+	 * Generates a list of evenly distributed points along the boundary of each ring
+	 * within a given polygonal shape, which may include its exterior and any
+	 * interior rings (holes).
 	 * <p>
-	 * This method creates a list of points that are evenly spaced along the shape's
-	 * exterior. The points are distributed around the shape's boundary with a
-	 * specified distance between each consecutive point. You can use this method to
-	 * obtain a set of points that represents an approximation of the shape's
-	 * outline.
+	 * This method is used to obtain a set of points that approximate the polygonal
+	 * shape's outline and interior boundaries, with the points spaced at
+	 * approximate equal intervals determined by the <code>interPointDistance</code>
+	 * parameter. It supports complex shapes with interior rings (holes) by
+	 * extracting points from all rings.
 	 * 
 	 * @param shape              The shape from which to generate the points. It
-	 *                           should be a lineal or polygonal shape. If the input
-	 *                           is a GROUP shape, a single point will be extracted
-	 *                           from its first child.
-	 * @param interPointDistance The distance between each exterior point. This
-	 *                           value controls the density of the points and
-	 *                           determines how closely the points will be spaced
-	 *                           along the shape's perimeter.
-	 * @param offsetDistance     The offset distance along a line perpendicular to
-	 *                           the perimeter. Positive values will offset the
-	 *                           points away from the shape's boundary (outwards),
-	 *                           while negative values will offset the points
-	 *                           inwards towards its interior.
-	 * @return An array of PVector objects representing the points lying on the
-	 *         shape's exterior.
+	 *                           should be a polygonal shape.
+	 * @param interPointDistance The desired distance between consecutive points
+	 *                           along each ring's boundary. This controls the
+	 *                           spacing of points and the granularity of the
+	 *                           representation.
+	 * @param offsetDistance     The offset distance perpendicular to each point on
+	 *                           the ring's boundary. Positive values offset points
+	 *                           outwards, while negative values bring them towards
+	 *                           the interior.
+	 * @return A list of PVector objects representing the points along the exterior
+	 *         and interior boundaries of the shape.
 	 * @see #pointOnExterior(PShape, double, double)
 	 * @see #densify(PShape, double)
 	 * @since 1.3.0
 	 */
 	public static List<PVector> pointsOnExterior(PShape shape, double interPointDistance, double offsetDistance) {
-		// TODO points on holes
-		LengthIndexedLine l = makeIndexedLine(shape);
+		List<Polygon> polygons = PGS.extractPolygons(fromPShape(shape));
+		List<PVector> coords = new ArrayList<>();
+		polygons.forEach(polygon -> {
+			PGS.extractLinearRings(polygon).forEach(ring -> {
+				if (Orientation.isCCW(ring.getCoordinates())) {
+					ring = ring.reverse();
+				}
+				final LengthIndexedLine l = new LengthIndexedLine(ring);
+				final int points = (int) Math.round(l.getEndIndex() / interPointDistance);
+				final double increment = 1d / points;
+				for (double distance = 0; distance < 1; distance += increment) {
+					final Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
+					coords.add(PGS.toPVector(coord));
+				}
 
-		final int points = (int) Math.round(l.getEndIndex() / interPointDistance);
+			});
+		});
 
-		ArrayList<PVector> coords = new ArrayList<>(points);
-
-		final double increment = 1d / points;
-		for (double distance = 0; distance < 1; distance += increment) {
-			final Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
-			coords.add(PGS.toPVector(coord));
-		}
 		return coords;
 	}
 
@@ -734,7 +742,7 @@ public final class PGS_Processing {
 
 		Geometry dissolved = LineDissolver.dissolve(GEOM_FACTORY.createGeometryCollection(culledGeometries.toArray(new Geometry[0])));
 		PShape out = toPShape(dissolved);
-		PGS_Conversion.setAllStrokeColor(out, ColorUtils.setAlpha(Colors.PINK, 128), 8);
+		PGS_Conversion.setAllStrokeColor(out, ColorUtils.setAlpha(Colors.PINK, 192), 4);
 
 		return out;
 	}
@@ -1175,6 +1183,24 @@ public final class PGS_Processing {
 		final PShape out = PGS_Conversion.toPShape(cleanedGeometries);
 		PGS_Conversion.setAllStrokeColor(out, Colors.PINK, 2);
 		return out;
+	}
+
+	/**
+	 * Attempts to fix shapes with invalid geometry, while preserving its original
+	 * form and location as much as possible. See
+	 * {@link org.locationtech.jts.geom.util.GeometryFixer GeometryFixer} for a full
+	 * list of potential fixes.
+	 * <p>
+	 * Input shapes are always processed, so even valid inputs may have some minor
+	 * alterations. The output is always a new geometry object.
+	 * 
+	 * @param shape The shape to be corrected.
+	 * @return A modified version of the input shape that aligns with valid shape
+	 *         geometry standards.
+	 * @since 2.0
+	 */
+	public static PShape fix(PShape shape) {
+		return toPShape(GeometryFixer.fix(fromPShape(shape)));
 	}
 
 	/**

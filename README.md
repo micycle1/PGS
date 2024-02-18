@@ -13,41 +13,41 @@ Docs are hosted via *GitHub Pages* [here](https://micycle1.github.io/PGS/).
 Library functionality is split over the following classes:
 
 * `PGS_CirclePacking`
-  * Circle packings of shapes, subject to varying constraints and patterns of tangencies
+  * Circle packings of shapes, subject to varying constraints and patterns of tangencies.
 * `PGS_Coloring`
-  * Minimal colorings of meshes (or mesh-like shapes)
+  * Minimal colorings of meshes (or mesh-like shapes).
 * `PGS_Construction`
-  * Construct uncommon/interesting 2D primitives
+  * Construct uncommon/interesting 2D primitives.
 * `PGS_Contour`
   * Methods that produce various contours from shapes: medial axes, straight skeletons, offset curves, etc.
 * `PGS_Conversion`
   * Conversion between *Processing* PShapes and *JTS* Geometries (amongst other formats)
 * `PGS_Hull`
-  * Convex and concave hulls of polygons and point sets
+  * Convex and concave hulls of polygons and point sets.
 * `PGS_Meshing`
-  * Mesh generation (excluding triangulation) and processing
+  * Mesh generation (excluding triangulation) and processing.
 * `PGS_Morphology`
-  * Methods that affect the geometry or topology of shapes (buffering, simplification, smoothing, etc.)
+  * Methods that affect the geometry or topology of shapes (buffering, simplification, smoothing, etc.).
 * `PGS_Optimisation`
-  * Solve geometric optimisation problems, such as finding the maximum inscribed circle, or the closest vertex to a coordinate
+  * Solve geometric optimisation problems, such as finding the maximum inscribed circle, or the closest vertex to a coordinate.
 * `PGS_PointSet`
-  * Generates sets of 2D points having a variety of different distributions and constraints
+  * Generates sets of 2D points having a variety of different distributions and constraints.
 * `PGS_Processing`
-  * Methods that process a shape in some way: compute hulls, partition, slice, etc.
+  * Methods that process a shape in some way: partition, slice, clean, etc.
 * `PGS_SegmentSet`
-  * Generates sets of random non-intersecting line segments
+  * Generates sets of random non-intersecting line segments.
 * `PGS_ShapeBoolean`
-  * Boolean set-operations for 2D shapes
+  * Boolean set-operations for 2D shapes.
 * `PGS_ShapePredicates`
-  * Various shape metrics (area, circularity, etc.) and predicates (*"do these shapes intersect?"*)
+  * Various shape metrics (area, circularity, etc.) and predicates (*"do these shapes intersect?"*).
 * `PGS_Tiling`
   * Tiling, tessellation and subdivision of the plane using periodic or non-periodic geometric shapes.
 * `PGS_Transformation`
-  * Various geometric and affine transformations that affect vertex coordinates
+  * Various geometric and affine transformations that affect vertex coordinates.
 * `PGS_Triangulation`
-  * Delaunay triangulation (constrained and refined) and earcut triangulation of shapes and point sets
+  * Delaunay triangulation (constrained and refined) and earcut triangulation of shapes and point sets.
 * `PGS_Voronoi`
-  * Voronoi Diagrams of shapes and point sets
+  * Voronoi Diagrams of shapes and point sets.
 
 ## **Installation**
 
@@ -842,11 +842,13 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
   <tr>
     <td align="center" valign="center"><b>EMST</td>
+    <td align="center" valign="center"><b>Shortest Tour (TSP)</td>
     <td align="center" valign="center"><b>Cluster</td>
     <td align="center" valign="center"><b>Weighted Median</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/point_set/emst.png"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/tsp.png"></td>
     <td valign="top" width="25%"><img src="resources/point_set/cluster.png"></td>
     <td valign="top" width="25%"><img src="resources/point_set/weightedMedian.png"></td>
   </tr>

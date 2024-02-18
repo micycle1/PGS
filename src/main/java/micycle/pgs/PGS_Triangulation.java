@@ -112,6 +112,22 @@ public final class PGS_Triangulation {
 	}
 
 	/**
+	 * Generates a Delaunay Triangulation having a shape constraint from a
+	 * collection of points.
+	 * 
+	 * @param points          the collection of points to triangulate
+	 * @param shapeConstraint a shape that defines the boundary constraint on the
+	 *                        triangulation
+	 * @return a GROUP PShape, where each child shape is one triangle
+	 * @see #delaunayTriangulation(PShape, Collection, boolean, int, boolean)
+	 * @since 2.0
+	 */
+	public static PShape delaunayTriangulation(Collection<PVector> points, PShape shapeConstraint) {
+		final IIncrementalTin tin = delaunayTriangulationMesh(shapeConstraint, points, true, 0, true, false);
+		return toPShape(tin);
+	}
+
+	/**
 	 * Generates a constrained Delaunay Triangulation from a collection of points.
 	 * <p>
 	 * This method returns the triangulation as a list of points, rather than a
@@ -240,14 +256,60 @@ public final class PGS_Triangulation {
 	 */
 	public static IIncrementalTin delaunayTriangulationMesh(@Nullable PShape shape, @Nullable Collection<PVector> steinerPoints,
 			boolean constrain, int refinements, boolean pretty) {
+		return delaunayTriangulationMesh(shape, steinerPoints, constrain, refinements, pretty, true);
+
+	}
+
+	/**
+	 * Generates a Delaunay Triangulation from a collection of points.
+	 * <p>
+	 * This method returns the triangulation in its raw form: a Triangulated
+	 * Irregular Network (mesh).
+	 * 
+	 * @param points the point collection to triangulate
+	 * @return Triangulated Irregular Network object (mesh)
+	 * @see #delaunayTriangulationMesh(PShape, Collection, boolean, int, boolean)
+	 * @since 1.1.0
+	 */
+	public static IIncrementalTin delaunayTriangulationMesh(Collection<PVector> points) {
+		return delaunayTriangulationMesh(null, points, false, 0, false);
+	}
+
+	/**
+	 * Generates a Delaunay Triangulation having a shape constraint from a
+	 * collection of points.
+	 * <p>
+	 * This method returns the triangulation in its raw form: a Triangulated
+	 * Irregular Network (mesh).
+	 * 
+	 * @param points          the collection of points to triangulate
+	 * @param shapeConstraint a shape that defines the boundary constraint on the
+	 *                        triangulation
+	 * @return Triangulated Irregular Network object (mesh)
+	 * @see #delaunayTriangulationMesh(PShape, Collection, boolean, int, boolean)
+	 * @since 2.0
+	 */
+	public static IIncrementalTin delaunayTriangulationMesh(Collection<PVector> points, PShape shapeConstraint) {
+		return delaunayTriangulationMesh(shapeConstraint, points, false, 0, false, false);
+	}
+
+	/**
+	 * @param insertShapeVertices Determines input shape vertices are treated: as
+	 *                            part of the triangulation (=true), or as a
+	 *                            boundary constraint only (=false).
+	 */
+	private static IIncrementalTin delaunayTriangulationMesh(@Nullable PShape shape, @Nullable Collection<PVector> steinerPoints,
+			boolean constrain, int refinements, boolean pretty, boolean insertShapeVertices) {
 		Geometry g = shape == null ? PGS.GEOM_FACTORY.createEmpty(2) : fromPShape(shape);
 		final IncrementalTin tin = new IncrementalTin(10);
 
 		final List<Vertex> vertices = new ArrayList<>();
 		final Coordinate[] coords = g.getCoordinates();
 		int vIndex = 0;
-		for (vIndex = 0; vIndex < coords.length; vIndex++) {
-			vertices.add(new Vertex(coords[vIndex].x, coords[vIndex].y, Double.NaN, vIndex));
+		if (insertShapeVertices) {
+			for (vIndex = 0; vIndex < coords.length; vIndex++) {
+				vertices.add(new Vertex(coords[vIndex].x, coords[vIndex].y, Double.NaN, vIndex));
+			}
 		}
 
 		if (steinerPoints != null) {
@@ -329,21 +391,6 @@ public final class PGS_Triangulation {
 		}
 
 		return tin;
-	}
-
-	/**
-	 * Generates a Delaunay Triangulation from a collection of points.
-	 * <p>
-	 * This method returns the triangulation in its raw form: a Triangulated
-	 * Irregular Network (mesh).
-	 * 
-	 * @param points the point collection to triangulate
-	 * @return Triangulated Irregular Network object (mesh)
-	 * @see #delaunayTriangulationMesh(PShape, Collection, boolean, int, boolean)
-	 * @since 1.1.0
-	 */
-	public static IIncrementalTin delaunayTriangulationMesh(Collection<PVector> points) {
-		return delaunayTriangulationMesh(null, points, false, 0, false);
 	}
 
 	/**

@@ -252,13 +252,34 @@ public final class PGS_ShapePredicates {
 	 * Computes the centroid of a shape. A centroid is the center of mass of the
 	 * shape.
 	 * <p>
-	 * If the input is a polygon, the centroid will always lie inside it.
+	 * If the input is a polygon, the centroid will always lie inside it. For other
+	 * shapes, this may not be the case.
 	 * 
-	 * @param shape
-	 * @return null if geometry empty
+	 * @param shape the PShape object representing the shape for which the centroid
+	 *              is to be computed
+	 * @return a PVector representing the centroid of the shape, or null if the
+	 *         shape's geometry is empty
 	 */
 	public static PVector centroid(PShape shape) {
 		Point point = fromPShape(shape).getCentroid();
+		if (!point.isEmpty()) {
+			return new PVector((float) point.getX(), (float) point.getY());
+		}
+		return null;
+	}
+
+	/**
+	 * Computes the center of the bounding box of a shape. The bounding box is the
+	 * smallest rectangle that completely contains the shape.
+	 *
+	 * @param shape the PShape object representing the shape for which the bounding
+	 *              box center is to be computed
+	 * @return a PVector representing the center of the shape's bounding box, or
+	 *         null if the shape's geometry is empty
+	 * @since 2.0
+	 */
+	public static PVector boundsCenter(PShape shape) {
+		Point point = fromPShape(shape).getEnvelope().getCentroid();
 		if (!point.isEmpty()) {
 			return new PVector((float) point.getX(), (float) point.getY());
 		}
