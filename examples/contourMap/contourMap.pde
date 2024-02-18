@@ -9,10 +9,10 @@ List<PVector> heights;
 float max = -1, min = 9999;
 UniformNoise noise;
 
-final int RESOLUTION = 16; // lower is more resolution
+final int RESOLUTION = 15; // lower is more resolution
 
 void setup() {
-  size(800, 800, FX2D);
+  size(1000, 1000, FX2D);
   smooth();
   noise = new UniformNoise();
 }
@@ -30,6 +30,7 @@ void draw() {
         map(isoline.getVertex(0).x, 0, width, 50, 255), 
         map(isoline.getVertex(0).y, 0, height, 50, 255)
        ));
+    isoline.setStrokeWeight(3);
     shape(isoline);
   }
 }
@@ -39,8 +40,8 @@ void populateHeightMap() {
   
   final float animSpeed = 0.005;
 
-  for (int x = 0; x <= width; x+=RESOLUTION) {
-    for (int y = 0; y <= height; y+=RESOLUTION) {
+  for (int x = 0; x <= width+RESOLUTION; x+=RESOLUTION) {
+    for (int y = 0; y <= height+RESOLUTION; y+=RESOLUTION) {
       float z = noise.uniformNoise(x*0.0055 + frameCount*animSpeed, y*0.0055 + frameCount*animSpeed, 2, 0.5);
       PVector h = new PVector(x, y, 0);
       
