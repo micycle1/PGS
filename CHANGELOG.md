@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Additional method signature for `PGS_Morphology.variableBuffer()` that accepts a callback function to define the buffer value at each vertex.
 * `boundsCenter()` to `PGS_Transformation`. Computes the center of the bounding box of a shape.
 * Additional method signature for `delaunayTriangulation(points)` that supports a boundary constraint.
+* `fix()` to `PGS_Processing`. Attempts to fix shapes with invalid geometry.
 
 ### Changes
 * Packed circles from `PGS_CirclePacking.stochasticPack()` will now always lie within a shape bounds.

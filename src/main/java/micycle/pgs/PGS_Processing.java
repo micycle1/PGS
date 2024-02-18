@@ -1186,6 +1186,24 @@ public final class PGS_Processing {
 	}
 
 	/**
+	 * Attempts to fix shapes with invalid geometry, while preserving its original
+	 * form and location as much as possible. See
+	 * {@link org.locationtech.jts.geom.util.GeometryFixer GeometryFixer} for a full
+	 * list of potential fixes.
+	 * <p>
+	 * Input shapes are always processed, so even valid inputs may have some minor
+	 * alterations. The output is always a new geometry object.
+	 * 
+	 * @param shape The shape to be corrected.
+	 * @return A modified version of the input shape that aligns with valid shape
+	 *         geometry standards.
+	 * @since 2.0
+	 */
+	public static PShape fix(PShape shape) {
+		return toPShape(GeometryFixer.fix(fromPShape(shape)));
+	}
+
+	/**
 	 * Filters out the children of a given PShape object based on a given Predicate
 	 * function. Child shapes are filtered when the predicate is true: <i>"remove
 	 * if..."</i>.
