@@ -61,8 +61,9 @@ public class DiscreteCurveEvolution {
 		 * @param relevance         The relevance score of the current kink. A value of
 		 *                          30 or lower is generally imperceptible.
 		 * @param verticesRemaining The number of vertices remaining in the simplified
-		 *                          geometry. Note: this does not count the closing
-		 *                          vertex of closed geometries.
+		 *                          geometry (including the current candidate vertex).
+		 *                          Note: this does not count the closing vertex of
+		 *                          closed geometries.
 		 * @return {@code true} if the DCE process should terminate; {@code false}
 		 *         otherwise.
 		 */

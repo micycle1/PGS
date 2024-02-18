@@ -911,11 +911,13 @@ public final class PGS_PointSet {
 	 * provided. Utilises a heuristic based TSP solver, starting with the farthest
 	 * insertion method followed by 2-opt heuristic improvements for tour
 	 * optimization.
-	 * 
 	 * <p>
 	 * Note: The algorithm's runtime grows rapidly as the number of points
 	 * increases. Large datasets (>1000) may result in long computation times and
 	 * should be used with caution.
+	 * <p>
+	 * Note {@link PGS_Hull#concaveHullBFS(List, double) concaveHullBFS()} produces
+	 * a similar result (somewhat longer tours) but is <b>much</b> more performant.
 	 * 
 	 * @param points the list of points for which to compute the approximate
 	 *               shortest tour

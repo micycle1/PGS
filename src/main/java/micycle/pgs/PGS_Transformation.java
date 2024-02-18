@@ -61,7 +61,7 @@ public final class PGS_Transformation {
 		AffineTransformation t = AffineTransformation.scaleInstance(scaleX, scaleY, c.getX(), c.getY());
 		return toPShape(t.transform(g));
 	}
-	
+
 	/**
 	 * Scale a shape around a point.
 	 * 
@@ -452,8 +452,8 @@ public final class PGS_Transformation {
 	 *         sourceShape.
 	 * @since 1.4.0
 	 */
-	public static PShape align(PShape sourceShape, PShape transformShape) {
-		return align(sourceShape, transformShape, 1);
+	public static PShape align(PShape alignShape, PShape baseShape) {
+		return align(alignShape, baseShape, 1);
 	}
 
 	/**
@@ -472,7 +472,7 @@ public final class PGS_Transformation {
 	 *                       position. 0 means no transformation, 1 means maximum
 	 *                       alignment.
 	 * @return a new PShape that is the transformed and aligned version of
-	 *         sourceShape.
+	 *         alignShape.
 	 * @since 1.4.0
 	 */
 	public static PShape align(PShape alignShape, PShape baseShape, double alignmentRatio) {
@@ -490,10 +490,10 @@ public final class PGS_Transformation {
 		PShape sourceShapeT = alignShape;
 		PShape transformShapeT = baseShape;
 		if (alignShape.getVertexCount() > vertices) {
-			sourceShapeT = PGS_Morphology.simplifyDCE(alignShape, vertices);
+			sourceShapeT = PGS_Morphology.simplifyDCE(alignShape, (v, r, verticesRemaining) -> verticesRemaining <= vertices);
 		}
 		if (baseShape.getVertexCount() > vertices) {
-			transformShapeT = PGS_Morphology.simplifyDCE(baseShape, vertices);
+			transformShapeT = PGS_Morphology.simplifyDCE(baseShape, (v, r, verticesRemaining) -> verticesRemaining <= vertices);
 		}
 
 		double[] m = ProcrustesAlignment.transform((Polygon) fromPShape(sourceShapeT), (Polygon) fromPShape(transformShapeT));

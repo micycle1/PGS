@@ -267,7 +267,7 @@ public class PGS_Meshing {
 						.map(PGS_Triangulation::toPEdge).collect(Collectors.toList()));
 			}
 		}
-		
+
 		PShape mesh = PGS.polygonizeEdges(spannerEdges);
 
 		return removeHoles(mesh, triangulation);
@@ -588,6 +588,7 @@ public class PGS_Meshing {
 			}
 		}
 		return PGS.polygonizeSegments(segmentStrings, true);
+//		return PGS.polygonizeSegments(SegmentStringUtil.extractSegmentStrings(fromPShape(shape)), true);
 	}
 
 	/**

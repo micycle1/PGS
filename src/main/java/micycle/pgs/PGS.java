@@ -222,18 +222,6 @@ final class PGS {
 	}
 
 	/**
-	 * Polygonizes a set of edges.
-	 * 
-	 * @param edges a collection of NODED (i.e. non intersecting / must only meet at
-	 *              their endpoints) edges. The collection can contain duplicates.
-	 * @return a GROUP PShape, where each child shape represents a polygon face
-	 *         formed by the given edges
-	 */
-	static final PShape polygonizeEdges(Collection<PEdge> edges) {
-		return polygonizeEdgesRobust(edges);
-	}
-
-	/**
 	 * Nodes (optional) then polygonizes a set of line segments.
 	 * 
 	 * @param segments list of segments (noded or non-noded)
@@ -258,6 +246,18 @@ final class PGS {
 	}
 
 	/**
+	 * Polygonizes a set of edges.
+	 * 
+	 * @param edges a collection of NODED (i.e. non intersecting / must only meet at
+	 *              their endpoints) edges. The collection can contain duplicates.
+	 * @return a GROUP PShape, where each child shape represents a polygon face
+	 *         formed by the given edges
+	 */
+	static final PShape polygonizeEdges(Collection<PEdge> edges) {
+		return polygonizeEdgesRobust(edges);
+	}
+
+	/**
 	 * Polygonizes a set of edges using JTS Polygonizer (occasionally
 	 * FastPolygonizer is not robust enough).
 	 * 
@@ -273,10 +273,10 @@ final class PGS {
 		polygonizer.setCheckRingsValid(false);
 		edgeSet.forEach(ss -> {
 			/*
-			 * If the same LineString is added more than once to the polygonizer, the string
-			 * is "collapsed" and not counted as an edge. Therefore a set is used to ensure
-			 * strings are added once only to the polygonizer. A PEdge is used to determine
-			 * this (since LineString hashcode doesn't work).
+			 * NOTE: If the same LineString is added more than once to the polygonizer, the
+			 * string is "collapsed" and not counted as an edge. Therefore a set is used to
+			 * ensure strings are added once only to the polygonizer. A PEdge is used to
+			 * determine this (since LineString hashcode doesn't work).
 			 */
 			final LineString l = createLineString(ss.a, ss.b);
 			polygonizer.add(l);
