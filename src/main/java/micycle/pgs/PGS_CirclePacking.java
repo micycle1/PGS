@@ -15,10 +15,7 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Location;
-import org.locationtech.jts.geom.prep.PreparedGeometry;
-import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.locationtech.jts.operation.distance.IndexedFacetDistance;
-import org.locationtech.jts.util.GeometricShapeFactory;
 import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
@@ -287,7 +284,7 @@ public final class PGS_CirclePacking {
 		IndexedPointInAreaLocator pointLocator;
 
 		final FrontChainPacker packer = new FrontChainPacker((float) e.getWidth(), (float) e.getHeight(), (float) radiusMin,
-				(float) radiusMax, (float) e.getMinX(), (float) e.getMinY());
+				(float) radiusMax, (float) e.getMinX(), (float) e.getMinY(), seed);
 
 		if (radiusMin == radiusMax) {
 			// if every circle same radius, use faster contains check
@@ -295,20 +292,13 @@ public final class PGS_CirclePacking {
 			packer.getCircles().removeIf(p -> pointLocator.locate(PGS.coordFromPVector(p)) == Location.EXTERIOR);
 		} else {
 			pointLocator = new IndexedPointInAreaLocator(g);
-			final PreparedGeometry cache = PreparedGeometryFactory.prepare(g);
-			final GeometricShapeFactory circleFactory = new GeometricShapeFactory();
-			circleFactory.setNumPoints(8); // approximate circles using octagon for intersects check
+			IndexedFacetDistance distance = new IndexedFacetDistance(g);
 			packer.getCircles().removeIf(p -> {
 				// first test whether shape contains circle center point (somewhat faster)
 				if (pointLocator.locate(PGS.coordFromPVector(p)) != Location.EXTERIOR) {
 					return false;
 				}
-
-				// if center point not in circle, check whether circle overlaps with shape using
-				// intersects() (somewhat slower)
-				circleFactory.setCentre(PGS.coordFromPVector(p));
-				circleFactory.setSize(p.z * 2); // set diameter
-				return !cache.intersects(circleFactory.createCircle());
+				return !distance.isWithinDistance(PGS.pointFromPVector(p), p.z * 0.666);
 			});
 		}
 
