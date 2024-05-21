@@ -26,6 +26,7 @@ import org.tinspin.index.Index.PointEntryKnn;
 import org.tinspin.index.PointDistance;
 import org.tinspin.index.PointMap;
 import org.tinspin.index.covertree.CoverTree;
+
 import micycle.pgs.commons.FrontChainPacker;
 import micycle.pgs.commons.LargestEmptyCircles;
 import micycle.pgs.commons.RepulsionCirclePack;
@@ -258,6 +259,27 @@ public final class PGS_CirclePacking {
 	 *         the center point and .z represents radius.
 	 */
 	public static List<PVector> frontChainPack(PShape shape, double radiusMin, double radiusMax) {
+		return frontChainPack(shape, radiusMin, radiusMax, System.nanoTime());
+	}
+
+	/**
+	 * Generates a random circle packing of tangential circles with varying radii
+	 * that overlap the given shape. The method name references the packing
+	 * algorithm used (Front Chain Packing), rather than any particular
+	 * characteristic of the circle packing.
+	 * <p>
+	 * You can set <code>radiusMin</code> equal to <code>radiusMax</code> for a
+	 * packing of equal-sized circles using this approach.
+	 *
+	 * @param shape     the shape within which to generate the circle packing
+	 * @param radiusMin minimum radius of circles in the packing
+	 * @param radiusMax maximum radius of circles in the packing
+	 * @param seed      random seed used to initialize the underlying random number
+	 *                  generator
+	 * @return A list of PVectors, each representing one circle: (.x, .y) represent
+	 *         the center point and .z represents radius.
+	 */
+	public static List<PVector> frontChainPack(PShape shape, double radiusMin, double radiusMax, long seed) {
 		radiusMin = Math.max(1f, Math.min(radiusMin, radiusMax)); // choose min and constrain
 		radiusMax = Math.max(1f, Math.max(radiusMin, radiusMax)); // choose max and constrain
 		final Geometry g = fromPShape(shape);

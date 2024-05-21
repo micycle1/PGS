@@ -25,10 +25,10 @@ import org.locationtech.jts.geom.MultiPolygon;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.PrecisionModel;
-import org.locationtech.jts.noding.BasicSegmentString;
+import org.locationtech.jts.noding.NodedSegmentString;
 import org.locationtech.jts.noding.Noder;
 import org.locationtech.jts.noding.SegmentString;
-import org.locationtech.jts.noding.snap.SnappingNoder;
+import org.locationtech.jts.noding.snapround.SnapRoundingNoder;
 import org.locationtech.jts.operation.linemerge.LineMerger;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 import micycle.pgs.color.Colors;
@@ -104,7 +104,7 @@ final class PGS {
 	}
 
 	static final SegmentString createSegmentString(PVector a, PVector b) {
-		return new BasicSegmentString(new Coordinate[] { PGS.coordFromPVector(a), PGS.coordFromPVector(b) }, null);
+		return new NodedSegmentString(new Coordinate[] { PGS.coordFromPVector(a), PGS.coordFromPVector(b) }, null);
 	}
 
 	static final Point createPoint(double x, double y) {
@@ -300,7 +300,7 @@ final class PGS {
 		 * are generally caused by nearly coincident line segments, or by very short
 		 * line segments. Snapping mitigates both of these situations.".
 		 */
-		final Noder noder = new SnappingNoder(1e-2);
+		Noder noder = new SnapRoundingNoder(new PrecisionModel(-5e-3));
 		noder.computeNodes(segments);
 		return noder.getNodedSubstrings();
 	}
