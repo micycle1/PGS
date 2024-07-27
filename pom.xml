@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>micycle</groupId>
 	<artifactId>PGS</artifactId>
-	<version>1.4.0</version>
+	<version>1.4.1</version>
 	<name>Processing Geometry Suite</name>
 	<description>Geometric algorithms for Processing</description>
 
@@ -302,7 +302,7 @@
 		<dependency>
 			<groupId>com.github.openjump-gis</groupId>
 			<artifactId>topology-extension</artifactId>
-			<version>v2.0.5</version>
+			<version>9c1d788f8d</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.scoutant</groupId>
