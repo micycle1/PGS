@@ -13,24 +13,25 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
+import org.jgrapht.graph.SimpleWeightedGraph;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.GeometryFilter;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
+import org.locationtech.jts.geom.MultiPolygon;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.PrecisionModel;
-import org.locationtech.jts.noding.BasicSegmentString;
+import org.locationtech.jts.noding.NodedSegmentString;
 import org.locationtech.jts.noding.Noder;
 import org.locationtech.jts.noding.SegmentString;
-import org.locationtech.jts.noding.snap.SnappingNoder;
+import org.locationtech.jts.noding.snapround.SnapRoundingNoder;
 import org.locationtech.jts.operation.linemerge.LineMerger;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
-
 import micycle.pgs.color.Colors;
-import micycle.pgs.commons.FastPolygonizer;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
 import processing.core.PConstants;
@@ -91,7 +92,7 @@ final class PGS {
 		double deltaY = a.getY() - b.getY();
 		return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 	}
-	
+
 	static final double distanceSq(PVector a, PVector b) {
 		float dx = a.x - b.x;
 		float dy = a.y - b.y;
@@ -103,13 +104,13 @@ final class PGS {
 	}
 
 	static final SegmentString createSegmentString(PVector a, PVector b) {
-		return new BasicSegmentString(new Coordinate[] { PGS.coordFromPVector(a), PGS.coordFromPVector(b) }, null);
+		return new NodedSegmentString(new Coordinate[] { PGS.coordFromPVector(a), PGS.coordFromPVector(b) }, null);
 	}
 
 	static final Point createPoint(double x, double y) {
 		return GEOM_FACTORY.createPoint(new Coordinate(x, y));
 	}
-	
+
 	/**
 	 * Creates a stroked rectangle.
 	 */
@@ -140,7 +141,7 @@ final class PGS {
 	static final Coordinate coordFromPVector(final PVector p) {
 		return new Coordinate(p.x, p.y);
 	}
-	
+
 	static final Coordinate[] toCoords(final Collection<PVector> points) {
 		CoordinateList coords = new CoordinateList();
 		points.forEach(p -> coords.add(coordFromPVector(p)));
@@ -221,18 +222,6 @@ final class PGS {
 	}
 
 	/**
-	 * Polygonizes a set of edges.
-	 * 
-	 * @param edges a collection of NODED (i.e. non intersecting / must only meet at
-	 *              their endpoints) edges. The collection can contain duplicates.
-	 * @return a GROUP PShape, where each child shape represents a polygon face
-	 *         formed by the given edges
-	 */
-	static final PShape polygonizeEdges(Collection<PEdge> edges) {
-		return FastPolygonizer.polygonize(edges);
-	}
-
-	/**
 	 * Nodes (optional) then polygonizes a set of line segments.
 	 * 
 	 * @param segments list of segments (noded or non-noded)
@@ -257,6 +246,18 @@ final class PGS {
 	}
 
 	/**
+	 * Polygonizes a set of edges.
+	 * 
+	 * @param edges a collection of NODED (i.e. non intersecting / must only meet at
+	 *              their endpoints) edges. The collection can contain duplicates.
+	 * @return a GROUP PShape, where each child shape represents a polygon face
+	 *         formed by the given edges
+	 */
+	static final PShape polygonizeEdges(Collection<PEdge> edges) {
+		return polygonizeEdgesRobust(edges);
+	}
+
+	/**
 	 * Polygonizes a set of edges using JTS Polygonizer (occasionally
 	 * FastPolygonizer is not robust enough).
 	 * 
@@ -266,16 +267,16 @@ final class PGS {
 	 *         formed by the given edges
 	 */
 	@SuppressWarnings("unchecked")
-	static final PShape polygonizeEdgesRobust(Collection<PEdge> edges) {
+	private static final PShape polygonizeEdgesRobust(Collection<PEdge> edges) {
 		final Set<PEdge> edgeSet = new HashSet<>(edges);
 		final Polygonizer polygonizer = new Polygonizer();
 		polygonizer.setCheckRingsValid(false);
 		edgeSet.forEach(ss -> {
 			/*
-			 * If the same LineString is added more than once to the polygonizer, the string
-			 * is "collapsed" and not counted as an edge. Therefore a set is used to ensure
-			 * strings are added once only to the polygonizer. A PEdge is used to determine
-			 * this (since LineString hashcode doesn't work).
+			 * NOTE: If the same LineString is added more than once to the polygonizer, the
+			 * string is "collapsed" and not counted as an edge. Therefore a set is used to
+			 * ensure strings are added once only to the polygonizer. A PEdge is used to
+			 * determine this (since LineString hashcode doesn't work).
 			 */
 			final LineString l = createLineString(ss.a, ss.b);
 			polygonizer.add(l);
@@ -299,7 +300,7 @@ final class PGS {
 		 * are generally caused by nearly coincident line segments, or by very short
 		 * line segments. Snapping mitigates both of these situations.".
 		 */
-		final Noder noder = new SnappingNoder(1e-2);
+		Noder noder = new SnapRoundingNoder(new PrecisionModel(-5e-3));
 		noder.computeNodes(segments);
 		return noder.getNodedSubstrings();
 	}
@@ -394,6 +395,64 @@ final class PGS {
 		}
 
 		return vertices;
+	}
+
+	static SimpleWeightedGraph<PVector, PEdge> makeCompleteGraph(List<PVector> points) {
+		SimpleWeightedGraph<PVector, PEdge> graph = new SimpleWeightedGraph<>(PEdge.class);
+
+		// Add all vertices before starting the edge creation process
+		for (PVector vertex : points) {
+			graph.addVertex(vertex);
+		}
+
+		// Create edges between all pairs of vertices
+		for (int i = 0; i < points.size(); i++) {
+			PVector a = points.get(i);
+			for (int j = i + 1; j < points.size(); j++) {
+				PVector b = points.get(j);
+				PEdge e = new PEdge(a, b);
+				graph.addEdge(a, b, e);
+				graph.setEdgeWeight(e, e.length());
+			}
+		}
+		return graph;
+	}
+
+	/**
+	 * Extracts all the polygons from a given geometry. If the geometry instance is
+	 * a MultiPolygon, each individual polygon is extracted and added to the result
+	 * list. Other geometry types contained within the input geometry are ignored.
+	 */
+	static List<Polygon> extractPolygons(Geometry g) {
+		List<Polygon> polygons = new ArrayList<>(g.getNumGeometries());
+		final GeometryFilter filter = new GeometryFilter() {
+			public void filter(Geometry geom) {
+				if (geom instanceof Polygon) {
+					polygons.add((Polygon) geom);
+				} else if (geom instanceof MultiPolygon) {
+					for (int i = 0; i < geom.getNumGeometries(); i++) {
+						polygons.add((Polygon) geom.getGeometryN(i));
+					}
+				}
+			}
+		};
+
+		g.apply(filter);
+		return polygons;
+	}
+
+	/**
+	 * Extracts all the LinearRings from a given polygon. This includes both the
+	 * exterior ring and all interior rings (if any).
+	 */
+	static List<LinearRing> extractLinearRings(Polygon polygon) {
+		List<LinearRing> rings = new ArrayList<>(1 + polygon.getNumInteriorRing());
+		rings.add((LinearRing) polygon.getExteriorRing());
+		for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
+			rings.add((LinearRing) polygon.getInteriorRingN(i));
+		}
+
+		return rings;
 	}
 
 	/**

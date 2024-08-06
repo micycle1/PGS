@@ -2,7 +2,8 @@ package micycle.pgs.commons;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
+
+import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import processing.core.PVector;
 
 /**
@@ -25,6 +26,7 @@ public class FrontChainPacker {
 	private final float width, height;
 	private final float offsetX, offsetY;
 	private final float radiusMin, radiusMax;
+	private final XoRoShiRo128PlusRandom rand;
 
 	/**
 	 * The square of the max euclidean distance between a circle center (of
@@ -48,7 +50,7 @@ public class FrontChainPacker {
 	 * @see #FrontChainPacker(float, float, float, float, float, float)
 	 */
 	public FrontChainPacker(float width, float height, float radiusMin, float radiusMax) {
-		this(width, height, radiusMin, radiusMax, 0, 0);
+		this(width, height, radiusMin, radiusMax, 0, 0, System.nanoTime());
 	}
 
 	/**
@@ -62,7 +64,7 @@ public class FrontChainPacker {
 	 * @param radiusMax maximum radius of circles in the packing
 	 * @see #FrontChainPacker(float, float, float, float)
 	 */
-	public FrontChainPacker(float width, float height, float radiusMin, float radiusMax, float offsetX, float offsetY) {
+	public FrontChainPacker(float width, float height, float radiusMin, float radiusMax, float offsetX, float offsetY, long seed) {
 		this.width = width;
 		this.height = height;
 		this.radiusMin = Math.max(1f, Math.min(radiusMin, radiusMax)); // choose min and constrain
@@ -70,6 +72,7 @@ public class FrontChainPacker {
 		this.offsetX = offsetX;
 		this.offsetY = offsetY;
 		this.maxDistSq = this.width * this.height / 2 + this.radiusMax * this.radiusMax;
+		rand = new XoRoShiRo128PlusRandom(seed);
 
 		this.circles = pack(new ArrayList<>());
 	}
@@ -234,7 +237,7 @@ public class FrontChainPacker {
 	}
 
 	private float randomRadius() {
-		return radiusMin == radiusMax ? radiusMin : (float) ThreadLocalRandom.current().nextDouble(radiusMin, radiusMax);
+		return radiusMin == radiusMax ? radiusMin : rand.nextFloat(radiusMin, radiusMax);
 	}
 
 	private static class Node {
