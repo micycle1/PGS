@@ -740,7 +740,7 @@ public class PGS_Meshing {
 		CoverageSimplifier simplifier = new CoverageSimplifier(geometries);
 		Geometry[] output;
 		if (preservePerimeter) {
-			output = simplifier.simplifyInner(tolerance);
+			output = CoverageSimplifier.simplifyInner(geometries, tolerance);
 		} else {
 			output = simplifier.simplify(tolerance);
 		}
