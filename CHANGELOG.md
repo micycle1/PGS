@@ -5,7 +5,7 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
-## **2.0** *(2023-xx-xx)*
+## **2.0** *(2024-08-xx)*
 
 ### Added
 * `findShortestTour()` to `PGS_PointSet`. Computes an <i>approximate</i> Traveling Salesman path for a set of points.
@@ -15,9 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Additional method signature for `delaunayTriangulation(points)` that supports a boundary constraint.
 * `fix()` to `PGS_Processing`. Attempts to fix shapes with invalid geometry.
 * Additional method signature for `frontChainPack()` that accepts a random seed.
+* `isClockwise()` to `PGS_ShapePredicates`. Determines if the vertices of the specified shape form a clockwise loop.
 
 ### Changes
-* Packed circles from `PGS_CirclePacking.stochasticPack()` will now always lie within a shape bounds.
+* Packed circles from `PGS_CirclePacking.stochasticPack()` will now always lie within shape bounds.
 * `PGS_Processing.pointsOnExterior()` methods now respect GROUP shapes and holes (inner rings) and will populate them with points.
 * `PGS_Morphology.simplifyDCE()` now supports GROUP shapes and polygon holes.
 * `PGS_Morphology.interpolate()` is much faster on shapes with many vertices.

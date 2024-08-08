@@ -22,6 +22,7 @@ import org.locationtech.jts.coverage.CoverageValidator;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
@@ -585,6 +586,26 @@ public final class PGS_ShapePredicates {
 	 */
 	public static boolean equalsTopo(PShape a, PShape b) {
 		return fromPShape(a).equalsTopo(fromPShape(b));
+	}
+
+	/**
+	 * Determines if the vertices of the specified shape form a clockwise loop on
+	 * the screen in Processing.
+	 * 
+	 * @param shape a polygonal shape that may contain holes (but these aren't
+	 *              considered).
+	 * @return true if clockwise; false otherwise (counter-clockwise).
+	 * @since 2.0
+	 */
+	public static boolean isClockwise(PShape shape) {
+		/*
+		 * Note the function returns true if the ring is oriented CCW, since it
+		 * determines orientation based on an upward-pointing Y-axis. However, in
+		 * Processing, where the Y-axis extends downwards, a ring that appears clockwise
+		 * (CW) on the screen corresponds to a CCW orientation with an upward Y-axis.
+		 */
+		LinearRing ring = ((Polygon) fromPShape(shape)).getExteriorRing();
+		return Orientation.isCCWArea(ring.getCoordinates());
 	}
 
 	/**

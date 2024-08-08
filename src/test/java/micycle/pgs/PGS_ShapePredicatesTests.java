@@ -2,6 +2,9 @@ package micycle.pgs;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.Collections;
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -70,6 +73,16 @@ class PGS_ShapePredicatesTests {
 
 		coverage.removeChild(0); // remove a mesh face; mesh no longer forms a hole
 		assertEquals(0, PGS_ShapePredicates.holes(coverage));
+	}
+	
+	@Test
+	void testIsClockwise() {
+		assertTrue(PGS_ShapePredicates.isClockwise(square));
+		List<PVector> ccw = PGS_Conversion.toPVector(square);//.reversed();
+		Collections.reverse(ccw);
+		ccw.add(ccw.get(0)); // close
+		assertFalse(PGS_ShapePredicates.isClockwise(PGS_Conversion.fromPVector(ccw)));
+		
 	}
 
 }
