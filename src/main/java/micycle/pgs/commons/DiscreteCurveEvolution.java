@@ -1,9 +1,9 @@
 package micycle.pgs.commons;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
@@ -108,7 +108,7 @@ public class DiscreteCurveEvolution {
 		 * Initialise kinks (initially unlinked to each other), then link each one to
 		 * its neighbours once all have been instantiated.
 		 */
-		final List<Kink> kinks = Arrays.asList(coords).stream().map(c -> new Kink(c)).collect(Collectors.toList());
+		final List<Kink> kinks = createKinksWithIds(coords);
 		for (int i = 0; i < kinks.size(); i++) {
 			Kink prev = kinks.get(i == 0 ? kinks.size() - 1 : i - 1);
 			Kink next = kinks.get(i == kinks.size() - 1 ? 0 : i + 1);
@@ -129,6 +129,11 @@ public class DiscreteCurveEvolution {
 		 * by its three vertices contains other vertices (unimplemented).
 		 */
 		final TreeSet<Kink> kinkRelevanceTree = new TreeSet<>(kinks);
+		if (kinks.size() != kinkRelevanceTree.size()) {
+			int lostKinks = kinks.size() - kinkRelevanceTree.size();
+			throw new IllegalStateException(String.format(
+					"%d Kink objects were lost during the conversion from the kinks list to the kinkRelevanceTree set.", lostKinks));
+		}
 		while (kinkRelevanceTree.size() > 2) {
 			Kink candidate = kinkRelevanceTree.pollFirst();
 			if (terminationCallback.shouldTerminate(candidate.c, candidate.relevance, kinkRelevanceTree.size() + 1)) {
@@ -158,6 +163,10 @@ public class DiscreteCurveEvolution {
 		return output.toCoordinateArray();
 	}
 
+	private static List<Kink> createKinksWithIds(Coordinate[] coords) {
+		return IntStream.range(0, coords.length).mapToObj(i -> new Kink(coords[i], i)).collect(Collectors.toList());
+	}
+
 	/**
 	 * A doubly-linked coordinate. Models a "kink" in a curve where a pair of
 	 * consecutive line segments meet.
@@ -165,11 +174,13 @@ public class DiscreteCurveEvolution {
 	private static class Kink implements Comparable<Kink> {
 
 		final Coordinate c;
+		final int id;
 		Kink prev, next;
 		double relevance;
 
-		Kink(Coordinate c) {
+		Kink(Coordinate c, int id) {
 			this.c = c;
+			this.id = id;
 		}
 
 		void linkTo(Kink prev, Kink next) {
@@ -222,7 +233,13 @@ public class DiscreteCurveEvolution {
 
 		@Override
 		public int compareTo(Kink o) {
-			return Double.compare(this.relevance, o.relevance);
+			int relevanceCompare = Double.compare(this.relevance, o.relevance);
+			if (relevanceCompare == 0) {
+				// compare other properties to differentiate Kinks with the same relevance (may
+				// occur shapes with symmetry or collinear segments).
+				return Double.compare(this.id, o.id);
+			}
+			return relevanceCompare;
 		}
 
 	}
