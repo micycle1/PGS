@@ -20,7 +20,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.12.1</version>
+				<version>3.13.0</version>
 				<configuration>
 					<release>17</release>
 				</configuration>
@@ -59,7 +59,7 @@
 			</plugin>
 			<plugin> <!-- for test running -->
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>3.1.0</version>
+				<version>3.3.1</version>
 			</plugin>
 			<plugin>
 				<groupId>org.jacoco</groupId>
@@ -201,7 +201,7 @@
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>processing-core-4</artifactId>
-			<version>4.3</version>
+			<version>4.3.3</version>
 			<scope>provided</scope> <!-- don't package into uber jar -->
 			<optional>true</optional> <!-- user artifact should override when provided -->
 		</dependency>

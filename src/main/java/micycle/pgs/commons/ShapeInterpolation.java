@@ -63,6 +63,7 @@ public class ShapeInterpolation {
 		smaller.remove(smaller.size() - 1); // unclose (to be closed later, after array rotation)
 		bigger.remove(bigger.size() - 1); // unclose (to be closed later, after array rotation)
 
+		// densify smaller list
 		final int diff = bigger.size() - smaller.size();
 		SplittableRandom r = new SplittableRandom(1337);
 		for (int i = 0; i < diff; i++) {
@@ -73,30 +74,11 @@ public class ShapeInterpolation {
 			smaller.add(index + 1, b); // insert b between a and c (shift c onwards right)
 		}
 
-		final int n = bigger.size(); // number of coords (unclosed)
-
-		int bestOffset = 0;
-		double min = Double.MAX_VALUE;
-
 		/*
 		 * The densified shape is rotated until the squared distance between point pairs
 		 * of the two shapes is minimised.
 		 */
-		for (int offset = 0; offset < n; offset += 2) { // NOTE +=2
-			double sumOfSquares = 0;
-
-			for (int i = 0; i < n; i++) {
-				sumOfSquares += distSq(smaller.get((offset + i) % n), bigger.get(i));
-			}
-
-			if (sumOfSquares < min) {
-				min = sumOfSquares;
-				bestOffset = offset;
-				if (sumOfSquares == 0) {
-					break; // break early when shapes are identical
-				}
-			}
-		}
+		int bestOffset = findBestRotation(smaller, bigger);
 
 		if (bestOffset != 0) {
 			Collections.rotate(smaller, -bestOffset);
@@ -127,14 +109,81 @@ public class ShapeInterpolation {
 		return morph.toCoordinateArray();
 	}
 
+	/**
+	 * @return a rotation offset for list <code>a</code> that minimises the squared
+	 *         distance between all point pairs
+	 */
+	private static int findBestRotation(CoordinateList a, CoordinateList b) {
+		/*
+		 * Ternary search optimisation. Will converge to the global best rotation if the
+		 * rotation-distance "function" is unimodal. Not sure if it is, but seems so in
+		 * practice.
+		 */
+		final int n = a.size();
+		int low = 0;
+		int high = n - 1;
+
+		while (low < high) {
+			int mid1 = low + (high - low) / 3;
+			int mid2 = high - (high - low) / 3;
+			double dist1 = calculateSumOfSquares(a, b, mid1, n);
+			double dist2 = calculateSumOfSquares(a, b, mid2, n);
+
+			if (dist1 < dist2)
+				high = mid2 - 1;
+			else
+				low = mid1 + 1;
+		}
+
+		return low;
+	}
+
+	private static double calculateSumOfSquares(CoordinateList a, CoordinateList b, int offset, int n) {
+		double sumOfSquares = 0;
+		for (int i = 0; i < n; i++) {
+			sumOfSquares += distSq(a.get((offset + i) % n), b.get(i));
+		}
+		return sumOfSquares;
+	}
+
+	@Deprecated
+	private static int findBestRotationSimple(CoordinateList a, CoordinateList b) {
+		final int n = a.size();
+		final int inc = (int) Math.max(1, Math.ceil(n / 1000d));
+		double min = Double.MAX_VALUE;
+		int bestOffset = 0;
+
+		for (int offset = 0; offset < n; offset += inc) {
+			double sumOfSquares = 0;
+
+			for (int i = 0; i < n; i++) {
+				sumOfSquares += distSq(a.get((offset + i) % n), b.get(i));
+				if (sumOfSquares > min) {
+					break;
+				}
+			}
+
+			if (sumOfSquares < min) {
+				min = sumOfSquares;
+				bestOffset = offset;
+				if (sumOfSquares == 0) {
+					return bestOffset; // return early when shapes are identical
+				}
+			}
+		}
+
+		return bestOffset;
+	}
+
 	private static Coordinate lerp(Coordinate from, Coordinate to, double t) {
 		return new Coordinate(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t);
 	}
 
-	private static double distSq(Coordinate a, Coordinate b) {
-		// dont use Coordinate.distance() because it uses Math.hypot() (slower!)
-		double dx = a.x - b.x;
-		double dy = a.y - b.y;
+	private static final double distSq(final Coordinate a, final Coordinate b) {
+		// don't use Coordinate.distance() because it uses Math.hypot() (slower!)
+		// don't sqrt -- not needed
+		final double dx = a.x - b.x;
+		final double dy = a.y - b.y;
 		return (dx * dx + dy * dy);
 	}
 
