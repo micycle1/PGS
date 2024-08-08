@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_Processing.pointsOnExterior()` methods now respect GROUP shapes and holes (inner rings) and will populate them with points.
 * `PGS_Morphology.simplifyDCE()` now supports GROUP shapes and polygon holes.
 * `PGS_Morphology.interpolate()` is much faster on shapes with many vertices.
+* Removed superfluous `height` argument from `PGS.createSupercircle()` method signature.
 
 ### Fixed
 * `urquhartFaces()`, `relativeNeighborFaces()`, `gabrielFaces()` and `spannerFaces()` from `PGS_Meshing` now preserve holes from the input.

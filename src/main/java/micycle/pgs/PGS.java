@@ -425,19 +425,15 @@ final class PGS {
 	 */
 	static List<Polygon> extractPolygons(Geometry g) {
 		List<Polygon> polygons = new ArrayList<>(g.getNumGeometries());
-		final GeometryFilter filter = new GeometryFilter() {
-			public void filter(Geometry geom) {
-				if (geom instanceof Polygon) {
-					polygons.add((Polygon) geom);
-				} else if (geom instanceof MultiPolygon) {
-					for (int i = 0; i < geom.getNumGeometries(); i++) {
-						polygons.add((Polygon) geom.getGeometryN(i));
-					}
+		g.apply((GeometryFilter) geom -> {
+			if (geom instanceof Polygon) {
+				polygons.add((Polygon) geom);
+			} else if (geom instanceof MultiPolygon) {
+				for (int i = 0; i < geom.getNumGeometries(); i++) {
+					polygons.add((Polygon) geom.getGeometryN(i));
 				}
 			}
-		};
-
-		g.apply(filter);
+		});
 		return polygons;
 	}
 

@@ -123,21 +123,21 @@ public class PGS_Construction {
 	/**
 	 * Creates a supercircle shape.
 	 * 
-	 * @param centerX centre point X
-	 * @param centerY centre point Y
-	 * @param width
-	 * @param height
-	 * @param power   circularity of super circle. Values less than 1 create
-	 *                star-like shapes; power=1 is a square;
+	 * @param centerX  centre point X
+	 * @param centerY  centre point Y
+	 * @param diameter
+	 * @param power    circularity of the super circle. Values less than 1 create
+	 *                 star-like shapes; power=1 is a square; values>1 are
+	 *                 increasingly circular.
 	 * @return
 	 */
-	public static PShape createSupercircle(double centerX, double centerY, double width, double height, double power) {
+	public static PShape createSupercircle(double centerX, double centerY, double diameter, double power) {
 		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
 		shapeFactory.setCentre(new Coordinate(centerX, centerY));
-		shapeFactory.setWidth(width);
-		shapeFactory.setHeight(height);
+		shapeFactory.setWidth(diameter);
+		shapeFactory.setHeight(diameter);
 
-		final double outerC = Math.PI * 2 * Math.max(width, height) / 2;
+		final double outerC = Math.PI * 2 * diameter / 2;
 		final int samples = (int) Math.max(PGS.SHAPE_SAMPLES, Math.ceil(outerC / BufferParameters.DEFAULT_QUADRANT_SEGMENTS));
 		shapeFactory.setNumPoints(samples);
 

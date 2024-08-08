@@ -272,6 +272,9 @@ public final class PGS_Processing {
 		return coords;
 	}
 
+	/**
+	 * Creates an CW-oriented length-indexed line from a given PShape.
+	 */
 	private static LengthIndexedLine makeIndexedLine(PShape shape) {
 		Geometry g = fromPShape(shape);
 		if (g instanceof Polygonal) {
