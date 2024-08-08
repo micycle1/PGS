@@ -829,7 +829,7 @@ public final class PGS_Contour {
 		}
 
 		if (g.getCoordinates().length > 2000) {
-			g = DouglasPeuckerSimplifier.simplify(g, 1);
+			g = DouglasPeuckerSimplifier.simplify(g, 0.25);
 		}
 
 		final BufferParameters bufParams = new BufferParameters(8, BufferParameters.CAP_FLAT, style.style,

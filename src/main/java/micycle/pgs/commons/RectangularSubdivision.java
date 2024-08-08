@@ -2,6 +2,7 @@ package micycle.pgs.commons;
 
 import java.util.SplittableRandom;
 
+import micycle.pgs.color.Colors;
 import processing.core.PConstants;
 import processing.core.PShape;
 
@@ -130,6 +131,7 @@ public class RectangularSubdivision {
 		// rect(x1, y1, x3 - x1, y3 - y1);
 		final PShape rect = new PShape(PShape.PATH);
 		rect.setFill(true);
+		rect.setFill(Colors.PINK);
 		rect.setStroke(true);
 		rect.setStroke(255);
 		rect.beginShape();
