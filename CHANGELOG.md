@@ -26,8 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 * `urquhartFaces()`, `relativeNeighborFaces()`, `gabrielFaces()` and `spannerFaces()` from `PGS_Meshing` now preserve holes from the input.
-* The `from` and `to` arguments for `align()` were the wrong way round.
 * The output of `PGS_Morphology.smoothGaussian()` is no longer (slightly) affected by the vertex ordering of the input.
+* The `transform` and `reference` arguments for `PGS_Transformation.align()` were the wrong way round.
 
 ### Removed
 * `simplifyDCE(shape, targetNumVertices)` and `simplifyDCE(shape, vertexRemovalFraction)` in favour a single method that accepts a user-defined termination callback that is supplied with the current vertex candidate's coordinate, relevance score, and the number of vertices remaining.
