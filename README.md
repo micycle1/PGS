@@ -546,6 +546,13 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/meshing/areaMerge.gif"></td>
     <td valign="top" width="25%"><img src="resources/meshing/innerEdges.gif"></td>
   </tr>
+
+  <tr>
+    <td align="center" valign="center"><b>Extract Inner Vertices</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/meshing/extractInnerVertices.gif"></td>
+  </tr>
 </table>
 
 ## *Geometric Optimisation*

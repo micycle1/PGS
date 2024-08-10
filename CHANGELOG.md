@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## **2.0** *(2024-08-xx)*
 
+**Version 2 is built with Java 17**
+
 ### Added
 * `findShortestTour()` to `PGS_PointSet`. Computes an <i>approximate</i> Traveling Salesman path for a set of points.
 * `pruneSparsePoints()` to  `PGS_PointSet`. Prunes a list of points by removing points that are considered not sufficiently dense (far away from their nearest neighbours); a counterpart to `prunePointsWithinDistance()`.
@@ -16,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `fix()` to `PGS_Processing`. Attempts to fix shapes with invalid geometry.
 * Additional method signature for `frontChainPack()` that accepts a random seed.
 * `isClockwise()` to `PGS_ShapePredicates`. Determines if the vertices of the specified shape form a clockwise loop.
+* `extractInnerVertices()` to `PGS_Meshing`. Extracts all inner vertices from a mesh.
 
 ### Changes
 * Packed circles from `PGS_CirclePacking.stochasticPack()` will now always lie within shape bounds.

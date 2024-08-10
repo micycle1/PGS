@@ -813,6 +813,25 @@ public class PGS_Meshing {
 	}
 
 	/**
+	 * Extracts the inner vertices from a mesh. Inner vertices are defined as
+	 * vertices that are not part of the perimeter (nor holes) of the mesh.
+	 * 
+	 * @param mesh The mesh shape to extract inner vertices from.
+	 * @return A PShape object containing only the inner vertices of the original
+	 *         mesh.
+	 * @since 2.0
+	 */
+	public static List<PVector> extractInnerVertices(PShape mesh) {
+		var allVertices = PGS_Conversion.toPVector(mesh);
+		var perimeterVertices = PGS_Conversion.toPVector(PGS_ShapeBoolean.unionMesh(mesh));
+		var allVerticesSet = new HashSet<>(allVertices);
+		var perimeterVerticesSet = new HashSet<>(perimeterVertices);
+
+		allVerticesSet.removeAll(perimeterVerticesSet);
+		return new ArrayList<>(allVerticesSet);
+	}
+
+	/**
 	 * Merges the small faces within a mesh into their adjacent faces recursively,
 	 * ensuring that no faces smaller than a specified area remain. This process is
 	 * repeated until all faces are at least as large as the minimum area defined by
@@ -867,8 +886,11 @@ public class PGS_Meshing {
 		return PGS.polygonizeEdges(splitEdges);
 	}
 
+	/**
+	 * Applies the styling properties of oldMesh to newMesh.
+	 */
 	private static PShape applyOriginalStyling(final PShape newMesh, final PShape oldMesh) {
-		final PShapeData data = new PShapeData(oldMesh.getChild(0)); // use first child; assume global.
+		final PShapeData data = new PShapeData(oldMesh.getChildCount() > 0 ? oldMesh.getChild(0) : oldMesh); // note use first child
 		for (int i = 0; i < newMesh.getChildCount(); i++) {
 			data.applyTo(newMesh.getChild(i));
 		}
