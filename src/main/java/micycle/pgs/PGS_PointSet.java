@@ -34,6 +34,7 @@ import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
 import micycle.pgs.commons.GeometricMedian;
 import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.PoissonDistributionJRUS;
+import micycle.pgs.commons.ThomasPointProcess;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -520,6 +521,36 @@ public final class PGS_PointSet {
 	public static List<PVector> poissonN(double xMin, double yMin, double xMax, double yMax, int n, long seed) {
 		final PoissonDistributionJRUS pd = new PoissonDistributionJRUS(seed);
 		return pd.generate(xMin, yMin, xMax, yMax, n);
+	}
+
+	/**
+	 * Generates random points having clustered properties using the Thomas Point
+	 * Process.
+	 * <p>
+	 * Each cluster consists of child points normally distributed around a parent
+	 * point.
+	 * 
+	 * @param xMin            the minimum x-coordinate of the boundary.
+	 * @param yMin            the minimum y-coordinate of the boundary.
+	 * @param xMax            the maximum x-coordinate of the boundary.
+	 * @param yMax            the maximum y-coordinate of the boundary.
+	 * @param parentsDensity  the density of parent points per unit area (scaled by
+	 *                        a factor of 75x75 units).
+	 * @param meanChildPoints the average number of child points generated per
+	 *                        parent point (the actual values are gaussian
+	 *                        distributed).
+	 * @param childSpread     the first standard deviation of the distance between
+	 *                        each parent point and its children.
+	 * @param seed            number used to initialise the underlying pseudorandom
+	 *                        number generator.
+	 * @return a list of PVector objects representing the (x, y) coordinates of the
+	 *         Thomas cluster points
+	 * @since 2.0
+	 */
+	public static List<PVector> thomasClusters(double xMin, double yMin, double xMax, double yMax, double parentsDensity,
+			double meanChildPoints, double childSpread, long seed) {
+		ThomasPointProcess tpp = new ThomasPointProcess(seed);
+		return tpp.sample(xMin, yMin, xMax, yMax, parentsDensity, meanChildPoints, childSpread);
 	}
 
 	/**

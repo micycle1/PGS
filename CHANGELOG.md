@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Additional method signature for `frontChainPack()` that accepts a random seed.
 * `isClockwise()` to `PGS_ShapePredicates`. Determines if the vertices of the specified shape form a clockwise loop.
 * `extractInnerVertices()` to `PGS_Meshing`. Extracts all inner vertices from a mesh.
+* `thomasClusters()` to `PGS_PointSet`. Generates random points having clustered properties using the Thomas Point Process.
 
 ### Changes
 * Packed circles from `PGS_CirclePacking.stochasticPack()` will now always lie within shape bounds.

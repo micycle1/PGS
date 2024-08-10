@@ -838,13 +838,13 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Sobol LDS</td>
     <td align="center" valign="center"><b>N-Rooks LDS</td>
-    <td align="center" valign="center"><b>Distance Prune</td>
+    <td align="center" valign="center"><b>Thomas Clusters</td>
     <td align="center" valign="center"><b>Hilbert Sort</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/point_set/sobolLDS.gif"></td>
     <td valign="top" width="25%"><img src="resources/point_set/nRooksLDS.png"></td>
-    <td valign="top" width="25%"><img src="resources/point_set/removeWithinDistance.gif"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/thomas.gif"></td>
     <td valign="top" width="25%"><img src="resources/point_set/hilbertSort.gif"></td>
   </tr>
   <tr>
@@ -858,6 +858,12 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/point_set/tsp.png"></td>
     <td valign="top" width="25%"><img src="resources/point_set/cluster.png"></td>
     <td valign="top" width="25%"><img src="resources/point_set/weightedMedian.png"></td>
+  </tr>
+  <tr>
+    <td align="center" valign="center"><b>Distance Prune</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/point_set/removeWithinDistance.gif"></td>
   </tr>
 </table>
 
