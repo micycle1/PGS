@@ -595,7 +595,7 @@ public class PGS_Meshing {
 	 * Randomly merges together / dissolves adjacent faces of a mesh.
 	 * <p>
 	 * The procedure randomly assigns a integer ID to each face and then groups of
-	 * mutually adjacent faces that share an ID (belong to the same group) are
+	 * mutually adjacent faces that share an ID (i.e. belong to the same group) are
 	 * merged into one.
 	 * 
 	 * @param mesh     the conforming mesh shape to perform the operation on
@@ -613,21 +613,26 @@ public class PGS_Meshing {
 		graph.vertexSet().forEach(v -> classes.put(v, random.nextInt(Math.max(nClasses, 1))));
 
 		/*
-		 * Handle "island" faces, which are faces whose neighbours all have the same
-		 * class (which differ from the island itself).
+		 * Handle and reassign "island" faces: faces with a different class from all of
+		 * their neighboring faces.
 		 */
 		NeighborCache<PShape, DefaultEdge> cache = new NeighborCache<>(graph);
-		graph.vertexSet().forEach(v -> {
-			final int vClass = classes.get(v);
-			List<PShape> neighbours = cache.neighborListOf(v);
-			final int nClass1 = classes.get(neighbours.get(0));
-			if (vClass == nClass1) {
+		graph.vertexSet().forEach(face -> {
+			final int faceClass = classes.get(face);
+			List<PShape> neighbours = cache.neighborListOf(face);
+			if (neighbours.isEmpty()) {
+				// this face is disconnected (the graph has sub-graphs)
+				return;
+			}
+			// quick test using first neighbour
+			final int neighbourClass = classes.get(neighbours.get(0));
+			if (faceClass == neighbourClass) {
 				return; // certainly not an island
 			}
-
-			neighbours.removeIf(n -> classes.get(n) == nClass1);
+			// more thorough test
+			neighbours.removeIf(n -> classes.get(n) == neighbourClass);
 			if (neighbours.isEmpty()) {
-				classes.put(v, nClass1); // reassign face class
+				classes.put(face, neighbourClass); // reassign face class
 			}
 		});
 
