@@ -14,8 +14,11 @@ import java.util.Deque;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.SplittableRandom;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -92,8 +95,7 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Geometry Processing -- methods that process a shape in some way: compute
- * hulls, partition, slice, etc.
+ * Methods that process shape geometry: partitioning, slicing, cleaning, etc.
  * 
  * @author Michael Carleton
  *
@@ -1236,6 +1238,71 @@ public final class PGS_Processing {
 		filterFunction = filterFunction.negate();
 		List<PShape> filteredFaces = PGS_Conversion.getChildren(shape).stream().filter(filterFunction::test).collect(Collectors.toList());
 		return PGS_Conversion.flatten(filteredFaces);
+	}
+
+	/**
+	 * Applies a specified transformation function to each child of the given PShape and
+	 * returns a new PShape containing the transformed children.
+	 * <p>
+	 * This method processes each child of the input shape using the provided
+	 * function, which can modify, replace, or filter out shapes. The resulting
+	 * transformed shapes are flattened into a new PShape.
+	 * <p>
+	 * The transformation function can:
+	 * <ul>
+	 * <li>Modify the shape in-place and return it</li>
+	 * <li>Create and return a new shape</li>
+	 * <li>Return null to remove the shape</li>
+	 * </ul>
+	 * <p>
+	 * Note: This method creates a new PShape and does not modify the original shape
+	 * or its children. The hierarchical structure of the original shape is not
+	 * preserved in the result.
+	 *
+	 * @param shape    The PShape whose children will be transformed.
+	 * @param function A UnaryOperator that takes a PShape as input and returns a
+	 *                 transformed PShape. If the function returns null for a shape,
+	 *                 that shape will be excluded from the result.
+	 * @return A new PShape containing the transformed children, flattened into a
+	 *         single level.
+	 *
+	 * @since 2.0
+	 */
+	public static PShape transform(PShape shape, UnaryOperator<PShape> function) {
+		return PGS_Conversion.flatten(PGS_Conversion.getChildren(shape).stream().map(function).filter(Objects::nonNull).toList());
+	}
+
+	// useful for applying void methods as part of a chain:
+	// shape(PGS_Processing.apply(shape, child -> child.setFill(false)));
+
+	/**
+	 * Applies a specified function to each child of the given PShape.
+	 * <p>
+	 * This method iterates over each child of the input PShape, applying the
+	 * provided Consumer function to each. The function can perform any operation on
+	 * the shapes, such as modifying their properties or applying effects, but does
+	 * not inherently alter the structure of the PShape or its hierarchy.
+	 * <p>
+	 * The changes are made in place; hence, the original PShape is modified, and
+	 * the same reference is returned for convenience in chaining or further use.
+	 * <p>
+	 * Example usage:
+	 * 
+	 * <pre>{@code
+	 * PShape shape = PGS_Processing.apply(shape, child -> child.setFill(false));
+	 * }</pre>
+	 *
+	 * @param shape         The PShape whose children will be processed.
+	 * @param applyFunction A Consumer that takes a PShape as input and performs
+	 *                      operations on it.
+	 * @return The original PShape with the function applied to each child.
+	 * @since 2.0
+	 */
+	public static PShape apply(PShape shape, Consumer<PShape> applyFunction) {
+		for (PShape child : PGS_Conversion.getChildren(shape)) {
+			applyFunction.accept(child);
+		}
+		return shape;
 	}
 
 	private static Polygon toGeometry(Envelope envelope) {
