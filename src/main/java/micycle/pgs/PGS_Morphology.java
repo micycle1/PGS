@@ -73,7 +73,8 @@ public final class PGS_Morphology {
 	 * @see #buffer(PShape, double, OffsetStyle)
 	 */
 	public static PShape buffer(PShape shape, double buffer) {
-		return toPShape(fromPShape(shape).buffer(buffer, BufferParameters.DEFAULT_QUADRANT_SEGMENTS));
+		final int segments = (int) Math.ceil(BufferParameters.DEFAULT_QUADRANT_SEGMENTS + Math.sqrt(buffer));
+		return toPShape(fromPShape(shape).buffer(buffer, segments));
 	}
 
 	/**
@@ -88,8 +89,9 @@ public final class PGS_Morphology {
 	 */
 	public static PShape buffer(PShape shape, double buffer, OffsetStyle bufferStyle) {
 		Geometry g = fromPShape(shape);
-		BufferParameters bufParams = new BufferParameters(BufferParameters.DEFAULT_QUADRANT_SEGMENTS, BufferParameters.CAP_FLAT,
-				bufferStyle.style, BufferParameters.DEFAULT_MITRE_LIMIT);
+		final int segments = (int) Math.ceil(BufferParameters.DEFAULT_QUADRANT_SEGMENTS + Math.sqrt(buffer));
+		BufferParameters bufParams = new BufferParameters(segments, BufferParameters.CAP_FLAT, bufferStyle.style,
+				BufferParameters.DEFAULT_MITRE_LIMIT);
 		BufferOp b = new BufferOp(g, bufParams);
 		return toPShape(b.getResultGeometry(buffer));
 	}
@@ -179,7 +181,11 @@ public final class PGS_Morphology {
 	 */
 	public static PShape erosionDilation(PShape shape, double buffer) {
 		buffer = Math.abs(buffer);
-		Geometry g = fromPShape(shape).buffer(-buffer).buffer(buffer);
+
+		final int segments = (int) Math.ceil(BufferParameters.DEFAULT_QUADRANT_SEGMENTS + Math.sqrt(buffer));
+		Geometry g = BufferOp.bufferOp(fromPShape(shape), -buffer, segments);
+		g = BufferOp.bufferOp(g, +buffer, segments);
+
 		try {
 			return toPShape(g);
 		} catch (Exception e) {
@@ -202,7 +208,10 @@ public final class PGS_Morphology {
 	 */
 	public static PShape dilationErosion(PShape shape, double buffer) {
 		buffer = Math.abs(buffer);
-		Geometry g = fromPShape(shape).buffer(buffer).buffer(-buffer);
+
+		final int segments = (int) Math.ceil(BufferParameters.DEFAULT_QUADRANT_SEGMENTS + Math.sqrt(buffer));
+		Geometry g = BufferOp.bufferOp(fromPShape(shape), buffer, segments);
+		g = BufferOp.bufferOp(g, -buffer, segments);
 		try {
 			return toPShape(g);
 		} catch (Exception e) {
