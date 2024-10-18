@@ -179,7 +179,12 @@ public final class PGS_Morphology {
 	 */
 	public static PShape erosionDilation(PShape shape, double buffer) {
 		buffer = Math.abs(buffer);
-		return toPShape(fromPShape(shape).buffer(-buffer).buffer(buffer));
+		Geometry g = fromPShape(shape).buffer(-buffer).buffer(buffer);
+		try {
+			return toPShape(g);
+		} catch (Exception e) {
+			return toPShape(GeometryFixer.fix(g));
+		}
 	}
 
 	/**
@@ -197,7 +202,12 @@ public final class PGS_Morphology {
 	 */
 	public static PShape dilationErosion(PShape shape, double buffer) {
 		buffer = Math.abs(buffer);
-		return toPShape(fromPShape(shape).buffer(buffer).buffer(-buffer));
+		Geometry g = fromPShape(shape).buffer(buffer).buffer(-buffer);
+		try {
+			return toPShape(g);
+		} catch (Exception e) {
+			return toPShape(GeometryFixer.fix(g));
+		}
 	}
 
 	/**
@@ -720,7 +730,7 @@ public final class PGS_Morphology {
 	 * @see #fieldWarp(PShape, double, double, boolean)
 	 * @return
 	 */
-	public static PShape fieldWarp(PShape shape, double magnitude, double noiseScale, double time, boolean densify, int noiseSeed) {
+	public static PShape fieldWarp(PShape shape, double magnitude, double noiseScale, double time, boolean densify, long noiseSeed) {
 		float scale = Math.max(1, (float) noiseScale * 500f);
 		final boolean pointsShape = shape.getKind() == PConstants.POINTS;
 
@@ -734,7 +744,7 @@ public final class PGS_Morphology {
 			copy = toPShape(fromPShape(shape));
 		}
 
-		final UniformNoise noise = new UniformNoise(noiseSeed);
+		final UniformNoise noise = new UniformNoise((int) (noiseSeed % Integer.MAX_VALUE));
 
 		if (copy.getChildCount() == 0) {
 			// setVertex() will act on group shapes, so treat a single shape as group of 1
