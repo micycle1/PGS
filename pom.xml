@@ -64,7 +64,7 @@
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>0.8.8</version>
+				<version>0.8.12</version>
 				<executions>
 					<execution>
 						<goals>
@@ -208,7 +208,7 @@
 		<dependency>
 			<groupId>org.locationtech.jts</groupId>
 			<artifactId>jts-core</artifactId>
-			<version>1.20.0-SNAPSHOT</version>
+			<version>1.20.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.twak</groupId>
@@ -229,6 +229,7 @@
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>JMedialAxis</artifactId>
 			<version>5207bec2f2</version>
+			<optional>true</optional> <!-- user artifact should override when provided -->
 		</dependency>
 		<dependency>
 			<groupId>org.dyn4j</groupId>

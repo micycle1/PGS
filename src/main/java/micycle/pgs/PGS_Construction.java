@@ -45,7 +45,8 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Construct uncommon/interesting 2D geometries.
+ * Construct uncommon/interesting 2D geometries (beyond those offered in
+ * Processing).
  * 
  * @author Michael Carleton
  *

@@ -300,11 +300,12 @@ public final class PGS_ShapeBoolean {
 	 * ensuring each individual face or feature of the mesh is preserved during the
 	 * operation.
 	 * <p>
-	 * The method {@link #subtract(PShape, PShape) subtract(a, b)} subtracts a
-	 * polygon from a mesh, producing a single polygon that represents the combined
-	 * and dissolved area of all remaining mesh face parts. This method offers an
-	 * alternative to preserve how each face is individually affected by the
-	 * subtraction.
+	 * The behaviour of this method differs to {@link #subtract(PShape, PShape)
+	 * subtract(a, b)} when <code>a</code> is a mesh; upon subtracting a polygon
+	 * from a mesh, that method produces a single (unioned) polygon that represents
+	 * the combined and dissolved area of all remaining mesh face parts. In
+	 * contrast, this method preserves faces and how they are individually affected
+	 * by the subtraction.
 	 * <p>
 	 * This method is more efficient than repeatedly calling
 	 * {@link #subtract(PShape, PShape) subtract(a, b)} on each face of a mesh-like

@@ -217,6 +217,7 @@ public final class PGS_Voronoi {
 			boundsRect = new Rectangle2D.Double(bounds[0], bounds[1], bounds[2] - bounds[0], bounds[3] - bounds[1]);
 		}
 		options.setBounds(boundsRect);
+		options.enableAutomaticColorAssignment(false);
 
 		for (int i = 0; i < coords.length; i++) {
 			Coordinate p = coords[i];
