@@ -6,7 +6,7 @@ PShape shape;
 boolean inward = true;
 
 void setup() {
-  size(800, 800, FX2D);
+  size(1000, 1000, FX2D);
   smooth();
   textAlign(CENTER, CENTER);
 
@@ -29,7 +29,8 @@ void draw() {
 
     colorMode(HSB, 1);
     for (int i = 0; i < offsetCurves.getChildCount(); i++) {
-      offsetCurves.getChild(i).setStroke(color((float) mouseY/height, ((float) i / (offsetCurves.getChildCount()-1)) + 0.1, 1));
+      color c = color((float) mouseY/height, ((float) i / (offsetCurves.getChildCount()-1)) + 0.1, 1);
+      PGS_Conversion.setAllStrokeColor(offsetCurves.getChild(i), c, 2);
     }
     colorMode(RGB, 255);
 
@@ -38,13 +39,19 @@ void draw() {
     textSize(36);
     text("Use mouse to draw!", width/2, height/2);
     textSize(14);
-    text("Press any key to switch between inward/outward style.", width/2, height/2 + 30);
+    text("LEFT mouse = add; RIGHT mouse = subtract.", width/2, height/2 + 30);
+    text("Press any key to switch between inward/outward style.", width/2, height/2 + 60);
   }
 }
 
 void mouseDragged() {
-  shape = PGS_ShapeBoolean.union(shape, createShape(ELLIPSE, mouseX, mouseY, 100, 100));
-  shape = PGS_Morphology.simplify(shape, 1);
+  if (mouseButton == LEFT) {
+    shape = PGS_ShapeBoolean.union(shape, createShape(ELLIPSE, mouseX, mouseY, 75, 75));
+  } else if (mouseButton == RIGHT) {
+    shape = PGS_ShapeBoolean.subtract(shape, createShape(ELLIPSE, mouseX, mouseY, 75, 75));
+  }
+  shape = PGS_Morphology.simplify(shape, 0.1);
+  PGS_Conversion.setAllFillColor(shape, 255);
   PGS_Conversion.disableAllStroke(shape);
 }
 

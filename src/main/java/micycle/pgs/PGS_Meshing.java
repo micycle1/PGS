@@ -35,7 +35,7 @@ import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
 import org.tinfour.utils.TriangleCollector;
-import org.tinspin.index.PointIndex;
+import org.tinspin.index.PointMap;
 import org.tinspin.index.kdtree.KDTree;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
 import micycle.pgs.PGS_Conversion.PShapeData;
@@ -118,7 +118,9 @@ public class PGS_Meshing {
 		final Collection<PEdge> meshEdges = new ArrayList<>(edges.size());
 		edges.forEach(edge -> meshEdges.add(new PEdge(edge.getA().x, edge.getA().y, edge.getB().x, edge.getB().y)));
 
-		return PGS.polygonizeEdges(meshEdges);
+		PShape mesh = PGS.polygonizeEdges(meshEdges);
+
+		return removeHoles(mesh, triangulation);
 	}
 
 	/**
@@ -161,19 +163,15 @@ public class PGS_Meshing {
 			}
 		});
 
-		final PointIndex<Vertex> tree = KDTree.create(2, (p1, p2) -> {
-			final double deltaX = p1[0] - p2[0];
-			final double deltaY = p1[1] - p2[1];
-			return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-		});
+		final PointMap<Vertex> tree = KDTree.create(2);
 		vertices.forEach(v -> tree.insert(new double[] { v.x, v.y }, v));
 
 		final HashSet<IQuadEdge> nonGabrielEdges = new HashSet<>(); // base references to edges that should be removed
 		edges.forEach(edge -> {
 			final double[] midpoint = midpoint(edge);
-			final Vertex near = tree.query1NN(midpoint).value();
+			final Vertex near = tree.query1nn(midpoint).value();
 			if (near != edge.getA() && near != edge.getB()) {
-				if (!preservePerimeter || (preservePerimeter && !edge.isConstrainedRegionBorder())) {
+				if (!preservePerimeter || (preservePerimeter && !edge.isConstrainedRegionBorder())) { // don't remove constraint borders (holes)
 					nonGabrielEdges.add(edge); // base reference
 				}
 			}
@@ -183,7 +181,8 @@ public class PGS_Meshing {
 		final Collection<PEdge> meshEdges = new ArrayList<>(edges.size());
 		edges.forEach(edge -> meshEdges.add(new PEdge(edge.getA().x, edge.getA().y, edge.getB().x, edge.getB().y)));
 
-		return PGS.polygonizeEdges(meshEdges);
+		PShape mesh = PGS.polygonizeEdges(meshEdges);
+		return removeHoles(mesh, triangulation);
 	}
 
 	/**
@@ -233,12 +232,8 @@ public class PGS_Meshing {
 
 		List<PEdge> edgesOut = edges.stream().map(PGS_Triangulation::toPEdge).collect(Collectors.toList());
 
-		if (preservePerimeter) {
-			return PGS.polygonizeEdgesRobust(edgesOut);
-		} else {
-			return PGS.polygonizeEdges(edgesOut);
-		}
-
+		PShape mesh = PGS.polygonizeEdges(edgesOut);
+		return removeHoles(mesh, triangulation);
 	}
 
 	/**
@@ -273,7 +268,9 @@ public class PGS_Meshing {
 			}
 		}
 
-		return PGS.polygonizeEdgesRobust(spannerEdges);
+		PShape mesh = PGS.polygonizeEdges(spannerEdges);
+
+		return removeHoles(mesh, triangulation);
 	}
 
 	/**
@@ -591,13 +588,14 @@ public class PGS_Meshing {
 			}
 		}
 		return PGS.polygonizeSegments(segmentStrings, true);
+//		return PGS.polygonizeSegments(SegmentStringUtil.extractSegmentStrings(fromPShape(shape)), true);
 	}
 
 	/**
 	 * Randomly merges together / dissolves adjacent faces of a mesh.
 	 * <p>
 	 * The procedure randomly assigns a integer ID to each face and then groups of
-	 * mutually adjacent faces that share an ID (belong to the same group) are
+	 * mutually adjacent faces that share an ID (i.e. belong to the same group) are
 	 * merged into one.
 	 * 
 	 * @param mesh     the conforming mesh shape to perform the operation on
@@ -615,21 +613,26 @@ public class PGS_Meshing {
 		graph.vertexSet().forEach(v -> classes.put(v, random.nextInt(Math.max(nClasses, 1))));
 
 		/*
-		 * Handle "island" faces, which are faces whose neighbours all have the same
-		 * class (which differ from the island itself).
+		 * Handle and reassign "island" faces: faces with a different class from all of
+		 * their neighboring faces.
 		 */
 		NeighborCache<PShape, DefaultEdge> cache = new NeighborCache<>(graph);
-		graph.vertexSet().forEach(v -> {
-			final int vClass = classes.get(v);
-			List<PShape> neighbours = cache.neighborListOf(v);
-			final int nClass1 = classes.get(neighbours.get(0));
-			if (vClass == nClass1) {
+		graph.vertexSet().forEach(face -> {
+			final int faceClass = classes.get(face);
+			List<PShape> neighbours = cache.neighborListOf(face);
+			if (neighbours.isEmpty()) {
+				// this face is disconnected (the graph has sub-graphs)
+				return;
+			}
+			// quick test using first neighbour
+			final int neighbourClass = classes.get(neighbours.get(0));
+			if (faceClass == neighbourClass) {
 				return; // certainly not an island
 			}
-
-			neighbours.removeIf(n -> classes.get(n) == nClass1);
+			// more thorough test
+			neighbours.removeIf(n -> classes.get(n) == neighbourClass);
 			if (neighbours.isEmpty()) {
-				classes.put(v, nClass1); // reassign face class
+				classes.put(face, neighbourClass); // reassign face class
 			}
 		});
 
@@ -674,7 +677,7 @@ public class PGS_Meshing {
 	 * @return The smoothed mesh. Input face styling is preserved.
 	 * @since 1.4.0
 	 */
-	public static PShape smoothMesh(PShape mesh, int iterations, boolean preservePerimeter, double taubin, double t2) {
+	public static PShape smoothMesh(PShape mesh, int iterations, boolean preservePerimeter) {
 		PMesh m = new PMesh(mesh);
 		for (int i = 0; i < iterations; i++) {
 			m.smoothTaubin(0.25, -0.251, preservePerimeter);
@@ -815,16 +818,40 @@ public class PGS_Meshing {
 	}
 
 	/**
-	 * Recursively merges smaller faces of a mesh into their adjacent faces. The
-	 * procedure continues until there are no resulting faces with an area smaller
-	 * than the specified threshold.
+	 * Extracts the inner vertices from a mesh. Inner vertices are defined as
+	 * vertices that are not part of the perimeter (nor holes) of the mesh.
 	 * 
-	 * @param mesh          a GROUP shape representing a conforming mesh the mesh to
-	 *                      perform area merging on
-	 * @param areaThreshold The maximum permissible area threshold for merging
-	 *                      faces. Any faces smaller than this threshold will be
-	 *                      consolidated into their neighboring faces.
-	 * @return GROUP shape comprising the merged mesh faces
+	 * @param mesh The mesh shape to extract inner vertices from.
+	 * @return A PShape object containing only the inner vertices of the original
+	 *         mesh.
+	 * @since 2.0
+	 */
+	public static List<PVector> extractInnerVertices(PShape mesh) {
+		var allVertices = PGS_Conversion.toPVector(mesh);
+		var perimeterVertices = PGS_Conversion.toPVector(PGS_ShapeBoolean.unionMesh(mesh));
+		var allVerticesSet = new HashSet<>(allVertices);
+		var perimeterVerticesSet = new HashSet<>(perimeterVertices);
+
+		allVerticesSet.removeAll(perimeterVerticesSet);
+		return new ArrayList<>(allVerticesSet);
+	}
+
+	/**
+	 * Merges the small faces within a mesh into their adjacent faces recursively,
+	 * ensuring that no faces smaller than a specified area remain. This process is
+	 * repeated until all faces are at least as large as the minimum area defined by
+	 * the areaThreshold parameter.
+	 * 
+	 * @param mesh          a PShape object representing the mesh to which the area
+	 *                      merge operation will be applied. It must be of type
+	 *                      GROUP. Meshes with holes are supported; holes will be
+	 *                      preserved.
+	 * @param areaThreshold the minimum area a face must have to avoid being merged.
+	 *                      This is used as a threshold to determine which small
+	 *                      faces should be merged into adjacent larger ones.
+	 * @return PShape object representing the mesh after the merge operation, where
+	 *         all faces have an area greater than or equal to the specified
+	 *         areaThreshold.
 	 * @since 1.4.0
 	 */
 	public static PShape areaMerge(PShape mesh, double areaThreshold) {
@@ -864,8 +891,11 @@ public class PGS_Meshing {
 		return PGS.polygonizeEdges(splitEdges);
 	}
 
+	/**
+	 * Applies the styling properties of oldMesh to newMesh.
+	 */
 	private static PShape applyOriginalStyling(final PShape newMesh, final PShape oldMesh) {
-		final PShapeData data = new PShapeData(oldMesh.getChild(0)); // use first child; assume global.
+		final PShapeData data = new PShapeData(oldMesh.getChildCount() > 0 ? oldMesh.getChild(0) : oldMesh); // note use first child
 		for (int i = 0; i < newMesh.getChildCount(); i++) {
 			data.applyTo(newMesh.getChild(i));
 		}

@@ -3,7 +3,6 @@ package micycle.pgs;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -14,6 +13,7 @@ import java.util.stream.Collectors;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
+import org.locationtech.jts.geom.util.GeometryFixer;
 import org.locationtech.jts.operation.overlayng.CoverageUnion;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
@@ -136,9 +136,11 @@ public final class PGS_ShapeBoolean {
 	 * @see #union(PShape...) For union operations on a variable number of shapes.
 	 */
 	public static PShape union(final Collection<PShape> shapes) {
-		Collection<Geometry> polygons = new ArrayList<>();
-		shapes.forEach(s -> polygons.add(fromPShape(s)));
-		return toPShape(UnaryUnionOp.union(polygons));
+		try {
+			return toPShape(UnaryUnionOp.union(shapes.stream().map(s -> fromPShape(s)).toList()));
+		} catch (Exception e) {
+			return toPShape(UnaryUnionOp.union(shapes.stream().map(s -> GeometryFixer.fix(fromPShape(s))).toList()));
+		}
 	}
 
 	/**
@@ -156,7 +158,7 @@ public final class PGS_ShapeBoolean {
 	public static PShape union(PShape... shapes) {
 		return union(Arrays.asList(shapes));
 	}
-	
+
 	/**
 	 * @see #unionMesh(PShape)
 	 * @param faces collection of faces comprising a mesh
@@ -298,11 +300,12 @@ public final class PGS_ShapeBoolean {
 	 * ensuring each individual face or feature of the mesh is preserved during the
 	 * operation.
 	 * <p>
-	 * The method {@link #subtract(PShape, PShape) subtract(a, b)} subtracts a
-	 * polygon from a mesh, producing a single polygon that represents the combined
-	 * and dissolved area of all remaining mesh face parts. This method offers an
-	 * alternative to preserve how each face is individually affected by the
-	 * subtraction.
+	 * The behaviour of this method differs to {@link #subtract(PShape, PShape)
+	 * subtract(a, b)} when <code>a</code> is a mesh; upon subtracting a polygon
+	 * from a mesh, that method produces a single (unioned) polygon that represents
+	 * the combined and dissolved area of all remaining mesh face parts. In
+	 * contrast, this method preserves faces and how they are individually affected
+	 * by the subtraction.
 	 * <p>
 	 * This method is more efficient than repeatedly calling
 	 * {@link #subtract(PShape, PShape) subtract(a, b)} on each face of a mesh-like
@@ -355,7 +358,7 @@ public final class PGS_ShapeBoolean {
 
 	/**
 	 * Calculates the complement (or inverse) of the provided shape within a
-	 * rectangular boundary of specified width and height.
+	 * rectangular boundary of specified width and height, anchored at (0, 0).
 	 * <p>
 	 * The resulting shape corresponds to the portion of the rectangle not covered
 	 * by the input shape. The operation is essentially a subtraction of the input

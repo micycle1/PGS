@@ -19,9 +19,8 @@ import processing.core.PVector;
  * Tiling, tessellation and subdivision of the plane using periodic or
  * non-periodic geometric shapes.
  * <p>
- * A tiling is created when a collection of plane figures (tileCount) fills a
- * plane such that no gaps occur between the tileCount and no two tileCount
- * overlap each other.
+ * A tiling is created when a collection of tiles fills a plane such that no
+ * gaps occur between the tiles and no two tiles overlap each other.
  * 
  * @author Michael Carleton
  * @since 1.2.0

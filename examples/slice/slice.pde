@@ -12,7 +12,9 @@ void draw() {
   background(0, 0, 40);
 
   if ((frameCount-1) % 180 == 0) {
-    polygon = PGS_Construction.createRandomPolygon((int) random(3, 7), width, height);
+    polygon = PGS_Construction.createSuperRandomPolygon(width, choice(5,50) , random(0.05, 0.2), choice(0, 3), choice(1, 3), false, true, millis());
+    polygon = PGS_Transformation.resizeByMajorAxis(polygon, 666);
+    polygon = PGS_Transformation.translateEnvelopeTo(polygon, width/2, height/2);
   }
 
   slice(polygon);
@@ -26,16 +28,17 @@ void slice(PShape shape) {
   PShape slices = PGS_Processing.slice(shape, pv1, pv2);
   PShape s = slices.getChild(0);
   PShape s2 = slices.getChild(1);
-  
+
   PGS_Conversion.setAllFillColor(s, color(237, 50, 162));
-  PGS_Conversion.setAllStrokeColor(s, color(237, 50, 162), 4);
+  PGS_Conversion.setAllStrokeColor(s, color(237, 50, 162), 3);
   PGS_Conversion.setAllFillColor(s2, color(255));
+  //PGS_Conversion.setAllStrokeColor(s2, color(237, 50, 162), 3);
 
   shape(s);
   shape(s2);
-  
+
   strokeWeight(5);
-  stroke(0, 0, 40);
+  stroke(255, 255, 0, 100);
   line(pv1.x, pv1.y, pv2.x, pv2.y);
   stroke(color(237, 50, 162));
   strokeWeight(15);

@@ -18,18 +18,23 @@ import org.apache.commons.math3.ml.distance.EuclideanDistance;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.commons.math3.util.Pair;
-
+import org.jgrapht.alg.interfaces.HamiltonianCycleAlgorithm;
 import org.jgrapht.alg.interfaces.SpanningTreeAlgorithm;
 import org.jgrapht.alg.spanning.PrimMinimumSpanningTree;
+import org.jgrapht.alg.tour.FarthestInsertionHeuristicTSP;
+import org.jgrapht.alg.tour.TwoOptHeuristicTSP;
 import org.jgrapht.graph.SimpleGraph;
 import org.tinfour.common.IIncrementalTin;
-import org.tinspin.index.kdtree.KDTree;
-
+import org.tinfour.common.Vertex;
+import org.tinspin.index.IndexConfig;
+import org.tinspin.index.PointMap;
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
 import micycle.pgs.commons.GeometricMedian;
 import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.PoissonDistributionJRUS;
+import micycle.pgs.commons.ThomasPointProcess;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -63,16 +68,57 @@ public final class PGS_PointSet {
 	 * @return
 	 */
 	public static List<PVector> prunePointsWithinDistance(List<PVector> points, double distanceTolerance) {
-		final KDTree<PVector> tree = KDTree.create(2);
+		final PointMap<Object> tree = PointMap.Factory.createKdTree(IndexConfig.create(2).setDefensiveKeyCopy(false));
 		final List<PVector> newPoints = new ArrayList<>();
 		for (PVector p : points) {
 			final double[] coords = new double[] { p.x, p.y };
-			if (tree.size() == 0 || tree.query1NN(coords).dist() > distanceTolerance) {
+			if (tree.size() == 0 || tree.query1nn(coords).dist() > distanceTolerance) {
 				tree.insert(coords, p);
 				newPoints.add(p);
 			}
 		}
 		return newPoints;
+	}
+
+	/**
+	 * Prunes a list of points by removing points that are considered not
+	 * sufficiently dense.
+	 * <p>
+	 * A point's density is assessed based on its distance to its nearest neighbor;
+	 * if the nearest neighbor of a point is farther away than the specified
+	 * distance tolerance, the point is considered sparse and removed. In other
+	 * words, only points that have at least one neighbor within the distance
+	 * tolerance are kept.
+	 *
+	 * @param points            A List of {@code PVector} points to be analysed and
+	 *                          pruned.
+	 * @param distanceTolerance The maximum allowable distance for a point to be
+	 *                          considered dense. Points with their nearest neighbor
+	 *                          distance greater than the distance tolerance are
+	 *                          pruned.
+	 * @return A List of {@code PVector} points where each point has at least one
+	 *         neighbor within the distance tolerance, i.e., the list of points
+	 *         after sparse points have been removed.
+	 * @since 2.0
+	 */
+	public static List<PVector> pruneSparsePoints(Collection<PVector> points, double distanceTolerance) {
+		var tin = PGS_Triangulation.delaunayTriangulationMesh(points);
+		var vertexDistanceMap = new Object2DoubleOpenHashMap<Vertex>();
+		final double toleranceSquared = distanceTolerance * distanceTolerance;
+
+		// Iterate over TIN edges to compute & store minimum distances
+		for (var edge : tin.edges()) {
+			var A = edge.getA();
+			var B = edge.getB();
+			double distance = A.getDistanceSq(B);
+			// Update the minimum distances using merge
+			vertexDistanceMap.merge(A, distance, Math::min);
+			vertexDistanceMap.merge(B, distance, Math::min);
+		}
+
+		// Collect vertices within the distance tolerance
+		return vertexDistanceMap.object2DoubleEntrySet().stream().filter(entry -> entry.getDoubleValue() <= toleranceSquared)
+				.map(entry -> new PVector((float) entry.getKey().getX(), (float) entry.getKey().getY())).toList();
 	}
 
 	/**
@@ -86,59 +132,10 @@ public final class PGS_PointSet {
 	 * @since 1.3.0
 	 */
 	public static List<PVector> hilbertSort(List<PVector> points) {
-		double xMin, xMax, yMin, yMax;
-		if (points.isEmpty()) {
+		if (points.isEmpty() || points.size() < 24) {
 			return points;
 		}
-
-		// find bounds
-		PVector v = points.get(0);
-		xMin = v.x;
-		xMax = v.x;
-		yMin = v.y;
-		yMax = v.y;
-
-		for (PVector PVector : points) {
-			if (PVector.x < xMin) {
-				xMin = PVector.x;
-			} else if (PVector.x > xMax) {
-				xMax = PVector.x;
-			}
-			if (PVector.y < yMin) {
-				yMin = PVector.y;
-			} else if (PVector.y > yMax) {
-				yMax = PVector.y;
-			}
-		}
-
-		double xDelta = xMax - xMin;
-		double yDelta = yMax - yMin;
-		if (xDelta == 0 || yDelta == 0) {
-			return points;
-		}
-		if (points.size() < 24) {
-			return points;
-		}
-
-		double hn = Math.log(points.size()) / 0.693147180559945 / 2.0;
-		int nHilbert = (int) Math.floor(hn + 0.5);
-		if (nHilbert < 4) {
-			nHilbert = 4;
-		}
-
-		// could also use SortedMap<index -> point>
-		List<Pair<Integer, PVector>> ranks = new ArrayList<>(points.size());
-		double hScale = (1 << nHilbert) - 1.0;
-		// scale coordinates to 2^n - 1
-		for (PVector vh : points) {
-			int ix = (int) (hScale * (vh.x - xMin) / xDelta);
-			int iy = (int) (hScale * (vh.y - yMin) / yDelta);
-			ranks.add(new Pair<>(xy2Hilbert(ix, iy, nHilbert), vh));
-		}
-
-		ranks.sort((a, b) -> Integer.compare(a.getFirst(), b.getFirst()));
-
-		return ranks.stream().map(Pair::getSecond).collect(Collectors.toList());
+		return hilbertSortRaw(points).stream().map(Pair::getSecond).collect(Collectors.toList());
 	}
 
 	/**
@@ -527,6 +524,36 @@ public final class PGS_PointSet {
 	}
 
 	/**
+	 * Generates random points having clustered properties using the Thomas Point
+	 * Process.
+	 * <p>
+	 * Each cluster consists of child points normally distributed around a parent
+	 * point.
+	 * 
+	 * @param xMin            the minimum x-coordinate of the boundary.
+	 * @param yMin            the minimum y-coordinate of the boundary.
+	 * @param xMax            the maximum x-coordinate of the boundary.
+	 * @param yMax            the maximum y-coordinate of the boundary.
+	 * @param parentsDensity  the density of parent points per unit area (scaled by
+	 *                        a factor of 75x75 units).
+	 * @param meanChildPoints the average number of child points generated per
+	 *                        parent point (the actual values are gaussian
+	 *                        distributed).
+	 * @param childSpread     the first standard deviation of the distance between
+	 *                        each parent point and its children.
+	 * @param seed            number used to initialise the underlying pseudorandom
+	 *                        number generator.
+	 * @return a list of PVector objects representing the (x, y) coordinates of the
+	 *         Thomas cluster points
+	 * @since 2.0
+	 */
+	public static List<PVector> thomasClusters(double xMin, double yMin, double xMax, double yMax, double parentsDensity,
+			double meanChildPoints, double childSpread, long seed) {
+		ThomasPointProcess tpp = new ThomasPointProcess(seed);
+		return tpp.sample(xMin, yMin, xMax, yMax, parentsDensity, meanChildPoints, childSpread);
+	}
+
+	/**
 	 * Generates a set of points arranged in a phyllotaxis pattern (an arrangement
 	 * similar to the florets in the head of a sunflower), using the golden ratio
 	 * (the most irrational number) to position points with the least possible
@@ -908,6 +935,86 @@ public final class PGS_PointSet {
 		SimpleGraph<PVector, PEdge> graph = PGS_Triangulation.toGraph(triangulation);
 		SpanningTreeAlgorithm<PEdge> st = new PrimMinimumSpanningTree<>(graph); // faster than kruskal algorithm
 		return PGS_SegmentSet.toPShape(st.getSpanningTree().getEdges());
+	}
+
+	/**
+	 * Computes an <i>approximate</i> Traveling Salesman path for the set of points
+	 * provided. Utilises a heuristic based TSP solver, starting with the farthest
+	 * insertion method followed by 2-opt heuristic improvements for tour
+	 * optimization.
+	 * <p>
+	 * Note: The algorithm's runtime grows rapidly as the number of points
+	 * increases. Large datasets (>1000) may result in long computation times and
+	 * should be used with caution.
+	 * <p>
+	 * Note {@link PGS_Hull#concaveHullBFS(List, double) concaveHullBFS()} produces
+	 * a similar result (somewhat longer tours) but is <b>much</b> more performant.
+	 * 
+	 * @param points the list of points for which to compute the approximate
+	 *               shortest tour
+	 * @return A closed polygon whose perimeter traces the shortest possible route
+	 *         that visits each point exactly once (and returns to the path's
+	 *         starting point).
+	 * @since 2.0
+	 */
+	public static PShape findShortestTour(List<PVector> points) {
+		HamiltonianCycleAlgorithm<PVector, PEdge> tsp = new FarthestInsertionHeuristicTSP<>();
+		TwoOptHeuristicTSP<PVector, PEdge> tspImprover = new TwoOptHeuristicTSP<>();
+
+		var graph = PGS.makeCompleteGraph(points);
+		var tour = tsp.getTour(graph);
+		tour = tspImprover.improveTour(tour);
+
+		return PGS_Conversion.fromPVector(tour.getVertexList());
+	}
+
+	private static List<Pair<Integer, PVector>> hilbertSortRaw(List<PVector> points) {
+		double xMin, xMax, yMin, yMax;
+
+		// find bounds
+		PVector v = points.get(0);
+		xMin = v.x;
+		xMax = v.x;
+		yMin = v.y;
+		yMax = v.y;
+
+		for (PVector PVector : points) {
+			if (PVector.x < xMin) {
+				xMin = PVector.x;
+			} else if (PVector.x > xMax) {
+				xMax = PVector.x;
+			}
+			if (PVector.y < yMin) {
+				yMin = PVector.y;
+			} else if (PVector.y > yMax) {
+				yMax = PVector.y;
+			}
+		}
+
+		double xDelta = xMax - xMin;
+		double yDelta = yMax - yMin;
+		// if (xDelta == 0 || yDelta == 0) {
+		// return points;
+		// }
+
+		double hn = Math.log(points.size()) / 0.693147180559945 / 2.0;
+		int nHilbert = (int) Math.floor(hn + 0.5);
+		if (nHilbert < 4) {
+			nHilbert = 4;
+		}
+
+		// could also use SortedMap<index -> point>
+		List<Pair<Integer, PVector>> ranks = new ArrayList<>(points.size());
+		double hScale = (1 << nHilbert) - 1.0;
+		// scale coordinates to 2^n - 1
+		for (PVector vh : points) {
+			int ix = (int) (hScale * (vh.x - xMin) / xDelta);
+			int iy = (int) (hScale * (vh.y - yMin) / yDelta);
+			ranks.add(new Pair<>(xy2Hilbert(ix, iy, nHilbert), vh));
+		}
+
+		ranks.sort((a, b) -> Integer.compare(a.getFirst(), b.getFirst()));
+		return ranks;
 	}
 
 	/**

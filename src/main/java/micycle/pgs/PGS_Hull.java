@@ -17,12 +17,11 @@ import uk.osgb.algorithm.concavehull.ConcaveHull;
 import uk.osgb.algorithm.concavehull.TriCheckerChi;
 
 /**
- * Convex and concave hulls (amongst other variations) of polygons and point
- * sets.
+ * Generates various types of geomtric hulls (convex, concave, etc.) for
+ * polygons and point sets.
  * <p>
- * or ... Find minimal coverings (hulls) of polygon arrangements and point/shape
- * sets.
- * 
+ * A hull is the smallest enclosing shape that contains all points in a set.
+ *
  * @author Michael Carleton
  * @since 1.3.0
  */

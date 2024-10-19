@@ -8,7 +8,7 @@ PShape triangles;
 UniformNoise noise;
 
 void setup() {
-  size(800, 800, FX2D);
+  size(1000, 1000, FX2D);
   smooth();
   colorMode(HSB, 1, 1, 1);
   rectMode(CORNER);
@@ -17,7 +17,7 @@ void setup() {
 }
 
 void draw() {
-  fill(0, 0, 0.1, 64);
+  fill(0, 0, 0.05, 64);
   rect(0, 0, width, height);
 
   PShape spiral = PGS_Construction.createLinearSpiral(width/2, height/2, 0.5+mouseX/200f, 250+mouseY/5f);
@@ -25,7 +25,7 @@ void draw() {
   spiral.setFill(false);
   shape(spiral);
 
-  spiral = PGS_Morphology.simplify(spiral, 1);
+  spiral = PGS_Morphology.simplify(spiral, .1);
   spiral = PGS_Morphology.buffer(spiral, 20);
 
   int perimeters = 30; // perimeter sections

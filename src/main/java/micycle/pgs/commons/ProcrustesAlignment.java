@@ -30,29 +30,30 @@ public class ProcrustesAlignment {
 	 * Performs <i>ProcrustesAlignment Analysis</i> to align two polygons.
 	 * <p>
 	 * Finds the optimal scaling, translation and rotation to best align
-	 * <code>transformPolygon</code> with respect to <code>sourcePolygon</code>.
+	 * <code>transformPolygon</code> with respect to <code>referencePolygon</code>.
 	 * <p>
 	 * Note: the polygons should have the same number of vertices.
 	 *
-	 * @param sourcePolygon    the first polygon
+	 * @param referencePolygon the first polygon
 	 * @param transformPolygon the polygon to transform/align
-	 * @return an array containing the optimal translation (x, y), scale, and
-	 *         rotation angle (radians, clockwise) to align transform polygon to
-	 *         source polygon.
+	 * @return an array having 4 values: the optimal translation (x, y), scale, and
+	 *         rotation angle (radians, clockwise) to best align the transform
+	 *         polygon to the reference polygon.
 	 */
-	public static double[] transform(final Polygon sourcePolygon, final Polygon transformPolygon) {
-		final Coordinate[] coordsA = sourcePolygon.getExteriorRing().getCoordinates();
+	public static double[] transform(final Polygon referencePolygon, final Polygon transformPolygon) {
+		final Coordinate[] coordsA = referencePolygon.getExteriorRing().getCoordinates();
 		final Coordinate[] coordsB = transformPolygon.getExteriorRing().getCoordinates();
 
 		if (coordsA.length != coordsB.length) {
-			throw new IllegalArgumentException("Polygon exterior rings are different lengths!");
+			throw new IllegalArgumentException(
+					"Polygon exterior rings are different lengths (" + coordsA.length + ", " + coordsB.length + ")!");
 		}
 
 		// Find optimal translation
-		Coordinate t = findTranslation(sourcePolygon, transformPolygon);
+		Coordinate t = findTranslation(referencePolygon, transformPolygon);
 
 		// Shift to origin (required for scaling & rotation)
-		Coordinate ca = sourcePolygon.getCentroid().getCoordinate();
+		Coordinate ca = referencePolygon.getCentroid().getCoordinate();
 		Coordinate cb = transformPolygon.getCentroid().getCoordinate();
 		translate(coordsA, -ca.x, -ca.y);
 		translate(coordsB, -cb.x, -cb.y);
