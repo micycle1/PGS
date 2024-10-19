@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## **2.0** *(2024-08-xx)*
 
-**Version 2 is built with Java 17**
+**NOTE: Beginning at v2.0, PGS is built with Java 17.**
 
 ### Added
 * `findShortestTour()` to `PGS_PointSet`. Computes an <i>approximate</i> Traveling Salesman path for a set of points.
@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `thomasClusters()` to `PGS_PointSet`. Generates random points having clustered properties using the Thomas Point Process.
 * `transform()` to `PGS_Processing`. Applies a specified transformation function to each child of the given PShape and returns a new PShape containing the transformed children.
 * `apply()` to `PGS_Processing`. Applies a specified function to each child of the given PShape.
+* `toContours()` to `PGS_Conversion`. Extracts the contours from a POLYGON or PATH PShape, represented as lists of PVector points.
 
 ### Changes
 * Packed circles from `PGS_CirclePacking.stochasticPack()` will now always lie within shape bounds.
