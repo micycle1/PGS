@@ -357,8 +357,8 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center"><b>Perimeter Extraction</td>
   </tr>
   <tr>
-    <td valign="top" width="25%"><img src="resources/geometry_processing/pointsOnPerimeter.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/pointsOnPerimeter2.gif"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/pointsOnPerimeter.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/pointOnPerimeter.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/perimeterExtract.gif"></td>
   </tr>
@@ -437,10 +437,12 @@ Much of the functionality (but by no means all) is demonstrated below:
     <tr>
     <td align="center" valign="center"><b>Extract Holes</td>
     <td align="center" valign="center"><b>Nest</td>
+    <td align="center" valign="center"><b>Segments on Exterior</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/geometry_processing/extractHoles.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/nest.gif"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/linesOnExterior.gif"></td>
   </tr>
 </table>
 

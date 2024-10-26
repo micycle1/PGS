@@ -16,13 +16,17 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.SplittableRandom;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.math3.ml.clustering.CentroidCluster;
 import org.apache.commons.math3.ml.clustering.Clusterable;
 import org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer;
@@ -85,8 +89,8 @@ import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
 import micycle.balaban.BalabanSolver;
 import micycle.balaban.Point;
 import micycle.balaban.Segment;
-import micycle.pgs.color.Colors;
 import micycle.pgs.color.ColorUtils;
+import micycle.pgs.color.Colors;
 import micycle.pgs.commons.PolygonDecomposition;
 import micycle.pgs.commons.SeededRandomPointsInGridBuilder;
 import micycle.trapmap.TrapMap;
@@ -272,6 +276,71 @@ public final class PGS_Processing {
 		});
 
 		return coords;
+	}
+
+	/**
+	 * Extracts evenly spaced dashed line segments along the perimeter of a provided
+	 * shape. This method ensures that the segments are distributed uniformly along
+	 * the shape's boundary, with the possibility of adjusting the start position of
+	 * the first line based on an offset.
+	 * 
+	 * @param shape             The shape from which to extract the segments.
+	 * @param lineLength        The length of each segment. Must be a positive
+	 *                          number.
+	 * @param interLineDistance The distance between the end of one segment and the
+	 *                          start of the next. Must be non-negative.
+	 * @param offset            The starting position offset (around the perimeter
+	 *                          [0...1]) for the first line. Values > |1| loop
+	 *                          around the shape. Positive values indicate a
+	 *                          clockwise (CW) direction, and negative values
+	 *                          indicate a counter-clockwise (CCW) direction.
+	 * @return A GROUP PShape whose children are the extracted segments.
+	 * @since 2.0
+	 */
+	public static PShape segmentsOnExterior(PShape shape, double lineLength, double interLineDistance, double offset) {
+		LengthIndexedLine l = makeIndexedLine(shape);
+		lineLength = Math.max(lineLength, 0.1);
+		interLineDistance = Math.max(interLineDistance, 0); // ensure >= 0
+
+		final double perimeter = l.getEndIndex();
+
+		double totalSegmentLength = lineLength + interLineDistance;
+		int numberOfLines = (int) Math.floor(perimeter / totalSegmentLength);
+
+		double adjustmentFactor = perimeter / (numberOfLines * totalSegmentLength);
+		lineLength *= adjustmentFactor;
+		interLineDistance *= adjustmentFactor;
+		totalSegmentLength = lineLength + interLineDistance;
+
+		offset = -offset; // positive values should wrap CW
+		double startingPosition = ((offset % 1.0) + 1.0) % 1.0 * perimeter;
+
+		List<PShape> lines = new ArrayList<>(numberOfLines);
+
+		for (int i = 0; i < numberOfLines; i++) {
+			double lineStart = (startingPosition + i * totalSegmentLength) % perimeter;
+			double lineEnd = (lineStart + lineLength) % perimeter;
+
+			Geometry segment;
+			PShape line;
+			if (lineStart < lineEnd) {
+				segment = l.extractLine(lineStart, lineEnd);
+				line = PGS_Conversion.toPShape(segment);
+				line.setName(String.valueOf(lineStart));
+				lines.add(line);
+			} else {
+				// Handle case where line wraps around the end of the shape (straddles 0)
+				// combine 2 segments into a single linestring
+				Coordinate[] c1 = l.extractLine(lineStart, perimeter).getCoordinates();
+				Coordinate[] c2 = l.extractLine(0, lineEnd).getCoordinates();
+				segment = PGS.GEOM_FACTORY.createLineString(ArrayUtils.addAll(c1, c2));
+				line = PGS_Conversion.toPShape(segment);
+				line.setName(String.valueOf(lineStart));
+				lines.add(line);
+			}
+		}
+
+		return PGS_Conversion.flatten(lines);
 	}
 
 	/**
@@ -1241,8 +1310,8 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Applies a specified transformation function to each child of the given PShape and
-	 * returns a new PShape containing the transformed children.
+	 * Applies a specified transformation function to each child of the given PShape
+	 * and returns a new PShape containing the transformed children.
 	 * <p>
 	 * This method processes each child of the input shape using the provided
 	 * function, which can modify, replace, or filter out shapes. The resulting
@@ -1265,11 +1334,55 @@ public final class PGS_Processing {
 	 *                 that shape will be excluded from the result.
 	 * @return A new PShape containing the transformed children, flattened into a
 	 *         single level.
-	 *
+	 * @see #transformWithIndex(PShape, BiFunction)
 	 * @since 2.0
 	 */
 	public static PShape transform(PShape shape, UnaryOperator<PShape> function) {
 		return PGS_Conversion.flatten(PGS_Conversion.getChildren(shape).stream().map(function).filter(Objects::nonNull).toList());
+	}
+
+	/**
+	 * Applies a specified transformation function to each child of the given
+	 * PShape, providing the index of each child, and returns a new PShape
+	 * containing the transformed children.
+	 * <p>
+	 * This method processes each child of the input shape alongside its index using
+	 * the provided BiFunction. The function can modify, replace, or filter out
+	 * shapes. The resulting transformed shapes are flattened into a new PShape.
+	 * <p>
+	 * The transformation function can:
+	 * <ul>
+	 * <li>Modify the shape in-place and return it</li>
+	 * <li>Create and return a new shape</li>
+	 * <li>Return null to exclude the shape from the final result</li>
+	 * </ul>
+	 * <p>
+	 * Note: This method creates a new PShape and does not modify the original shape
+	 * or its children. The hierarchical structure of the original shape is not
+	 * preserved in the result.
+	 * <p>
+	 * Example usage:
+	 * 
+	 * <pre>{@code
+	 * PShape newShape = PGS_Processing.transformWithIndex(originalShape, (index, child) -> {
+	 * 	return (index % 2 == 0) ? child : null; // Include only even-indexed children
+	 * });
+	 * }</pre>
+	 *
+	 * @param shape    The PShape whose children will be transformed.
+	 * @param function A BiFunction that takes an integer index and a PShape as
+	 *                 input and returns a transformed PShape. If the function
+	 *                 returns null for a shape, that shape will be excluded from
+	 *                 the result.
+	 * @return A new PShape containing the transformed children, flattened into a
+	 *         single level.
+	 * @see #transform(PShape, UnaryOperator)
+	 * @since 2.0
+	 */
+	public static PShape transformWithIndex(PShape shape, BiFunction<Integer, PShape, PShape> function) {
+		List<PShape> children = PGS_Conversion.getChildren(shape);
+		return PGS_Conversion.flatten(
+				IntStream.range(0, children.size()).mapToObj(i -> function.apply(i, children.get(i))).filter(Objects::nonNull).toList());
 	}
 
 	// useful for applying void methods as part of a chain:
@@ -1296,11 +1409,50 @@ public final class PGS_Processing {
 	 * @param applyFunction A Consumer that takes a PShape as input and performs
 	 *                      operations on it.
 	 * @return The original PShape with the function applied to each child.
+	 * @see #applyWithIndex(PShape, BiConsumer)
 	 * @since 2.0
 	 */
 	public static PShape apply(PShape shape, Consumer<PShape> applyFunction) {
 		for (PShape child : PGS_Conversion.getChildren(shape)) {
 			applyFunction.accept(child);
+		}
+		return shape;
+	}
+
+	/**
+	 * Applies a specified function to each child of the given PShape, providing the
+	 * index of each child.
+	 * <p>
+	 * This method iterates over each child of the input PShape and applies the
+	 * provided BiConsumer function to each child along with its index. The function
+	 * can perform any operation on the shapes such as modifying properties or
+	 * applying effects. The index can be used for operations that depend on the
+	 * position of the child within its parent.
+	 * <p>
+	 * The changes are made in place; hence, the original PShape is modified. The
+	 * method returns the same PShape reference for convenience in chaining or
+	 * further use.
+	 * <p>
+	 * Example usage:
+	 * 
+	 * <pre>{@code
+	 * PShape shape = PGS_Processing.applyWithIndex(shape, (index, child) -> {
+	 * 	if (index % 2 == 0)
+	 * 		child.setFill(true);
+	 * });
+	 * }</pre>
+	 *
+	 * @param shape         The PShape whose children will be processed.
+	 * @param applyFunction A BiConsumer that takes an integer index and a PShape as
+	 *                      input and performs operations on it.
+	 * @return The original PShape with the function applied to each indexed child.
+	 * @see #apply(PShape, Consumer)
+	 * @since 2.0
+	 */
+	public static PShape applyWithIndex(PShape shape, BiConsumer<Integer, PShape> applyFunction) {
+		List<PShape> children = PGS_Conversion.getChildren(shape);
+		for (int i = 0; i < children.size(); i++) {
+			applyFunction.accept(i, children.get(i));
 		}
 		return shape;
 	}

@@ -20,9 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `isClockwise()` to `PGS_ShapePredicates`. Determines if the vertices of the specified shape form a clockwise loop.
 * `extractInnerVertices()` to `PGS_Meshing`. Extracts all inner vertices from a mesh.
 * `thomasClusters()` to `PGS_PointSet`. Generates random points having clustered properties using the Thomas Point Process.
-* `transform()` to `PGS_Processing`. Applies a specified transformation function to each child of the given PShape and returns a new PShape containing the transformed children.
-* `apply()` to `PGS_Processing`. Applies a specified function to each child of the given PShape.
+* `transform()` and `transformWithIndex()`* to `PGS_Processing`. Applies a specified transformation function to each child of the given PShape and returns a new PShape containing the transformed children (*additionally with child's index).
+* `apply()` and `applyWithIndex()`* to `PGS_Processing`. Applies a specified function to each child of the given PShape (*additionally with child's index).
 * `toContours()` to `PGS_Conversion`. Extracts the contours from a POLYGON or PATH PShape, represented as lists of PVector points.
+* `segmentsOnExterior()` to `PGS_Processing`. Extracts evenly spaced dashed line segments along the perimeter of a shape.
 
 ### Changes
 * Packed circles from `PGS_CirclePacking.stochasticPack()` will now always lie within shape bounds.
