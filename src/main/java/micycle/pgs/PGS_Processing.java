@@ -279,10 +279,10 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Extracts evenly spaced dashed line segments along the perimeter of a provided
-	 * shape. This method ensures that the segments are distributed uniformly along
-	 * the shape's boundary, with the possibility of adjusting the start position of
-	 * the first line based on an offset.
+	 * Extracts evenly spaced dashed line segments along the perimeter of a shape.
+	 * This method ensures that the segments are distributed uniformly along the
+	 * shape's boundary, with the possibility of adjusting the start position of the
+	 * first line based on an offset.
 	 * 
 	 * @param shape             The shape from which to extract the segments.
 	 * @param lineLength        The length of each segment. Must be a positive
@@ -299,7 +299,7 @@ public final class PGS_Processing {
 	 */
 	public static PShape segmentsOnExterior(PShape shape, double lineLength, double interLineDistance, double offset) {
 		LengthIndexedLine l = makeIndexedLine(shape);
-		lineLength = Math.max(lineLength, 0.1);
+		lineLength = Math.max(lineLength, 0.5);
 		interLineDistance = Math.max(interLineDistance, 0); // ensure >= 0
 
 		final double perimeter = l.getEndIndex();

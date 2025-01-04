@@ -450,6 +450,11 @@ public final class PGS_Optimisation {
 		return circles;
 	}
 
+	/**
+	 * Various packing heuristics for
+	 * {@link micycle.pgs.PGS_Optimisation#rectPack(List, int, int, RectPackHeuristic)
+	 * rectpack()}.
+	 */
 	public enum RectPackHeuristic {
 
 		/**

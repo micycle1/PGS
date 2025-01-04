@@ -1336,6 +1336,8 @@ public final class PGS_Conversion {
 	 * @param vertices list of (un)closed shape vertices
 	 * @return a PATH PShape (either open linestring or closed polygon)
 	 * @see #fromPVector(PVector...)
+	 * @see #fromContours(List, List)
+	 * @see #toPointsPShape(Collection)
 	 */
 	public static PShape fromPVector(Collection<PVector> vertices) {
 		List<PVector> verticesList = new ArrayList<>(vertices);
@@ -1389,7 +1391,7 @@ public final class PGS_Conversion {
 	 * @return
 	 * @since 1.4.0
 	 */
-	public static PShape fromPVector(List<PVector> shell, @Nullable List<List<PVector>> holes) {
+	public static PShape fromContours(List<PVector> shell, @Nullable List<List<PVector>> holes) {
 		boolean closed = false;
 		if (!shell.isEmpty() && shell.get(0).equals(shell.get(shell.size() - 1))) {
 			closed = true;
@@ -1508,8 +1510,8 @@ public final class PGS_Conversion {
 
 	/**
 	 * Recurses a GROUP PShape, finding <b>all</b> of its non-GROUP child PShapes.
+	 * If the shape type is not GROUP, only it is returned.
 	 * <p>
-	 * 
 	 * Note: this method differs from {@link processing.core.PShape#getChildren()
 	 * PShape.getChildren()}. That method will return GROUP child shapes, whereas
 	 * this method will recurse such shapes, returing their non-group children (in
@@ -1946,11 +1948,10 @@ public final class PGS_Conversion {
 	}
 
 	/**
-	 * PShapeData is a utility class for storing and manipulating the visual
-	 * properties of PShapes from the Processing library. It encapsulates the
-	 * stroke, fill, stroke color, stroke weight, and fill color attributes by
-	 * directly accessing and modifying the corresponding fields of a given PShape
-	 * using reflection.
+	 * A utility class for storing and manipulating the visual properties of PShapes
+	 * from the Processing library. It encapsulates the stroke, fill, stroke color,
+	 * stroke weight, and fill color attributes by directly accessing and modifying
+	 * the corresponding fields of a given PShape using reflection.
 	 */
 	public static class PShapeData {
 

@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_Morphology.simplifyDCE()` now supports GROUP shapes and polygon holes.
 * `PGS_Morphology.interpolate()` is much faster on shapes with many vertices.
 * Removed superfluous `height` argument from `PGS.createSupercircle()` method signature.
+* Renamed `fromPVector(shell, holes)` in `PGS_Conversion` to `fromContours(shell, holes)`.
 
 ### Fixed
 * `urquhartFaces()`, `relativeNeighborFaces()`, `gabrielFaces()` and `spannerFaces()` from `PGS_Meshing` now preserve holes from the input.

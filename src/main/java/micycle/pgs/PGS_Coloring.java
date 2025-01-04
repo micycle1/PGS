@@ -20,9 +20,9 @@ import micycle.pgs.commons.RLFColoring;
 import processing.core.PShape;
 
 /**
- * This class provides methods to color meshes and mesh-like shapes. It ensures
- * that no two adjacent faces share the same color while also minimizing the
- * total number of colors used.
+ * Minimal colorings of meshes (or mesh-like shapes). It ensures that no two
+ * adjacent faces share the same color while also minimizing the total number of
+ * colors used.
  * <p>
  * This class differentiates between "conforming meshes" and "non-conforming
  * meshes".
@@ -48,9 +48,9 @@ public final class PGS_Coloring {
 
 	/**
 	 * Specifies the algorithm/heuristic used by the underlying graph coloring
-	 * process to find a coloring for mesh faces. RLF, followed by DSATUR generally
-	 * produce the "best" colorings (as measured by chromatic number, where lower is
-	 * better).
+	 * process to find an approximate minimal coloring for mesh faces.
+	 * <code>RLF</code>, followed by <code>DSATUR</code> generally produce the
+	 * "best" colorings (as measured by chromatic number, where lower is better).
 	 */
 	public enum ColoringAlgorithm {
 		/**

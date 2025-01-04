@@ -292,7 +292,7 @@ public final class PGS_ShapeBoolean {
 		}
 		holez = children.stream().map(PGS_Conversion::toPVector).collect(Collectors.toList());
 
-		return PGS_Conversion.fromPVector(PGS_Conversion.toPVector(shell), holez);
+		return PGS_Conversion.fromContours(PGS_Conversion.toPVector(shell), holez);
 	}
 
 	/**
