@@ -256,7 +256,6 @@ public final class PGS_PointSet {
 	 *                one standard deviation of the mean; three standard deviations
 	 *                account for 99.7% of the sample population
 	 * @param n       number of points to generate
-	 * @return
 	 * @see #gaussian(double, double, double, int, long) seeded gaussian()
 	 */
 	public static List<PVector> gaussian(double centerX, double centerY, double sd, int n) {
@@ -378,8 +377,7 @@ public final class PGS_PointSet {
 	 * @param centerX x coordinate of the hexagon center point
 	 * @param centerY y coordinate of the hexagon center point
 	 * @param length  layers/no. of points on each hexagon side
-	 * @distance inter-point distance
-	 * @return
+	 * @param distance inter-point distance
 	 */
 	public static List<PVector> hexagon(double centerX, double centerY, int length, double distance) {
 		final float xOffset = (float) centerX;

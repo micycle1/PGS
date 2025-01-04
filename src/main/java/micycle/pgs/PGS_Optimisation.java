@@ -65,7 +65,7 @@ public final class PGS_Optimisation {
 	 * counter-clockwise.
 	 * 
 	 * @param shape a rectangular shape that covers/bounds the input
-	 * @return
+	 * @return polygonal shape having 4 coordinates
 	 */
 	public static PShape envelope(PShape shape) {
 		return toPShape(fromPShape(shape).getEnvelope());
@@ -359,8 +359,7 @@ public final class PGS_Optimisation {
 	 *         intersect the obstacles and lies within the specified boundary.
 	 */
 	public static PShape largestEmptyCircle(PShape obstacles, @Nullable PShape boundary, double tolerance) {
-		LargestEmptyCircle lec = new LargestEmptyCircle(fromPShape(obstacles), boundary == null ? null : fromPShape(boundary),
-				Math.max(0.01, tolerance));
+		LargestEmptyCircle lec = new LargestEmptyCircle(fromPShape(obstacles), boundary == null ? null : fromPShape(boundary), Math.max(0.01, tolerance));
 		double wh = lec.getRadiusLine().getLength() * 2;
 		Polygon circle = createEllipse(PGS.coordFromPoint(lec.getCenter()), wh, wh);
 		return toPShape(circle);
@@ -389,8 +388,8 @@ public final class PGS_Optimisation {
 	 */
 	public static List<PVector> largestEmptyCircles(PShape obstacles, @Nullable PShape boundary, int n, double tolerance) {
 		tolerance = Math.max(0.01, tolerance);
-		LargestEmptyCircles lecs = new LargestEmptyCircles(obstacles == null ? null : fromPShape(obstacles),
-				boundary == null ? null : fromPShape(boundary), tolerance);
+		LargestEmptyCircles lecs = new LargestEmptyCircles(obstacles == null ? null : fromPShape(obstacles), boundary == null ? null : fromPShape(boundary),
+				tolerance);
 
 		final List<PVector> out = new ArrayList<>();
 		for (int i = 0; i < n; i++) {
@@ -605,8 +604,8 @@ public final class PGS_Optimisation {
 	 * O(n*log(n)), rather than the naive O(n*n) brute-force approach.
 	 * 
 	 * @param points a set of 2D points, represented by PVectors
-	 * @return a List<PVector> containing exactly two elements which are the closest
-	 *         pair of points among those in the set.
+	 * @return a List of PVectors containing exactly two elements which are the
+	 *         closest pair of points among those in the set.
 	 * @since 1.1.0
 	 * @see #farthestPointPair(Collection)
 	 */
@@ -625,7 +624,7 @@ public final class PGS_Optimisation {
 	 * faster).
 	 * 
 	 * @param points a set of 2D points, represented by PVectors
-	 * @return a List<PVector> containing exactly two elements which are the
+	 * @return a List of PVectors containing exactly two elements which are the
 	 *         farthest pair of points among those in the set.
 	 * @since 1.1.0
 	 * @see #closestPointPair(Collection)

@@ -373,7 +373,7 @@ public final class PGS_CirclePacking {
 	 * 
 	 * <p>
 	 * This is an implementation of 'A circle packing algorithm' by Charles R.
-	 * Collins & Kenneth Stephenson.
+	 * Collins &amp; Kenneth Stephenson.
 	 * 
 	 * @param triangulation represents the pattern of tangencies; vertices connected
 	 *                      by an edge inthe triangulation represent tangent circles
@@ -393,7 +393,7 @@ public final class PGS_CirclePacking {
 	 * triangulation.
 	 * <p>
 	 * This is an implementation of 'A circle packing algorithm' by Charles R.
-	 * Collins & Kenneth Stephenson.
+	 * Collins &amp; Kenneth Stephenson.
 	 * 
 	 * @param triangulation represents the pattern of tangencies; vertices connected
 	 *                      by an edge inthe triangulation represent tangent circles

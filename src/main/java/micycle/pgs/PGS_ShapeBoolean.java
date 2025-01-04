@@ -152,7 +152,7 @@ public final class PGS_ShapeBoolean {
 	 * @param shapes A variable number of PShape instances to be unified.
 	 * @return A new PShape object representing the union of the input shapes.
 	 * @see #union(PShape, PShape) For a union operation on two shapes.
-	 * @see #union(List) For a union operation on a list of shapes.
+	 * @see #union(PShape...) For a union operation on a list of shapes.
 	 */
 
 	public static PShape union(PShape... shapes) {
@@ -282,7 +282,6 @@ public final class PGS_ShapeBoolean {
 	 *              lie within the shell
 	 * @since 1.4.0
 	 * @see #subtract(PShape, PShape)
-	 * @return
 	 */
 	public static PShape simpleSubtract(PShape shell, PShape holes) {
 		List<PShape> children = PGS_Conversion.getChildren(holes);

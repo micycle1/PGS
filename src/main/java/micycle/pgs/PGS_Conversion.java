@@ -1128,7 +1128,7 @@ public final class PGS_Conversion {
 
 	/**
 	 * Writes a shape into <i>Well-Known Binary</i> format. The WKB format is
-	 * specified in the OGC <i>Simple Features for SQL specification</i></a>.
+	 * specified in the OGC <i>Simple Features for SQL specification</i>.
 	 *
 	 * @param shape shape to process
 	 * @return WKB byte representation of shape
@@ -1372,7 +1372,7 @@ public final class PGS_Conversion {
 	 *
 	 * @param vertices list of (un)closed shape vertices
 	 * @return a PATH PShape (either open linestring or closed polygon)
-	 * @see #fromPVector(List)
+	 * @see #fromPVector(PVector...)
 	 */
 	public static PShape fromPVector(PVector... vertices) {
 		return fromPVector(Arrays.asList(vertices));
@@ -1446,7 +1446,7 @@ public final class PGS_Conversion {
 	 *                   in the output if the input forms a closed polygon
 	 * @return coordinate array in the form [[x1, y1], [x2, y2]]
 	 * @since 1.4.0 an array of coordinates representing the PShape
-	 * @see #fromArray(double[][])
+	 * @see #fromArray(double[][], boolean)
 	 */
 	public static double[][] toArray(PShape shape, boolean keepClosed) {
 		List<PVector> points = toPVector(shape); // CLOSE
@@ -1470,7 +1470,7 @@ public final class PGS_Conversion {
 	 * @param close close the coordinates (if unclosed)
 	 * @return a PShape represented by the coordinates
 	 * @since 1.4.0
-	 * @see #toArray(PShape)
+	 * @see #toArray(PShape, boolean)
 	 */
 	public static PShape fromArray(double[][] shape, boolean close) {
 		List<PVector> points = new ArrayList<>(shape.length);
@@ -1599,7 +1599,7 @@ public final class PGS_Conversion {
 	 *
 	 * @param shape
 	 * @return the input object (having now been mutated)
-	 * @see {@link #setAllFillColor(PShape, int)}
+	 * @see #setAllFillColor(PShape, int)
 	 */
 	public static PShape setAllStrokeColor(PShape shape, int color, double strokeWeight) {
 		getChildren(shape).forEach(child -> {

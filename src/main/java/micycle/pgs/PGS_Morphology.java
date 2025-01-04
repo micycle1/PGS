@@ -90,8 +90,7 @@ public final class PGS_Morphology {
 	public static PShape buffer(PShape shape, double buffer, OffsetStyle bufferStyle) {
 		Geometry g = fromPShape(shape);
 		final int segments = (int) Math.ceil(BufferParameters.DEFAULT_QUADRANT_SEGMENTS + Math.sqrt(buffer));
-		BufferParameters bufParams = new BufferParameters(segments, BufferParameters.CAP_FLAT, bufferStyle.style,
-				BufferParameters.DEFAULT_MITRE_LIMIT);
+		BufferParameters bufParams = new BufferParameters(segments, BufferParameters.CAP_FLAT, bufferStyle.style, BufferParameters.DEFAULT_MITRE_LIMIT);
 		BufferOp b = new BufferOp(g, bufParams);
 		return toPShape(b.getResultGeometry(buffer));
 	}
@@ -295,7 +294,6 @@ public final class PGS_Morphology {
 	 * @return A new, simplified copy of the input shape, with the least significant
 	 *         kinks or vertices removed according to the provided fraction.
 	 * @since 2.0
-	 * @see PGS_Morphology#simplifyDCE(PShape, int)
 	 */
 	public static PShape simplifyDCE(PShape shape, DCETerminationCallback terminationCallback) {
 		Geometry g = fromPShape(shape);
@@ -663,7 +661,7 @@ public final class PGS_Morphology {
 	 *                  offset that does not smoothly join up.
 	 * @param phase     sine wave phase. corresponds to the fraction (0...1) around
 	 *                  the shape perimeter where the wave starts (0 displacement).
-	 * @return
+	 * @return warped polygonal shape
 	 * @since 1.3.0
 	 */
 	public static PShape sineWarp(PShape shape, double magnitude, double frequency, double phase) {
@@ -679,8 +677,7 @@ public final class PGS_Morphology {
 		final CoordinateList coords = new CoordinateList();
 
 		for (double distance = 0; distance < length; distance++) {
-			final Coordinate coord = l.extractPoint(distance,
-					Math.sin(Math.PI * 2 * frequency * distance / length + (Math.PI * 2 * phase)) * magnitude);
+			final Coordinate coord = l.extractPoint(distance, Math.sin(Math.PI * 2 * frequency * distance / length + (Math.PI * 2 * phase)) * magnitude);
 			coords.add(coord);
 		}
 		coords.closeRing();
@@ -707,7 +704,7 @@ public final class PGS_Morphology {
 	 *                   warping. When true, shapes with long edges will undergo
 	 *                   warping along the whole edge (rather than only at the
 	 *                   original vertices).
-	 * @return
+	 * @return warped polygonal shape
 	 * @see #fieldWarp(PShape, double, double, double, boolean, int)
 	 */
 	public static PShape fieldWarp(PShape shape, double magnitude, double noiseScale, boolean densify) {
@@ -737,7 +734,7 @@ public final class PGS_Morphology {
 	 * @param noiseSeed  a seed to pass to the underlying noise generator
 	 * 
 	 * @see #fieldWarp(PShape, double, double, boolean)
-	 * @return
+	 * @return warped polygonal shape
 	 */
 	public static PShape fieldWarp(PShape shape, double magnitude, double noiseScale, double time, boolean densify, long noiseSeed) {
 		float scale = Math.max(1, (float) noiseScale * 500f);

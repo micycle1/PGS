@@ -69,8 +69,7 @@ public class PGS_Hull {
 	 */
 	public static PShape concaveHull(PShape shapeSet, double concavity, boolean tight) {
 		Geometry g = PGS_Conversion.fromPShape(shapeSet);
-		if (g.getGeometryType().equals(Geometry.TYPENAME_MULTIPOLYGON)
-				|| g.getGeometryType().equals(Geometry.TYPENAME_GEOMETRYCOLLECTION)) {
+		if (g.getGeometryType().equals(Geometry.TYPENAME_MULTIPOLYGON) || g.getGeometryType().equals(Geometry.TYPENAME_GEOMETRYCOLLECTION)) {
 			g = g.union();
 		}
 		final ConcaveHullOfPolygons hull = new ConcaveHullOfPolygons(g);
@@ -151,6 +150,7 @@ public class PGS_Hull {
 	 *                  <code>0.05–0.2</code> typically produce optimal or
 	 *                  near-optimal shape characterization across a wide range of
 	 *                  point distributions.
+	 *                  </ul>
 	 * @return
 	 * @see #concaveHullBFS(List, double)
 	 */

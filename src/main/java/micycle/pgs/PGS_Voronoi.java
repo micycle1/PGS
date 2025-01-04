@@ -133,7 +133,6 @@ public final class PGS_Voronoi {
 	 *                      based on their cell centroids.
 	 * @return A GROUP PShape where each child shape represents a Voronoi cell.
 	 * @since 2.0
-	 * @see #innerVoronoi(PShape)
 	 * @see #innerVoronoi(PShape, boolean)
 	 * @see #innerVoronoi(PShape, Collection)
 	 * @see #innerVoronoi(PShape, Collection, int)
@@ -271,7 +270,6 @@ public final class PGS_Voronoi {
 	 * 
 	 * @param points the set of points to use as Voronoi sites
 	 * @return a GROUP PShape, where each child shape is a Voronoi cell
-	 * @see #innerVoronoi(PShape)
 	 * @see #innerVoronoi(PShape, boolean, double[], Collection, int)
 	 */
 	public static PShape innerVoronoi(Collection<PVector> points) {
@@ -285,7 +283,6 @@ public final class PGS_Voronoi {
 	 * @param points      the set of points to use as Voronoi sites
 	 * @param relaxations the number of times to relax the diagram. 0 or greater.
 	 * @return a GROUP PShape, where each child shape is a Voronoi cell
-	 * @see #innerVoronoi(PShape)
 	 * @see #innerVoronoi(PShape, boolean, double[], Collection, int)
 	 */
 	public static PShape innerVoronoi(Collection<PVector> points, int relaxations) {
@@ -301,7 +298,6 @@ public final class PGS_Voronoi {
 	 *               boundary of the voronoi diagram. the boundary must fully
 	 *               contain the points.
 	 * @return a GROUP PShape, where each child shape is a Voronoi cell
-	 * @see #innerVoronoi(PShape)
 	 */
 	public static PShape innerVoronoi(Collection<PVector> points, double[] bounds) {
 		return innerVoronoi(PGS_Conversion.toPointsPShape(points), false, bounds, null, 0);
@@ -318,7 +314,6 @@ public final class PGS_Voronoi {
 	 *                    the shape.
 	 * @param relaxations the number of times to relax the diagram. 0 or greater.
 	 * @return a GROUP PShape, where each child shape is a Voronoi cell
-	 * @see #innerVoronoi(PShape)
 	 * @see #innerVoronoi(PShape, boolean, double[], Collection, int)
 	 */
 	public static PShape innerVoronoi(Collection<PVector> points, double[] bounds, int relaxations) {
@@ -345,8 +340,6 @@ public final class PGS_Voronoi {
 	 *         point. The PShape is of type GROUP, allowing for collective
 	 *         manipulation of the cells.
 	 * @since 2.0
-	 * @see #innerVoronoi(PShape) for generating a Voronoi diagram from a PShape
-	 *      directly.
 	 * @see #innerVoronoi(PShape, boolean, double[], Collection, int) for a more
 	 *      detailed method that allows for additional customization of the Voronoi
 	 *      diagram generation process.
@@ -366,12 +359,10 @@ public final class PGS_Voronoi {
 	 * 
 	 * @param shape a GROUP PShape consisting of any number of non-intersecting
 	 *              polygonal, lineal, or points child shapes
-	 * @return a GROUP PShape, where each child shape is a Voronoi cell, bounded by
-	 *         the envelope all shapes
-	 * @since 1.3.0
 	 * @return GROUP shape consisting of voronoi cells; each cell corresponds to an
 	 *         area around a line segment for which the closest line segment to any
 	 *         point in that area is the line segment
+	 * @since 1.3.0
 	 */
 	public static PShape compoundVoronoi(PShape shape) {
 		return compoundVoronoi(shape, null);
@@ -390,12 +381,10 @@ public final class PGS_Voronoi {
 	 * @param bounds an array of the form [minX, minY, maxX, maxY] defining the
 	 *               boundary of the voronoi diagram. the boundary must fully
 	 *               contain the shape.
-	 * @return a GROUP PShape, where each child shape is a Voronoi cell, bounded by
-	 *         the envelope all shapes
-	 * @since 1.3.0
 	 * @return GROUP shape consisting of voronoi cells; each cell corresponds to an
 	 *         area around a line segment for which the closest line segment to any
 	 *         point in that area is the line segment
+	 * @since 1.3.0
 	 */
 	public static PShape compoundVoronoi(PShape shape, double[] bounds) {
 		Geometry g = fromPShape(shape);

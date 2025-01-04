@@ -196,7 +196,7 @@ public final class PGS_Processing {
 	 * 
 	 * @param shape          The shape from which to extract points. Should have
 	 *                       polygonal members.
-	 * @param pointsPerRing  The number of points to extract per ring, evenly
+	 * @param points         The number of points to extract <b>per ring</b>, evenly
 	 *                       distributed around each ring's boundary.
 	 * @param offsetDistance The offset distance measured perpendicular to each
 	 *                       point on the ring's boundary. Positive values offset
@@ -388,8 +388,8 @@ public final class PGS_Processing {
 		if (from > to) {
 			final Geometry l1 = l.extractLine(length * from, length);
 			final Geometry l2 = l.extractLine(0, length * to);
-			return toPShape(GEOM_FACTORY.createLineString(
-					Stream.concat(Arrays.stream(l1.getCoordinates()), Arrays.stream(l2.getCoordinates())).toArray(Coordinate[]::new)));
+			return toPShape(GEOM_FACTORY
+					.createLineString(Stream.concat(Arrays.stream(l1.getCoordinates()), Arrays.stream(l2.getCoordinates())).toArray(Coordinate[]::new)));
 		}
 
 		/*
@@ -576,8 +576,7 @@ public final class PGS_Processing {
 
 		final IIncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape);
 		final boolean constrained = !tin.getConstraints().isEmpty();
-		final double totalArea = StreamSupport.stream(tin.getConstraints().spliterator(), false)
-				.mapToDouble(c -> ((PolygonConstraint) c).getArea()).sum();
+		final double totalArea = StreamSupport.stream(tin.getConstraints().spliterator(), false).mapToDouble(c -> ((PolygonConstraint) c).getArea()).sum();
 
 		// use arrays to hold variables (to enable assignment during consumer)
 		final SimpleTriangle[] largestTriangle = new SimpleTriangle[1];
@@ -696,8 +695,7 @@ public final class PGS_Processing {
 	 *         within the given shape
 	 * @see #generateRandomGridPoints(PShape, int, boolean, double)
 	 */
-	public static List<PVector> generateRandomGridPoints(PShape shape, int maxPoints, boolean constrainedToCircle, double gutterFraction,
-			long randomSeed) {
+	public static List<PVector> generateRandomGridPoints(PShape shape, int maxPoints, boolean constrainedToCircle, double gutterFraction, long randomSeed) {
 		Geometry g = fromPShape(shape);
 		IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(g);
 
@@ -888,8 +886,7 @@ public final class PGS_Processing {
 	public static PShape polygonizeLines(List<PVector> lineSegmentVertices) {
 		// TODO constructor for LINES PShape
 		if (lineSegmentVertices.size() % 2 != 0) {
-			System.err.println(
-					"The input to polygonizeLines() contained an odd number of vertices. The method expects successive pairs of vertices.");
+			System.err.println("The input to polygonizeLines() contained an odd number of vertices. The method expects successive pairs of vertices.");
 			return new PShape();
 		}
 
@@ -1053,8 +1050,7 @@ public final class PGS_Processing {
 			final List<PVector> samplePoints = PGS_Processing.generateRandomGridPoints(shape, samples, false, 0.8, seed);
 			KMeansPlusPlusClusterer<Clusterable> clusterer = new KMeansPlusPlusClusterer<>(parts, 20, new EuclideanDistance(),
 					new XoRoShiRo128PlusRandomGenerator(seed));
-			List<? extends Clusterable> cl = samplePoints.stream().map(p -> (Clusterable) () -> new double[] { p.x, p.y })
-					.collect(Collectors.toList());
+			List<? extends Clusterable> cl = samplePoints.stream().map(p -> (Clusterable) () -> new double[] { p.x, p.y }).collect(Collectors.toList());
 			List<CentroidCluster<Clusterable>> clusters = clusterer.cluster((Collection<Clusterable>) cl);
 			if (clusters.size() < 3) {
 				// since voronoi needs 3+ vertices
@@ -1246,8 +1242,7 @@ public final class PGS_Processing {
 	 * @since 1.3.0
 	 */
 	public static PShape cleanCoverage(PShape coverage, double distanceTolerance, double angleTolerance) {
-		final List<Geometry> geometries = PGS_Conversion.getChildren(coverage).stream().map(PGS_Conversion::fromPShape)
-				.collect(Collectors.toList());
+		final List<Geometry> geometries = PGS_Conversion.getChildren(coverage).stream().map(PGS_Conversion::fromPShape).collect(Collectors.toList());
 		final FeatureCollection features = FeatureDatasetFactory.createFromGeometry(geometries);
 
 		final CoverageCleaner cc = new CoverageCleaner(features, new DummyTaskMonitor());
@@ -1381,8 +1376,7 @@ public final class PGS_Processing {
 	 */
 	public static PShape transformWithIndex(PShape shape, BiFunction<Integer, PShape, PShape> function) {
 		List<PShape> children = PGS_Conversion.getChildren(shape);
-		return PGS_Conversion.flatten(
-				IntStream.range(0, children.size()).mapToObj(i -> function.apply(i, children.get(i))).filter(Objects::nonNull).toList());
+		return PGS_Conversion.flatten(IntStream.range(0, children.size()).mapToObj(i -> function.apply(i, children.get(i))).filter(Objects::nonNull).toList());
 	}
 
 	// useful for applying void methods as part of a chain:
@@ -1458,10 +1452,9 @@ public final class PGS_Processing {
 	}
 
 	private static Polygon toGeometry(Envelope envelope) {
-		return GEOM_FACTORY
-				.createPolygon(GEOM_FACTORY.createLinearRing(new Coordinate[] { new Coordinate(envelope.getMinX(), envelope.getMinY()),
-						new Coordinate(envelope.getMaxX(), envelope.getMinY()), new Coordinate(envelope.getMaxX(), envelope.getMaxY()),
-						new Coordinate(envelope.getMinX(), envelope.getMaxY()), new Coordinate(envelope.getMinX(), envelope.getMinY()) }));
+		return GEOM_FACTORY.createPolygon(GEOM_FACTORY.createLinearRing(new Coordinate[] { new Coordinate(envelope.getMinX(), envelope.getMinY()),
+				new Coordinate(envelope.getMaxX(), envelope.getMinY()), new Coordinate(envelope.getMaxX(), envelope.getMaxY()),
+				new Coordinate(envelope.getMinX(), envelope.getMaxY()), new Coordinate(envelope.getMinX(), envelope.getMinY()) }));
 	}
 
 	/**

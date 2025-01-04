@@ -69,8 +69,8 @@ public class PGS_Construction {
 	 * @param maxWidth  maximum width of generated random polygon
 	 * @param maxHeight maximum height of generated random polygon
 	 * @return a PShape representing the generated polygon
-	 * @see {@link #createRandomPolygonExact(int, double, double)
-	 *      createRandomPolygonExact()} to specify exact dimensions
+	 * @see {@link #createRandomPolygonExact(int, double, double)}
+	 *      createRandomPolygonExact()} to specify exact dimensions.
 	 */
 	public static PShape createRandomPolygon(int n, double maxWidth, double maxHeight) {
 		return createRandomPolygon(n, maxWidth, maxHeight, System.nanoTime());
@@ -88,9 +88,8 @@ public class PGS_Construction {
 	 *      createRandomPolygonExact()} to specify exact dimensions
 	 */
 	public static PShape createRandomPolygon(int n, double maxWidth, double maxHeight, long seed) {
-		return PGS_Transformation.translateEnvelopeTo(
-				PGS_Conversion.fromPVector(RandomPolygon.generateRandomConvexPolygon(n, maxWidth, maxHeight, seed)), maxWidth / 2,
-				maxHeight / 2);
+		return PGS_Transformation.translateEnvelopeTo(PGS_Conversion.fromPVector(RandomPolygon.generateRandomConvexPolygon(n, maxWidth, maxHeight, seed)),
+				maxWidth / 2, maxHeight / 2);
 	}
 
 	/**
@@ -511,8 +510,7 @@ public class PGS_Construction {
 	 * @return the ring shape
 	 * @since 1.1.3
 	 */
-	public static PShape createRing(double centerX, double centerY, double outerRadius, double innerRadius, double orientation,
-			double angle) {
+	public static PShape createRing(double centerX, double centerY, double outerRadius, double innerRadius, double orientation, double angle) {
 		final double outerR = Math.max(outerRadius, innerRadius);
 		final double innerR = Math.min(outerRadius, innerRadius);
 
@@ -565,12 +563,10 @@ public class PGS_Construction {
 	 * @return the sponge shape
 	 * @since 1.4.0
 	 */
-	public static PShape createSponge(double width, double height, int generators, double thickness, double smoothing, int classes,
-			long seed) {
+	public static PShape createSponge(double width, double height, int generators, double thickness, double smoothing, int classes, long seed) {
 		// A Simple and Effective Geometric Representation for Irregular Porous
 		// Structure Modeling
-		List<PVector> points = PGS_PointSet.random(thickness, thickness / 2, width - thickness / 2, height - thickness / 2, generators,
-				seed);
+		List<PVector> points = PGS_PointSet.random(thickness, thickness / 2, width - thickness / 2, height - thickness / 2, generators, seed);
 		if (points.size() < 6) {
 			return new PShape();
 		}
@@ -825,15 +821,14 @@ public class PGS_Construction {
 	 * @param seed         the seed for the random number generator
 	 * @since 1.4.0
 	 */
-	public static PShape createSuperRandomPolygon(double dimensions, int cells, double markFraction, int smoothing, int depth,
-			boolean orthogonal, boolean holes, long seed) {
+	public static PShape createSuperRandomPolygon(double dimensions, int cells, double markFraction, int smoothing, int depth, boolean orthogonal,
+			boolean holes, long seed) {
 		Random r = new XoRoShiRo128PlusRandom(seed);
-		SRPolygonGenerator generator = new SRPolygonGenerator(cells, cells, markFraction, holes, orthogonal, !orthogonal, smoothing, depth,
-				!orthogonal, r);
+		SRPolygonGenerator generator = new SRPolygonGenerator(cells, cells, markFraction, holes, orthogonal, !orthogonal, smoothing, depth, !orthogonal, r);
 		List<List<double[]>> rings = generator.getPolygon();
 		PShape exterior = PGS_Conversion.fromArray(rings.get(0).toArray(new double[0][0]), true);
-		List<PShape> interiorRings = rings.subList(1, rings.size()).stream()
-				.map(l -> PGS_Conversion.fromArray(l.toArray(new double[0][0]), true)).collect(Collectors.toList());
+		List<PShape> interiorRings = rings.subList(1, rings.size()).stream().map(l -> PGS_Conversion.fromArray(l.toArray(new double[0][0]), true))
+				.collect(Collectors.toList());
 
 		PShape polygon = PGS_ShapeBoolean.simpleSubtract(exterior, PGS_Conversion.flatten(interiorRings));
 		polygon = PGS_Transformation.resizeByMajorAxis(polygon, dimensions);
@@ -891,8 +886,7 @@ public class PGS_Construction {
 		centerY -= width / 2;
 		// create the two triangles from the first subdivision
 		final double[][] tri1 = new double[][] { { 0 + centerX, width + centerY }, { centerX, centerY }, { width + centerX, centerY } };
-		final double[][] tri2 = new double[][] { { width + centerX, centerY }, { width + centerX, width + centerY },
-				{ centerX, width + centerY } };
+		final double[][] tri2 = new double[][] { { width + centerX, centerY }, { width + centerX, width + centerY }, { centerX, width + centerY } };
 
 		// get points for each half of square recursively
 		final List<double[]> half1 = subdivide(tri1, curveOrder);

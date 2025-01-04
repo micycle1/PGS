@@ -435,7 +435,7 @@ public final class PGS_Contour {
 	 * @param shape
 	 * @param highPoint       position of "high" point within the shape
 	 * @param intervalSpacing distance between successive isolines
-	 * @return
+	 * @return PShape containing isolines linework 
 	 */
 	public static PShape isolines(PShape shape, PVector highPoint, double intervalSpacing) {
 
@@ -520,7 +520,7 @@ public final class PGS_Contour {
 			 * shape
 			 */
 			out = toPShape(DouglasPeuckerSimplifier.simplify(ld.getResult(), 1).intersection(g));
-			PGS_Conversion.disableAllFill(out);
+			out.setStrokeCap(PConstants.SQUARE);
 		} catch (Exception e2) {
 			// catch non-noded intersection
 		}

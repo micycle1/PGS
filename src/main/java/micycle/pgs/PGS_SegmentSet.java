@@ -46,8 +46,7 @@ import processing.core.PVector;
  * <p>
  * Methods in this class output segments as collections of
  * {@link micycle.pgs.commons.PEdge PEdges}; such collections can be converted
- * into LINES PShapes with {@link #toPShape(Collection)
- * toPShape(Collection<PEdge>)}.
+ * into LINES PShapes with {@link #toPShape(Collection) toPShape(edges)}.
  * 
  * @author Michael Carleton
  * @since 1.3.0
@@ -89,8 +88,7 @@ public class PGS_SegmentSet {
 		final List<SegmentString> segments = new ArrayList<>(effectiveN);
 		for (int i = 0; i < effectiveN; i++) {
 			final double length = maxLength;
-			final Coordinate a = new Coordinate(random.nextDouble() * (width - length * 2) + length,
-					random.nextDouble() * (height - length * 2) + length);
+			final Coordinate a = new Coordinate(random.nextDouble() * (width - length * 2) + length, random.nextDouble() * (height - length * 2) + length);
 			final double theta = random.nextDouble(Math.PI * 2);
 			final double x = FastMath.cosQuick(theta) * length;
 			final double y = FastMath.sinQuick(theta) * length;
@@ -186,7 +184,8 @@ public class PGS_SegmentSet {
 	 * The <code>graphMatchedSegments</code> methods are arguably the best
 	 * approaches for random segment set generation.
 	 * 
-	 * @param points point set from which to compute segments
+	 * @param triangulation triangulation object to use for vertices and graph
+	 *                      connectivity
 	 * @return set of non-intersecting line segments
 	 */
 	public static List<PEdge> graphMatchedSegments(IIncrementalTin triangulation) {
@@ -259,16 +258,15 @@ public class PGS_SegmentSet {
 	 *                  generator
 	 * @return set of N random non-intersecting line segments
 	 */
-	public static List<PEdge> stochasticSegments(final double width, final double height, final int n, final double minLength,
-			final double maxLength, long seed) {
+	public static List<PEdge> stochasticSegments(final double width, final double height, final int n, final double minLength, final double maxLength,
+			long seed) {
 		boolean monoLength = minLength == maxLength;
 		final SplittableRandom random = new SplittableRandom(seed);
 		List<LineSegment> segments = new ArrayList<>(n);
 
 		find: while (segments.size() < n) {
 			final double length = monoLength ? minLength : random.nextDouble(minLength, maxLength);
-			final Coordinate a = new Coordinate(random.nextDouble() * (width - length * 2) + length,
-					random.nextDouble() * (height - length * 2) + length);
+			final Coordinate a = new Coordinate(random.nextDouble() * (width - length * 2) + length, random.nextDouble() * (height - length * 2) + length);
 			final double theta = random.nextDouble(Math.PI * 2);
 			final double x = FastMath.cosQuick(theta) * length;
 			final double y = FastMath.sinQuick(theta) * length;
@@ -297,25 +295,26 @@ public class PGS_SegmentSet {
 	/**
 	 * Generates a set of N straight parallel segments, centered on a given point.
 	 * 
-	 * @param centerX  the x coordinate of the center of the segments arrangment
-	 * @param centerY  the y coordinate of the center of the segments arrangment
-	 * @param length   length of each segment
-	 * @param spacing  distance between successive segments
-	 * @param rotation angle in radians, where 0 is parallel to x-axis (horizontal)
-	 * @param n        number of segments to generate. if odd then the middle
-	 *                 segment lies on the center point; if even, then the first two
-	 *                 segments are spaced evenly from the center point
-	 * @return
+	 * @param centerX the x coordinate of the center of the segments arrangment
+	 * @param centerY the y coordinate of the center of the segments arrangment
+	 * @param length  length of each segment
+	 * @param spacing distance between successive segments
+	 * @param angle   line angle in radians, where 0 is parallel to x-axis
+	 *                (horizontal)
+	 * @param n       number of segments to generate. if odd then the middle segment
+	 *                lies on the center point; if even, then the first two segments
+	 *                are spaced evenly from the center point
+	 * @return set of N parallel line segments
 	 */
-	public static List<PEdge> parallelSegments(double centerX, double centerY, double length, double d, double angle, int n) {
+	public static List<PEdge> parallelSegments(double centerX, double centerY, double length, double spacing, double angle, int n) {
 		List<PEdge> edges = new ArrayList<>(n);
 		if (n < 1) {
 			return edges;
 		}
 		PVector center = new PVector((float) centerX, (float) centerY);
 
-		float dx = (float) (Math.cos(angle + PConstants.HALF_PI) * d);
-		float dy = (float) (Math.sin(angle + PConstants.HALF_PI) * d);
+		float dx = (float) (Math.cos(angle + PConstants.HALF_PI) * spacing);
+		float dy = (float) (Math.sin(angle + PConstants.HALF_PI) * spacing);
 		float cos = (float) Math.cos(angle);
 		float sin = (float) Math.sin(angle);
 		float l = (float) length;
@@ -383,8 +382,7 @@ public class PGS_SegmentSet {
 	 * @param strokeWeight nullable/optional (default = <code>2</code>)
 	 * @return shape representing segments
 	 */
-	public static PShape toPShape(Collection<PEdge> segments, @Nullable Integer strokeColor, @Nullable Integer strokeCap,
-			@Nullable Integer strokeWeight) {
+	public static PShape toPShape(Collection<PEdge> segments, @Nullable Integer strokeColor, @Nullable Integer strokeCap, @Nullable Integer strokeWeight) {
 		PShape lines = PGS.prepareLinesPShape(strokeColor, strokeCap, strokeWeight);
 		segments.forEach(s -> {
 			lines.vertex(s.a.x, s.a.y);
@@ -500,8 +498,7 @@ public class PGS_SegmentSet {
 	 */
 	public static List<PEdge> filterByAverageLength(List<PEdge> segments, double fraction) {
 		final double lenAvg = segments.stream().mapToDouble(PEdge::length).average().orElse(0);
-		return segments.stream().filter(e -> e.length() > fraction * lenAvg && e.length() < 1 / fraction * lenAvg)
-				.collect(Collectors.toList());
+		return segments.stream().filter(e -> e.length() > fraction * lenAvg && e.length() < 1 / fraction * lenAvg).collect(Collectors.toList());
 	}
 
 	/**
@@ -567,8 +564,7 @@ public class PGS_SegmentSet {
 		});
 
 		segSet.removeAll(segSet2);
-		segSet.removeIf(
-				s -> locator.locate(s.getCoordinate(1)) == Location.EXTERIOR || locator.locate(s.getCoordinate(0)) == Location.EXTERIOR);
+		segSet.removeIf(s -> locator.locate(s.getCoordinate(1)) == Location.EXTERIOR || locator.locate(s.getCoordinate(0)) == Location.EXTERIOR);
 
 		return fromSegmentString(segSet);
 	}
