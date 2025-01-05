@@ -3,7 +3,7 @@ package micycle.pgs;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
 import static processing.core.PConstants.GROUP;
-import static micycle.pgs.PGS_Construction.createEllipse;
+import static micycle.pgs.PGS_Construction.createCircle;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -82,8 +82,8 @@ public final class PGS_Optimisation {
 	 */
 	public static PShape maximumInscribedCircle(PShape shape, double tolerance) {
 		MaximumInscribedCircle mic = new MaximumInscribedCircle(fromPShape(shape), tolerance);
-		final double wh = mic.getRadiusLine().getLength() * 2;
-		Polygon circle = createEllipse(PGS.coordFromPoint(mic.getCenter()), wh, wh);
+		final double r = mic.getRadiusLine().getLength();
+		Polygon circle = createCircle(PGS.coordFromPoint(mic.getCenter()), r);
 		return toPShape(circle);
 	}
 
@@ -99,7 +99,7 @@ public final class PGS_Optimisation {
 		Point p = PGS.pointFromPVector(centerPoint);
 		Coordinate closestEdgePoint = DistanceOp.nearestPoints(g.getBoundary(), p)[0];
 		double radius = PGS.coordFromPVector(centerPoint).distance(closestEdgePoint);
-		Polygon circle = createEllipse(p.getCoordinate(), radius * 2, radius * 2);
+		Polygon circle = createCircle(p.getCoordinate(), radius);
 		return toPShape(circle);
 	}
 
@@ -223,8 +223,8 @@ public final class PGS_Optimisation {
 	 */
 	public static PShape minimumBoundingCircle(PShape shape) {
 		MinimumBoundingCircle mbc = new MinimumBoundingCircle(fromPShape(shape));
-		final double wh = mbc.getRadius() * 2;
-		Polygon circle = createEllipse(mbc.getCentre(), wh, wh);
+		final double r = mbc.getRadius();
+		Polygon circle = createCircle(mbc.getCentre(), r);
 		return toPShape(circle);
 	}
 
@@ -360,8 +360,8 @@ public final class PGS_Optimisation {
 	 */
 	public static PShape largestEmptyCircle(PShape obstacles, @Nullable PShape boundary, double tolerance) {
 		LargestEmptyCircle lec = new LargestEmptyCircle(fromPShape(obstacles), boundary == null ? null : fromPShape(boundary), Math.max(0.01, tolerance));
-		double wh = lec.getRadiusLine().getLength() * 2;
-		Polygon circle = createEllipse(PGS.coordFromPoint(lec.getCenter()), wh, wh);
+		double r = lec.getRadiusLine().getLength();
+		Polygon circle = createCircle(PGS.coordFromPoint(lec.getCenter()), r);
 		return toPShape(circle);
 	}
 

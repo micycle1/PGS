@@ -855,7 +855,7 @@ public final class PGS_Conversion {
 	 * @since 1.4.0
 	 */
 	public static final PShape toCircles(Collection<PVector> circles) {
-		return toPShape(circles.stream().map(c -> PGS_Construction.createEllipse(c.x, c.y, c.z * 2, c.z * 2)).collect(Collectors.toList()));
+		return toPShape(circles.stream().map(c -> PGS_Construction.createCircle(c.x, c.y, c.z)).collect(Collectors.toList()));
 	}
 
 	/**

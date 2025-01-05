@@ -116,8 +116,8 @@ public class PGS_Construction {
 	 * @return a PShape representing the generated polygon
 	 */
 	public static PShape createRandomPolygonExact(int n, double width, double height, long seed) {
-		return PGS_Transformation.resize(PGS_Conversion.fromPVector(RandomPolygon.generateRandomConvexPolygon(n, width, height, seed)),
-				width, height);
+		return PGS_Transformation.resize(PGS_Conversion.fromPVector(RandomPolygon.generateRandomConvexPolygon(n, width, height, seed)), width, height);
+	}
 	}
 
 	/**
@@ -263,8 +263,8 @@ public class PGS_Construction {
 		shapeFactory.setHeight(radius * 2);
 
 		Geometry a = shapeFactory.createArcPolygon(-Math.PI / 2, Math.PI);
-		Geometry b = createEllipse(center.x, centerY + radius / 2, radius, radius);
-		Geometry c = createEllipse(center.x, centerY - radius / 2, radius, radius);
+		Geometry b = createCircle(center.x, centerY + radius / 2, radius / 2);
+		Geometry c = createCircle(center.x, centerY - radius / 2, radius / 2);
 
 		Geometry yinG = a.union(b).difference(c).getGeometryN(0);
 		AffineTransformation t = AffineTransformation.rotationInstance(Math.PI, centerX, centerY);
@@ -306,8 +306,8 @@ public class PGS_Construction {
 		shapeFactory.setHeight(radius * 2);
 
 		Geometry a = shapeFactory.createArcPolygon(Math.PI, Math.PI);
-		Geometry b = createEllipse(xA, centerY, rA * 2, rA * 2);
-		Geometry c = createEllipse(xB, centerY, rB * 2, rB * 2);
+		Geometry b = createCircle(xA, centerY, rA);
+		Geometry c = createCircle(xB, centerY, rB);
 		Geometry curve = a.difference(b).difference(c).buffer(1e-3);
 		@SuppressWarnings("unchecked")
 		List<Polygon> polygons = PolygonExtracter.getPolygons(curve);
@@ -1021,17 +1021,61 @@ public class PGS_Construction {
 		return out;
 	}
 
-	static Polygon createEllipse(double x, double y, double width, double height) {
-		return createEllipse(new Coordinate(x, y), width, height);
+	/**
+	 * Creates a polygon finely approximating a circle.
+	 * 
+	 * @since 2.0
+	 */
+	static Polygon createCircle(Coordinate c, double r) {
+		return createCircle(c.x, c.y, r, 0.5); // 0.5 still very generous
 	}
 
-	static Polygon createEllipse(Coordinate center, double width, double height) {
-		final double circumference = Math.PI * ((width + height) / 2);
-		shapeFactory.setCentre(center);
-		shapeFactory.setWidth(width);
-		shapeFactory.setHeight(height);
-		shapeFactory.setNumPoints(Math.max(21, (int) Math.round(circumference / 7))); // sample every 7 units
-		return shapeFactory.createEllipse();
+	/**
+	 * Creates a polygon finely approximating a circle.
+	 * 
+	 * @since 2.0
+	 */
+	static Polygon createCircle(double x, double y, double r) {
+		return createCircle(x, y, r, 0.5); // 0.5 still very generous
+	}
+
+	/**
+	 * Creates a polygon approximating a circle.
+	 *
+	 * <p>
+	 * The `maxDeviation` parameter controls the maximum acceptable deviation of any
+	 * segment of the polygon from the true arc of the circle. Smaller values of
+	 * `maxDeviation` result in smoother circles but require more vertices,
+	 * potentially increasing computational cost.
+	 * </p>
+	 *
+	 * @param x            The x-coordinate of the circle's center.
+	 * @param y            The y-coordinate of the circle's center.
+	 * @param r            The radius of the circle.
+	 * @param maxDeviation The maximum acceptable deviation of a segment from the
+	 *                     true arc of the circle.
+	 * @return A polygon approximating the specified circle.
+	 */
+	static Polygon createCircle(double x, double y, double r, final double maxDeviation) {
+		// Calculate the number of points based on the radius and maximum deviation.
+		int nPts = (int) Math.ceil(2 * Math.PI / Math.acos(1 - maxDeviation / r));
+		nPts = Math.max(nPts, 21); // min of 21 points for tiny circles
+		final int circumference = (int) (Math.PI * r * 2);
+		if (nPts > circumference * 2) {
+			// AT MOST 1 point every half pixel
+			nPts = circumference * 2;
+		}
+
+		Coordinate[] pts = new Coordinate[nPts + 1];
+		for (int i = 0; i < nPts; i++) {
+			double ang = i * (2 * Math.PI / nPts);
+			double px = r * FastMath.cos(ang) + x;
+			double py = r * FastMath.sin(ang) + y;
+			pts[i] = new Coordinate(px, py);
+		}
+		pts[nPts] = new Coordinate(pts[0]); // Close the circle
+
+		return PGS.GEOM_FACTORY.createPolygon(pts);
 	}
 
 	/**
