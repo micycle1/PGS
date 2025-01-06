@@ -77,13 +77,6 @@ import org.tinfour.utils.TriangleCollector;
 import org.tinfour.voronoi.BoundedVoronoiBuildOptions;
 import org.tinfour.voronoi.BoundedVoronoiDiagram;
 
-import com.vividsolutions.jcs.conflate.coverage.CoverageCleaner;
-import com.vividsolutions.jcs.conflate.coverage.CoverageCleaner.Parameters;
-import com.vividsolutions.jump.feature.FeatureCollection;
-import com.vividsolutions.jump.feature.FeatureDatasetFactory;
-import com.vividsolutions.jump.feature.FeatureUtil;
-import com.vividsolutions.jump.task.DummyTaskMonitor;
-
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
 import micycle.balaban.BalabanSolver;
@@ -1215,43 +1208,6 @@ public final class PGS_Processing {
 			}
 		}
 		return toPShape(out); // better on smaller thresholds
-	}
-
-	/**
-	 * Removes gaps and overlaps from meshes/polygon collections that are intended
-	 * to satisfy the following conditions:
-	 * <ul>
-	 * <li>Vector-clean - edges between neighbouring polygons must either be
-	 * identical or intersect only at endpoints.</li>
-	 * <li>Non-overlapping - No two polygons may overlap. Equivalently, polygons
-	 * must be interior-disjoint.</li>
-	 * </ul>
-	 * <p>
-	 * It may not always be possible to perfectly clean the input.
-	 * <p>
-	 * While this method is intended to be used to fix malformed coverages, it can
-	 * be used to snap collections of disparate polygons together.
-	 * 
-	 * @param coverage          a GROUP shape, consisting of the polygonal faces to
-	 *                          clean
-	 * @param distanceTolerance the distance below which segments and vertices are
-	 *                          considered to match
-	 * @param angleTolerance    the maximum angle difference between matching
-	 *                          segments, in degrees
-	 * @return GROUP shape whose child polygons satisfy a (hopefully) valid coverage
-	 * @since 1.3.0
-	 */
-	public static PShape cleanCoverage(PShape coverage, double distanceTolerance, double angleTolerance) {
-		final List<Geometry> geometries = PGS_Conversion.getChildren(coverage).stream().map(PGS_Conversion::fromPShape).collect(Collectors.toList());
-		final FeatureCollection features = FeatureDatasetFactory.createFromGeometry(geometries);
-
-		final CoverageCleaner cc = new CoverageCleaner(features, new DummyTaskMonitor());
-		cc.process(new Parameters(distanceTolerance, angleTolerance));
-
-		final List<Geometry> cleanedGeometries = FeatureUtil.toGeometries(cc.getUpdatedFeatures().getFeatures());
-		final PShape out = PGS_Conversion.toPShape(cleanedGeometries);
-		PGS_Conversion.setAllStrokeColor(out, Colors.PINK, 2);
-		return out;
 	}
 
 	/**

@@ -1,5 +1,6 @@
 package micycle.pgs;
 
+import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.getChildren;
 
 import java.util.ArrayList;
@@ -22,6 +23,7 @@ import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.coverage.CoverageSimplifier;
+import org.locationtech.jts.coverage.CoverageValidator;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
@@ -37,6 +39,14 @@ import org.tinfour.common.Vertex;
 import org.tinfour.utils.TriangleCollector;
 import org.tinspin.index.PointMap;
 import org.tinspin.index.kdtree.KDTree;
+
+import com.vividsolutions.jcs.conflate.coverage.CoverageCleaner;
+import com.vividsolutions.jcs.conflate.coverage.CoverageCleaner.Parameters;
+import com.vividsolutions.jump.feature.FeatureCollection;
+import com.vividsolutions.jump.feature.FeatureDatasetFactory;
+import com.vividsolutions.jump.feature.FeatureUtil;
+import com.vividsolutions.jump.task.DummyTaskMonitor;
+
 import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
 import micycle.pgs.PGS_Conversion.PShapeData;
 import micycle.pgs.color.Colors;
@@ -263,8 +273,8 @@ public class PGS_Meshing {
 			if (triangulation.getConstraints().isEmpty()) { // does not have constraints
 				spannerEdges.addAll(triangulation.getPerimeter().stream().map(PGS_Triangulation::toPEdge).collect(Collectors.toList()));
 			} else { // has constraints
-				spannerEdges.addAll(triangulation.getEdges().stream().filter(IQuadEdge::isConstrainedRegionBorder)
-						.map(PGS_Triangulation::toPEdge).collect(Collectors.toList()));
+				spannerEdges.addAll(triangulation.getEdges().stream().filter(IQuadEdge::isConstrainedRegionBorder).map(PGS_Triangulation::toPEdge)
+						.collect(Collectors.toList()));
 			}
 		}
 
@@ -647,8 +657,7 @@ public class PGS_Meshing {
 		graph.removeAllEdges(toRemove);
 		ConnectivityInspector<PShape, DefaultEdge> ci = new ConnectivityInspector<>(graph);
 
-		List<PShape> blobs = ci.connectedSets().stream().map(group -> PGS_ShapeBoolean.unionMesh(PGS_Conversion.flatten(group)))
-				.collect(Collectors.toList());
+		List<PShape> blobs = ci.connectedSets().stream().map(group -> PGS_ShapeBoolean.unionMesh(PGS_Conversion.flatten(group))).collect(Collectors.toList());
 
 		return applyOriginalStyling(PGS_Conversion.flatten(blobs), mesh);
 	}
@@ -834,6 +843,72 @@ public class PGS_Meshing {
 
 		allVerticesSet.removeAll(perimeterVerticesSet);
 		return new ArrayList<>(allVerticesSet);
+	}
+
+	/**
+	 * Removes gaps and overlaps from meshes/polygon collections that are intended
+	 * to satisfy the following conditions:
+	 * <ul>
+	 * <li>Vector-clean - edges between neighbouring polygons must either be
+	 * identical or intersect only at endpoints.</li>
+	 * <li>Non-overlapping - No two polygons may overlap. Equivalently, polygons
+	 * must be interior-disjoint.</li>
+	 * </ul>
+	 * <p>
+	 * It may not always be possible to perfectly clean the input.
+	 * <p>
+	 * While this method is intended to be used to fix malformed coverages, it also
+	 * can be used to snap collections of disparate polygons together.
+	 * 
+	 * @param coverage          a GROUP shape, consisting of the polygonal faces to
+	 *                          clean
+	 * @param distanceTolerance the distance below which segments and vertices are
+	 *                          considered to match
+	 * @param angleTolerance    the maximum angle difference between matching
+	 *                          segments, in degrees
+	 * @return GROUP shape whose child polygons satisfy a (hopefully) valid coverage
+	 * @since 1.3.0
+	 * @see #findBreaks(PShape)
+	 */
+	public static PShape fixBreaks(PShape coverage, double distanceTolerance, double angleTolerance) {
+		final List<Geometry> geometries = PGS_Conversion.getChildren(coverage).stream().map(PGS_Conversion::fromPShape).collect(Collectors.toList());
+		final FeatureCollection features = FeatureDatasetFactory.createFromGeometry(geometries);
+
+		final CoverageCleaner cc = new CoverageCleaner(features, new DummyTaskMonitor());
+		cc.process(new Parameters(distanceTolerance, angleTolerance));
+
+		final List<Geometry> cleanedGeometries = FeatureUtil.toGeometries(cc.getUpdatedFeatures().getFeatures());
+		final PShape out = PGS_Conversion.toPShape(cleanedGeometries);
+		PGS_Conversion.setAllStrokeColor(out, Colors.PINK, 2);
+		return out;
+	}
+
+	/**
+	 * Returns the locations of invalid mesh face boundary segments if found. This
+	 * can be used to identify small gaps between faces that are meant to form a
+	 * valid mesh.
+	 * 
+	 * @param mesh mesh-like GROUP whose faces may have small gaps between them
+	 * @since 2.0
+	 * @see #fixBreaks(PShape, double, double)
+	 */
+	public static PShape findBreaks(PShape faultyMesh) {
+		Geometry[] geoms = PGS_Conversion.getChildren(faultyMesh).stream().map(f -> fromPShape(f)).filter(q -> q != null).toArray(Geometry[]::new);
+		var invalids = CoverageValidator.validate(geoms);
+		return PGS_Conversion.toPShape(Arrays.stream(invalids).filter(q -> q != null).toList());
+	}
+
+	/**
+	 * Finds the single face from the mesh that contains the query point.
+	 * 
+	 * @param mesh     GROUP shape
+	 * @param position PVector of the query coordinate
+	 * @return the containing face, or null if no face contains the query coordinate
+	 * @since 2.0
+	 */
+	public static PShape findContainingFace(PShape mesh, PVector position) {
+		return PGS_Conversion.getChildren(mesh).stream().filter(face -> PGS_ShapePredicates.containsPoint(face, position)).findFirst() // breaks early
+				.orElse(null);
 	}
 
 	/**

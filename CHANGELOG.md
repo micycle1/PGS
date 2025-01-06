@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `segmentsOnExterior()` to `PGS_Processing`. Extracts evenly spaced dashed line segments along the perimeter of a shape.
 * `multiplicativelyWeightedVoronoi()` to `PGS_Voronoi `. Generates a Multiplicatively Weighted Voronoi Diagrams diagram for a set of weighted sites.
 * `applyRandomWeights()` to `PGS_PointSet`. Applies random weights within a specified range to a list of points.
+* `findContainingFace()` to `PGS_Meshing`. Finds the single face from the mesh that contains the query point.
+* `findBreaks()` to `PGS_Meshing`. Returns the locations of invalid mesh face boundary segments if found.
 
 ### Changes
 * Packed circles from `PGS_CirclePacking.stochasticPack()` will now always lie within shape bounds.
@@ -34,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_Morphology.interpolate()` is much faster on shapes with many vertices.
 * Removed superfluous `height` argument from `PGS.createSupercircle()` method signature.
 * Renamed `fromPVector(shell, holes)` in `PGS_Conversion` to `fromContours(shell, holes)`.
+* Moved `PGS_Processing.cleanCoverage()` to `PGS_Meshing` and renamed to `fixBreaks()`.
 
 ### Fixed
 * `urquhartFaces()`, `relativeNeighborFaces()`, `gabrielFaces()` and `spannerFaces()` from `PGS_Meshing` now preserve holes from the input.

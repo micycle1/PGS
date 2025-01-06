@@ -425,24 +425,23 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center"><b>Densification</td>
     <td align="center" valign="center"><b>Tangent Angle</td>
     <td align="center" valign="center"><b>Eliminate Slivers</td>
-    <td align="center" valign="center"><b>Clean Coverage</td>
+    <td align="center" valign="center"><b>Segments on Exterior</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/geometry_processing/densify.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/tangentAngle.png"></td>
     <td valign="top" width="25%"><img src="resources/morphology/slivers.gif"></td>
-    <td valign="top" width="25%"><img src="resources/geometry_processing/cleanCoverage.gif"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/linesOnExterior.gif"></td>
   </tr>
   </tr>
     <tr>
     <td align="center" valign="center"><b>Extract Holes</td>
     <td align="center" valign="center"><b>Nest</td>
-    <td align="center" valign="center"><b>Segments on Exterior</td>
+    
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/geometry_processing/extractHoles.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/nest.gif"></td>
-    <td valign="top" width="25%"><img src="resources/geometry_processing/linesOnExterior.gif"></td>
   </tr>
 </table>
 
@@ -553,9 +552,11 @@ Much of the functionality (but by no means all) is demonstrated below:
 
   <tr>
     <td align="center" valign="center"><b>Extract Inner Vertices</td>
+    <td align="center" valign="center"><b>Fix Breaks</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/meshing/extractInnerVertices.gif"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/cleanCoverage.gif"></td>
   </tr>
 </table>
 
