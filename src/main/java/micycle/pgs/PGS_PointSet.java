@@ -408,7 +408,7 @@ public final class PGS_PointSet {
 	 * @param centerY     x coordinate of the center/mean of the ring
 	 * @param innerRadius radius of the ring's hole
 	 * @param outerRadius outer radius of the ring
-	 * @param maxAngle    angle of the ring (in radians). Can be negative
+	 * @param maxAngle    sweep angle of the ring (in radians). Can be negative
 	 * @param n           the number of random points to generate
 	 * @return a list of PVector objects representing the (x, y) coordinates of the
 	 *         random points

@@ -1335,9 +1335,6 @@ public final class PGS_Processing {
 		return PGS_Conversion.flatten(IntStream.range(0, children.size()).mapToObj(i -> function.apply(i, children.get(i))).filter(Objects::nonNull).toList());
 	}
 
-	// useful for applying void methods as part of a chain:
-	// shape(PGS_Processing.apply(shape, child -> child.setFill(false)));
-
 	/**
 	 * Applies a specified function to each child of the given PShape.
 	 * <p>

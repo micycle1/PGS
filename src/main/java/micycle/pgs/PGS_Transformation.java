@@ -63,16 +63,22 @@ public final class PGS_Transformation {
 	/**
 	 * Scale a shape around a point.
 	 * 
-	 * @param shape
-	 * @param scaleX
-	 * @param scaleY
-	 * @param point
 	 * @since 2.0
 	 */
 	public static PShape scale(PShape shape, double scaleX, double scaleY, PVector point) {
 		Geometry g = fromPShape(shape);
-		Point c = g.getCentroid();
-		AffineTransformation t = AffineTransformation.scaleInstance(scaleX, scaleY, c.getX(), c.getY());
+		AffineTransformation t = AffineTransformation.scaleInstance(scaleX, scaleY, point.x, point.y);
+		return toPShape(t.transform(g));
+	}
+
+	/**
+	 * Scale a shape around a point.
+	 * 
+	 * @since 2.0
+	 */
+	public static PShape scale(PShape shape, double scale, double x, double y) {
+		Geometry g = fromPShape(shape);
+		AffineTransformation t = AffineTransformation.scaleInstance(scale, scale, x, y);
 		return toPShape(t.transform(g));
 	}
 

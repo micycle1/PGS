@@ -507,7 +507,7 @@ public final class PGS_Voronoi {
 	public static PShape multiplicativelyWeightedVoronoi(Collection<PVector> sites, double[] bounds) {
 		var faces = MultiplicativelyWeightedVoronoi.getMWVFromPVectors(sites.stream().toList(), bounds);
 		var s = PGS_Conversion.toPShape(faces);
-		s = PGS_Processing.cleanCoverage(s, 0.0001, 30); // join small gaps to produce valid coverage
+		s = PGS_Meshing.fixBreaks(s, 0.0001, 30); // join small gaps to produce valid coverage
 		return s;
 	}
 

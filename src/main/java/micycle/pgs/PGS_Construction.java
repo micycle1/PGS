@@ -714,7 +714,7 @@ public class PGS_Construction {
 	 * @param width   width of outer-most coil
 	 * @param height  height of outer-most coil
 	 * @param spacing the distance between successive coils
-	 * @return a stroked PATH PShape
+	 * @return a stroked PATH PShape with SQUARE stroke cap and MITER joins
 	 * @since 1.3.0
 	 */
 	public static PShape createRectangularSpiral(float x, float y, float width, float height, float spacing) {
@@ -737,7 +737,8 @@ public class PGS_Construction {
 		final PShape spiral = new PShape(PShape.PATH);
 		spiral.setFill(false);
 		spiral.setStroke(true);
-		spiral.setStrokeWeight(spacing * 0.333f);
+		spiral.setStrokeWeight(5);
+//		spiral.setStrokeWeight(spacing * 0.333f);
 		spiral.setStroke(Colors.WHITE);
 		spiral.setStrokeJoin(PConstants.MITER);
 		spiral.setStrokeCap(PConstants.SQUARE);
