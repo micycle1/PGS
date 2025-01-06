@@ -25,6 +25,7 @@ import org.tinfour.voronoi.BoundedVoronoiDiagram;
 import org.tinfour.voronoi.ThiessenPolygon;
 
 import micycle.pgs.color.Colors;
+import micycle.pgs.commons.MultiplicativelyWeightedVoronoi;
 import micycle.pgs.commons.Nullable;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -482,6 +483,32 @@ public final class PGS_Voronoi {
 		PGS_Conversion.setAllStrokeColor(voronoiCells, Colors.PINK, 2);
 
 		return voronoiCells;
+	}
+
+	/**
+	 * Generates a Multiplicatively Weighted Voronoi Diagrams diagram for a set of
+	 * weighted sites.
+	 * <p>
+	 * MWVDs are a generalisation of Voronoi diagrams where each site has a weight
+	 * associated with it. These weights influence the boundaries between cells in
+	 * the diagram. Instead of being equidistant from generator points, the
+	 * boundaries are defined by the <b>ratio</b> of distances to the weighted
+	 * generator points. This results in characteristically curved cell boundaries,
+	 * unlike the straight line boundaries seen in standard Voronoi diagrams.
+	 * 
+	 * @param sites  A list of PVectors, each representing one site:
+	 *               <code>(.x, .y)</code> represent the coordinate and
+	 *               <b><code>.z</code> represents weight</b>.
+	 * @param bounds an array of the form [minX, minY, maxX, maxY] representing the
+	 *               bounds of the diagram. The boundary must cover all points.
+	 * @return a GROUP PShape, where each child shape is a Voronoi cell
+	 * @since 2.0
+	 */
+	public static PShape multiplicativelyWeightedVoronoi(Collection<PVector> sites, double[] bounds) {
+		var faces = MultiplicativelyWeightedVoronoi.getMWVFromPVectors(sites.stream().toList(), bounds);
+		var s = PGS_Conversion.toPShape(faces);
+		s = PGS_Processing.cleanCoverage(s, 0.0001, 30); // join small gaps to produce valid coverage
+		return s;
 	}
 
 	static Polygon toPolygon(ThiessenPolygon polygon) {

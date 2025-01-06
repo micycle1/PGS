@@ -487,9 +487,11 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
   <tr>
     <td align="center" valign="center"><b>Centroidal Relaxation</td>
+    <td align="center" valign="center"><b>Multiplicatively Weighted Voronoi</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/voronoi/centroidal.gif"></td>
+    <td valign="top" width="25%"><img src="resources/voronoi/mwvd.gif"></td>
   </tr>
 </table>
 
