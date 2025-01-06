@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `apply()` and `applyWithIndex()`* to `PGS_Processing`. Applies a specified function to each child of the given PShape (*additionally with child's index).
 * `toContours()` to `PGS_Conversion`. Extracts the contours from a POLYGON or PATH PShape, represented as lists of PVector points.
 * `segmentsOnExterior()` to `PGS_Processing`. Extracts evenly spaced dashed line segments along the perimeter of a shape.
+* `multiplicativelyWeightedVoronoi()` to `PGS_Voronoi `. Generates a Multiplicatively Weighted Voronoi Diagrams diagram for a set of weighted sites.
+* `applyRandomWeights()` to `PGS_PointSet`. Applies random weights within a specified range to a list of points.
 
 ### Changes
 * Packed circles from `PGS_CirclePacking.stochasticPack()` will now always lie within shape bounds.

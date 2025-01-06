@@ -300,8 +300,7 @@ public final class PGS_PointSet {
 	 * @param yMax y-coordinate of boundary maximum
 	 * @return
 	 */
-	public static List<PVector> squareGrid(final double xMin, final double yMin, final double xMax, final double yMax,
-			final double pointDistance) {
+	public static List<PVector> squareGrid(final double xMin, final double yMin, final double xMax, final double yMax, final double pointDistance) {
 		final double width = xMax - xMin;
 		final double height = yMax - yMin;
 
@@ -356,8 +355,7 @@ public final class PGS_PointSet {
 	 * @see #hexGrid(double, double, double, double, int) hexGrid() where number of
 	 *      points is specified
 	 */
-	public static List<PVector> hexGrid(final double xMin, final double yMin, final double xMax, final double yMax,
-			final double pointDistance) {
+	public static List<PVector> hexGrid(final double xMin, final double yMin, final double xMax, final double yMax, final double pointDistance) {
 		final double width = xMax - xMin;
 		final double height = yMax - yMin;
 
@@ -374,9 +372,9 @@ public final class PGS_PointSet {
 	/**
 	 * Generates a hexagonal grid of points <b>arranged in a hexagon pattern</b>.
 	 * 
-	 * @param centerX x coordinate of the hexagon center point
-	 * @param centerY y coordinate of the hexagon center point
-	 * @param length  layers/no. of points on each hexagon side
+	 * @param centerX  x coordinate of the hexagon center point
+	 * @param centerY  y coordinate of the hexagon center point
+	 * @param length   layers/no. of points on each hexagon side
 	 * @param distance inter-point distance
 	 */
 	public static List<PVector> hexagon(double centerX, double centerY, int length, double distance) {
@@ -435,8 +433,7 @@ public final class PGS_PointSet {
 	 *         random points
 	 * @see #ring(double, double, double, double, double, int) non-seeded ring()
 	 */
-	public static List<PVector> ring(double centerX, double centerY, double innerRadius, double outerRadius, double maxAngle, int n,
-			long seed) {
+	public static List<PVector> ring(double centerX, double centerY, double innerRadius, double outerRadius, double maxAngle, int n, long seed) {
 		final SplittableRandom random = new SplittableRandom(seed);
 		final List<PVector> points = new ArrayList<>(n);
 		if (maxAngle == 0) {
@@ -500,6 +497,27 @@ public final class PGS_PointSet {
 
 	/**
 	 * Generates a poisson point set having N points constrained within a
+	 * rectangular region using a random seed.
+	 * <p>
+	 * Poisson-disc sampling produces points that are tightly-packed, but no closer
+	 * to each other than a specified minimum distance, resulting in a more natural
+	 * and desirable pattern for many applications. This distribution is also
+	 * described as blue noise.
+	 * 
+	 * @param xMin x-coordinate of boundary minimum
+	 * @param yMin y-coordinate of boundary minimum
+	 * @param xMax x-coordinate of boundary maximum
+	 * @param yMax y-coordinate of boundary maximum
+	 * @param n    target size of poisson point set
+	 * @return
+	 * @see #poissonN(double, double, double, double, int, long)
+	 */
+	public static List<PVector> poissonN(double xMin, double yMin, double xMax, double yMax, int n) {
+		return poissonN(xMin, yMin, xMax, yMax, n, System.nanoTime());
+	}
+
+	/**
+	 * Generates a poisson point set having N points constrained within a
 	 * rectangular region.
 	 * <p>
 	 * Poisson-disc sampling produces points that are tightly-packed, but no closer
@@ -545,8 +563,8 @@ public final class PGS_PointSet {
 	 *         Thomas cluster points
 	 * @since 2.0
 	 */
-	public static List<PVector> thomasClusters(double xMin, double yMin, double xMax, double yMax, double parentsDensity,
-			double meanChildPoints, double childSpread, long seed) {
+	public static List<PVector> thomasClusters(double xMin, double yMin, double xMax, double yMax, double parentsDensity, double meanChildPoints,
+			double childSpread, long seed) {
 		ThomasPointProcess tpp = new ThomasPointProcess(seed);
 		return tpp.sample(xMin, yMin, xMax, yMax, parentsDensity, meanChildPoints, childSpread);
 	}
@@ -964,6 +982,52 @@ public final class PGS_PointSet {
 		tour = tspImprover.improveTour(tour);
 
 		return PGS_Conversion.fromPVector(tour.getVertexList());
+	}
+
+	/**
+	 * Applies random weights within a specified range to a list of points. The
+	 * weights are assigned to the z-coordinate of each point using a random number
+	 * generator with a random seed.
+	 *
+	 * @param points    The list of points to which random weights will be applied.
+	 *                  Each point's x and y coordinates remain unchanged while the
+	 *                  z coordinate is set to the random weight.
+	 * @param minWeight The minimum weight value (inclusive) that can be assigned to
+	 *                  a point
+	 * @param maxWeight The maximum weight value (exclusive) that can be assigned to
+	 *                  a point
+	 * @return A new list of points where each point is a copy of the input point
+	 *         with a random weight assigned to its z-coordinate
+	 * @since 2.0
+	 */
+	public static List<PVector> applyRandomWeights(List<PVector> points, double minWeight, double maxWeight) {
+		return applyRandomWeights(points, minWeight, maxWeight, System.nanoTime());
+	}
+
+	/**
+	 * Applies random weights within a specified range to a list of points. The
+	 * weights are assigned to the z-coordinate of each point using a random number
+	 * generator with a given fixed seed.
+	 *
+	 * @param points    The list of points to which random weights will be applied.
+	 *                  Each point's x and y coordinates remain unchanged while the
+	 *                  z coordinate is set to the random weight.
+	 * @param minWeight The minimum weight value (inclusive) that can be assigned to
+	 *                  a point
+	 * @param maxWeight The maximum weight value (exclusive) that can be assigned to
+	 *                  a point
+	 * @param seed      seed for the underlying random number generator
+	 * @return A new list of points where each point is a copy of the input point
+	 *         with a random weight assigned to its z-coordinate
+	 * @since 2.0
+	 */
+	public static List<PVector> applyRandomWeights(List<PVector> points, double minWeight, double maxWeight, long seed) {
+		final SplittableRandom random = new SplittableRandom(seed);
+		return points.stream().map(p -> {
+			p = p.copy();
+			p.z = (float) random.nextDouble(minWeight, maxWeight);
+			return p;
+		}).collect(Collectors.toList());
 	}
 
 	private static List<Pair<Integer, PVector>> hilbertSortRaw(List<PVector> points) {
