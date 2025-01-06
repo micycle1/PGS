@@ -118,6 +118,24 @@ public class PGS_Construction {
 	public static PShape createRandomPolygonExact(int n, double width, double height, long seed) {
 		return PGS_Transformation.resize(PGS_Conversion.fromPVector(RandomPolygon.generateRandomConvexPolygon(n, width, height, seed)), width, height);
 	}
+
+	/**
+	 * Generates an N-sided regular polygon.
+	 * 
+	 * @param n number of sides
+	 * @param centerX centre point X
+	 * @param centerY centre point Y
+	 * @param width polygon width
+	 * @since 2.0
+	 */
+	public static PShape createRegularPolyon(int n, double centerX, double centerY, double width) {
+		final GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
+		shapeFactory.setNumPoints(n);
+		shapeFactory.setCentre(new Coordinate(centerX, centerY));
+		shapeFactory.setWidth(width * 2);
+		shapeFactory.setHeight(width * 2);
+
+		return toPShape(shapeFactory.createCircle());
 	}
 
 	/**
