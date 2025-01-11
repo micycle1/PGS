@@ -514,8 +514,8 @@ public final class PGS_Conversion {
 			 */
 			switch (vertexCodes[i]) { // VERTEX, BEZIER_VERTEX, CURVE_VERTEX, or BREAK
 				case QUADRATIC_VERTEX :
-					rings.get(currentGroup).addAll(getQuadraticBezierPoints(shape.getVertex(i - 1), shape.getVertex(i),
-							shape.getVertex(i + 1), BEZIER_SAMPLE_DISTANCE));
+					rings.get(currentGroup)
+							.addAll(getQuadraticBezierPoints(shape.getVertex(i - 1), shape.getVertex(i), shape.getVertex(i + 1), BEZIER_SAMPLE_DISTANCE));
 					i += 1;
 					continue;
 				case BEZIER_VERTEX : // aka cubic bezier
@@ -697,8 +697,7 @@ public final class PGS_Conversion {
 							return fromMultiContourShape(contours, true, false);
 						} else {
 							System.err.println(String.format(
-									"PGS_Conversion Error: Shape contour #%s was identified as a hole but no existing exterior rings contained it.",
-									j));
+									"PGS_Conversion Error: Shape contour #%s was identified as a hole but no existing exterior rings contained it.", j));
 						}
 					}
 				} else { // this ring is new polygon (or explictly contour #1)
@@ -855,7 +854,7 @@ public final class PGS_Conversion {
 	 * @since 1.4.0
 	 */
 	public static final PShape toCircles(Collection<PVector> circles) {
-		return toPShape(circles.stream().map(c -> PGS_Construction.createCircle(c.x, c.y, c.z)).collect(Collectors.toList()));
+		return toPShape(circles.stream().map(c -> PGS_Construction.createCirclePoly(c.x, c.y, c.z)).collect(Collectors.toList()));
 	}
 
 	/**
@@ -1765,8 +1764,7 @@ public final class PGS_Conversion {
 			}
 			method.setAccessible(true);
 			method.invoke(null, shape, copy);
-		} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException
-				| InvocationTargetException e) {
+		} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 			e.printStackTrace();
 		}
 
@@ -1802,8 +1800,7 @@ public final class PGS_Conversion {
 	 * @since 1.4.0
 	 */
 	public static PShape fromCubicBezier(PVector start, PVector controlPoint1, PVector controlPoint2, PVector end) {
-		CubicBezier bezier = new CubicBezier(start.x, start.y, controlPoint1.x, controlPoint1.y, controlPoint2.x, controlPoint2.y, end.x,
-				end.y);
+		CubicBezier bezier = new CubicBezier(start.x, start.y, controlPoint1.x, controlPoint1.y, controlPoint2.x, controlPoint2.y, end.x, end.y);
 		double[][] samples = bezier.sampleEquidistantPoints(BEZIER_SAMPLE_DISTANCE);
 		final List<PVector> coords = new ArrayList<>(samples.length);
 		for (double[] sample : samples) {
@@ -1831,10 +1828,8 @@ public final class PGS_Conversion {
 	 * @param sampleDistance distance between successive samples on the curve
 	 * @return
 	 */
-	private static List<PVector> getCubicBezierPoints(PVector start, PVector controlPoint1, PVector controlPoint2, PVector end,
-			float sampleDistance) {
-		CubicBezier bezier = new CubicBezier(start.x, start.y, controlPoint1.x, controlPoint1.y, controlPoint2.x, controlPoint2.y, end.x,
-				end.y);
+	private static List<PVector> getCubicBezierPoints(PVector start, PVector controlPoint1, PVector controlPoint2, PVector end, float sampleDistance) {
+		CubicBezier bezier = new CubicBezier(start.x, start.y, controlPoint1.x, controlPoint1.y, controlPoint2.x, controlPoint2.y, end.x, end.y);
 		double[][] samples = bezier.sampleEquidistantPoints(sampleDistance);
 		final List<PVector> coords = new ArrayList<>(samples.length);
 		for (double[] sample : samples) {
@@ -2031,8 +2026,8 @@ public final class PGS_Conversion {
 			if (obj == null || getClass() != obj.getClass())
 				return false;
 			PShapeData other = (PShapeData) obj;
-			return fillColor == other.fillColor && strokeColor == other.strokeColor && strokeWeight == other.strokeWeight
-					&& fill == other.fill && stroke == other.stroke;
+			return fillColor == other.fillColor && strokeColor == other.strokeColor && strokeWeight == other.strokeWeight && fill == other.fill
+					&& stroke == other.stroke;
 		}
 	}
 }

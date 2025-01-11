@@ -23,7 +23,6 @@ public class GaussianLineSmoothing {
 	/**
 	 * @param line
 	 * @param sigmaM
-	 * @return
 	 */
 	public static LineString get(LineString line, double sigmaM) {
 		return get(line, sigmaM, -1);
@@ -39,7 +38,6 @@ public class GaussianLineSmoothing {
 	 *                   the more smoothed.
 	 * @param resolution The target resolution of the geometry. This parameter is
 	 *                   used to filter/simplify the final geometry.
-	 * @return
 	 */
 	public static LineString get(LineString line, double sigmaM, double resolution) {
 		if (line.getCoordinates().length <= 2) {
@@ -48,8 +46,10 @@ public class GaussianLineSmoothing {
 
 		// output is sensitive to vertex order, so normalise the line (note doesn't
 		// normalise orientation)
-		line = normalise(line);
 		boolean isClosed = line.isClosed();
+		if (isClosed) {
+			line = normalise(line);
+		}
 		double length = line.getLength();
 		double densifiedResolution = sigmaM / 3;
 
@@ -73,7 +73,7 @@ public class GaussianLineSmoothing {
 		// compute densified line
 		Coordinate[] densifiedCoords = LittleThumblingDensifier.densify(line, densifiedResolution).getCoordinates();
 
-		// build ouput line structure
+		// build output line structure
 		int nb = (int) (length / densifiedResolution);
 		Coordinate[] out = new Coordinate[nb + 1];
 

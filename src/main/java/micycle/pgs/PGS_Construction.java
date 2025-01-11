@@ -122,10 +122,10 @@ public class PGS_Construction {
 	/**
 	 * Generates an N-sided regular polygon.
 	 * 
-	 * @param n number of sides
+	 * @param n       number of sides
 	 * @param centerX centre point X
 	 * @param centerY centre point Y
-	 * @param width polygon width
+	 * @param width   polygon width
 	 * @since 2.0
 	 */
 	public static PShape createRegularPolyon(int n, double centerX, double centerY, double width) {
@@ -281,8 +281,8 @@ public class PGS_Construction {
 		shapeFactory.setHeight(radius * 2);
 
 		Geometry a = shapeFactory.createArcPolygon(-Math.PI / 2, Math.PI);
-		Geometry b = createCircle(center.x, centerY + radius / 2, radius / 2);
-		Geometry c = createCircle(center.x, centerY - radius / 2, radius / 2);
+		Geometry b = createCirclePoly(center.x, centerY + radius / 2, radius / 2);
+		Geometry c = createCirclePoly(center.x, centerY - radius / 2, radius / 2);
 
 		Geometry yinG = a.union(b).difference(c).getGeometryN(0);
 		AffineTransformation t = AffineTransformation.rotationInstance(Math.PI, centerX, centerY);
@@ -324,8 +324,8 @@ public class PGS_Construction {
 		shapeFactory.setHeight(radius * 2);
 
 		Geometry a = shapeFactory.createArcPolygon(Math.PI, Math.PI);
-		Geometry b = createCircle(xA, centerY, rA);
-		Geometry c = createCircle(xB, centerY, rB);
+		Geometry b = createCirclePoly(xA, centerY, rA);
+		Geometry c = createCirclePoly(xB, centerY, rB);
 		Geometry curve = a.difference(b).difference(c).buffer(1e-3);
 		@SuppressWarnings("unchecked")
 		List<Polygon> polygons = PolygonExtracter.getPolygons(curve);
@@ -433,7 +433,9 @@ public class PGS_Construction {
 		}
 
 		heart.endShape(PConstants.CLOSE);
-		return heart;
+		PShape out = PGS_Processing.fix(heart); // fix pinch
+		out.setStroke(false);
+		return out;
 	}
 
 	/**
@@ -1050,11 +1052,20 @@ public class PGS_Construction {
 	}
 
 	/**
+	 * Creates a circle of radius r centered on (x,y).
+	 * 
+	 * @since 2.0
+	 */
+	public static PShape createCircle(double x, double y, double r) {
+		return toPShape(createCirclePoly(x, y, r)); // 0.5 still very generous
+	}
+
+	/**
 	 * Creates a polygon finely approximating a circle.
 	 * 
 	 * @since 2.0
 	 */
-	static Polygon createCircle(double x, double y, double r) {
+	static Polygon createCirclePoly(double x, double y, double r) {
 		return createCircle(x, y, r, 0.5); // 0.5 still very generous
 	}
 

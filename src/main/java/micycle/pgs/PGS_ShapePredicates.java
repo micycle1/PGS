@@ -515,7 +515,7 @@ public final class PGS_ShapePredicates {
 	 * distance between each shape's <i>Elliptic Fourier Descriptors</i> (EFD).
 	 * <p>
 	 * Smaller values indicate greater similarity or equivalence, and the measure is
-	 * translation and rotation invariant.
+	 * <b>translation and rotation invariant</b>.
 	 * <p>
 	 * This method can be useful in shape recognition tasks where it is necessary to
 	 * quantify the difference or similarity between two shapes.

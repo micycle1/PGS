@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.apache.commons.math3.random.RandomGenerator;
 import org.jgrapht.alg.connectivity.ConnectivityInspector;
@@ -617,6 +618,9 @@ public class PGS_Meshing {
 	 * @since 1.4.0
 	 */
 	public static PShape stochasticMerge(PShape mesh, int nClasses, long seed) {
+		if (nClasses < 2) {
+			return PGS_ShapeBoolean.unionMesh(mesh);
+		}
 		final RandomGenerator random = new XoRoShiRo128PlusRandomGenerator(seed);
 		SimpleGraph<PShape, DefaultEdge> graph = PGS_Conversion.toDualGraph(mesh);
 		Map<PShape, Integer> classes = new HashMap<>();
@@ -780,30 +784,31 @@ public class PGS_Meshing {
 	 * @since 1.4.0
 	 */
 	public static PShape subdivideMesh(PShape mesh, double edgeSplitRatio) {
-		edgeSplitRatio %= 1;
-		PShape newMesh = new PShape(PShape.GROUP);
-		for (PShape face : getChildren(mesh)) {
+		double modEdgeSplitRatio = edgeSplitRatio % 1;
+
+		return getChildren(mesh).parallelStream().<PShape>flatMap(face -> {
 			List<PVector> vertices = PGS_Conversion.toPVector(face);
 			List<PVector> midPoints = new ArrayList<>();
 			PVector centroid = new PVector();
+
+			// Calculate midpoints and centroid
 			for (int i = 0; i < vertices.size(); i++) {
 				PVector a = vertices.get(i);
 				PVector b = vertices.get((i + 1) % vertices.size());
-				midPoints.add(PVector.lerp(a, b, (float) edgeSplitRatio));
+				midPoints.add(PVector.lerp(a, b, (float) modEdgeSplitRatio));
 				centroid.add(a);
 			}
-			// TODO find "visibility center" of concave shape
-			centroid.div(vertices.size()); // NOTE simple centroid, assuming convex
+			centroid.div(vertices.size());
 
-			for (int i = 0; i < vertices.size(); i++) {
+			// Generate and yield new faces
+			return IntStream.range(0, vertices.size()).mapToObj(i -> {
 				PVector a = vertices.get(i);
 				PVector b = midPoints.get(i);
 				PVector c = centroid.copy();
 				PVector d = midPoints.get(i - 1 < 0 ? vertices.size() - 1 : i - 1);
-				newMesh.addChild(PGS_Conversion.fromPVector(a, b, c, d, a));
-			}
-		}
-		return newMesh;
+				return PGS_Conversion.fromPVector(a, b, c, d, a);
+			});
+		}).collect(Collectors.collectingAndThen(Collectors.toList(), PGS_Conversion::flatten));
 	}
 
 	/**
