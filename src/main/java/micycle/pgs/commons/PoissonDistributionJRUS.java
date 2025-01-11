@@ -203,8 +203,9 @@ public final class PoissonDistributionJRUS {
 			for (int i = index0; i < index0 + 10; i += 2) {
 				double dx = grid[i] - x;
 				double dy = grid[i + 1] - y;
-				if (dx * dx + dy * dy < minDistSquared)
+				if (dx * dx + dy * dy < minDistSquared) {
 					return false;
+				}
 			}
 		}
 		return true;

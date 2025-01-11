@@ -31,6 +31,7 @@ import org.locationtech.jts.noding.SegmentString;
 import org.locationtech.jts.noding.snapround.SnapRoundingNoder;
 import org.locationtech.jts.operation.linemerge.LineMerger;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
+
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
@@ -443,9 +444,9 @@ final class PGS {
 	 */
 	static List<LinearRing> extractLinearRings(Polygon polygon) {
 		List<LinearRing> rings = new ArrayList<>(1 + polygon.getNumInteriorRing());
-		rings.add((LinearRing) polygon.getExteriorRing());
+		rings.add(polygon.getExteriorRing());
 		for (int i = 0; i < polygon.getNumInteriorRing(); i++) {
-			rings.add((LinearRing) polygon.getInteriorRingN(i));
+			rings.add(polygon.getInteriorRingN(i));
 		}
 
 		return rings;
@@ -469,7 +470,7 @@ final class PGS {
 
 		@Override
 		public Iterator<Geometry> iterator() {
-			return new Iterator<Geometry>() {
+			return new Iterator<>() {
 				private int currentIndex = 0;
 
 				@Override
@@ -531,7 +532,7 @@ final class PGS {
 
 		@Override
 		public Iterator<LinearRing> iterator() {
-			return new Iterator<LinearRing>() {
+			return new Iterator<>() {
 
 				private int currentIndex = 0;
 

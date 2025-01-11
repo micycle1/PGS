@@ -100,19 +100,11 @@ public class ConcaveHull {
 		Node from = start;
 		Node to = successorEdge.getToNode();
 
-		double threshold;
-		switch (this.thresholdHeuristic) {
-			case AVG:
-				threshold = getThresholdAvg(successorEdge);
-				break;
-			case MED:
-				threshold = getThresholdMed(successorEdge);
-				break;
-			default:
-				threshold = getThresholdMed(successorEdge);
-				break;
-		}
-
+		double threshold = switch (this.thresholdHeuristic) {
+			case AVG -> getThresholdAvg(successorEdge);
+			case MED -> getThresholdMed(successorEdge);
+			default -> getThresholdMed(successorEdge);
+		};
 		// do a number of laps
 		while (true) {
 

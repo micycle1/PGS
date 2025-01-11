@@ -1,5 +1,7 @@
 package micycle.pgs.commons;
 
+import java.util.Arrays;
+
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.EigenDecomposition;
 import org.apache.commons.math3.linear.RealMatrix;
@@ -243,9 +245,7 @@ public class MinimumBoundingEllipse {
 		double[][] arr = new double[rows][];
 		for (int i = 0; i < arr.length; i++) {
 			double[] row = new double[cols];
-			for (int j = 0; j < row.length; j++) {
-				row[j] = 1;
-			}
+			Arrays.fill(row, 1);
 			arr[i] = row;
 		}
 		return arr;
@@ -257,12 +257,12 @@ public class MinimumBoundingEllipse {
 	private static double[][] merge(double[][] m1, double[][] m2) {
 		int x = 0;
 		double[][] out = new double[m1.length + m2.length][];
-		for (int i = 0; i < m1.length; i++) {
-			out[x] = m1[i];
+		for (double[] element : m1) {
+			out[x] = element;
 			x++;
 		}
-		for (int i = 0; i < m2.length; i++) {
-			out[x] = m2[i];
+		for (double[] element : m2) {
+			out[x] = element;
 			x++;
 		}
 		return out;

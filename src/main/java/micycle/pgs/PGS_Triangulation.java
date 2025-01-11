@@ -369,8 +369,8 @@ public final class PGS_Triangulation {
 							continue;
 						}
 
-						for (int i = 0; i < c.length; i++) {
-							points.add(new Vertex(c[i].x, c[i].y, Double.NaN));
+						for (Coordinate element : c) {
+							points.add(new Vertex(element.x, element.y, Double.NaN));
 						}
 						/*
 						 * In Tinfour, the shape exterior must be CCW and the holes must be CW. This is

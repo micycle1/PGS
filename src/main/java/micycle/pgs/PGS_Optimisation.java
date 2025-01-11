@@ -1,9 +1,9 @@
 package micycle.pgs;
 
+import static micycle.pgs.PGS_Construction.createCircle;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
 import static processing.core.PConstants.GROUP;
-import static micycle.pgs.PGS_Construction.createCircle;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -177,10 +177,8 @@ public final class PGS_Optimisation {
 
 		double maxDiagonal = 0;
 		PVector[] maxAreaVertices = new PVector[0];
-		for (int i = 0; i < points.size(); i++) {
-			for (int j = 0; j < points.size(); j++) {
-				final PVector a = points.get(i);
-				final PVector b = points.get(j);
+		for (final PVector a : points) {
+			for (final PVector b : points) {
 				double dist = PGS.distanceSq(a, b);
 
 				if (dist < maxDiagonal) {
@@ -287,8 +285,8 @@ public final class PGS_Optimisation {
 		ellipse.setFill(true);
 		ellipse.setFill(Colors.WHITE);
 		ellipse.beginShape();
-		for (int i = 0; i < eEoords.length; i++) {
-			ellipse.vertex((float) eEoords[i][0], (float) eEoords[i][1]);
+		for (double[] eEoord : eEoords) {
+			ellipse.vertex((float) eEoord[0], (float) eEoord[1]);
 		}
 		ellipse.endShape();
 

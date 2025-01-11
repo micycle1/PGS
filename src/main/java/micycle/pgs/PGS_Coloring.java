@@ -12,9 +12,10 @@ import org.jgrapht.alg.color.SmallestDegreeLastColoring;
 import org.jgrapht.alg.interfaces.VertexColoringAlgorithm.Coloring;
 import org.jgrapht.graph.AbstractBaseGraph;
 import org.jgrapht.graph.DefaultEdge;
+
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
-import micycle.pgs.color.Colors;
 import micycle.pgs.color.ColorUtils;
+import micycle.pgs.color.Colors;
 import micycle.pgs.commons.GeneticColoring;
 import micycle.pgs.commons.RLFColoring;
 import processing.core.PShape;

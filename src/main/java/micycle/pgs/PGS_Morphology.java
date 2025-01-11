@@ -38,15 +38,15 @@ import micycle.pgs.color.Colors;
 import micycle.pgs.commons.ChaikinCut;
 import micycle.pgs.commons.CornerRounding;
 import micycle.pgs.commons.DiscreteCurveEvolution;
+import micycle.pgs.commons.DiscreteCurveEvolution.DCETerminationCallback;
 import micycle.pgs.commons.EllipticFourierDesc;
 import micycle.pgs.commons.GaussianLineSmoothing;
 import micycle.pgs.commons.ShapeInterpolation;
-import micycle.pgs.commons.DiscreteCurveEvolution.DCETerminationCallback;
+import micycle.uniformnoise.UniformNoise;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 import uk.osgb.algorithm.minkowski_sum.MinkowskiSum;
-import micycle.uniformnoise.UniformNoise;
 
 /**
  * Methods that affect the geometry or topology of shapes.

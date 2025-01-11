@@ -399,8 +399,8 @@ public final class PGS_Processing {
 
 		perimeter.beginShape();
 		Coordinate[] coords = string.getCoordinates();
-		for (int i = 0; i < coords.length; i++) {
-			perimeter.vertex((float) coords[i].x, (float) coords[i].y);
+		for (Coordinate coord : coords) {
+			perimeter.vertex((float) coord.x, (float) coord.y);
 		}
 		perimeter.endShape();
 

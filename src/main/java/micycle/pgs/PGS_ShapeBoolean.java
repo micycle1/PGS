@@ -218,6 +218,7 @@ public final class PGS_ShapeBoolean {
 	 * @deprecated This method is deprecated due to the lack of support for meshes
 	 *             with holes.
 	 */
+	@Deprecated
 	public static PShape unionMeshWithoutHoles(final Collection<PShape> mesh) {
 		Map<PEdge, Integer> edges = new HashMap<>();
 

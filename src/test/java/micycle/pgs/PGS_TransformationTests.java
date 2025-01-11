@@ -1,11 +1,12 @@
 package micycle.pgs;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static micycle.pgs.PGS_ShapePredicates.area;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import processing.core.PConstants;
 import processing.core.PShape;
 
 class PGS_TransformationTests {
@@ -22,7 +23,7 @@ class PGS_TransformationTests {
 		square.vertex(10, 0);
 		square.vertex(10, 10);
 		square.vertex(0, 10);
-		square.endShape(PShape.CLOSE); // close affects rendering only -- does not append another vertex
+		square.endShape(PConstants.CLOSE); // close affects rendering only -- does not append another vertex
 		assertEquals(100, area(square));
 	}
 

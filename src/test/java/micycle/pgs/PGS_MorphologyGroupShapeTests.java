@@ -1,7 +1,7 @@
 package micycle.pgs;
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,8 +41,8 @@ class PGS_MorphologyGroupShapeTests {
 		b.vertex(70, 710);
 		b.endShape(PConstants.CLOSE);
 
-		GROUP_SHAPE = new PShape(PShape.GROUP);
-		GROUP_SHAPE.setKind(PShape.GROUP);
+		GROUP_SHAPE = new PShape(PConstants.GROUP);
+		GROUP_SHAPE.setKind(PConstants.GROUP);
 		GROUP_SHAPE.addChild(a);
 		GROUP_SHAPE.addChild(b);
 	}

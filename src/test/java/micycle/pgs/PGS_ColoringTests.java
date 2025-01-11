@@ -1,6 +1,8 @@
 package micycle.pgs;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,8 +48,8 @@ class PGS_ColoringTests {
 		b.vertex(10, 0);
 		b.endShape(PConstants.CLOSE);
 
-		GROUP_SHAPE = new PShape(PShape.GROUP);
-		GROUP_SHAPE.setKind(PShape.GROUP);
+		GROUP_SHAPE = new PShape(PConstants.GROUP);
+		GROUP_SHAPE.setKind(PConstants.GROUP);
 		GROUP_SHAPE.addChild(a);
 		GROUP_SHAPE.addChild(b);
 	}

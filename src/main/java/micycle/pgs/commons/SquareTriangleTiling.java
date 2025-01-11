@@ -5,8 +5,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.SplittableRandom;
 
-import micycle.pgs.color.Colors;
 import micycle.pgs.color.ColorUtils;
+import micycle.pgs.color.Colors;
 import processing.core.PConstants;
 import processing.core.PShape;
 
@@ -118,16 +118,11 @@ public class SquareTriangleTiling {
 				if (sweep == 0) {
 					next.remove(0);
 					if (colorMode == 2) {
-						switch (colorCount(vert.colors)) {
-							case 0 :
-								activeColor = random.nextInt(0, 3);
-								break;
-							case 1 :
-								activeColor = getSecondColor(activeColor);
-								break;
-							default :
-								activeColor = getLastColor(vert.colors);
-						}
+						activeColor = switch (colorCount(vert.colors)) {
+							case 0 -> random.nextInt(0, 3);
+							case 1 -> getSecondColor(activeColor);
+							default -> getLastColor(vert.colors);
+						};
 					}
 				}
 			}
@@ -279,42 +274,30 @@ public class SquareTriangleTiling {
 		if ((sweep == 2) || (sweep == 3)) {
 			return getLastColor(colors);
 		}
-		switch (colors.size()) {
-			case 0 :
-				return random.nextInt(0, 3);
-			case 1 :
-				return getSecondColor(colors.get(0));
-			case 2 :
-				return colors.get(0);
-			default :
-				return getNextColor(colors);
-		}
+		return switch (colors.size()) {
+			case 0 -> random.nextInt(0, 3);
+			case 1 -> getSecondColor(colors.get(0));
+			case 2 -> colors.get(0);
+			default -> getNextColor(colors);
+		};
 	}
 
 	private int getSecondColor(int c1) {
-		switch (c1) {
-			case 0 :
-				return random.nextInt(1, 3);
-			case 1 :
-				return random.nextInt(0, 3);
-			case 2 :
-				return random.nextInt(0, 2);
-			default :
-				return 0; // shouldn't be hit
-		}
+		return switch (c1) {
+			case 0 -> random.nextInt(1, 3);
+			case 1 -> random.nextInt(0, 3);
+			case 2 -> random.nextInt(0, 2);
+			default -> 0; // shouldn't be hit
+		};
 	}
 
 	private int getThirdColor(int c1, int c2) {
-		switch (c1 + c2) {
-			case 1 :
-				return 2;
-			case 2 :
-				return 1;
-			case 3 :
-				return 0;
-			default :
-				return 0; // shouldn't be hit
-		}
+		return switch (c1 + c2) {
+			case 1 -> 2;
+			case 2 -> 1;
+			case 3 -> 0;
+			default -> 0; // shouldn't be hit
+		};
 	}
 
 	private int getLastColor(List<Integer> colors) {

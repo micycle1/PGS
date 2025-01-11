@@ -266,7 +266,7 @@ public class PMesh {
 			mv.smoothedVertex.add(displacements[j]);
 		}
 
-		return (float) maxDisplacement;
+		return maxDisplacement;
 	}
 
 	private float smoothCotanWeighted(final boolean excludeBoundaryVertices) { // NOTE working?

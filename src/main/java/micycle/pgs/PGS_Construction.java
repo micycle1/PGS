@@ -999,22 +999,13 @@ public class PGS_Construction {
 	 * @since 1.3.0
 	 */
 	public static PShape createSierpinskiTriCurve(SierpinskiTriCurveType type, double width, int order) {
-		SpaceFillingCurve fractal;
+		SpaceFillingCurve fractal = switch (type) {
+			case TRI -> new SierpinskiThreeSteps(width, width);
+			case TETRA -> new SierpinskiFourSteps(width, width);
+			case PENTA -> new SierpinskiFiveSteps(width, width);
+			case DECA -> new SierpinskiTenSteps(width, width);
+		};
 
-		switch (type) {
-			default :
-			case TRI :
-				fractal = new SierpinskiThreeSteps(width, width);
-				break;
-			case TETRA :
-				fractal = new SierpinskiFourSteps(width, width);
-				break;
-			case PENTA :
-				fractal = new SierpinskiFiveSteps(width, width);
-				break;
-			case DECA :
-				fractal = new SierpinskiTenSteps(width, width);
-		}
 		fractal.setN(order);
 
 		fractal.start();

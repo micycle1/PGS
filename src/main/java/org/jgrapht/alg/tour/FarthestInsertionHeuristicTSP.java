@@ -1,13 +1,17 @@
 package org.jgrapht.alg.tour;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.jgrapht.Graph;
 import org.jgrapht.GraphPath;
 import org.jgrapht.Graphs;
 import org.jgrapht.graph.GraphWalk;
 import org.jgrapht.util.VertexToIntegerMapping;
-
-import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * The farthest insertion heuristic algorithm for the TSP problem.
@@ -207,6 +211,7 @@ public class FarthestInsertionHeuristicTSP<V, E> extends HamiltonianCycleAlgorit
 		return tour;
 	}
 
+	@Override
 	protected GraphPath<V, E> closedVertexListToTour(List<V> tour, Graph<V, E> graph) {
 		assert tour.get(0) == tour.get(tour.size() - 1);
 

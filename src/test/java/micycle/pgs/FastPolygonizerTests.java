@@ -1,7 +1,7 @@
 package micycle.pgs;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static micycle.pgs.commons.FastPolygonizer.polygonize;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
 import java.util.Arrays;

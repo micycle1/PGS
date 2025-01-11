@@ -429,7 +429,7 @@ public class PGS_SegmentSet {
 	 * @since 1.4.0
 	 */
 	public static List<PEdge> fromPShape(PShape shape) {
-		List<PEdge> edges = new ArrayList<>(shape.getFamily() != PShape.GROUP ? shape.getVertexCount() : shape.getChildCount() * 4);
+		List<PEdge> edges = new ArrayList<>(shape.getFamily() != PConstants.GROUP ? shape.getVertexCount() : shape.getChildCount() * 4);
 		@SuppressWarnings("unchecked")
 		List<LineString> strings = LinearComponentExtracter.getLines(PGS_Conversion.fromPShape(shape));
 		strings.forEach(s -> {

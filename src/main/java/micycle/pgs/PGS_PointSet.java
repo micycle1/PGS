@@ -28,6 +28,7 @@ import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.Vertex;
 import org.tinspin.index.IndexConfig;
 import org.tinspin.index.PointMap;
+
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;

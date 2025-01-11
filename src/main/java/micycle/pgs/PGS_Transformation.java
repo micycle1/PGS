@@ -301,6 +301,7 @@ public final class PGS_Transformation {
 	 * @deprecated Use {@link #translateCentroidTo(PShape, double, double)
 	 *             translateCentroidTo()} instead.
 	 */
+	@Deprecated
 	public static PShape translateTo(PShape shape, double x, double y) {
 		return translateCentroidTo(shape, x, y);
 	}
@@ -414,6 +415,7 @@ public final class PGS_Transformation {
 	 * @param scaleY Y scale factor
 	 * @deprecated
 	 */
+	@Deprecated
 	public static PShape homotheticTransformation(PShape shape, PVector center, double scaleX, double scaleY) {
 		Polygon geom = (Polygon) fromPShape(shape);
 

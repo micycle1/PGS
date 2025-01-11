@@ -33,7 +33,7 @@ class PGS_ConversionTests {
 		shape.vertex(0, 0);
 		shape.vertex(10, 0);
 		shape.vertex(0, 10);
-		shape.endShape(PShape.CLOSE); // close affects rendering only -- does not append another vertex
+		shape.endShape(PConstants.CLOSE); // close affects rendering only -- does not append another vertex
 
 		final Geometry g = fromPShape(shape);
 
@@ -58,7 +58,7 @@ class PGS_ConversionTests {
 		shape.vertex(2, 8);
 		shape.vertex(8, 8);
 		shape.endContour();
-		shape.endShape(PShape.CLOSE);
+		shape.endShape(PConstants.CLOSE);
 
 		final Geometry g = fromPShape(shape);
 		assertEquals(Geometry.TYPENAME_POLYGON, g.getGeometryType());
@@ -76,7 +76,7 @@ class PGS_ConversionTests {
 		shape.vertex(0, 0);
 		shape.vertex(10, 0);
 		shape.vertex(0, 10);
-		shape.endShape(PShape.CLOSE); // close affects rendering only -- does not append another vertex
+		shape.endShape(PConstants.CLOSE); // close affects rendering only -- does not append another vertex
 
 		// apply affine transformations to shape
 		shape.translate(100, 100);
@@ -130,7 +130,7 @@ class PGS_ConversionTests {
 		final Geometry g = GEOM_FACTORY.createPolygon(GEOM_FACTORY.createLinearRing(coords), holes);
 
 		final PShape shape = toPShape(g);
-		assertEquals(PShape.BREAK, shape.getVertexCode(3)); // contour break after third vertex (marks new hole)
+		assertEquals(PConstants.BREAK, shape.getVertexCode(3)); // contour break after third vertex (marks new hole)
 		assertEquals(hole.length - 1 + coords.length - 1, shape.getVertexCount()); // contour break after third vertex
 	}
 
@@ -191,7 +191,7 @@ class PGS_ConversionTests {
 		path2.vertex(710, 710);
 		path2.endShape(); // unclosed
 
-		final PShape shape = new PShape(PShape.GROUP);
+		final PShape shape = new PShape(PConstants.GROUP);
 		shape.addChild(path1);
 		shape.addChild(path2);
 
@@ -222,9 +222,9 @@ class PGS_ConversionTests {
 		polygon.vertex(0, 0);
 		polygon.vertex(10, 0);
 		polygon.vertex(0, 10);
-		polygon.endShape(PShape.CLOSE);
+		polygon.endShape(PConstants.CLOSE);
 
-		final PShape group = new PShape(PShape.GROUP);
+		final PShape group = new PShape(PConstants.GROUP);
 		group.addChild(path);
 		group.addChild(polygon);
 
@@ -258,7 +258,7 @@ class PGS_ConversionTests {
 		final Geometry g = GEOM_FACTORY.createMultiLineString(new LineString[] { path1, path2 });
 
 		final PShape shape = toPShape(g);
-		assertEquals(PShape.GROUP, shape.getFamily());
+		assertEquals(PConstants.GROUP, shape.getFamily());
 		assertEquals(g.getNumGeometries(), shape.getChildCount());
 
 		assertEquals(g.getCoordinates().length, shape.getChild(0).getVertexCount() + shape.getChild(1).getVertexCount());
@@ -272,7 +272,7 @@ class PGS_ConversionTests {
 	@Test
 	void testPointsToMultipoint() {
 		final PShape points = new PShape(PShape.GEOMETRY);
-		points.beginShape(PShape.POINTS);
+		points.beginShape(PConstants.POINTS);
 		points.vertex(0, 0);
 		points.vertex(10, 0);
 		points.vertex(0, 10);
@@ -299,7 +299,7 @@ class PGS_ConversionTests {
 		final Geometry g = GEOM_FACTORY.createMultiPointFromCoords(coords);
 
 		final PShape shape = toPShape(g);
-		assertEquals(PShape.POINTS, shape.getKind());
+		assertEquals(PConstants.POINTS, shape.getKind());
 
 		assertEquals(g.getCoordinates().length, shape.getVertexCount());
 		for (int i = 0; i < g.getCoordinates().length; i++) {
@@ -346,7 +346,7 @@ class PGS_ConversionTests {
 		assertEquals(1, b.getNumInteriorRing()); // each polygon has hole
 		
 		// note backwards conversion is formatted differently to input 
-		assertEquals(PShape.GROUP, toPShape(g).getFamily());
+		assertEquals(PConstants.GROUP, toPShape(g).getFamily());
 		assertEquals(2, toPShape(g).getChildCount()); 
 	}
 
@@ -357,7 +357,7 @@ class PGS_ConversionTests {
 		shape.vertex(12.4985f, -97.234f);
 		shape.vertex(10, -10);
 		shape.vertex(999.99f, 0.0001f);
-		shape.endShape(PShape.CLOSE); // close affects rendering only -- does not append another vertex
+		shape.endShape(PConstants.CLOSE); // close affects rendering only -- does not append another vertex
 
 		PGS_Conversion.roundVertexCoords(shape);
 
@@ -382,7 +382,7 @@ class PGS_ConversionTests {
 		shape.vertex(999.99f, 0.0001f);
 		shape.vertex(999.99f, 0.0001f);
 		shape.vertex(.99f, 0.0001f);
-		shape.endShape(PShape.CLOSE); // close affects rendering only -- does not append another vertex
+		shape.endShape(PConstants.CLOSE); // close affects rendering only -- does not append another vertex
 
 		final PShape processed = toPShape(fromPShape(shape));
 		assertEquals(shape.getVertex(0), processed.getVertex(0));
@@ -415,7 +415,7 @@ class PGS_ConversionTests {
 		shape.vertex(0, 0);
 		shape.vertex(10, 0);
 		shape.vertex(0, 10);
-		shape.endShape(PShape.CLOSE);
+		shape.endShape(PConstants.CLOSE);
 
 		int col = ColorUtils.composeColor(50, 125, 175);
 		shape.setFill(col);
@@ -452,7 +452,7 @@ class PGS_ConversionTests {
 		shape.vertex(0, 0);
 		shape.vertex(10, 0);
 		shape.vertex(0, 10);
-		shape.endShape(PShape.CLOSE);
+		shape.endShape(PConstants.CLOSE);
 
 		String wkt = PGS_Conversion.toWKT(shape);
 		PShape in = PGS_Conversion.fromWKT(wkt);
@@ -467,7 +467,7 @@ class PGS_ConversionTests {
 		shape.vertex(0, 0);
 		shape.vertex(10, 0);
 		shape.vertex(0, 10);
-		shape.endShape(PShape.CLOSE);
+		shape.endShape(PConstants.CLOSE);
 
 		byte[] wkb = PGS_Conversion.toWKB(shape);
 		PShape in = PGS_Conversion.fromWKB(wkb);
@@ -482,7 +482,7 @@ class PGS_ConversionTests {
 		shape.vertex(0, 0);
 		shape.vertex(10, 0);
 		shape.vertex(0, 10);
-		shape.endShape(PShape.CLOSE);
+		shape.endShape(PConstants.CLOSE);
 
 		String hex = PGS_Conversion.toHexWKB(shape);
 		PShape in = PGS_Conversion.fromHexWKB(hex);
@@ -497,7 +497,7 @@ class PGS_ConversionTests {
 		shape.vertex(0, 0);
 		shape.vertex(10, 0);
 		shape.vertex(0, 11);
-		shape.endShape(PShape.CLOSE);
+		shape.endShape(PConstants.CLOSE);
 		
 		String encoding = PGS_Conversion.toEncodedPolyline(shape);
 		PShape in = PGS_Conversion.fromEncodedPolyline(encoding);
@@ -512,7 +512,7 @@ class PGS_ConversionTests {
 		shape.vertex(0, 0);
 		shape.vertex(10.1f, 0);
 		shape.vertex(0, 10.7f);
-		shape.endShape(PShape.CLOSE);
+		shape.endShape(PConstants.CLOSE);
 		
 		String json = PGS_Conversion.toGeoJSON(shape);
 		PShape in = PGS_Conversion.fromGeoJSON(json);
@@ -527,7 +527,7 @@ class PGS_ConversionTests {
 		shape.vertex(1, 1);
 		shape.vertex(10, 0);
 		shape.vertex(33, 10);
-		shape.endShape(PShape.CLOSE);
+		shape.endShape(PConstants.CLOSE);
 
 		Shape s = PGS_Conversion.toJava2D(shape);
 		PShape in = PGS_Conversion.fromJava2D(s);
@@ -542,7 +542,7 @@ class PGS_ConversionTests {
 		shape.vertex(1, 1);
 		shape.vertex(10, 0);
 		shape.vertex(33, 10);
-		shape.endShape(PShape.CLOSE);
+		shape.endShape(PConstants.CLOSE);
 		
 		double[][] s = PGS_Conversion.toArray(shape, true);
 		PShape in = PGS_Conversion.fromArray(s, false);

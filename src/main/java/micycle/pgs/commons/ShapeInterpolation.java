@@ -7,8 +7,8 @@ import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.LinearRing;
+import org.locationtech.jts.geom.Polygon;
 
 /**
  * Best-guess interpolation between any two linear rings.
@@ -129,10 +129,11 @@ public class ShapeInterpolation {
 			double dist1 = calculateSumOfSquares(a, b, mid1, n);
 			double dist2 = calculateSumOfSquares(a, b, mid2, n);
 
-			if (dist1 < dist2)
+			if (dist1 < dist2) {
 				high = mid2 - 1;
-			else
+			} else {
 				low = mid1 + 1;
+			}
 		}
 
 		return low;

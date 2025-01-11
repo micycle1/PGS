@@ -46,6 +46,7 @@ public class TriCheckerAlpha implements TriangleChecker {
 	}
 
 	//
+	@Override
 	public boolean removeable(Coordinate coordS, Coordinate coordE, Coordinate coordO) {
 		Coordinate cen = Triangle.circumcentre(coordS, coordE, coordO);
 		double r = cen.distance(coordS);

@@ -1,14 +1,14 @@
 package micycle.pgs.commons;
 
+import static java.lang.Math.PI;
+import static net.jafama.FastMath.cos;
 import static net.jafama.FastMath.pow;
 import static net.jafama.FastMath.sin;
 
 import java.util.ArrayList;
 import java.util.List;
-import processing.core.PVector;
 
-import static net.jafama.FastMath.cos;
-import static java.lang.Math.PI;
+import processing.core.PVector;
 
 /**
  * Doyle spirals are patterns of non-crossing circles in the plane, each tangent

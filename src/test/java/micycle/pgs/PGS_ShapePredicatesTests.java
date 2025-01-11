@@ -1,6 +1,8 @@
 package micycle.pgs;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Collections;
 import java.util.List;
@@ -8,6 +10,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -25,7 +28,7 @@ class PGS_ShapePredicatesTests {
 		square.vertex(10, 0);
 		square.vertex(10, 10);
 		square.vertex(0, 10);
-		square.endShape(PShape.CLOSE); // close affects rendering only -- does not append another vertex
+		square.endShape(PConstants.CLOSE); // close affects rendering only -- does not append another vertex
 
 		float[] centroid = new float[] { 0, 0 };
 		float side_length = 10;
@@ -34,7 +37,7 @@ class PGS_ShapePredicatesTests {
 		triangle.vertex(centroid[0], centroid[1] + ((float) Math.sqrt(3) / 3) * side_length); // Top vertex
 		triangle.vertex(centroid[0] - (side_length / 2), centroid[1] - ((float) Math.sqrt(3) / 6) * side_length); // Bottom left vertex
 		triangle.vertex(centroid[0] + (side_length / 2), centroid[1] - ((float) Math.sqrt(3) / 6) * side_length); // Bottom right vertex
-		triangle.endShape(PShape.CLOSE);
+		triangle.endShape(PConstants.CLOSE);
 	}
 
 	@Test

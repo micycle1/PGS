@@ -1237,6 +1237,7 @@ public final class PGS_Conversion {
 		// PolylineEncoder.createEncodings() writes to console, so suppress that...
 		PrintStream old = System.out;
 		System.setOut(new PrintStream(new OutputStream() {
+			@Override
 			public void write(int b) throws IOException {
 			}
 		}));
@@ -2021,10 +2022,12 @@ public final class PGS_Conversion {
 
 		@Override
 		public boolean equals(Object obj) {
-			if (this == obj)
+			if (this == obj) {
 				return true;
-			if (obj == null || getClass() != obj.getClass())
+			}
+			if (obj == null || getClass() != obj.getClass()) {
 				return false;
+			}
 			PShapeData other = (PShapeData) obj;
 			return fillColor == other.fillColor && strokeColor == other.strokeColor && strokeWeight == other.strokeWeight && fill == other.fill
 					&& stroke == other.stroke;
