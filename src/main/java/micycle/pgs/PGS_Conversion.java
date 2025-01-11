@@ -1996,6 +1996,9 @@ public final class PGS_Conversion {
 		 * @param other
 		 */
 		public void applyTo(PShape other) {
+			if (other.getFamily() == GROUP) {
+				getChildren(other).forEach(c -> applyTo(c));
+			}
 			other.setFill(fill);
 			other.setFill(fillColor);
 			other.setStroke(stroke);

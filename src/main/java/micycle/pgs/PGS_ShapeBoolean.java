@@ -194,7 +194,12 @@ public final class PGS_ShapeBoolean {
 	}
 
 	private static PShape unionMeshWithHoles(final PShape mesh) {
-		return toPShape(CoverageUnion.union(PGS_Conversion.fromPShape(mesh)));
+		Geometry g = PGS_Conversion.fromPShape(mesh);
+		try {
+			return toPShape(CoverageUnion.union(g));
+		} catch (Exception e) {
+			return toPShape(g.buffer(0));
+		}
 	}
 
 	/**
