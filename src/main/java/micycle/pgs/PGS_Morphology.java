@@ -780,6 +780,35 @@ public final class PGS_Morphology {
 	}
 
 	/**
+	 * Applies a pinch warping effect to a shape, distorting vertices towards a
+	 * specified point. The strength of the pinch effect decreases with distance
+	 * from the pinch point, creating a localized warping effect.
+	 *
+	 * @param shape      The shape. The original shape is not modified; instead, a
+	 *                   new warped shape is returned.
+	 * @param pinchPoint The point in 2D space towards which the shape will be
+	 *                   pinched. Vertices closer to this point will be affected
+	 *                   more strongly.
+	 * @param weight     The strength of the pinching effect. Higher values create
+	 *                   stronger distortion.
+	 * @return A new PShape object comprising the warped geometry.
+	 * @since 2.0
+	 */
+	public static PShape pinchWarp(PShape shape, PVector pinchPoint, double weight) {
+		List<PVector> vertices = new ArrayList<>(shape.getVertexCount());
+		for (int i = 0; i < shape.getVertexCount(); i++) {
+			PVector vertex = shape.getVertex(i).copy();
+			float distance = PVector.dist(vertex, pinchPoint);
+			float w = (float) (weight / (distance + 1));
+			PVector direction = PVector.sub(pinchPoint, vertex);
+			direction.mult(w);
+			vertex.add(direction);
+			vertices.add(vertex);
+		}
+		return PGS_Conversion.fromPVector(vertices);
+	}
+
+	/**
 	 * Generates an intermediate shape between two shapes by interpolating between
 	 * them. This process has many names: shape morphing / blending / averaging /
 	 * tweening / interpolation.

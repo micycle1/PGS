@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `applyRandomWeights()` to `PGS_PointSet`. Applies random weights within a specified range to a list of points.
 * `findContainingFace()` to `PGS_Meshing`. Finds the single face from the mesh that contains the query point.
 * `findBreaks()` to `PGS_Meshing`. Returns the locations of invalid mesh face boundary segments if found.
+* `pinchWarp()` to `PGS_Morphology`. Applies a pinch warping effect to a shape, distorting vertices towards a specified point.
 
 ### Changes
 * Packed circles from `PGS_CirclePacking.stochasticPack()` will now always lie within shape bounds.

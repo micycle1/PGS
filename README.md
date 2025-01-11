@@ -314,6 +314,13 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/morphology/hobbySimplify.gif"></td>
     <td valign="top" width="25%"><img src="resources/morphology/ellipticFourierSmooth.gif"></td>
   </tr>
+
+  <tr>
+    <td align="center" valign="center"><b>Pinch Warp</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/morphology/pinchWarp.gif"></td>
+  </tr>
 </table>
 
 ## *Hull*
