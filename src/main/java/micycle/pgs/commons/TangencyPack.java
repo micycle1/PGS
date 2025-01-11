@@ -380,6 +380,7 @@ public class TangencyPack {
 	 *         the actual angle sum
 	 * @deprecated used by {@link #computeRadiiSimple()}
 	 */
+	@Deprecated
 	private double flower(final Vertex center) {
 		List<Vertex> flower = flowers.get(center);
 		final int n = flower.size();
@@ -453,6 +454,7 @@ public class TangencyPack {
 	 * @return angle of yxz
 	 * @deprecated
 	 */
+	@Deprecated
 	private static double tangentAngleFast(final double rx, final double ry, final double rz) {
 		final double x = (ry * rz) / ((rx + ry) * (rx + rz));
 		// return 2 * Fixed64.ToDouble(Fixed64.Asin(Fixed64.FromDouble(Math.sqrt(x))));

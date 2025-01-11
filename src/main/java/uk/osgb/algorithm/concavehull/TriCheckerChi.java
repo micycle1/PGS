@@ -42,6 +42,7 @@ public class TriCheckerChi implements TriangleChecker {
 		return length;
 	}
 
+	@Override
 	public boolean removeable(Coordinate coordS, Coordinate coordE, Coordinate coordO) {
 		sp.setCoordinate(coordS);
 		ep.setCoordinate(coordE);

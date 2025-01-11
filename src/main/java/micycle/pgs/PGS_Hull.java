@@ -17,12 +17,11 @@ import uk.osgb.algorithm.concavehull.ConcaveHull;
 import uk.osgb.algorithm.concavehull.TriCheckerChi;
 
 /**
- * Convex and concave hulls (amongst other variations) of polygons and point
- * sets.
+ * Generates various types of geomtric hulls (convex, concave, etc.) for
+ * polygons and point sets.
  * <p>
- * or ... Find minimal coverings (hulls) of polygon arrangements and point/shape
- * sets.
- * 
+ * A hull is the smallest enclosing shape that contains all points in a set.
+ *
  * @author Michael Carleton
  * @since 1.3.0
  */
@@ -70,8 +69,7 @@ public class PGS_Hull {
 	 */
 	public static PShape concaveHull(PShape shapeSet, double concavity, boolean tight) {
 		Geometry g = PGS_Conversion.fromPShape(shapeSet);
-		if (g.getGeometryType().equals(Geometry.TYPENAME_MULTIPOLYGON)
-				|| g.getGeometryType().equals(Geometry.TYPENAME_GEOMETRYCOLLECTION)) {
+		if (g.getGeometryType().equals(Geometry.TYPENAME_MULTIPOLYGON) || g.getGeometryType().equals(Geometry.TYPENAME_GEOMETRYCOLLECTION)) {
 			g = g.union();
 		}
 		final ConcaveHullOfPolygons hull = new ConcaveHullOfPolygons(g);
@@ -152,6 +150,7 @@ public class PGS_Hull {
 	 *                  <code>0.05–0.2</code> typically produce optimal or
 	 *                  near-optimal shape characterization across a wide range of
 	 *                  point distributions.
+	 *                  </ul>
 	 * @return
 	 * @see #concaveHullBFS(List, double)
 	 */

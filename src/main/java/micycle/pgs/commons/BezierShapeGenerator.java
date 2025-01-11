@@ -107,9 +107,9 @@ public class BezierShapeGenerator {
 		if (centering) {
 			double centerX = 0;
 			double centerY = 0;
-			for (int i = 0; i < controlPts.length; i++) {
-				centerX += controlPts[i][0];
-				centerY += controlPts[i][1];
+			for (double[] controlPt : controlPts) {
+				centerX += controlPt[0];
+				centerY += controlPt[1];
 			}
 			centerX /= controlPts.length;
 			centerY /= controlPts.length;

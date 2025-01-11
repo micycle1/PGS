@@ -1,6 +1,7 @@
 package micycle.pgs;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -17,7 +18,7 @@ class PGS_ShapeBooleanTests {
 		square.vertex(10, 0);
 		square.vertex(10, 10);
 		square.vertex(0, 10);
-		square.endShape(PShape.CLOSE); // close affects rendering only -- does not append another vertex
+		square.endShape(PConstants.CLOSE); // close affects rendering only -- does not append another vertex
 
 		PShape line = new PShape(PShape.PATH);
 		line.beginShape(PConstants.LINES);
@@ -40,7 +41,7 @@ class PGS_ShapeBooleanTests {
 		square.vertex(10, 0);
 		square.vertex(10, 10);
 		square.vertex(0, 10);
-		square.endShape(PShape.CLOSE); // close affects rendering only -- does not append another vertex
+		square.endShape(PConstants.CLOSE); // close affects rendering only -- does not append another vertex
 
 		PShape line = new PShape(PShape.PATH);
 		line.beginShape(PConstants.LINES);
@@ -61,7 +62,7 @@ class PGS_ShapeBooleanTests {
 		square.vertex(10, 0);
 		square.vertex(10, 10);
 		square.vertex(0, 10);
-		square.endShape(PShape.CLOSE); // close affects rendering only -- does not append another vertex
+		square.endShape(PConstants.CLOSE); // close affects rendering only -- does not append another vertex
 		
 		PShape line = new PShape(PShape.PATH);
 		line.beginShape(PConstants.LINES);

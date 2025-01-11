@@ -60,8 +60,8 @@ import micycle.medialAxis.MedialAxis;
 import micycle.medialAxis.MedialAxis.MedialDisk;
 import micycle.pgs.PGS.GeometryIterator;
 import micycle.pgs.PGS.LinearRingIterator;
-import micycle.pgs.color.Colors;
 import micycle.pgs.color.ColorUtils;
+import micycle.pgs.color.Colors;
 import micycle.pgs.commons.PEdge;
 import net.jafama.FastMath;
 import processing.core.PConstants;
@@ -435,7 +435,7 @@ public final class PGS_Contour {
 	 * @param shape
 	 * @param highPoint       position of "high" point within the shape
 	 * @param intervalSpacing distance between successive isolines
-	 * @return
+	 * @return PShape containing isolines linework 
 	 */
 	public static PShape isolines(PShape shape, PVector highPoint, double intervalSpacing) {
 
@@ -520,7 +520,7 @@ public final class PGS_Contour {
 			 * shape
 			 */
 			out = toPShape(DouglasPeuckerSimplifier.simplify(ld.getResult(), 1).intersection(g));
-			PGS_Conversion.disableAllFill(out);
+			out.setStrokeCap(PConstants.SQUARE);
 		} catch (Exception e2) {
 			// catch non-noded intersection
 		}
@@ -829,7 +829,7 @@ public final class PGS_Contour {
 		}
 
 		if (g.getCoordinates().length > 2000) {
-			g = DouglasPeuckerSimplifier.simplify(g, 1);
+			g = DouglasPeuckerSimplifier.simplify(g, 0.25);
 		}
 
 		final BufferParameters bufParams = new BufferParameters(8, BufferParameters.CAP_FLAT, style.style,
@@ -914,9 +914,9 @@ public final class PGS_Contour {
 		double[] y = generateDoubleSequence(minY, maxY, spacingY);
 		double[] x = generateDoubleSequence(minX, maxX, spacingX);
 
-		for (int i = 0; i < x.length; i++) {
-			for (int j = 0; j < y.length; j++) {
-				grid.add(new PVector((float) x[i], (float) y[j]));
+		for (double element : x) {
+			for (double element2 : y) {
+				grid.add(new PVector((float) element, (float) element2));
 			}
 		}
 		return grid;
@@ -944,9 +944,9 @@ public final class PGS_Contour {
 		List<Corner> corners = new ArrayList<>();
 		Loop<Edge> loop = new Loop<>();
 
-		for (int j = 0; j < coords.length; j++) {
-			corners.add(new Corner(coords[j].x, coords[j].y));
-			edgeCoordsSet.add(coords[j]);
+		for (Coordinate coord : coords) {
+			corners.add(new Corner(coord.x, coord.y));
+			edgeCoordsSet.add(coord);
 		}
 
 		for (int j = 0; j < corners.size() - 1; j++) {

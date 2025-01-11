@@ -22,6 +22,7 @@ import org.locationtech.jts.coverage.CoverageValidator;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
@@ -252,13 +253,34 @@ public final class PGS_ShapePredicates {
 	 * Computes the centroid of a shape. A centroid is the center of mass of the
 	 * shape.
 	 * <p>
-	 * If the input is a polygon, the centroid will always lie inside it.
+	 * If the input is a polygon, the centroid will always lie inside it. For other
+	 * shapes, this may not be the case.
 	 * 
-	 * @param shape
-	 * @return null if geometry empty
+	 * @param shape the PShape object representing the shape for which the centroid
+	 *              is to be computed
+	 * @return a PVector representing the centroid of the shape, or null if the
+	 *         shape's geometry is empty
 	 */
 	public static PVector centroid(PShape shape) {
 		Point point = fromPShape(shape).getCentroid();
+		if (!point.isEmpty()) {
+			return new PVector((float) point.getX(), (float) point.getY());
+		}
+		return null;
+	}
+
+	/**
+	 * Computes the center of the bounding box of a shape. The bounding box is the
+	 * smallest rectangle that completely contains the shape.
+	 *
+	 * @param shape the PShape object representing the shape for which the bounding
+	 *              box center is to be computed
+	 * @return a PVector representing the center of the shape's bounding box, or
+	 *         null if the shape's geometry is empty
+	 * @since 2.0
+	 */
+	public static PVector boundsCenter(PShape shape) {
+		Point point = fromPShape(shape).getEnvelope().getCentroid();
 		if (!point.isEmpty()) {
 			return new PVector((float) point.getX(), (float) point.getY());
 		}
@@ -493,7 +515,7 @@ public final class PGS_ShapePredicates {
 	 * distance between each shape's <i>Elliptic Fourier Descriptors</i> (EFD).
 	 * <p>
 	 * Smaller values indicate greater similarity or equivalence, and the measure is
-	 * translation and rotation invariant.
+	 * <b>translation and rotation invariant</b>.
 	 * <p>
 	 * This method can be useful in shape recognition tasks where it is necessary to
 	 * quantify the difference or similarity between two shapes.
@@ -564,6 +586,26 @@ public final class PGS_ShapePredicates {
 	 */
 	public static boolean equalsTopo(PShape a, PShape b) {
 		return fromPShape(a).equalsTopo(fromPShape(b));
+	}
+
+	/**
+	 * Determines if the vertices of the specified shape form a clockwise loop on
+	 * the screen in Processing.
+	 * 
+	 * @param shape a polygonal shape that may contain holes (but these aren't
+	 *              considered).
+	 * @return true if clockwise; false otherwise (counter-clockwise).
+	 * @since 2.0
+	 */
+	public static boolean isClockwise(PShape shape) {
+		/*
+		 * Note the function returns true if the ring is oriented CCW, since it
+		 * determines orientation based on an upward-pointing Y-axis. However, in
+		 * Processing, where the Y-axis extends downwards, a ring that appears clockwise
+		 * (CW) on the screen corresponds to a CCW orientation with an upward Y-axis.
+		 */
+		LinearRing ring = ((Polygon) fromPShape(shape)).getExteriorRing();
+		return Orientation.isCCWArea(ring.getCoordinates());
 	}
 
 	/**

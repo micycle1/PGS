@@ -10,6 +10,7 @@ import processing.core.PVector;
 
 /**
  * Generates sets of random points via <i>Poisson Disk Sampling</i>.
+ * <p>
  * Poisson-disc sampling produces points that are tightly-packed, but no closer
  * to each other than a specified minimum distance, resulting in a natural and
  * desirable pattern for many applications. This distribution is also described
@@ -19,10 +20,9 @@ import processing.core.PVector;
  * <i>Bridson's Algorithm</i> for Poisson Disk sampling. This approach is faster
  * and better than the Bridson Algorithm, and balances performance with
  * distribution quality compared to Robert's tweak.
- * 
  * <p>
  * For more, see this <a href=
- * "https://observablehq.com/@fil/poisson-distribution-generators">anaylsis</a>
+ * "https://observablehq.com/@fil/poisson-distribution-generators">analysis</a>
  * of different Poisson disk sampling functions.
  * 
  * @author Jacob Rus
@@ -167,7 +167,7 @@ public final class PoissonDistributionJRUS {
 				// and farther than 2 * radius to all existing samples.
 				if ((0 <= x) && (x < width) && (0 <= y) && (y < height) && far(x, y, minDistSquared)) {
 					sample(x, y);
-//					continue pick; // NOTE no continue is faster and negligibly worse
+//					continue pick; // NOTE no continue is faster and only negligibly worse
 				}
 			}
 			queue.remove(i);
@@ -203,8 +203,9 @@ public final class PoissonDistributionJRUS {
 			for (int i = index0; i < index0 + 10; i += 2) {
 				double dx = grid[i] - x;
 				double dy = grid[i + 1] - y;
-				if (dx * dx + dy * dy < minDistSquared)
+				if (dx * dx + dy * dy < minDistSquared) {
 					return false;
+				}
 			}
 		}
 		return true;

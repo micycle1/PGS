@@ -28,7 +28,7 @@ class PGSTests {
 
 	@Test
 	void testFromEdges() {
-		List<PEdge> edges = new ArrayList<PEdge>();
+		List<PEdge> edges = new ArrayList<>();
 		for (int i = 0; i < 15; i++) {
 			edges.add(new PEdge(i, i, i + 1, i + 1));
 		}

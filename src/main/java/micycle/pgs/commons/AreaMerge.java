@@ -1,17 +1,15 @@
 package micycle.pgs.commons;
 
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
+
 import org.jgrapht.Graph;
 import org.jgrapht.Graphs;
-import org.jgrapht.alg.util.NeighborCache;
 import org.jgrapht.alg.util.Pair;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
@@ -44,14 +42,13 @@ public class AreaMerge {
 	 */
 	public static PShape areaMerge(PShape mesh, double areaThreshold) {
 		SimpleGraph<PShape, DefaultEdge> graph = PGS_Conversion.toDualGraph(mesh);
-		NeighborCache<PShape, DefaultEdge> neighborCache = new NeighborCache<>(graph);
 
 		Map<PShape, FaceGroup> initialFaceMap = new HashMap<>(graph.vertexSet().size());
 		SimpleGraph<FaceGroup, DefaultEdge> groupsGraph = new SimpleGraph<>(DefaultEdge.class);
 		TreeSet<FaceGroup> smallGroups = new TreeSet<>(); // groups having area < areaThreshold
 		for (PShape face : graph.vertexSet()) {
 			double area = PGS_ShapePredicates.area(face);
-			FaceGroup f = new FaceGroup(face, area, neighborCache);
+			FaceGroup f = new FaceGroup(face, area);
 			initialFaceMap.put(face, f);
 			groupsGraph.addVertex(f);
 
@@ -72,11 +69,13 @@ public class AreaMerge {
 
 		while (!smallGroups.isEmpty()) {
 			final FaceGroup toMerge = smallGroups.pollFirst();
-			Collection<FaceGroup> neighbors = Graphs.neighborSetOf(groupsGraph, toMerge);
 
 			// find smallest neighbor of the toMerge face
-//			FaceGroup smallestNeighbor = neighbors.stream().min((a, b) -> Double.compare(a.area, b.area)).orElse(null);
-			FaceGroup smallestNeighbor = Graphs.neighborListOf(groupsGraph, toMerge).get(0);
+			List<FaceGroup> neighboringGroups = Graphs.neighborListOf(groupsGraph, toMerge);
+			// sort neighbors by area, pick the smallest. ensures algorithm is stable on the
+			// same input
+			FaceGroup smallestNeighbor = neighboringGroups.stream().min((a, b) -> Double.compare(a.area, b.area)).orElse(null);
+//			FaceGroup smallestNeighbor = neighbors.get(0);
 			if (smallestNeighbor == null) {
 				break; // exit merging
 			}
@@ -86,10 +85,6 @@ public class AreaMerge {
 
 			if (smallestNeighbor.area > areaThreshold) {
 				smallGroups.remove(smallestNeighbor);
-			} else {
-				// re-insert and order the new group
-//				smallGroups.remove(smallestNeighbor);
-//				smallGroups.add(smallestNeighbor);
 			}
 		}
 
@@ -141,13 +136,9 @@ public class AreaMerge {
 		private double area;
 		/** A map of faces comprising this group and their respective areas. */
 		private Map<PShape, Double> faces;
-		private Set<PShape> neighborFaces; // union of neighbors of each face - faces themselves
-		private final NeighborCache<PShape, DefaultEdge> neighborCache;
 
-		FaceGroup(PShape initial, double area, NeighborCache<PShape, DefaultEdge> meshNeighborCache) {
+		FaceGroup(PShape initial, double area) {
 			this.faces = new HashMap<>();
-			this.neighborFaces = new HashSet<>();
-			this.neighborCache = meshNeighborCache;
 			addFace(initial, area);
 		}
 
@@ -156,80 +147,26 @@ public class AreaMerge {
 		 */
 		public boolean addFace(PShape face, double area) {
 			if (face == null) {
-//				System.err.println("Tried to add null face.");
 				return false;
 			}
-//			if (!faces.isEmpty() && !neighborFaces.contains(face)) {
-//				System.err.println("Tried to add a face that is not a neighboring face of the group.");
-//				return false;
-//			}
 			if (!faces.containsKey(face)) {
 				faces.put(face, area);
 				this.area += area;
-//				recomputeNeighbors(face);
 				return true;
 			}
 			return false;
-		}
-
-		private void recomputeNeighbors(PShape face) {
-			neighborFaces.addAll(neighborCache.neighborsOf(face));
-			/*
-			 * Now remove any of the group's own faces from the neighbours.
-			 */
-			neighborFaces.removeAll(faces.keySet());
-		}
-
-		private void recomputeNeighbors() {
-			neighborFaces.clear();
-			for (PShape face : faces.keySet()) {
-				neighborFaces.addAll(neighborCache.neighborsOf(face));
-			}
-			neighborFaces.removeAll(faces.keySet());
 		}
 
 		/**
 		 * Merges another facegroup into this one.
 		 */
 		public boolean mergeWith(FaceGroup other) {
-//			if (!neighbors(other)) {
-//				return false;
-//			}
 			boolean changed = false;
 			for (Entry<PShape, Double> faceEntry : other.faces.entrySet()) {
 				changed = changed | addFace(faceEntry.getKey(), faceEntry.getValue());
 			}
 
 			return changed;
-		}
-
-		/**
-		 * @return true if this and the other facegroup have no faces in common
-		 */
-		public boolean disjoint(FaceGroup other) {
-			Set<PShape> myFaces = new HashSet<>(faces.keySet());
-			myFaces.retainAll(other.faces.keySet());
-			return myFaces.isEmpty();
-		}
-
-		public boolean neighbors(PShape face) {
-			return neighborFaces.contains(face);
-		}
-
-		/**
-		 * @param facegroup
-		 * @return true if the groups are disjoint and neighborFaces each other
-		 */
-		public boolean neighbors(FaceGroup facegroup) {
-			if (!disjoint(facegroup)) {
-				return false;
-			}
-			for (PShape face : facegroup.faces.keySet()) {
-				if (neighborFaces.contains(face)) {
-					return true;
-				}
-			}
-			return false;
 		}
 
 		public boolean hasFace(PShape face) {

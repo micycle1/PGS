@@ -45,7 +45,8 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Construct uncommon/interesting 2D geometries.
+ * Construct uncommon/interesting 2D geometries (beyond those offered in
+ * Processing).
  * 
  * @author Michael Carleton
  *
@@ -68,8 +69,8 @@ public class PGS_Construction {
 	 * @param maxWidth  maximum width of generated random polygon
 	 * @param maxHeight maximum height of generated random polygon
 	 * @return a PShape representing the generated polygon
-	 * @see {@link #createRandomPolygonExact(int, double, double)
-	 *      createRandomPolygonExact()} to specify exact dimensions
+	 * @see {@link #createRandomPolygonExact(int, double, double)}
+	 *      createRandomPolygonExact()} to specify exact dimensions.
 	 */
 	public static PShape createRandomPolygon(int n, double maxWidth, double maxHeight) {
 		return createRandomPolygon(n, maxWidth, maxHeight, System.nanoTime());
@@ -87,9 +88,8 @@ public class PGS_Construction {
 	 *      createRandomPolygonExact()} to specify exact dimensions
 	 */
 	public static PShape createRandomPolygon(int n, double maxWidth, double maxHeight, long seed) {
-		return PGS_Transformation.translateEnvelopeTo(
-				PGS_Conversion.fromPVector(RandomPolygon.generateRandomConvexPolygon(n, maxWidth, maxHeight, seed)), maxWidth / 2,
-				maxHeight / 2);
+		return PGS_Transformation.translateEnvelopeTo(PGS_Conversion.fromPVector(RandomPolygon.generateRandomConvexPolygon(n, maxWidth, maxHeight, seed)),
+				maxWidth / 2, maxHeight / 2);
 	}
 
 	/**
@@ -116,28 +116,46 @@ public class PGS_Construction {
 	 * @return a PShape representing the generated polygon
 	 */
 	public static PShape createRandomPolygonExact(int n, double width, double height, long seed) {
-		return PGS_Transformation.resize(PGS_Conversion.fromPVector(RandomPolygon.generateRandomConvexPolygon(n, width, height, seed)),
-				width, height);
+		return PGS_Transformation.resize(PGS_Conversion.fromPVector(RandomPolygon.generateRandomConvexPolygon(n, width, height, seed)), width, height);
+	}
+
+	/**
+	 * Generates an N-sided regular polygon.
+	 * 
+	 * @param n       number of sides
+	 * @param centerX centre point X
+	 * @param centerY centre point Y
+	 * @param width   polygon width
+	 * @since 2.0
+	 */
+	public static PShape createRegularPolyon(int n, double centerX, double centerY, double width) {
+		final GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
+		shapeFactory.setNumPoints(n);
+		shapeFactory.setCentre(new Coordinate(centerX, centerY));
+		shapeFactory.setWidth(width * 2);
+		shapeFactory.setHeight(width * 2);
+
+		return toPShape(shapeFactory.createCircle());
 	}
 
 	/**
 	 * Creates a supercircle shape.
 	 * 
-	 * @param centerX centre point X
-	 * @param centerY centre point Y
-	 * @param width
-	 * @param height
-	 * @param power   circularity of super circle. Values less than 1 create
-	 *                star-like shapes; power=1 is a square;
+	 * @param centerX  centre point X
+	 * @param centerY  centre point Y
+	 * @param diameter
+	 * @param power    circularity of the super circle. Values less than 1 create
+	 *                 star-like shapes; power=1 is a square; values>1 are
+	 *                 increasingly circular.
 	 * @return
 	 */
-	public static PShape createSupercircle(double centerX, double centerY, double width, double height, double power) {
+	public static PShape createSupercircle(double centerX, double centerY, double diameter, double power) {
 		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
 		shapeFactory.setCentre(new Coordinate(centerX, centerY));
-		shapeFactory.setWidth(width);
-		shapeFactory.setHeight(height);
+		shapeFactory.setWidth(diameter);
+		shapeFactory.setHeight(diameter);
 
-		final double outerC = Math.PI * 2 * Math.max(width, height) / 2;
+		final double outerC = Math.PI * 2 * diameter / 2;
 		final int samples = (int) Math.max(PGS.SHAPE_SAMPLES, Math.ceil(outerC / BufferParameters.DEFAULT_QUADRANT_SEGMENTS));
 		shapeFactory.setNumPoints(samples);
 
@@ -263,8 +281,8 @@ public class PGS_Construction {
 		shapeFactory.setHeight(radius * 2);
 
 		Geometry a = shapeFactory.createArcPolygon(-Math.PI / 2, Math.PI);
-		Geometry b = createEllipse(center.x, centerY + radius / 2, radius, radius);
-		Geometry c = createEllipse(center.x, centerY - radius / 2, radius, radius);
+		Geometry b = createCirclePoly(center.x, centerY + radius / 2, radius / 2);
+		Geometry c = createCirclePoly(center.x, centerY - radius / 2, radius / 2);
 
 		Geometry yinG = a.union(b).difference(c).getGeometryN(0);
 		AffineTransformation t = AffineTransformation.rotationInstance(Math.PI, centerX, centerY);
@@ -306,8 +324,8 @@ public class PGS_Construction {
 		shapeFactory.setHeight(radius * 2);
 
 		Geometry a = shapeFactory.createArcPolygon(Math.PI, Math.PI);
-		Geometry b = createEllipse(xA, centerY, rA * 2, rA * 2);
-		Geometry c = createEllipse(xB, centerY, rB * 2, rB * 2);
+		Geometry b = createCirclePoly(xA, centerY, rA);
+		Geometry c = createCirclePoly(xB, centerY, rB);
 		Geometry curve = a.difference(b).difference(c).buffer(1e-3);
 		@SuppressWarnings("unchecked")
 		List<Polygon> polygons = PolygonExtracter.getPolygons(curve);
@@ -415,7 +433,9 @@ public class PGS_Construction {
 		}
 
 		heart.endShape(PConstants.CLOSE);
-		return heart;
+		PShape out = PGS_Processing.fix(heart); // fix pinch
+		out.setStroke(false);
+		return out;
 	}
 
 	/**
@@ -510,8 +530,7 @@ public class PGS_Construction {
 	 * @return the ring shape
 	 * @since 1.1.3
 	 */
-	public static PShape createRing(double centerX, double centerY, double outerRadius, double innerRadius, double orientation,
-			double angle) {
+	public static PShape createRing(double centerX, double centerY, double outerRadius, double innerRadius, double orientation, double angle) {
 		final double outerR = Math.max(outerRadius, innerRadius);
 		final double innerR = Math.min(outerRadius, innerRadius);
 
@@ -564,12 +583,10 @@ public class PGS_Construction {
 	 * @return the sponge shape
 	 * @since 1.4.0
 	 */
-	public static PShape createSponge(double width, double height, int generators, double thickness, double smoothing, int classes,
-			long seed) {
+	public static PShape createSponge(double width, double height, int generators, double thickness, double smoothing, int classes, long seed) {
 		// A Simple and Effective Geometric Representation for Irregular Porous
 		// Structure Modeling
-		List<PVector> points = PGS_PointSet.random(thickness, thickness / 2, width - thickness / 2, height - thickness / 2, generators,
-				seed);
+		List<PVector> points = PGS_PointSet.random(thickness, thickness / 2, width - thickness / 2, height - thickness / 2, generators, seed);
 		if (points.size() < 6) {
 			return new PShape();
 		}
@@ -699,7 +716,7 @@ public class PGS_Construction {
 	 * @param width   width of outer-most coil
 	 * @param height  height of outer-most coil
 	 * @param spacing the distance between successive coils
-	 * @return a stroked PATH PShape
+	 * @return a stroked PATH PShape with SQUARE stroke cap and MITER joins
 	 * @since 1.3.0
 	 */
 	public static PShape createRectangularSpiral(float x, float y, float width, float height, float spacing) {
@@ -722,7 +739,8 @@ public class PGS_Construction {
 		final PShape spiral = new PShape(PShape.PATH);
 		spiral.setFill(false);
 		spiral.setStroke(true);
-		spiral.setStrokeWeight(spacing * 0.333f);
+		spiral.setStrokeWeight(5);
+//		spiral.setStrokeWeight(spacing * 0.333f);
 		spiral.setStroke(Colors.WHITE);
 		spiral.setStrokeJoin(PConstants.MITER);
 		spiral.setStrokeCap(PConstants.SQUARE);
@@ -824,15 +842,14 @@ public class PGS_Construction {
 	 * @param seed         the seed for the random number generator
 	 * @since 1.4.0
 	 */
-	public static PShape createSuperRandomPolygon(double dimensions, int cells, double markFraction, int smoothing, int depth,
-			boolean orthogonal, boolean holes, long seed) {
+	public static PShape createSuperRandomPolygon(double dimensions, int cells, double markFraction, int smoothing, int depth, boolean orthogonal,
+			boolean holes, long seed) {
 		Random r = new XoRoShiRo128PlusRandom(seed);
-		SRPolygonGenerator generator = new SRPolygonGenerator(cells, cells, markFraction, holes, orthogonal, !orthogonal, smoothing, depth,
-				!orthogonal, r);
+		SRPolygonGenerator generator = new SRPolygonGenerator(cells, cells, markFraction, holes, orthogonal, !orthogonal, smoothing, depth, !orthogonal, r);
 		List<List<double[]>> rings = generator.getPolygon();
 		PShape exterior = PGS_Conversion.fromArray(rings.get(0).toArray(new double[0][0]), true);
-		List<PShape> interiorRings = rings.subList(1, rings.size()).stream()
-				.map(l -> PGS_Conversion.fromArray(l.toArray(new double[0][0]), true)).collect(Collectors.toList());
+		List<PShape> interiorRings = rings.subList(1, rings.size()).stream().map(l -> PGS_Conversion.fromArray(l.toArray(new double[0][0]), true))
+				.collect(Collectors.toList());
 
 		PShape polygon = PGS_ShapeBoolean.simpleSubtract(exterior, PGS_Conversion.flatten(interiorRings));
 		polygon = PGS_Transformation.resizeByMajorAxis(polygon, dimensions);
@@ -890,8 +907,7 @@ public class PGS_Construction {
 		centerY -= width / 2;
 		// create the two triangles from the first subdivision
 		final double[][] tri1 = new double[][] { { 0 + centerX, width + centerY }, { centerX, centerY }, { width + centerX, centerY } };
-		final double[][] tri2 = new double[][] { { width + centerX, centerY }, { width + centerX, width + centerY },
-				{ centerX, width + centerY } };
+		final double[][] tri2 = new double[][] { { width + centerX, centerY }, { width + centerX, width + centerY }, { centerX, width + centerY } };
 
 		// get points for each half of square recursively
 		final List<double[]> half1 = subdivide(tri1, curveOrder);
@@ -983,22 +999,13 @@ public class PGS_Construction {
 	 * @since 1.3.0
 	 */
 	public static PShape createSierpinskiTriCurve(SierpinskiTriCurveType type, double width, int order) {
-		SpaceFillingCurve fractal;
+		SpaceFillingCurve fractal = switch (type) {
+			case TRI -> new SierpinskiThreeSteps(width, width);
+			case TETRA -> new SierpinskiFourSteps(width, width);
+			case PENTA -> new SierpinskiFiveSteps(width, width);
+			case DECA -> new SierpinskiTenSteps(width, width);
+		};
 
-		switch (type) {
-			default :
-			case TRI :
-				fractal = new SierpinskiThreeSteps(width, width);
-				break;
-			case TETRA :
-				fractal = new SierpinskiFourSteps(width, width);
-				break;
-			case PENTA :
-				fractal = new SierpinskiFiveSteps(width, width);
-				break;
-			case DECA :
-				fractal = new SierpinskiTenSteps(width, width);
-		}
 		fractal.setN(order);
 
 		fractal.start();
@@ -1026,17 +1033,70 @@ public class PGS_Construction {
 		return out;
 	}
 
-	static Polygon createEllipse(double x, double y, double width, double height) {
-		return createEllipse(new Coordinate(x, y), width, height);
+	/**
+	 * Creates a polygon finely approximating a circle.
+	 * 
+	 * @since 2.0
+	 */
+	static Polygon createCircle(Coordinate c, double r) {
+		return createCircle(c.x, c.y, r, 0.5); // 0.5 still very generous
 	}
 
-	static Polygon createEllipse(Coordinate center, double width, double height) {
-		final double circumference = Math.PI * ((width + height) / 2);
-		shapeFactory.setCentre(center);
-		shapeFactory.setWidth(width);
-		shapeFactory.setHeight(height);
-		shapeFactory.setNumPoints(Math.max(21, (int) Math.round(circumference / 7))); // sample every 7 units
-		return shapeFactory.createEllipse();
+	/**
+	 * Creates a circle of radius r centered on (x,y).
+	 * 
+	 * @since 2.0
+	 */
+	public static PShape createCircle(double x, double y, double r) {
+		return toPShape(createCirclePoly(x, y, r)); // 0.5 still very generous
+	}
+
+	/**
+	 * Creates a polygon finely approximating a circle.
+	 * 
+	 * @since 2.0
+	 */
+	static Polygon createCirclePoly(double x, double y, double r) {
+		return createCircle(x, y, r, 0.5); // 0.5 still very generous
+	}
+
+	/**
+	 * Creates a polygon approximating a circle.
+	 *
+	 * <p>
+	 * The `maxDeviation` parameter controls the maximum acceptable deviation of any
+	 * segment of the polygon from the true arc of the circle. Smaller values of
+	 * `maxDeviation` result in smoother circles but require more vertices,
+	 * potentially increasing computational cost.
+	 * </p>
+	 *
+	 * @param x            The x-coordinate of the circle's center.
+	 * @param y            The y-coordinate of the circle's center.
+	 * @param r            The radius of the circle.
+	 * @param maxDeviation The maximum acceptable deviation of a segment from the
+	 *                     true arc of the circle.
+	 * @return A polygon approximating the specified circle.
+	 */
+	static Polygon createCircle(double x, double y, double r, final double maxDeviation) {
+		// Calculate the number of points based on the radius and maximum deviation.
+		int nPts = (int) Math.ceil(2 * Math.PI / Math.acos(1 - maxDeviation / r));
+		nPts = Math.max(nPts, 21); // min of 21 points for tiny circles
+		final int circumference = (int) (Math.PI * r * 2);
+		if (nPts > circumference * 2) {
+			// AT MOST 1 point every half pixel
+			nPts = circumference * 2;
+		}
+
+		Coordinate[] pts = new Coordinate[nPts + 1];
+		for (int i = 0; i < nPts; i++) {
+			double ang = i * (2 * Math.PI / nPts);
+			double px = r * FastMath.cos(ang) + x;
+			double py = r * FastMath.sin(ang) + y;
+			pts[i] = new Coordinate(px, py);
+		}
+		pts[nPts] = new Coordinate(pts[0]); // Close the circle
+
+		return PGS.GEOM_FACTORY.createPolygon(pts);
 	}
 
 	/**

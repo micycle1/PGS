@@ -1,7 +1,6 @@
 package micycle.pgs.commons;
 
 import java.awt.Point;
-
 import java.util.ArrayList;
 
 import org.locationtech.jts.geom.Coordinate;

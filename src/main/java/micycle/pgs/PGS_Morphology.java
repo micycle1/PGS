@@ -7,12 +7,14 @@ import static processing.core.PConstants.GROUP;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.BiFunction;
 
 import org.locationtech.jts.densify.Densifier;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.Lineal;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
@@ -36,14 +38,15 @@ import micycle.pgs.color.Colors;
 import micycle.pgs.commons.ChaikinCut;
 import micycle.pgs.commons.CornerRounding;
 import micycle.pgs.commons.DiscreteCurveEvolution;
+import micycle.pgs.commons.DiscreteCurveEvolution.DCETerminationCallback;
 import micycle.pgs.commons.EllipticFourierDesc;
 import micycle.pgs.commons.GaussianLineSmoothing;
 import micycle.pgs.commons.ShapeInterpolation;
+import micycle.uniformnoise.UniformNoise;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 import uk.osgb.algorithm.minkowski_sum.MinkowskiSum;
-import micycle.uniformnoise.UniformNoise;
 
 /**
  * Methods that affect the geometry or topology of shapes.
@@ -70,7 +73,8 @@ public final class PGS_Morphology {
 	 * @see #buffer(PShape, double, OffsetStyle)
 	 */
 	public static PShape buffer(PShape shape, double buffer) {
-		return toPShape(fromPShape(shape).buffer(buffer, BufferParameters.DEFAULT_QUADRANT_SEGMENTS));
+		final int segments = (int) Math.ceil(BufferParameters.DEFAULT_QUADRANT_SEGMENTS + Math.sqrt(buffer));
+		return toPShape(fromPShape(shape).buffer(buffer, segments));
 	}
 
 	/**
@@ -85,8 +89,8 @@ public final class PGS_Morphology {
 	 */
 	public static PShape buffer(PShape shape, double buffer, OffsetStyle bufferStyle) {
 		Geometry g = fromPShape(shape);
-		BufferParameters bufParams = new BufferParameters(BufferParameters.DEFAULT_QUADRANT_SEGMENTS, BufferParameters.CAP_FLAT,
-				bufferStyle.style, BufferParameters.DEFAULT_MITRE_LIMIT);
+		final int segments = (int) Math.ceil(BufferParameters.DEFAULT_QUADRANT_SEGMENTS + Math.sqrt(buffer));
+		BufferParameters bufParams = new BufferParameters(segments, BufferParameters.CAP_FLAT, bufferStyle.style, BufferParameters.DEFAULT_MITRE_LIMIT);
 		BufferOp b = new BufferOp(g, bufParams);
 		return toPShape(b.getResultGeometry(buffer));
 	}
@@ -111,6 +115,58 @@ public final class PGS_Morphology {
 	}
 
 	/**
+	 * Applies a variable buffer to a shape. The buffer width at each vertex is
+	 * determined by a callback function that considers the vertex's properties and
+	 * its relative position along the shape's boundary.
+	 * <p>
+	 * Example usage:
+	 * 
+	 * <pre>
+	 * {@code
+	 * PShape bufferedShape = bufferWithCallback(inputShape, (coordinate, fraction) -> {
+	 * 	// Example logic: buffer width decreases linearly from 10 units at the
+	 * 	// start to 1 unit at the end
+	 * 	return 10 - (fraction * (10 - 1));
+	 * });
+	 * }
+	 * </pre>
+	 *
+	 * @param shape          A single polygon or lineal shape
+	 * @param bufferCallback A callback function that receives the vertex coordinate
+	 *                       and a double representing tractional distance (0...1)
+	 *                       of the vertex along the shape's boundary. The function
+	 *                       may use properties of the vertex, or its position, to
+	 *                       determine the buffer width at that point.
+	 * @return A new shape representing the original shape buffered with variable
+	 *         widths as specified by the callback function. The width at each
+	 *         vertex is calculated independently.
+	 * @since 2.0
+	 */
+	public static PShape variableBuffer(PShape shape, BiFunction<Coordinate, Double, Double> bufferCallback) {
+		final Geometry inputGeometry = fromPShape(shape);
+		if (!(inputGeometry instanceof Lineal || inputGeometry instanceof Polygon)) {
+			throw new IllegalArgumentException("The geometry must be linear or a non-multi polygonal shape.");
+		}
+		var coords = inputGeometry.getCoordinates();
+		double[] bufferDistances = new double[coords.length];
+		double totalLength = inputGeometry.getLength();
+		double running_length = 0;
+		Coordinate previousCoordinate = coords[0];
+
+		for (int i = 1; i < coords.length; i++) {
+			running_length += previousCoordinate.distance(coords[i]);
+			double fractionalDistance = running_length / totalLength; // 0...1
+			bufferDistances[i] = bufferCallback.apply(coords[i], fractionalDistance);
+			previousCoordinate = coords[i];
+		}
+
+		bufferDistances[0] = bufferCallback.apply(coords[0], 0.0);
+
+		VariableBuffer variableBuffer = new VariableBuffer(inputGeometry, bufferDistances);
+		return toPShape(variableBuffer.getResult());
+	}
+
+	/**
 	 * Applies a negative followed by a positive buffer (in a single operation), the
 	 * effect of which is small edges/islands are removed, while the general
 	 * structure of the shape is preserved.
@@ -124,7 +180,16 @@ public final class PGS_Morphology {
 	 */
 	public static PShape erosionDilation(PShape shape, double buffer) {
 		buffer = Math.abs(buffer);
-		return toPShape(fromPShape(shape).buffer(-buffer).buffer(buffer));
+
+		final int segments = (int) Math.ceil(BufferParameters.DEFAULT_QUADRANT_SEGMENTS + Math.sqrt(buffer));
+		Geometry g = BufferOp.bufferOp(fromPShape(shape), -buffer, segments);
+		g = BufferOp.bufferOp(g, +buffer, segments);
+
+		try {
+			return toPShape(g);
+		} catch (Exception e) {
+			return toPShape(GeometryFixer.fix(g));
+		}
 	}
 
 	/**
@@ -142,7 +207,15 @@ public final class PGS_Morphology {
 	 */
 	public static PShape dilationErosion(PShape shape, double buffer) {
 		buffer = Math.abs(buffer);
-		return toPShape(fromPShape(shape).buffer(buffer).buffer(-buffer));
+
+		final int segments = (int) Math.ceil(BufferParameters.DEFAULT_QUADRANT_SEGMENTS + Math.sqrt(buffer));
+		Geometry g = BufferOp.bufferOp(fromPShape(shape), buffer, segments);
+		g = BufferOp.bufferOp(g, -buffer, segments);
+		try {
+			return toPShape(g);
+		} catch (Exception e) {
+			return toPShape(GeometryFixer.fix(g));
+		}
 	}
 
 	/**
@@ -196,26 +269,33 @@ public final class PGS_Morphology {
 	/**
 	 * Simplifies a shape via <i>Discrete Curve Evolution</i>.
 	 * <p>
-	 * Discrete curve evolution involves a stepwise elimination of kinks that are
-	 * least relevant to the shape of the polygonal curve. The relevance of kinks is
-	 * intended to reflect their contribution to the overall shape of the polygonal
-	 * curve.
+	 * This algorithm simplifies a shape by iteratively removing kinks from the
+	 * shape, starting with those having the least shape-relevance.
+	 * <p>
+	 * The simplification process terminates according to a user-specified
+	 * {@link DCETerminationCallback#shouldTerminate(Coordinate, double, int)
+	 * callback} that decides whether the DCE algorithm should terminate based on
+	 * the current kink (having a candidate vertex), using its coordinates,
+	 * relevance score, and the number of vertices remaining in the simplified
+	 * geometry. Implementations can use this method to provide custom termination
+	 * logic which may depend on various factors, such as a threshold relevance
+	 * score, a specific number of vertices to preserve, or other criteria.
+	 * <p>
+	 * Note: the termination callback is applied per ring (boundary, hole, line,
+	 * etc) in the input.
 	 * 
-	 * @param shape                 The input shape to be simplified, which can be a
-	 *                              polygonal (inclusive of holes) or a lineal
-	 *                              shape. Note that GROUP shapes are not supported
-	 *                              by this method.
-	 * @param vertexRemovalFraction The proportion of the least significant kinks or
-	 *                              vertices to be removed from each ring in the
-	 *                              shape. This value should be in the range of 0 to
-	 *                              1.
+	 * @param shape               The input shape to be simplified, which can be a
+	 *                            polygonal (inclusive of holes) or a lineal shape.
+	 *                            GROUP shapes are supported.
+	 * @param terminationCallback The callback used to determine when the
+	 *                            simplification process should terminate.
+	 *                            {@code true} if the DCE process should terminate;
+	 *                            {@code false} otherwise.
 	 * @return A new, simplified copy of the input shape, with the least significant
 	 *         kinks or vertices removed according to the provided fraction.
-	 * @since 1.3.0
-	 * @see PGS_Morphology#simplifyDCE(PShape, int)
+	 * @since 2.0
 	 */
-	public static PShape simplifyDCE(PShape shape, double vertexRemovalFraction) {
-		vertexRemovalFraction = 1 - vertexRemovalFraction; // since dce class is preserve-based, not remove-based
+	public static PShape simplifyDCE(PShape shape, DCETerminationCallback terminationCallback) {
 		Geometry g = fromPShape(shape);
 		switch (g.getGeometryType()) {
 			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
@@ -223,7 +303,7 @@ public final class PGS_Morphology {
 			case Geometry.TYPENAME_MULTILINESTRING :
 				PShape group = new PShape(GROUP);
 				for (int i = 0; i < g.getNumGeometries(); i++) {
-					group.addChild(simplifyDCE(toPShape(g.getGeometryN(i)), vertexRemovalFraction));
+					group.addChild(simplifyDCE(toPShape(g.getGeometryN(i)), terminationCallback));
 				}
 				return group;
 			case Geometry.TYPENAME_LINEARRING :
@@ -233,8 +313,8 @@ public final class PGS_Morphology {
 				LinearRing[] dceRings = new LinearRing[rings.length];
 				for (int i = 0; i < rings.length; i++) {
 					LinearRing ring = rings[i];
-					DiscreteCurveEvolution dce = new DiscreteCurveEvolution((int) Math.round(vertexRemovalFraction * ring.getNumPoints()));
-					dceRings[i] = PGS.GEOM_FACTORY.createLinearRing(dce.process(ring));
+					Coordinate[] dce = DiscreteCurveEvolution.process(ring, terminationCallback);
+					dceRings[i] = PGS.GEOM_FACTORY.createLinearRing(dce);
 				}
 				LinearRing[] holes = null;
 				if (dceRings.length > 1) {
@@ -243,53 +323,11 @@ public final class PGS_Morphology {
 				return toPShape(PGS.GEOM_FACTORY.createPolygon(dceRings[0], holes));
 			case Geometry.TYPENAME_LINESTRING :
 				LineString l = (LineString) g;
-				DiscreteCurveEvolution dce = new DiscreteCurveEvolution((int) Math.round(vertexRemovalFraction * l.getNumPoints()));
-				return toPShape(PGS.GEOM_FACTORY.createLineString(dce.process(l)));
+				Coordinate[] dce = DiscreteCurveEvolution.process(l, terminationCallback);
+				return toPShape(PGS.GEOM_FACTORY.createLineString(dce));
 			default :
 				System.err.println(g.getGeometryType() + " are not supported for the simplifyDCE() method."); // pointal geoms
 				return new PShape(); // return empty (so element is invisible if not processed)
-		}
-	}
-
-	/**
-	 * Simplifies a shape via <i>Discrete Curve Evolution</i>.
-	 * <p>
-	 * Discrete curve evolution involves a stepwise elimination of kinks that are
-	 * least relevant to the shape of the polygonal curve. The relevance of kinks is
-	 * intended to reflect their contribution to the overall shape of the polygonal
-	 * curve.
-	 * 
-	 * @param shape             a polygonal (can include holes) or lineal shape.
-	 *                          GROUP shapes are not supported.
-	 * @param targetNumVertices the number of vertices that should remain/be
-	 *                          preserved in <b>each ring</b> of the input
-	 * @return simplifed copy of the input shape
-	 * @since 1.3.0
-	 * @see #simplifyDCE(PShape, double)
-	 */
-	public static PShape simplifyDCE(PShape shape, int targetNumVertices) {
-		Geometry g = fromPShape(shape);
-		if (g instanceof Polygon) {
-			targetNumVertices += 1; // as to not count the closing vertex in the number
-			LinearRing[] rings = new LinearRingIterator(g).getLinearRings();
-			LinearRing[] dceRings = new LinearRing[rings.length];
-			for (int i = 0; i < rings.length; i++) {
-				LinearRing ring = rings[i];
-				DiscreteCurveEvolution dce = new DiscreteCurveEvolution(targetNumVertices);
-				dceRings[i] = PGS.GEOM_FACTORY.createLinearRing(dce.process(ring));
-			}
-			LinearRing[] holes = null;
-			if (dceRings.length > 1) {
-				holes = Arrays.copyOfRange(dceRings, 1, dceRings.length);
-			}
-			return toPShape(PGS.GEOM_FACTORY.createPolygon(dceRings[0], holes));
-		} else if (g instanceof LineString) {
-			LineString l = (LineString) g;
-			DiscreteCurveEvolution dce = new DiscreteCurveEvolution(targetNumVertices);
-			return toPShape(PGS.GEOM_FACTORY.createLineString(dce.process(l)));
-		} else {
-			System.err.println(g.getGeometryType() + " are not supported for the simplifyDCE() method (yet).");
-			return shape;
 		}
 	}
 
@@ -623,7 +661,7 @@ public final class PGS_Morphology {
 	 *                  offset that does not smoothly join up.
 	 * @param phase     sine wave phase. corresponds to the fraction (0...1) around
 	 *                  the shape perimeter where the wave starts (0 displacement).
-	 * @return
+	 * @return warped polygonal shape
 	 * @since 1.3.0
 	 */
 	public static PShape sineWarp(PShape shape, double magnitude, double frequency, double phase) {
@@ -639,8 +677,7 @@ public final class PGS_Morphology {
 		final CoordinateList coords = new CoordinateList();
 
 		for (double distance = 0; distance < length; distance++) {
-			final Coordinate coord = l.extractPoint(distance,
-					Math.sin(Math.PI * 2 * frequency * distance / length + (Math.PI * 2 * phase)) * magnitude);
+			final Coordinate coord = l.extractPoint(distance, Math.sin(Math.PI * 2 * frequency * distance / length + (Math.PI * 2 * phase)) * magnitude);
 			coords.add(coord);
 		}
 		coords.closeRing();
@@ -667,7 +704,7 @@ public final class PGS_Morphology {
 	 *                   warping. When true, shapes with long edges will undergo
 	 *                   warping along the whole edge (rather than only at the
 	 *                   original vertices).
-	 * @return
+	 * @return warped polygonal shape
 	 * @see #fieldWarp(PShape, double, double, double, boolean, int)
 	 */
 	public static PShape fieldWarp(PShape shape, double magnitude, double noiseScale, boolean densify) {
@@ -697,9 +734,9 @@ public final class PGS_Morphology {
 	 * @param noiseSeed  a seed to pass to the underlying noise generator
 	 * 
 	 * @see #fieldWarp(PShape, double, double, boolean)
-	 * @return
+	 * @return warped polygonal shape
 	 */
-	public static PShape fieldWarp(PShape shape, double magnitude, double noiseScale, double time, boolean densify, int noiseSeed) {
+	public static PShape fieldWarp(PShape shape, double magnitude, double noiseScale, double time, boolean densify, long noiseSeed) {
 		float scale = Math.max(1, (float) noiseScale * 500f);
 		final boolean pointsShape = shape.getKind() == PConstants.POINTS;
 
@@ -713,7 +750,7 @@ public final class PGS_Morphology {
 			copy = toPShape(fromPShape(shape));
 		}
 
-		final UniformNoise noise = new UniformNoise(noiseSeed);
+		final UniformNoise noise = new UniformNoise((int) (noiseSeed % Integer.MAX_VALUE));
 
 		if (copy.getChildCount() == 0) {
 			// setVertex() will act on group shapes, so treat a single shape as group of 1
@@ -740,6 +777,35 @@ public final class PGS_Morphology {
 				return copy;
 			}
 		}
+	}
+
+	/**
+	 * Applies a pinch warping effect to a shape, distorting vertices towards a
+	 * specified point. The strength of the pinch effect decreases with distance
+	 * from the pinch point, creating a localized warping effect.
+	 *
+	 * @param shape      The shape. The original shape is not modified; instead, a
+	 *                   new warped shape is returned.
+	 * @param pinchPoint The point in 2D space towards which the shape will be
+	 *                   pinched. Vertices closer to this point will be affected
+	 *                   more strongly.
+	 * @param weight     The strength of the pinching effect. Higher values create
+	 *                   stronger distortion.
+	 * @return A new PShape object comprising the warped geometry.
+	 * @since 2.0
+	 */
+	public static PShape pinchWarp(PShape shape, PVector pinchPoint, double weight) {
+		List<PVector> vertices = new ArrayList<>(shape.getVertexCount());
+		for (int i = 0; i < shape.getVertexCount(); i++) {
+			PVector vertex = shape.getVertex(i).copy();
+			float distance = PVector.dist(vertex, pinchPoint);
+			float w = (float) (weight / (distance + 1));
+			PVector direction = PVector.sub(pinchPoint, vertex);
+			direction.mult(w);
+			vertex.add(direction);
+			vertices.add(vertex);
+		}
+		return PGS_Conversion.fromPVector(vertices);
 	}
 
 	/**

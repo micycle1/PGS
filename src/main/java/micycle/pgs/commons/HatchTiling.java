@@ -33,7 +33,7 @@ public class HatchTiling {
 
 	public PShape getTiling(long seed) {
 		random = new SplittableRandom(seed);
-		tiling = new PShape(PShape.GROUP);
+		tiling = new PShape(PConstants.GROUP);
 		tiling();
 		return tiling;
 	}
@@ -92,9 +92,9 @@ public class HatchTiling {
 				emp -= w * h;
 			}
 		}
-		for (int i = 0; i < rects.size(); i++) {
+		for (int[] rect : rects) {
 			final int off = 0; // border between adjacent rects
-			rect(rects.get(i)[0] + off, rects.get(i)[1] + off, rects.get(i)[2] - off * 2, rects.get(i)[3] - off * 2);
+			rect(rect[0] + off, rect[1] + off, rect[2] - off * 2, rect[3] - off * 2);
 		}
 	}
 

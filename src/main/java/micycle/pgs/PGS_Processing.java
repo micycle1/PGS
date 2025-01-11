@@ -14,12 +14,19 @@ import java.util.Deque;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.SplittableRandom;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.math3.ml.clustering.CentroidCluster;
 import org.apache.commons.math3.ml.clustering.Clusterable;
 import org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer;
@@ -70,20 +77,13 @@ import org.tinfour.utils.TriangleCollector;
 import org.tinfour.voronoi.BoundedVoronoiBuildOptions;
 import org.tinfour.voronoi.BoundedVoronoiDiagram;
 
-import com.vividsolutions.jcs.conflate.coverage.CoverageCleaner;
-import com.vividsolutions.jcs.conflate.coverage.CoverageCleaner.Parameters;
-import com.vividsolutions.jump.feature.FeatureCollection;
-import com.vividsolutions.jump.feature.FeatureDatasetFactory;
-import com.vividsolutions.jump.feature.FeatureUtil;
-import com.vividsolutions.jump.task.DummyTaskMonitor;
-
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
 import micycle.balaban.BalabanSolver;
 import micycle.balaban.Point;
 import micycle.balaban.Segment;
-import micycle.pgs.color.Colors;
 import micycle.pgs.color.ColorUtils;
+import micycle.pgs.color.Colors;
 import micycle.pgs.commons.PolygonDecomposition;
 import micycle.pgs.commons.SeededRandomPointsInGridBuilder;
 import micycle.trapmap.TrapMap;
@@ -92,8 +92,7 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Geometry Processing -- methods that process a shape in some way: compute
- * hulls, partition, slice, etc.
+ * Methods that process shape geometry: partitioning, slicing, cleaning, etc.
  * 
  * @author Michael Carleton
  *
@@ -179,27 +178,24 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Efficiently extracts multiple points from the perimeter of a shape, evenly
-	 * distributed along its boundary.
+	 * Extracts multiple points evenly distributed along the boundary of individual
+	 * rings within a shape, including both exterior and interior rings (i.e.,
+	 * holes).
 	 * <p>
-	 * This method provides a faster alternative to calling other methods repeatedly
-	 * when you need to obtain multiple points along the exterior of the shape. The
-	 * extracted points will be evenly distributed along the shape's perimeter,
-	 * allowing you to efficiently sample the boundary.
+	 * This method enhances the performance of boundary sampling by directly
+	 * extracting points from each linear ring of the shape's polygons. It is more
+	 * efficient than multiple individual point extractions, and it supports
+	 * sampling from holes (interior rings) as well.
 	 * 
-	 * @param shape          The shape from which to extract points. It should be a
-	 *                       lineal or polygonal shape. If the input is a GROUP
-	 *                       shape, a single point will be extracted from its first
-	 *                       child.
-	 * @param points         The number of points to return, evenly distributed
-	 *                       around the perimeter of the shape.
-	 * @param offsetDistance The offset distance along a line perpendicular to the
-	 *                       perimeter. Positive values will offset the points away
-	 *                       from the shape's boundary (outwards), while negative
-	 *                       values will offset the points inwards towards its
-	 *                       interior.
-	 * @return An array of PVector objects representing the extracted points on the
-	 *         shape's perimeter.
+	 * @param shape          The shape from which to extract points. Should have
+	 *                       polygonal members.
+	 * @param points         The number of points to extract <b>per ring</b>, evenly
+	 *                       distributed around each ring's boundary.
+	 * @param offsetDistance The offset distance measured perpendicular to each
+	 *                       point on the ring's boundary. Positive values offset
+	 *                       outwards, while negative values offset inwards.
+	 * @return A list of PVector objects, each representing a point on the perimeter
+	 *         or interior rings of the shape.
 	 * @see #pointOnExterior(PShape, double, double)
 	 * @see #pointsOnExterior(PShape, double, double)
 	 * @since 1.3.0
@@ -207,63 +203,142 @@ public final class PGS_Processing {
 	public static List<PVector> pointsOnExterior(PShape shape, int points, double offsetDistance) {
 		// TODO another method that returns concave hull of returned points (when
 		// offset)
-		List<PVector> coords = new ArrayList<>(points);
+		List<Polygon> polygons = PGS.extractPolygons(fromPShape(shape));
+		List<PVector> coords = new ArrayList<>();
+		polygons.forEach(polygon -> {
+			PGS.extractLinearRings(polygon).forEach(ring -> {
+				if (Orientation.isCCW(ring.getCoordinates())) {
+					ring = ring.reverse();
+				}
+				final LengthIndexedLine l = new LengthIndexedLine(ring);
+				final double increment = 1d / points;
+				for (double distance = 0; distance < 1; distance += increment) {
+					final Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
+					coords.add(PGS.toPVector(coord));
+				}
+			});
+		});
 
-		LengthIndexedLine l = makeIndexedLine(shape);
-
-		final double increment = 1d / points;
-		for (double distance = 0; distance < 1; distance += increment) {
-			final Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
-			coords.add(PGS.toPVector(coord));
-		}
 		return coords;
 	}
 
 	/**
-	 * Generates a list of points that lie on the exterior/perimeter of the given
-	 * shape.
+	 * Generates a list of evenly distributed points along the boundary of each ring
+	 * within a given polygonal shape, which may include its exterior and any
+	 * interior rings (holes).
 	 * <p>
-	 * This method creates a list of points that are evenly spaced along the shape's
-	 * exterior. The points are distributed around the shape's boundary with a
-	 * specified distance between each consecutive point. You can use this method to
-	 * obtain a set of points that represents an approximation of the shape's
-	 * outline.
+	 * This method is used to obtain a set of points that approximate the polygonal
+	 * shape's outline and interior boundaries, with the points spaced at
+	 * approximate equal intervals determined by the <code>interPointDistance</code>
+	 * parameter. It supports complex shapes with interior rings (holes) by
+	 * extracting points from all rings.
 	 * 
 	 * @param shape              The shape from which to generate the points. It
-	 *                           should be a lineal or polygonal shape. If the input
-	 *                           is a GROUP shape, a single point will be extracted
-	 *                           from its first child.
-	 * @param interPointDistance The distance between each exterior point. This
-	 *                           value controls the density of the points and
-	 *                           determines how closely the points will be spaced
-	 *                           along the shape's perimeter.
-	 * @param offsetDistance     The offset distance along a line perpendicular to
-	 *                           the perimeter. Positive values will offset the
-	 *                           points away from the shape's boundary (outwards),
-	 *                           while negative values will offset the points
-	 *                           inwards towards its interior.
-	 * @return An array of PVector objects representing the points lying on the
-	 *         shape's exterior.
+	 *                           should be a polygonal shape.
+	 * @param interPointDistance The desired distance between consecutive points
+	 *                           along each ring's boundary. This controls the
+	 *                           spacing of points and the granularity of the
+	 *                           representation.
+	 * @param offsetDistance     The offset distance perpendicular to each point on
+	 *                           the ring's boundary. Positive values offset points
+	 *                           outwards, while negative values bring them towards
+	 *                           the interior.
+	 * @return A list of PVector objects representing the points along the exterior
+	 *         and interior boundaries of the shape.
 	 * @see #pointOnExterior(PShape, double, double)
 	 * @see #densify(PShape, double)
 	 * @since 1.3.0
 	 */
 	public static List<PVector> pointsOnExterior(PShape shape, double interPointDistance, double offsetDistance) {
-		// TODO points on holes
-		LengthIndexedLine l = makeIndexedLine(shape);
+		List<Polygon> polygons = PGS.extractPolygons(fromPShape(shape));
+		List<PVector> coords = new ArrayList<>();
+		polygons.forEach(polygon -> {
+			PGS.extractLinearRings(polygon).forEach(ring -> {
+				if (Orientation.isCCW(ring.getCoordinates())) {
+					ring = ring.reverse();
+				}
+				final LengthIndexedLine l = new LengthIndexedLine(ring);
+				final int points = (int) Math.round(l.getEndIndex() / interPointDistance);
+				final double increment = 1d / points;
+				for (double distance = 0; distance < 1; distance += increment) {
+					final Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
+					coords.add(PGS.toPVector(coord));
+				}
 
-		final int points = (int) Math.round(l.getEndIndex() / interPointDistance);
+			});
+		});
 
-		ArrayList<PVector> coords = new ArrayList<>(points);
-
-		final double increment = 1d / points;
-		for (double distance = 0; distance < 1; distance += increment) {
-			final Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
-			coords.add(PGS.toPVector(coord));
-		}
 		return coords;
 	}
 
+	/**
+	 * Extracts evenly spaced dashed line segments along the perimeter of a shape.
+	 * This method ensures that the segments are distributed uniformly along the
+	 * shape's boundary, with the possibility of adjusting the start position of the
+	 * first line based on an offset.
+	 * 
+	 * @param shape             The shape from which to extract the segments.
+	 * @param lineLength        The length of each segment. Must be a positive
+	 *                          number.
+	 * @param interLineDistance The distance between the end of one segment and the
+	 *                          start of the next. Must be non-negative.
+	 * @param offset            The starting position offset (around the perimeter
+	 *                          [0...1]) for the first line. Values > |1| loop
+	 *                          around the shape. Positive values indicate a
+	 *                          clockwise (CW) direction, and negative values
+	 *                          indicate a counter-clockwise (CCW) direction.
+	 * @return A GROUP PShape whose children are the extracted segments.
+	 * @since 2.0
+	 */
+	public static PShape segmentsOnExterior(PShape shape, double lineLength, double interLineDistance, double offset) {
+		LengthIndexedLine l = makeIndexedLine(shape);
+		lineLength = Math.max(lineLength, 0.5);
+		interLineDistance = Math.max(interLineDistance, 0); // ensure >= 0
+
+		final double perimeter = l.getEndIndex();
+
+		double totalSegmentLength = lineLength + interLineDistance;
+		int numberOfLines = (int) Math.floor(perimeter / totalSegmentLength);
+
+		double adjustmentFactor = perimeter / (numberOfLines * totalSegmentLength);
+		lineLength *= adjustmentFactor;
+		interLineDistance *= adjustmentFactor;
+		totalSegmentLength = lineLength + interLineDistance;
+
+		offset = -offset; // positive values should wrap CW
+		double startingPosition = ((offset % 1.0) + 1.0) % 1.0 * perimeter;
+
+		List<PShape> lines = new ArrayList<>(numberOfLines);
+
+		for (int i = 0; i < numberOfLines; i++) {
+			double lineStart = (startingPosition + i * totalSegmentLength) % perimeter;
+			double lineEnd = (lineStart + lineLength) % perimeter;
+
+			Geometry segment;
+			PShape line;
+			if (lineStart < lineEnd) {
+				segment = l.extractLine(lineStart, lineEnd);
+				line = PGS_Conversion.toPShape(segment);
+				line.setName(String.valueOf(lineStart));
+				lines.add(line);
+			} else {
+				// Handle case where line wraps around the end of the shape (straddles 0)
+				// combine 2 segments into a single linestring
+				Coordinate[] c1 = l.extractLine(lineStart, perimeter).getCoordinates();
+				Coordinate[] c2 = l.extractLine(0, lineEnd).getCoordinates();
+				segment = PGS.GEOM_FACTORY.createLineString(ArrayUtils.addAll(c1, c2));
+				line = PGS_Conversion.toPShape(segment);
+				line.setName(String.valueOf(lineStart));
+				lines.add(line);
+			}
+		}
+
+		return PGS_Conversion.flatten(lines);
+	}
+
+	/**
+	 * Creates an CW-oriented length-indexed line from a given PShape.
+	 */
 	private static LengthIndexedLine makeIndexedLine(PShape shape) {
 		Geometry g = fromPShape(shape);
 		if (g instanceof Polygonal) {
@@ -306,8 +381,8 @@ public final class PGS_Processing {
 		if (from > to) {
 			final Geometry l1 = l.extractLine(length * from, length);
 			final Geometry l2 = l.extractLine(0, length * to);
-			return toPShape(GEOM_FACTORY.createLineString(
-					Stream.concat(Arrays.stream(l1.getCoordinates()), Arrays.stream(l2.getCoordinates())).toArray(Coordinate[]::new)));
+			return toPShape(GEOM_FACTORY
+					.createLineString(Stream.concat(Arrays.stream(l1.getCoordinates()), Arrays.stream(l2.getCoordinates())).toArray(Coordinate[]::new)));
 		}
 
 		/*
@@ -324,8 +399,8 @@ public final class PGS_Processing {
 
 		perimeter.beginShape();
 		Coordinate[] coords = string.getCoordinates();
-		for (int i = 0; i < coords.length; i++) {
-			perimeter.vertex((float) coords[i].x, (float) coords[i].y);
+		for (Coordinate coord : coords) {
+			perimeter.vertex((float) coord.x, (float) coord.y);
 		}
 		perimeter.endShape();
 
@@ -494,8 +569,7 @@ public final class PGS_Processing {
 
 		final IIncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape);
 		final boolean constrained = !tin.getConstraints().isEmpty();
-		final double totalArea = StreamSupport.stream(tin.getConstraints().spliterator(), false)
-				.mapToDouble(c -> ((PolygonConstraint) c).getArea()).sum();
+		final double totalArea = StreamSupport.stream(tin.getConstraints().spliterator(), false).mapToDouble(c -> ((PolygonConstraint) c).getArea()).sum();
 
 		// use arrays to hold variables (to enable assignment during consumer)
 		final SimpleTriangle[] largestTriangle = new SimpleTriangle[1];
@@ -614,8 +688,7 @@ public final class PGS_Processing {
 	 *         within the given shape
 	 * @see #generateRandomGridPoints(PShape, int, boolean, double)
 	 */
-	public static List<PVector> generateRandomGridPoints(PShape shape, int maxPoints, boolean constrainedToCircle, double gutterFraction,
-			long randomSeed) {
+	public static List<PVector> generateRandomGridPoints(PShape shape, int maxPoints, boolean constrainedToCircle, double gutterFraction, long randomSeed) {
 		Geometry g = fromPShape(shape);
 		IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(g);
 
@@ -734,7 +807,7 @@ public final class PGS_Processing {
 
 		Geometry dissolved = LineDissolver.dissolve(GEOM_FACTORY.createGeometryCollection(culledGeometries.toArray(new Geometry[0])));
 		PShape out = toPShape(dissolved);
-		PGS_Conversion.setAllStrokeColor(out, ColorUtils.setAlpha(Colors.PINK, 128), 8);
+		PGS_Conversion.setAllStrokeColor(out, ColorUtils.setAlpha(Colors.PINK, 192), 4);
 
 		return out;
 	}
@@ -806,8 +879,7 @@ public final class PGS_Processing {
 	public static PShape polygonizeLines(List<PVector> lineSegmentVertices) {
 		// TODO constructor for LINES PShape
 		if (lineSegmentVertices.size() % 2 != 0) {
-			System.err.println(
-					"The input to polygonizeLines() contained an odd number of vertices. The method expects successive pairs of vertices.");
+			System.err.println("The input to polygonizeLines() contained an odd number of vertices. The method expects successive pairs of vertices.");
 			return new PShape();
 		}
 
@@ -971,8 +1043,7 @@ public final class PGS_Processing {
 			final List<PVector> samplePoints = PGS_Processing.generateRandomGridPoints(shape, samples, false, 0.8, seed);
 			KMeansPlusPlusClusterer<Clusterable> clusterer = new KMeansPlusPlusClusterer<>(parts, 20, new EuclideanDistance(),
 					new XoRoShiRo128PlusRandomGenerator(seed));
-			List<? extends Clusterable> cl = samplePoints.stream().map(p -> (Clusterable) () -> new double[] { p.x, p.y })
-					.collect(Collectors.toList());
+			List<? extends Clusterable> cl = samplePoints.stream().map(p -> (Clusterable) () -> new double[] { p.x, p.y }).collect(Collectors.toList());
 			List<CentroidCluster<Clusterable>> clusters = clusterer.cluster((Collection<Clusterable>) cl);
 			if (clusters.size() < 3) {
 				// since voronoi needs 3+ vertices
@@ -1140,41 +1211,21 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Removes gaps and overlaps from meshes/polygon collections that are intended
-	 * to satisfy the following conditions:
-	 * <ul>
-	 * <li>Vector-clean - edges between neighbouring polygons must either be
-	 * identical or intersect only at endpoints.</li>
-	 * <li>Non-overlapping - No two polygons may overlap. Equivalently, polygons
-	 * must be interior-disjoint.</li>
-	 * </ul>
+	 * Attempts to fix shapes with invalid geometry, while preserving its original
+	 * form and location as much as possible. See
+	 * {@link org.locationtech.jts.geom.util.GeometryFixer GeometryFixer} for a full
+	 * list of potential fixes.
 	 * <p>
-	 * It may not always be possible to perfectly clean the input.
-	 * <p>
-	 * While this method is intended to be used to fix malformed coverages, it can
-	 * be used to snap collections of disparate polygons together.
+	 * Input shapes are always processed, so even valid inputs may have some minor
+	 * alterations. The output is always a new geometry object.
 	 * 
-	 * @param coverage          a GROUP shape, consisting of the polygonal faces to
-	 *                          clean
-	 * @param distanceTolerance the distance below which segments and vertices are
-	 *                          considered to match
-	 * @param angleTolerance    the maximum angle difference between matching
-	 *                          segments, in degrees
-	 * @return GROUP shape whose child polygons satisfy a (hopefully) valid coverage
-	 * @since 1.3.0
+	 * @param shape The shape to be corrected.
+	 * @return A modified version of the input shape that aligns with valid shape
+	 *         geometry standards.
+	 * @since 2.0
 	 */
-	public static PShape cleanCoverage(PShape coverage, double distanceTolerance, double angleTolerance) {
-		final List<Geometry> geometries = PGS_Conversion.getChildren(coverage).stream().map(PGS_Conversion::fromPShape)
-				.collect(Collectors.toList());
-		final FeatureCollection features = FeatureDatasetFactory.createFromGeometry(geometries);
-
-		final CoverageCleaner cc = new CoverageCleaner(features, new DummyTaskMonitor());
-		cc.process(new Parameters(distanceTolerance, angleTolerance));
-
-		final List<Geometry> cleanedGeometries = FeatureUtil.toGeometries(cc.getUpdatedFeatures().getFeatures());
-		final PShape out = PGS_Conversion.toPShape(cleanedGeometries);
-		PGS_Conversion.setAllStrokeColor(out, Colors.PINK, 2);
-		return out;
+	public static PShape fix(PShape shape) {
+		return toPShape(GeometryFixer.fix(fromPShape(shape)));
 	}
 
 	/**
@@ -1209,11 +1260,154 @@ public final class PGS_Processing {
 		return PGS_Conversion.flatten(filteredFaces);
 	}
 
+	/**
+	 * Applies a specified transformation function to each child of the given PShape
+	 * and returns a new PShape containing the transformed children.
+	 * <p>
+	 * This method processes each child of the input shape using the provided
+	 * function, which can modify, replace, or filter out shapes. The resulting
+	 * transformed shapes are flattened into a new PShape.
+	 * <p>
+	 * The transformation function can:
+	 * <ul>
+	 * <li>Modify the shape in-place and return it</li>
+	 * <li>Create and return a new shape</li>
+	 * <li>Return null to remove the shape</li>
+	 * </ul>
+	 * <p>
+	 * Note: This method creates a new PShape and does not modify the original shape
+	 * or its children. The hierarchical structure of the original shape is not
+	 * preserved in the result.
+	 *
+	 * @param shape    The PShape whose children will be transformed.
+	 * @param function A UnaryOperator that takes a PShape as input and returns a
+	 *                 transformed PShape. If the function returns null for a shape,
+	 *                 that shape will be excluded from the result.
+	 * @return A new PShape containing the transformed children, flattened into a
+	 *         single level.
+	 * @see #transformWithIndex(PShape, BiFunction)
+	 * @since 2.0
+	 */
+	public static PShape transform(PShape shape, UnaryOperator<PShape> function) {
+		return PGS_Conversion.flatten(PGS_Conversion.getChildren(shape).stream().map(function).filter(Objects::nonNull).toList());
+	}
+
+	/**
+	 * Applies a specified transformation function to each child of the given
+	 * PShape, providing the index of each child, and returns a new PShape
+	 * containing the transformed children.
+	 * <p>
+	 * This method processes each child of the input shape alongside its index using
+	 * the provided BiFunction. The function can modify, replace, or filter out
+	 * shapes. The resulting transformed shapes are flattened into a new PShape.
+	 * <p>
+	 * The transformation function can:
+	 * <ul>
+	 * <li>Modify the shape in-place and return it</li>
+	 * <li>Create and return a new shape</li>
+	 * <li>Return null to exclude the shape from the final result</li>
+	 * </ul>
+	 * <p>
+	 * Note: This method creates a new PShape and does not modify the original shape
+	 * or its children. The hierarchical structure of the original shape is not
+	 * preserved in the result.
+	 * <p>
+	 * Example usage:
+	 * 
+	 * <pre>{@code
+	 * PShape newShape = PGS_Processing.transformWithIndex(originalShape, (index, child) -> {
+	 * 	return (index % 2 == 0) ? child : null; // Include only even-indexed children
+	 * });
+	 * }</pre>
+	 *
+	 * @param shape    The PShape whose children will be transformed.
+	 * @param function A BiFunction that takes an integer index and a PShape as
+	 *                 input and returns a transformed PShape. If the function
+	 *                 returns null for a shape, that shape will be excluded from
+	 *                 the result.
+	 * @return A new PShape containing the transformed children, flattened into a
+	 *         single level.
+	 * @see #transform(PShape, UnaryOperator)
+	 * @since 2.0
+	 */
+	public static PShape transformWithIndex(PShape shape, BiFunction<Integer, PShape, PShape> function) {
+		List<PShape> children = PGS_Conversion.getChildren(shape);
+		return PGS_Conversion.flatten(IntStream.range(0, children.size()).mapToObj(i -> function.apply(i, children.get(i))).filter(Objects::nonNull).toList());
+	}
+
+	/**
+	 * Applies a specified function to each child of the given PShape.
+	 * <p>
+	 * This method iterates over each child of the input PShape, applying the
+	 * provided Consumer function to each. The function can perform any operation on
+	 * the shapes, such as modifying their properties or applying effects, but does
+	 * not inherently alter the structure of the PShape or its hierarchy.
+	 * <p>
+	 * The changes are made in place; hence, the original PShape is modified, and
+	 * the same reference is returned for convenience in chaining or further use.
+	 * <p>
+	 * Example usage:
+	 * 
+	 * <pre>{@code
+	 * PShape shape = PGS_Processing.apply(shape, child -> child.setFill(false));
+	 * }</pre>
+	 *
+	 * @param shape         The PShape whose children will be processed.
+	 * @param applyFunction A Consumer that takes a PShape as input and performs
+	 *                      operations on it.
+	 * @return The original PShape with the function applied to each child.
+	 * @see #applyWithIndex(PShape, BiConsumer)
+	 * @since 2.0
+	 */
+	public static PShape apply(PShape shape, Consumer<PShape> applyFunction) {
+		for (PShape child : PGS_Conversion.getChildren(shape)) {
+			applyFunction.accept(child);
+		}
+		return shape;
+	}
+
+	/**
+	 * Applies a specified function to each child of the given PShape, providing the
+	 * index of each child.
+	 * <p>
+	 * This method iterates over each child of the input PShape and applies the
+	 * provided BiConsumer function to each child along with its index. The function
+	 * can perform any operation on the shapes such as modifying properties or
+	 * applying effects. The index can be used for operations that depend on the
+	 * position of the child within its parent.
+	 * <p>
+	 * The changes are made in place; hence, the original PShape is modified. The
+	 * method returns the same PShape reference for convenience in chaining or
+	 * further use.
+	 * <p>
+	 * Example usage:
+	 * 
+	 * <pre>{@code
+	 * PShape shape = PGS_Processing.applyWithIndex(shape, (index, child) -> {
+	 * 	if (index % 2 == 0)
+	 * 		child.setFill(true);
+	 * });
+	 * }</pre>
+	 *
+	 * @param shape         The PShape whose children will be processed.
+	 * @param applyFunction A BiConsumer that takes an integer index and a PShape as
+	 *                      input and performs operations on it.
+	 * @return The original PShape with the function applied to each indexed child.
+	 * @see #apply(PShape, Consumer)
+	 * @since 2.0
+	 */
+	public static PShape applyWithIndex(PShape shape, BiConsumer<Integer, PShape> applyFunction) {
+		List<PShape> children = PGS_Conversion.getChildren(shape);
+		for (int i = 0; i < children.size(); i++) {
+			applyFunction.accept(i, children.get(i));
+		}
+		return shape;
+	}
+
 	private static Polygon toGeometry(Envelope envelope) {
-		return GEOM_FACTORY
-				.createPolygon(GEOM_FACTORY.createLinearRing(new Coordinate[] { new Coordinate(envelope.getMinX(), envelope.getMinY()),
-						new Coordinate(envelope.getMaxX(), envelope.getMinY()), new Coordinate(envelope.getMaxX(), envelope.getMaxY()),
-						new Coordinate(envelope.getMinX(), envelope.getMaxY()), new Coordinate(envelope.getMinX(), envelope.getMinY()) }));
+		return GEOM_FACTORY.createPolygon(GEOM_FACTORY.createLinearRing(new Coordinate[] { new Coordinate(envelope.getMinX(), envelope.getMinY()),
+				new Coordinate(envelope.getMaxX(), envelope.getMinY()), new Coordinate(envelope.getMaxX(), envelope.getMaxY()),
+				new Coordinate(envelope.getMinX(), envelope.getMaxY()), new Coordinate(envelope.getMinX(), envelope.getMinY()) }));
 	}
 
 	/**

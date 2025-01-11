@@ -38,6 +38,7 @@ public class TriCheckerPark implements TriangleChecker {
 		cm = CM;
 	}
 
+	@Override
 	public boolean removeable(Coordinate coordS, Coordinate coordE, Coordinate coordO) {
 		double bl = coordS.distance(coordE);
 		double ds = coordS.distance(coordO);

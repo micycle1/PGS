@@ -2,6 +2,7 @@ package micycle.pgs;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.jgrapht.alg.color.ColorRefinementAlgorithm;
 import org.jgrapht.alg.color.LargestDegreeFirstColoring;
@@ -11,17 +12,18 @@ import org.jgrapht.alg.color.SmallestDegreeLastColoring;
 import org.jgrapht.alg.interfaces.VertexColoringAlgorithm.Coloring;
 import org.jgrapht.graph.AbstractBaseGraph;
 import org.jgrapht.graph.DefaultEdge;
+
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
-import micycle.pgs.color.Colors;
 import micycle.pgs.color.ColorUtils;
+import micycle.pgs.color.Colors;
 import micycle.pgs.commons.GeneticColoring;
 import micycle.pgs.commons.RLFColoring;
 import processing.core.PShape;
 
 /**
- * This class provides methods to color meshes and mesh-like shapes. It ensures
- * that no two adjacent faces share the same color while also minimizing the
- * total number of colors used.
+ * Minimal colorings of meshes (or mesh-like shapes). It ensures that no two
+ * adjacent faces share the same color while also minimizing the total number of
+ * colors used.
  * <p>
  * This class differentiates between "conforming meshes" and "non-conforming
  * meshes".
@@ -47,9 +49,9 @@ public final class PGS_Coloring {
 
 	/**
 	 * Specifies the algorithm/heuristic used by the underlying graph coloring
-	 * process to find a coloring for mesh faces. RLF, followed by DSATUR generally
-	 * produce the "best" colorings (as measured by chromatic number, where lower is
-	 * better).
+	 * process to find an approximate minimal coloring for mesh faces.
+	 * <code>RLF</code>, followed by <code>DSATUR</code> generally produce the
+	 * "best" colorings (as measured by chromatic number, where lower is better).
 	 */
 	public enum ColoringAlgorithm {
 		/**
@@ -87,9 +89,9 @@ public final class PGS_Coloring {
 		RLF,
 		/**
 		 * Repeatedly calls the recursive largest-first (RLF) algorithm until a
-		 * 4-coloring is found. The operation will break after 250 attempts if a
-		 * 4-coloring is still not found; in this case, the result from the final
-		 * attempt is returned.
+		 * 4-coloring (or less) is found. The operation will break after 250 attempts if
+		 * a 4-coloring (or less) is still not found; in this case, the result from the
+		 * final attempt is returned.
 		 */
 		RLF_BRUTE_FORCE_4COLOR,
 		/**
@@ -254,8 +256,10 @@ public final class PGS_Coloring {
 				break;
 			case RLF_BRUTE_FORCE_4COLOR :
 				int iterations = 0;
+				long seed = 1337;
 				do {
-					coloring = new RLFColoring<>(graph).getColoring();
+					coloring = new RLFColoring<>(graph, seed).getColoring();
+					seed = ThreadLocalRandom.current().nextLong();
 					iterations++;
 				} while (coloring.getNumberColors() > 4 && iterations < 250);
 				break;

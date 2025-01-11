@@ -4,7 +4,6 @@ import static micycle.pgs.PGS_Conversion.fromPShape;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.SplittableRandom;
 import java.util.function.Predicate;
@@ -16,15 +15,13 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Location;
-import org.locationtech.jts.geom.prep.PreparedGeometry;
-import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.locationtech.jts.operation.distance.IndexedFacetDistance;
-import org.locationtech.jts.util.GeometricShapeFactory;
 import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
-import org.tinspin.index.PointDistanceFunction;
-import org.tinspin.index.PointEntryDist;
+import org.tinspin.index.Index.PointEntryKnn;
+import org.tinspin.index.PointDistance;
+import org.tinspin.index.PointMap;
 import org.tinspin.index.covertree.CoverTree;
 
 import micycle.pgs.commons.FrontChainPacker;
@@ -85,8 +82,7 @@ public final class PGS_CirclePacking {
 	public static List<PVector> obstaclePack(PShape shape, Collection<PVector> pointObstacles, double areaCoverRatio) {
 		final Geometry geometry = fromPShape(shape);
 
-		LargestEmptyCircles lec = new LargestEmptyCircles(fromPShape(PGS_Conversion.toPointsPShape(pointObstacles)), geometry,
-				areaCoverRatio > 0.95 ? 0.5 : 1);
+		LargestEmptyCircles lec = new LargestEmptyCircles(fromPShape(PGS_Conversion.toPointsPShape(pointObstacles)), geometry, areaCoverRatio > 0.95 ? 0.5 : 1);
 
 		final double shapeArea = geometry.getArea();
 		double circlesArea = 0;
@@ -124,8 +120,7 @@ public final class PGS_CirclePacking {
 	public static List<PVector> trinscribedPack(PShape shape, int points, int refinements) {
 		final List<PVector> steinerPoints = PGS_Processing.generateRandomPoints(shape, points);
 		final IIncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, steinerPoints, true, refinements, true);
-		return StreamSupport.stream(tin.triangles().spliterator(), false).filter(filterBorderTriangles).map(t -> inCircle(t))
-				.collect(Collectors.toList());
+		return StreamSupport.stream(tin.triangles().spliterator(), false).filter(filterBorderTriangles).map(t -> inCircle(t)).collect(Collectors.toList());
 	}
 
 	/**
@@ -197,46 +192,45 @@ public final class PGS_CirclePacking {
 	 * @return A list of PVectors, each representing one circle: (.x, .y) represent
 	 *         the center point, and .z represents the radius.
 	 */
-	public static List<PVector> stochasticPack(final PShape shape, final int points, final double minRadius, boolean triangulatePoints,
-			long seed) {
+	public static List<PVector> stochasticPack(final PShape shape, final int points, final double minRadius, boolean triangulatePoints, long seed) {
 
-		final CoverTree<PVector> tree = CoverTree.create(3, 2, circleDistanceMetric);
-		final List<PVector> out = new ArrayList<>();
+		final PointMap<PVector> tree = CoverTree.create(3, 2, circleDistanceMetric);
 
 		List<PVector> steinerPoints = PGS_Processing.generateRandomPoints(shape, points, seed);
 		if (triangulatePoints) {
 			final IIncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, steinerPoints, true, 1, true);
-			steinerPoints = StreamSupport.stream(tin.triangles().spliterator(), false).filter(filterBorderTriangles)
-					.map(PGS_CirclePacking::centroid).collect(Collectors.toList());
+			steinerPoints = StreamSupport.stream(tin.triangles().spliterator(), false).filter(filterBorderTriangles).map(PGS_CirclePacking::centroid)
+					.collect(Collectors.toList());
 		}
 
-		// Model shape vertices as circles of radius 0, to constrain packed circles
-		// within shape edge
-		final List<PVector> vertices = PGS_Conversion.toPVector(shape);
-		Collections.shuffle(vertices); // shuffle vertices to reduce tree imbalance during insertion
-		vertices.forEach(p -> tree.insert(new double[] { p.x, p.y, 0 }, p));
+		IndexedFacetDistance indexedFacetDistance = new IndexedFacetDistance(fromPShape(shape));
+		var alpha = shape.getVertex(0); // seed the tree
+		tree.insert(new double[] { alpha.x, alpha.y, 0 }, alpha);
 
 		/*
 		 * "To find the circle nearest to a center (x, y), do a proximity search at (x,
 		 * y, R), where R is greater than or equal to the maximum radius of a circle."
 		 */
-		float largestR = 0; // the radius of the largest circle in the tree
-
+		double largestR = 0; // the radius of the largest circle in the tree
+		final List<PVector> out = new ArrayList<>();
 		for (PVector p : steinerPoints) {
-			final PointEntryDist<PVector> nn = tree.query1NN(new double[] { p.x, p.y, largestR }); // find nearest-neighbour circle
+			final PointEntryKnn<PVector> nn = tree.query1nn(new double[] { p.x, p.y, largestR }); // find nearest-neighbour circle
 
 			/*
 			 * nn.dist() does not return the radius (since it's a distance metric used to
-			 * find nearest circle), so calculate maximum radius for candidate circle using
-			 * 2d euclidean distance between center points minus radius of nearest circle.
+			 * find nearest circle), so now calculate maximum radius for candidate circle
+			 * using 2d euclidean distance between center points minus radius of nearest
+			 * circle.
 			 */
 			final float dx = p.x - nn.value().x;
 			final float dy = p.y - nn.value().y;
-			final float radius = (float) (Math.sqrt(dx * dx + dy * dy) - nn.value().z);
-			if (radius > minRadius) {
-				largestR = (radius >= largestR) ? radius : largestR;
-				p.z = radius;
-				tree.insert(new double[] { p.x, p.y, radius }, p); // insert circle into tree
+			final double distanceToNN = (Math.sqrt(dx * dx + dy * dy) - nn.value().z);
+			final double distanceToBoundary = indexedFacetDistance.distance(PGS.pointFromPVector(p));
+			final double packedDistance = Math.min(distanceToNN, distanceToBoundary);
+			if (packedDistance > minRadius) {
+				largestR = (packedDistance >= largestR) ? packedDistance : largestR;
+				p.z = (float) packedDistance;
+				tree.insert(new double[] { p.x, p.y, packedDistance }, p); // insert circle into tree
 				out.add(p);
 			}
 		}
@@ -259,14 +253,35 @@ public final class PGS_CirclePacking {
 	 *         the center point and .z represents radius.
 	 */
 	public static List<PVector> frontChainPack(PShape shape, double radiusMin, double radiusMax) {
+		return frontChainPack(shape, radiusMin, radiusMax, System.nanoTime());
+	}
+
+	/**
+	 * Generates a random circle packing of tangential circles with varying radii
+	 * that overlap the given shape. The method name references the packing
+	 * algorithm used (Front Chain Packing), rather than any particular
+	 * characteristic of the circle packing.
+	 * <p>
+	 * You can set <code>radiusMin</code> equal to <code>radiusMax</code> for a
+	 * packing of equal-sized circles using this approach.
+	 *
+	 * @param shape     the shape within which to generate the circle packing
+	 * @param radiusMin minimum radius of circles in the packing
+	 * @param radiusMax maximum radius of circles in the packing
+	 * @param seed      random seed used to initialize the underlying random number
+	 *                  generator
+	 * @return A list of PVectors, each representing one circle: (.x, .y) represent
+	 *         the center point and .z represents radius.
+	 */
+	public static List<PVector> frontChainPack(PShape shape, double radiusMin, double radiusMax, long seed) {
 		radiusMin = Math.max(1f, Math.min(radiusMin, radiusMax)); // choose min and constrain
 		radiusMax = Math.max(1f, Math.max(radiusMin, radiusMax)); // choose max and constrain
 		final Geometry g = fromPShape(shape);
 		final Envelope e = g.getEnvelopeInternal();
 		IndexedPointInAreaLocator pointLocator;
 
-		final FrontChainPacker packer = new FrontChainPacker((float) e.getWidth(), (float) e.getHeight(), (float) radiusMin,
-				(float) radiusMax, (float) e.getMinX(), (float) e.getMinY());
+		final FrontChainPacker packer = new FrontChainPacker((float) e.getWidth(), (float) e.getHeight(), (float) radiusMin, (float) radiusMax,
+				(float) e.getMinX(), (float) e.getMinY(), seed);
 
 		if (radiusMin == radiusMax) {
 			// if every circle same radius, use faster contains check
@@ -274,20 +289,13 @@ public final class PGS_CirclePacking {
 			packer.getCircles().removeIf(p -> pointLocator.locate(PGS.coordFromPVector(p)) == Location.EXTERIOR);
 		} else {
 			pointLocator = new IndexedPointInAreaLocator(g);
-			final PreparedGeometry cache = PreparedGeometryFactory.prepare(g);
-			final GeometricShapeFactory circleFactory = new GeometricShapeFactory();
-			circleFactory.setNumPoints(8); // approximate circles using octagon for intersects check
+			IndexedFacetDistance distance = new IndexedFacetDistance(g);
 			packer.getCircles().removeIf(p -> {
 				// first test whether shape contains circle center point (somewhat faster)
 				if (pointLocator.locate(PGS.coordFromPVector(p)) != Location.EXTERIOR) {
 					return false;
 				}
-
-				// if center point not in circle, check whether circle overlaps with shape using
-				// intersects() (somewhat slower)
-				circleFactory.setCentre(PGS.coordFromPVector(p));
-				circleFactory.setSize(p.z * 2); // set diameter
-				return !cache.intersects(circleFactory.createCircle());
+				return !distance.isWithinDistance(PGS.pointFromPVector(p), p.z * 0.666);
 			});
 		}
 
@@ -362,7 +370,7 @@ public final class PGS_CirclePacking {
 	 * 
 	 * <p>
 	 * This is an implementation of 'A circle packing algorithm' by Charles R.
-	 * Collins & Kenneth Stephenson.
+	 * Collins &amp; Kenneth Stephenson.
 	 * 
 	 * @param triangulation represents the pattern of tangencies; vertices connected
 	 *                      by an edge inthe triangulation represent tangent circles
@@ -382,7 +390,7 @@ public final class PGS_CirclePacking {
 	 * triangulation.
 	 * <p>
 	 * This is an implementation of 'A circle packing algorithm' by Charles R.
-	 * Collins & Kenneth Stephenson.
+	 * Collins &amp; Kenneth Stephenson.
 	 * 
 	 * @param triangulation represents the pattern of tangencies; vertices connected
 	 *                      by an edge inthe triangulation represent tangent circles
@@ -443,8 +451,7 @@ public final class PGS_CirclePacking {
 		avgCircleArea *= (Math.PI / (3 * (rMaxA - rMinA)));
 		int n = (int) (totalArea / avgCircleArea);
 
-		List<PVector> points = PGS_PointSet.poissonN(e.getMinX() + rMaxA, e.getMinY() + rMaxA, e.getMaxX() - rMaxA, e.getMaxY() - rMaxA, n,
-				seed);
+		List<PVector> points = PGS_PointSet.poissonN(e.getMinX() + rMaxA, e.getMinY() + rMaxA, e.getMaxX() - rMaxA, e.getMaxY() - rMaxA, n, seed);
 		SplittableRandom r = new SplittableRandom(seed);
 		points.forEach(p -> p.z = rMaxA == rMinA ? (float) rMaxA : (float) r.nextDouble(rMinA, rMaxA));
 
@@ -485,8 +492,8 @@ public final class PGS_CirclePacking {
 			radiusMin = Math.max(1f, Math.min(radiusMin, circle.z));
 		}
 
-		final RepulsionCirclePack packer = new RepulsionCirclePack(circles, e.getMinX() + radiusMin, e.getMaxX() - radiusMin,
-				e.getMinY() + radiusMin, e.getMaxY() - radiusMin, false);
+		final RepulsionCirclePack packer = new RepulsionCirclePack(circles, e.getMinX() + radiusMin, e.getMaxX() - radiusMin, e.getMinY() + radiusMin,
+				e.getMaxY() - radiusMin, false);
 
 		final List<PVector> packing = packer.getPacking(); // packing result
 
@@ -640,9 +647,9 @@ public final class PGS_CirclePacking {
 	 *
 	 * @param p1 3D point representing the first circle (x1, y1, r1)
 	 * @param p2 3D point representing the second circle (x2, y2, r2)
-	 * @return the distance between the two points based on the custom metric
+	 * @return The distance between the two points based on the custom metric.
 	 */
-	private static final PointDistanceFunction circleDistanceMetric = (p1, p2) -> {
+	private static final PointDistance circleDistanceMetric = (p1, p2) -> {
 		// from https://stackoverflow.com/a/21975136/
 		final double dx = p1[0] - p2[0];
 		final double dy = p1[1] - p2[1];
@@ -657,8 +664,7 @@ public final class PGS_CirclePacking {
 	 * A streams filter to remove triangulation triangles that share at least one
 	 * edge with the shape edge.
 	 */
-	private static final Predicate<SimpleTriangle> filterBorderTriangles = t -> t.getContainingRegion() != null
-			&& !t.getEdgeA().isConstrainedRegionBorder() && !t.getEdgeB().isConstrainedRegionBorder()
-			&& !t.getEdgeC().isConstrainedRegionBorder();
+	private static final Predicate<SimpleTriangle> filterBorderTriangles = t -> t.getContainingRegion() != null && !t.getEdgeA().isConstrainedRegionBorder()
+			&& !t.getEdgeB().isConstrainedRegionBorder() && !t.getEdgeC().isConstrainedRegionBorder();
 
 }

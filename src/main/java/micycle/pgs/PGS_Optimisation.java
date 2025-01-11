@@ -1,9 +1,9 @@
 package micycle.pgs;
 
+import static micycle.pgs.PGS_Construction.createCircle;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
 import static processing.core.PConstants.GROUP;
-import static micycle.pgs.PGS_Construction.createEllipse;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -65,7 +65,7 @@ public final class PGS_Optimisation {
 	 * counter-clockwise.
 	 * 
 	 * @param shape a rectangular shape that covers/bounds the input
-	 * @return
+	 * @return polygonal shape having 4 coordinates
 	 */
 	public static PShape envelope(PShape shape) {
 		return toPShape(fromPShape(shape).getEnvelope());
@@ -82,8 +82,8 @@ public final class PGS_Optimisation {
 	 */
 	public static PShape maximumInscribedCircle(PShape shape, double tolerance) {
 		MaximumInscribedCircle mic = new MaximumInscribedCircle(fromPShape(shape), tolerance);
-		final double wh = mic.getRadiusLine().getLength() * 2;
-		Polygon circle = createEllipse(PGS.coordFromPoint(mic.getCenter()), wh, wh);
+		final double r = mic.getRadiusLine().getLength();
+		Polygon circle = createCircle(PGS.coordFromPoint(mic.getCenter()), r);
 		return toPShape(circle);
 	}
 
@@ -99,7 +99,7 @@ public final class PGS_Optimisation {
 		Point p = PGS.pointFromPVector(centerPoint);
 		Coordinate closestEdgePoint = DistanceOp.nearestPoints(g.getBoundary(), p)[0];
 		double radius = PGS.coordFromPVector(centerPoint).distance(closestEdgePoint);
-		Polygon circle = createEllipse(p.getCoordinate(), radius * 2, radius * 2);
+		Polygon circle = createCircle(p.getCoordinate(), radius);
 		return toPShape(circle);
 	}
 
@@ -177,10 +177,8 @@ public final class PGS_Optimisation {
 
 		double maxDiagonal = 0;
 		PVector[] maxAreaVertices = new PVector[0];
-		for (int i = 0; i < points.size(); i++) {
-			for (int j = 0; j < points.size(); j++) {
-				final PVector a = points.get(i);
-				final PVector b = points.get(j);
+		for (final PVector a : points) {
+			for (final PVector b : points) {
 				double dist = PGS.distanceSq(a, b);
 
 				if (dist < maxDiagonal) {
@@ -223,8 +221,8 @@ public final class PGS_Optimisation {
 	 */
 	public static PShape minimumBoundingCircle(PShape shape) {
 		MinimumBoundingCircle mbc = new MinimumBoundingCircle(fromPShape(shape));
-		final double wh = mbc.getRadius() * 2;
-		Polygon circle = createEllipse(mbc.getCentre(), wh, wh);
+		final double r = mbc.getRadius();
+		Polygon circle = createCircle(mbc.getCentre(), r);
 		return toPShape(circle);
 	}
 
@@ -287,8 +285,8 @@ public final class PGS_Optimisation {
 		ellipse.setFill(true);
 		ellipse.setFill(Colors.WHITE);
 		ellipse.beginShape();
-		for (int i = 0; i < eEoords.length; i++) {
-			ellipse.vertex((float) eEoords[i][0], (float) eEoords[i][1]);
+		for (double[] eEoord : eEoords) {
+			ellipse.vertex((float) eEoord[0], (float) eEoord[1]);
 		}
 		ellipse.endShape();
 
@@ -359,10 +357,9 @@ public final class PGS_Optimisation {
 	 *         intersect the obstacles and lies within the specified boundary.
 	 */
 	public static PShape largestEmptyCircle(PShape obstacles, @Nullable PShape boundary, double tolerance) {
-		LargestEmptyCircle lec = new LargestEmptyCircle(fromPShape(obstacles), boundary == null ? null : fromPShape(boundary),
-				Math.max(0.01, tolerance));
-		double wh = lec.getRadiusLine().getLength() * 2;
-		Polygon circle = createEllipse(PGS.coordFromPoint(lec.getCenter()), wh, wh);
+		LargestEmptyCircle lec = new LargestEmptyCircle(fromPShape(obstacles), boundary == null ? null : fromPShape(boundary), Math.max(0.01, tolerance));
+		double r = lec.getRadiusLine().getLength();
+		Polygon circle = createCircle(PGS.coordFromPoint(lec.getCenter()), r);
 		return toPShape(circle);
 	}
 
@@ -389,8 +386,8 @@ public final class PGS_Optimisation {
 	 */
 	public static List<PVector> largestEmptyCircles(PShape obstacles, @Nullable PShape boundary, int n, double tolerance) {
 		tolerance = Math.max(0.01, tolerance);
-		LargestEmptyCircles lecs = new LargestEmptyCircles(obstacles == null ? null : fromPShape(obstacles),
-				boundary == null ? null : fromPShape(boundary), tolerance);
+		LargestEmptyCircles lecs = new LargestEmptyCircles(obstacles == null ? null : fromPShape(obstacles), boundary == null ? null : fromPShape(boundary),
+				tolerance);
 
 		final List<PVector> out = new ArrayList<>();
 		for (int i = 0; i < n; i++) {
@@ -450,6 +447,11 @@ public final class PGS_Optimisation {
 		return circles;
 	}
 
+	/**
+	 * Various packing heuristics for
+	 * {@link micycle.pgs.PGS_Optimisation#rectPack(List, int, int, RectPackHeuristic)
+	 * rectpack()}.
+	 */
 	public enum RectPackHeuristic {
 
 		/**
@@ -600,8 +602,8 @@ public final class PGS_Optimisation {
 	 * O(n*log(n)), rather than the naive O(n*n) brute-force approach.
 	 * 
 	 * @param points a set of 2D points, represented by PVectors
-	 * @return a List<PVector> containing exactly two elements which are the closest
-	 *         pair of points among those in the set.
+	 * @return a List of PVectors containing exactly two elements which are the
+	 *         closest pair of points among those in the set.
 	 * @since 1.1.0
 	 * @see #farthestPointPair(Collection)
 	 */
@@ -620,7 +622,7 @@ public final class PGS_Optimisation {
 	 * faster).
 	 * 
 	 * @param points a set of 2D points, represented by PVectors
-	 * @return a List<PVector> containing exactly two elements which are the
+	 * @return a List of PVectors containing exactly two elements which are the
 	 *         farthest pair of points among those in the set.
 	 * @since 1.1.0
 	 * @see #closestPointPair(Collection)

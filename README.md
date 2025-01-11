@@ -13,41 +13,41 @@ Docs are hosted via *GitHub Pages* [here](https://micycle1.github.io/PGS/).
 Library functionality is split over the following classes:
 
 * `PGS_CirclePacking`
-  * Circle packings of shapes, subject to varying constraints and patterns of tangencies
+  * Circle packings of shapes, subject to varying constraints and patterns of tangencies.
 * `PGS_Coloring`
-  * Minimal colorings of meshes (or mesh-like shapes)
+  * Minimal colorings of meshes (or mesh-like shapes).
 * `PGS_Construction`
-  * Construct uncommon/interesting 2D primitives
+  * Construct uncommon/interesting 2D primitives.
 * `PGS_Contour`
   * Methods that produce various contours from shapes: medial axes, straight skeletons, offset curves, etc.
 * `PGS_Conversion`
   * Conversion between *Processing* PShapes and *JTS* Geometries (amongst other formats)
 * `PGS_Hull`
-  * Convex and concave hulls of polygons and point sets
+  * Convex and concave hulls of polygons and point sets.
 * `PGS_Meshing`
-  * Mesh generation (excluding triangulation) and processing
+  * Mesh generation (excluding triangulation) and processing.
 * `PGS_Morphology`
-  * Methods that affect the geometry or topology of shapes (buffering, simplification, smoothing, etc.)
+  * Methods that affect the geometry or topology of shapes (buffering, simplification, smoothing, etc.).
 * `PGS_Optimisation`
-  * Solve geometric optimisation problems, such as finding the maximum inscribed circle, or the closest vertex to a coordinate
+  * Solve geometric optimisation problems, such as finding the maximum inscribed circle, or the closest vertex to a coordinate.
 * `PGS_PointSet`
-  * Generates sets of 2D points having a variety of different distributions and constraints
+  * Generates sets of 2D points having a variety of different distributions and constraints.
 * `PGS_Processing`
-  * Methods that process a shape in some way: compute hulls, partition, slice, etc.
+  * Methods that process a shape in some way: partition, slice, clean, etc.
 * `PGS_SegmentSet`
-  * Generates sets of random non-intersecting line segments
+  * Generates sets of random non-intersecting line segments.
 * `PGS_ShapeBoolean`
-  * Boolean set-operations for 2D shapes
+  * Boolean set-operations for 2D shapes.
 * `PGS_ShapePredicates`
-  * Various shape metrics (area, circularity, etc.) and predicates (*"do these shapes intersect?"*)
+  * Various shape metrics (area, circularity, etc.) and predicates (*"do these shapes intersect?"*).
 * `PGS_Tiling`
   * Tiling, tessellation and subdivision of the plane using periodic or non-periodic geometric shapes.
 * `PGS_Transformation`
-  * Various geometric and affine transformations that affect vertex coordinates
+  * Various geometric and affine transformations that affect vertex coordinates.
 * `PGS_Triangulation`
-  * Delaunay triangulation (constrained and refined) and earcut triangulation of shapes and point sets
+  * Delaunay triangulation (constrained and refined) and earcut triangulation of shapes and point sets.
 * `PGS_Voronoi`
-  * Voronoi Diagrams of shapes and point sets
+  * Voronoi Diagrams of shapes and point sets.
 
 ## **Installation**
 
@@ -314,6 +314,13 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/morphology/hobbySimplify.gif"></td>
     <td valign="top" width="25%"><img src="resources/morphology/ellipticFourierSmooth.gif"></td>
   </tr>
+
+  <tr>
+    <td align="center" valign="center"><b>Pinch Warp</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/morphology/pinchWarp.gif"></td>
+  </tr>
 </table>
 
 ## *Hull*
@@ -357,8 +364,8 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center"><b>Perimeter Extraction</td>
   </tr>
   <tr>
-    <td valign="top" width="25%"><img src="resources/geometry_processing/pointsOnPerimeter.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/pointsOnPerimeter2.gif"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/pointsOnPerimeter.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/pointOnPerimeter.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/perimeterExtract.gif"></td>
   </tr>
@@ -425,18 +432,19 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center"><b>Densification</td>
     <td align="center" valign="center"><b>Tangent Angle</td>
     <td align="center" valign="center"><b>Eliminate Slivers</td>
-    <td align="center" valign="center"><b>Clean Coverage</td>
+    <td align="center" valign="center"><b>Segments on Exterior</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/geometry_processing/densify.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/tangentAngle.png"></td>
     <td valign="top" width="25%"><img src="resources/morphology/slivers.gif"></td>
-    <td valign="top" width="25%"><img src="resources/geometry_processing/cleanCoverage.gif"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/linesOnExterior.gif"></td>
   </tr>
   </tr>
     <tr>
     <td align="center" valign="center"><b>Extract Holes</td>
     <td align="center" valign="center"><b>Nest</td>
+    
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/geometry_processing/extractHoles.gif"></td>
@@ -485,9 +493,11 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
   <tr>
     <td align="center" valign="center"><b>Centroidal Relaxation</td>
+    <td align="center" valign="center"><b>Multiplicatively Weighted Voronoi</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/voronoi/centroidal.gif"></td>
+    <td valign="top" width="25%"><img src="resources/voronoi/mwvd.gif"></td>
   </tr>
 </table>
 
@@ -545,6 +555,15 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/meshing/stochasticMerge.gif"></td>
     <td valign="top" width="25%"><img src="resources/meshing/areaMerge.gif"></td>
     <td valign="top" width="25%"><img src="resources/meshing/innerEdges.gif"></td>
+  </tr>
+
+  <tr>
+    <td align="center" valign="center"><b>Extract Inner Vertices</td>
+    <td align="center" valign="center"><b>Fix Breaks</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/meshing/extractInnerVertices.gif"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/cleanCoverage.gif"></td>
   </tr>
 </table>
 
@@ -831,24 +850,32 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Sobol LDS</td>
     <td align="center" valign="center"><b>N-Rooks LDS</td>
-    <td align="center" valign="center"><b>Distance Prune</td>
+    <td align="center" valign="center"><b>Thomas Clusters</td>
     <td align="center" valign="center"><b>Hilbert Sort</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/point_set/sobolLDS.gif"></td>
     <td valign="top" width="25%"><img src="resources/point_set/nRooksLDS.png"></td>
-    <td valign="top" width="25%"><img src="resources/point_set/removeWithinDistance.gif"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/thomas.gif"></td>
     <td valign="top" width="25%"><img src="resources/point_set/hilbertSort.gif"></td>
   </tr>
   <tr>
     <td align="center" valign="center"><b>EMST</td>
+    <td align="center" valign="center"><b>Shortest Tour (TSP)</td>
     <td align="center" valign="center"><b>Cluster</td>
     <td align="center" valign="center"><b>Weighted Median</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/point_set/emst.png"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/tsp.png"></td>
     <td valign="top" width="25%"><img src="resources/point_set/cluster.png"></td>
     <td valign="top" width="25%"><img src="resources/point_set/weightedMedian.png"></td>
+  </tr>
+  <tr>
+    <td align="center" valign="center"><b>Distance Prune</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/point_set/removeWithinDistance.gif"></td>
   </tr>
 </table>
 

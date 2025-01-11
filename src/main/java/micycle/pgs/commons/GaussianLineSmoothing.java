@@ -1,7 +1,10 @@
 package micycle.pgs.commons;
 
+import java.util.Arrays;
+
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.LineString;
+
 import net.jafama.FastMath;
 
 /**
@@ -20,7 +23,6 @@ public class GaussianLineSmoothing {
 	/**
 	 * @param line
 	 * @param sigmaM
-	 * @return
 	 */
 	public static LineString get(LineString line, double sigmaM) {
 		return get(line, sigmaM, -1);
@@ -36,14 +38,18 @@ public class GaussianLineSmoothing {
 	 *                   the more smoothed.
 	 * @param resolution The target resolution of the geometry. This parameter is
 	 *                   used to filter/simplify the final geometry.
-	 * @return
 	 */
 	public static LineString get(LineString line, double sigmaM, double resolution) {
 		if (line.getCoordinates().length <= 2) {
 			return (LineString) line.copy();
 		}
 
+		// output is sensitive to vertex order, so normalise the line (note doesn't
+		// normalise orientation)
 		boolean isClosed = line.isClosed();
+		if (isClosed) {
+			line = normalise(line);
+		}
 		double length = line.getLength();
 		double densifiedResolution = sigmaM / 3;
 
@@ -67,7 +73,7 @@ public class GaussianLineSmoothing {
 		// compute densified line
 		Coordinate[] densifiedCoords = LittleThumblingDensifier.densify(line, densifiedResolution).getCoordinates();
 
-		// build ouput line structure
+		// build output line structure
 		int nb = (int) (length / densifiedResolution);
 		Coordinate[] out = new Coordinate[nb + 1];
 
@@ -163,6 +169,45 @@ public class GaussianLineSmoothing {
 
 		LineString lsOut = line.getFactory().createLineString(out);
 		return lsOut;
+	}
+
+	/**
+	 * Normalises the LineString so that it starts from the coordinate with the
+	 * smallest x value. In case of a tie on the x value, the smallest y value is
+	 * used.
+	 *
+	 * @param line The open or closed LineString to be normalised.
+	 * @return A new LineString with coordinates ordered starting from the smallest
+	 *         x (and y, if tied).
+	 */
+	private static LineString normalise(LineString line) {
+		boolean isClosed = line.isClosed();
+
+		Coordinate[] originalCoords = line.getCoordinates();
+		if (isClosed && originalCoords[0].equals2D(originalCoords[originalCoords.length - 1])) {
+			// Remove last vertex if it is a duplicate of the first for closed lines
+			originalCoords = Arrays.copyOf(originalCoords, originalCoords.length - 1);
+		}
+
+		// Find index of coordinate with smallest x value, tie by y value
+		int minIndex = 0;
+		for (int i = 1; i < originalCoords.length; i++) {
+			if (originalCoords[i].x < originalCoords[minIndex].x
+					|| (originalCoords[i].x == originalCoords[minIndex].x && originalCoords[i].y < originalCoords[minIndex].y)) {
+				minIndex = i;
+			}
+		}
+
+		// Rotate array to start from vertex with smallest x (and y, if tied)
+		Coordinate[] rotatedCoords = new Coordinate[originalCoords.length + (isClosed ? 1 : 0)];
+		System.arraycopy(originalCoords, minIndex, rotatedCoords, 0, originalCoords.length - minIndex);
+		System.arraycopy(originalCoords, 0, rotatedCoords, originalCoords.length - minIndex, minIndex);
+
+		if (isClosed) {
+			rotatedCoords[rotatedCoords.length - 1] = rotatedCoords[0]; // Close the loop
+		}
+
+		return line.getFactory().createLineString(rotatedCoords);
 	}
 
 }

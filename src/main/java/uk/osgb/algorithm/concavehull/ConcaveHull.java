@@ -76,12 +76,11 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.triangulate.DelaunayTriangulationBuilder;
 import org.locationtech.jts.triangulate.quadedge.QuadEdge;
 import org.locationtech.jts.triangulate.quadedge.QuadEdgeSubdivision;
 import org.locationtech.jts.triangulate.quadedge.Vertex;
-
-import org.locationtech.jts.operation.union.UnaryUnionOp;
 
 public class ConcaveHull {
 
@@ -259,7 +258,7 @@ public class ConcaveHull {
 					QuadEdge qe = sd.locate(nodeS, nodeE);
 					if (qe == null) {
 						System.out.println("fail to find edge: " + nodeS.toString() + " -" + nodeE.toString());
-						return new ArrayList<Geometry>();
+						return new ArrayList<>();
 					}
 					QuadEdge lnext = qe.lNext();
 					Vertex verO = lnext.dest(); // "opposite" vertex
@@ -388,9 +387,9 @@ public class ConcaveHull {
 			LinkedList<DLCirList<Coordinate>> hulls = new LinkedList<>(); //
 			ArrayList<DLCirList<Coordinate>> rltHulls = new ArrayList<>(); // finished hulls
 
-			ArrayList<LineString> rltLS = new ArrayList<LineString>();
+			ArrayList<LineString> rltLS = new ArrayList<>();
 
-			TreeSet<HullEdgeCir> edgeIdx = new TreeSet<HullEdgeCir>();
+			TreeSet<HullEdgeCir> edgeIdx = new TreeSet<>();
 
 			TreeMap<Coordinate, DLNode<Coordinate>> coordNodeMap = new TreeMap<>();
 			HashMap<DLNode<Coordinate>, HullEdgeCir> nodeEdgeMap = new HashMap<>();
@@ -759,6 +758,7 @@ public class ConcaveHull {
 			}
 		}
 
+		@Override
 		public int compareTo(Object o) {
 			HullEdgeCir other = (HullEdgeCir) o;
 			if (metric < other.metric) {
@@ -933,7 +933,7 @@ public class ConcaveHull {
 			no.prev = ns;
 			anchor = ns;
 			calculateSize();
-			return new DLCirList<T>(ne);
+			return new DLCirList<>(ne);
 		}
 	}
 }

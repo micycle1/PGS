@@ -5,6 +5,49 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
+## **2.0** *(2024-08-xx)*
+
+**NOTE: Beginning at v2.0, PGS is built with Java 17.**
+
+### Added
+* `findShortestTour()` to `PGS_PointSet`. Computes an <i>approximate</i> Traveling Salesman path for a set of points.
+* `pruneSparsePoints()` to  `PGS_PointSet`. Prunes a list of points by removing points that are considered not sufficiently dense (far away from their nearest neighbours); a counterpart to `prunePointsWithinDistance()`.
+* Additional method signature for `PGS_Morphology.variableBuffer()` that accepts a callback function to define the buffer value at each vertex.
+* `boundsCenter()` to `PGS_Transformation`. Computes the center of the bounding box of a shape.
+* Additional method signature for `delaunayTriangulation(points)` that supports a boundary constraint.
+* `fix()` to `PGS_Processing`. Attempts to fix shapes with invalid geometry.
+* Additional method signature for `frontChainPack()` that accepts a random seed.
+* `isClockwise()` to `PGS_ShapePredicates`. Determines if the vertices of the specified shape form a clockwise loop.
+* `extractInnerVertices()` to `PGS_Meshing`. Extracts all inner vertices from a mesh.
+* `thomasClusters()` to `PGS_PointSet`. Generates random points having clustered properties using the Thomas Point Process.
+* `transform()` and `transformWithIndex()`* to `PGS_Processing`. Applies a specified transformation function to each child of the given PShape and returns a new PShape containing the transformed children (*additionally with child's index).
+* `apply()` and `applyWithIndex()`* to `PGS_Processing`. Applies a specified function to each child of the given PShape (*additionally with child's index).
+* `toContours()` to `PGS_Conversion`. Extracts the contours from a POLYGON or PATH PShape, represented as lists of PVector points.
+* `segmentsOnExterior()` to `PGS_Processing`. Extracts evenly spaced dashed line segments along the perimeter of a shape.
+* `multiplicativelyWeightedVoronoi()` to `PGS_Voronoi `. Generates a Multiplicatively Weighted Voronoi Diagrams diagram for a set of weighted sites.
+* `applyRandomWeights()` to `PGS_PointSet`. Applies random weights within a specified range to a list of points.
+* `findContainingFace()` to `PGS_Meshing`. Finds the single face from the mesh that contains the query point.
+* `findBreaks()` to `PGS_Meshing`. Returns the locations of invalid mesh face boundary segments if found.
+* `pinchWarp()` to `PGS_Morphology`. Applies a pinch warping effect to a shape, distorting vertices towards a specified point.
+
+### Changes
+* Packed circles from `PGS_CirclePacking.stochasticPack()` will now always lie within shape bounds.
+* `PGS_Processing.pointsOnExterior()` methods now respect GROUP shapes and holes (inner rings) and will populate them with points.
+* `PGS_Morphology.simplifyDCE()` now supports GROUP shapes and polygon holes.
+* `PGS_Morphology.interpolate()` is much faster on shapes with many vertices.
+* Removed superfluous `height` argument from `PGS.createSupercircle()` method signature.
+* Renamed `fromPVector(shell, holes)` in `PGS_Conversion` to `fromContours(shell, holes)`.
+* Moved `PGS_Processing.cleanCoverage()` to `PGS_Meshing` and renamed to `fixBreaks()`.
+
+### Fixed
+* `urquhartFaces()`, `relativeNeighborFaces()`, `gabrielFaces()` and `spannerFaces()` from `PGS_Meshing` now preserve holes from the input.
+* The output of `PGS_Morphology.smoothGaussian()` is no longer (slightly) affected by the vertex ordering of the input.
+* The `transform` and `reference` arguments for `PGS_Transformation.align()` were the wrong way round.
+
+### Removed
+* `simplifyDCE(shape, targetNumVertices)` and `simplifyDCE(shape, vertexRemovalFraction)` in favour a single method that accepts a user-defined termination callback that is supplied with the current vertex candidate's coordinate, relevance score, and the number of vertices remaining.
+
+
 ## **1.4.0** *(2023-07-29)*
 
 ### Added
