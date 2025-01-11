@@ -52,7 +52,6 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           mvn -B -Puber-jar verify \
-            javadoc:javadoc \
             org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
             -Dsonar.projectKey=micycle1_PTS \
             -Dsonar.java.source=17 \
