@@ -21,8 +21,8 @@ micycle.pgs.color:micycle.pgs.color
 -docencoding
 'UTF-8'
 -doctitle
-'Processing Geometry Suite 2.0-SNAPSHOT API'
+'Processing Geometry Suite 2.0 API'
 -use
 -version
 -windowtitle
-'Processing Geometry Suite 2.0-SNAPSHOT API'
+'Processing Geometry Suite 2.0 API'
