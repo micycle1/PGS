@@ -15,6 +15,7 @@ import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.Polygonal;
+import org.locationtech.jts.operation.overlay.snap.GeometrySnapper;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.Vertex;
@@ -505,9 +506,41 @@ public final class PGS_Voronoi {
 	 * @since 2.0
 	 */
 	public static PShape multiplicativelyWeightedVoronoi(Collection<PVector> sites, double[] bounds) {
+		return multiplicativelyWeightedVoronoi(sites, bounds, false);
+	}
+
+	/**
+	 * Generates a Multiplicatively Weighted Voronoi Diagrams diagram for a set of
+	 * weighted sites.
+	 * <p>
+	 * MWVDs are a generalisation of Voronoi diagrams where each site has a weight
+	 * associated with it. These weights influence the boundaries between cells in
+	 * the diagram. Instead of being equidistant from generator points, the
+	 * boundaries are defined by the <b>ratio</b> of distances to the weighted
+	 * generator points. This results in characteristically curved cell boundaries,
+	 * unlike the straight line boundaries seen in standard Voronoi diagrams.
+	 * 
+	 * @param sites           A list of PVectors, each representing one site:
+	 *                        <code>(.x, .y)</code> represent the coordinate and
+	 *                        <b><code>.z</code> represents weight</b>.
+	 * @param bounds          an array of the form [minX, minY, maxX, maxY]
+	 *                        representing the bounds of the diagram. The boundary
+	 *                        must cover all points.
+	 * @param forceConforming Whether to apply additional processing to ensure the
+	 *                        MWVD creates a conforming mesh. A conforming mesh has
+	 *                        no tiny gaps between adjacent cells.
+	 * @return a GROUP PShape, where each child shape is a Voronoi cell
+	 * @since 2.0
+	 */
+	public static PShape multiplicativelyWeightedVoronoi(Collection<PVector> sites, double[] bounds, boolean forceConforming) {
+
 		var faces = MultiplicativelyWeightedVoronoi.getMWVFromPVectors(sites.stream().toList(), bounds);
-		var s = PGS_Conversion.toPShape(faces);
-		s = PGS_Meshing.fixBreaks(s, 0.0001, 30); // join small gaps to produce valid coverage
+		Geometry geoms = PGS.GEOM_FACTORY.createGeometryCollection(faces.toArray(new Geometry[] {}));
+		if (forceConforming) {
+			geoms = GeometrySnapper.snapToSelf(geoms, 1e-6, true); // slow
+		}
+		var s = PGS_Conversion.toPShape(geoms);
+//		s = PGS_Meshing.fixBreaks(s, 1e-4, 10); // faster than GeometrySnapper, less robust
 		return s;
 	}
 
