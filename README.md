@@ -51,21 +51,14 @@ Library functionality is split over the following classes:
 
 ## **Installation**
 
-<details><summary>Processing IDE — Quick</summary>
+
+
+
+<details><summary>Processing</summary>
 <p>
+PGS is available on Processing's contribution manager as "Geometry Suite for Processing".
 
-Download the latest *PGS.jar* from [releases](https://github.com/micycle1/PGS/releases) and simply drag-and-drop it onto the [Processing IDE](https://processing.org/environment).
-</p>
-</details>
-
-<details><summary>Processing IDE — Permanently</summary>
-<p>
-
-Download the latest *PGS.jar* from [releases](https://github.com/micycle1/PGS/releases) and save it to `Documents\Processing\libraries\PGS\library`.
-
-Result: `Documents\Processing\libraries\PGS\library\PGS.jar`.
-
-(Note the *.jar* and the folder **must** be called `PGS` — rename the .jar if this is not the case).
+![image](https://github.com/user-attachments/assets/4da45ff8-8b67-4bdf-91de-589dbb518ed1)
 </p>
 </details>
 
