@@ -1486,7 +1486,8 @@ public final class PGS_Conversion {
 
 	/**
 	 * Flattens a collection of PShapes into a single GROUP PShape which has the
-	 * input shapes as its children.
+	 * input shapes as its children. If the collection contains only one shape, it
+	 * is directly returned.
 	 *
 	 * @since 1.2.0
 	 * @see #flatten(PShape...)
@@ -1494,6 +1495,9 @@ public final class PGS_Conversion {
 	public static PShape flatten(Collection<PShape> shapes) {
 		PShape group = new PShape(GROUP);
 		shapes.forEach(group::addChild);
+		if (group.getChildCount() == 1) {
+			return group.getChild(0);
+		}
 		return group;
 	}
 
@@ -1990,8 +1994,9 @@ public final class PGS_Conversion {
 		 * Apply this shapedata to a given PShape.
 		 *
 		 * @param other
+		 * @return other (fluent interface)
 		 */
-		public void applyTo(PShape other) {
+		public PShape applyTo(PShape other) {
 			if (other.getFamily() == GROUP) {
 				getChildren(other).forEach(c -> applyTo(c));
 			}
@@ -2000,6 +2005,8 @@ public final class PGS_Conversion {
 			other.setStroke(stroke);
 			other.setStroke(strokeColor);
 			other.setStrokeWeight(strokeWeight);
+
+			return other;
 		}
 
 		@Override

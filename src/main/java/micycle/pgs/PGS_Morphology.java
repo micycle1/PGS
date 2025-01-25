@@ -37,6 +37,7 @@ import micycle.pgs.PGS_Contour.OffsetStyle;
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.ChaikinCut;
 import micycle.pgs.commons.CornerRounding;
+import micycle.pgs.commons.CornerRounding.RoundingStyle;
 import micycle.pgs.commons.DiscreteCurveEvolution;
 import micycle.pgs.commons.DiscreteCurveEvolution.DCETerminationCallback;
 import micycle.pgs.commons.EllipticFourierDesc;
@@ -546,19 +547,23 @@ public final class PGS_Morphology {
 
 	/**
 	 * Modifies the corners of a specified shape by replacing each angular corner
-	 * with a smooth, circular arc. The radius of each arc is determined
-	 * proportionally to the shorter of the two lines forming the corner.
+	 * with a smooth, circular arc.
 	 * 
-	 * @param shape  The original PShape object whose corners are to be rounded.
-	 * @param extent Specifies the degree of corner rounding, with a range from 0 to
-	 *               1. A value of 0 corresponds to no rounding, whereas a value of
-	 *               1 yields maximum rounding while still maintaining the validity
-	 *               of the shape. Values above 1 are accepted but may produce
-	 *               unpredictable results.
+	 * @param shape  A polygonal PShape, or GROUP shape having polygonal children.
+	 * @param radius The radius of the circular arc used to round each corner. This
+	 *               determines how much a circle of the given radius "cuts into"
+	 *               the corner. The effective radius is bounded by the lengths of
+	 *               the edges forming the corner: If the radius is larger than half
+	 *               the length of either edge, it is clamped to the smaller of the
+	 *               two half-lengths to prevent overlapping or invalid geometry.
 	 * @return A new PShape object with corners rounded to the specified extent.
 	 */
-	public static PShape round(PShape shape, double extent) {
-		return CornerRounding.round(shape, extent);
+	public static PShape round(PShape shape, double radius) {
+		return PGS_Processing.transform(shape, s -> {
+			var styling = PGS_Conversion.getShapeStylingData(shape);
+			var t = CornerRounding.roundCorners(s, radius, RoundingStyle.CIRCLE);
+			return styling.applyTo(t);
+		});
 	}
 
 	/**
