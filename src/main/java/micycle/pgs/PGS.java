@@ -1,9 +1,13 @@
 package micycle.pgs;
 
+import static micycle.pgs.PGS_Conversion.fromPShape;
+import static micycle.pgs.PGS_Conversion.toPShape;
+import static processing.core.PConstants.GROUP;
 import static processing.core.PConstants.LINES;
 import static processing.core.PConstants.ROUND;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -12,6 +16,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 
 import org.jgrapht.graph.SimpleWeightedGraph;
 import org.locationtech.jts.geom.Coordinate;
@@ -554,6 +559,65 @@ final class PGS {
 					throw new UnsupportedOperationException();
 				}
 			};
+		}
+	}
+
+	/**
+	 * Applies a given function to all lineal elements (LineString and LinearRing)
+	 * in the input PShape. The function processes each LineString or LinearRing and
+	 * returns a modified LineString. The method preserves the structure of the
+	 * input geometry, including exterior-hole relationships in polygons and
+	 * multi-geometries.
+	 *
+	 * @param shape    The input PShape containing lineal elements to process.
+	 * @param function A UnaryOperator that takes a LineString or LinearRing and
+	 *                 returns a modified LineString.
+	 * @return A new PShape with the processed lineal elements. Returns an empty
+	 *         PShape for unsupported geometry types.
+	 * @since 2.1
+	 */
+	static PShape applyToLinealGeometries(PShape shape, UnaryOperator<LineString> function) {
+		Geometry g = fromPShape(shape);
+		switch (g.getGeometryType()) {
+			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
+			case Geometry.TYPENAME_MULTIPOLYGON :
+			case Geometry.TYPENAME_MULTILINESTRING :
+				PShape group = new PShape(GROUP);
+				for (int i = 0; i < g.getNumGeometries(); i++) {
+					group.addChild(applyToLinealGeometries(toPShape(g.getGeometryN(i)), function));
+				}
+				return group;
+			case Geometry.TYPENAME_LINEARRING :
+			case Geometry.TYPENAME_POLYGON :
+				// Preserve exterior-hole relations
+				LinearRing[] rings = new LinearRingIterator(g).getLinearRings();
+				LinearRing[] processedRings = new LinearRing[rings.length];
+				for (int i = 0; i < rings.length; i++) {
+					LinearRing ring = rings[i];
+					LineString out = function.apply(ring);
+					if (out.isClosed()) {
+						processedRings[i] = GEOM_FACTORY.createLinearRing(out.getCoordinates());
+					} else {
+						System.err.println("Output LineString is not closed. Closing it automatically.");
+						Coordinate[] closedCoords = Arrays.copyOf(out.getCoordinates(), out.getNumPoints() + 1);
+						closedCoords[closedCoords.length - 1] = closedCoords[0]; // Close the ring
+						processedRings[i] = GEOM_FACTORY.createLinearRing(closedCoords);
+					}
+				}
+				if (processedRings.length == 0) {
+					return new PShape();
+				}
+				LinearRing[] holes = null;
+				if (processedRings.length > 1) {
+					holes = Arrays.copyOfRange(processedRings, 1, processedRings.length);
+				}
+				return toPShape(GEOM_FACTORY.createPolygon(processedRings[0], holes));
+			case Geometry.TYPENAME_LINESTRING :
+				LineString l = (LineString) g;
+				LineString out = function.apply(l);
+				return toPShape(out);
+			default :
+				return new PShape(); // Return empty (so element is invisible if not processed)
 		}
 	}
 

@@ -42,6 +42,7 @@ import micycle.pgs.commons.DiscreteCurveEvolution;
 import micycle.pgs.commons.DiscreteCurveEvolution.DCETerminationCallback;
 import micycle.pgs.commons.EllipticFourierDesc;
 import micycle.pgs.commons.GaussianLineSmoothing;
+import micycle.pgs.commons.LaneRiesenfeldSmoothing;
 import micycle.pgs.commons.ShapeInterpolation;
 import micycle.uniformnoise.UniformNoise;
 import processing.core.PConstants;
@@ -543,6 +544,41 @@ public final class PGS_Morphology {
 																														// geoms
 				return new PShape(); // return empty (so element is invisible if not processed)
 		}
+	}
+
+	/**
+	 * Smooths a shape using Lane-Riesenfeld curve subdivision with 4-point
+	 * refinement to reduce contraction.
+	 * 
+	 * @param shape                 A shape having lineal geometries (polygons or
+	 *                              linestrings). Can be a GROUP shape consiting of
+	 *                              these.
+	 * @param degree                The degree of the LR algorithm. Higher degrees
+	 *                              influence the placement of vertices and the
+	 *                              overall shape of the curve, but only slightly
+	 *                              increase the number of vertices generated.
+	 *                              Increasing the degree also increases the
+	 *                              contraction of the curve toward its control
+	 *                              points. The degree does not directly control the
+	 *                              smoothness of the curve. A value of 3 or 4 is
+	 *                              usually sufficient for most applications.
+	 * @param subdivisions          The number of times the subdivision process is
+	 *                              applied. More subdivisions result in finer
+	 *                              refinement and visually smoother curves between
+	 *                              vertices. A value of 3 or 4 is usually
+	 *                              sufficient for most applications.
+	 * @param antiContractionFactor The weight parameter for the 4-point refinement.
+	 *                              Controls the interpolation strength. A value of
+	 *                              0 effectively disables the contraction
+	 *                              reduction. Generally suitable values are in
+	 *                              [0...0.1]. Larger values may create
+	 *                              self-intersecting geometry.
+	 * @return A Shape having same structure as the input, whose geometries are now
+	 *         smooth.
+	 * @since 2.1
+	 */
+	public static PShape smoothLaneRiesenfeld(PShape shape, int degree, int subdivisions, double antiContractionFactor) {
+		return PGS.applyToLinealGeometries(shape, lineal -> LaneRiesenfeldSmoothing.subdivide(lineal, degree, subdivisions, antiContractionFactor));
 	}
 
 	/**

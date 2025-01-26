@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## **2.1** *(2025-xx-xx)*
 
 ### Added
+`smoothLaneRiesenfeld` to `PGS_Morphology`. Smooths a shape using Lane-Riesenfeld curve subdivision with 4-point refinement to reduce contraction.
 
 ### Changes
 
