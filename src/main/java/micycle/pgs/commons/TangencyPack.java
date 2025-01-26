@@ -1,7 +1,6 @@
 package micycle.pgs.commons;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -56,7 +55,12 @@ public class TangencyPack {
 	private static final double TWO_PI = Math.PI * 2;
 
 	private final IIncrementalTin triangulation;
-	private List<List<Integer>> flowersIds;
+
+	private int[][] flowersIds; // Each row contains neighbor IDs for a flower
+	private int[] flowerSizes; // Precomputed sizes of each flower
+	private double[] delArray; // Precomputed sin(π / n) for each flower
+	private double[] factorDelArray; // Precomputed (1 - del)/del for each flower
+
 	private double[] radiiArray;
 	private Complex[] placementsArray;
 	private List<PVector> circles;
@@ -101,7 +105,7 @@ public class TangencyPack {
 		}
 
 		radiiArray = new double[allVertices.size()];
-		flowersIds = new ArrayList<>();
+		flowersIds = new int[allVertices.size()][];
 		interiorVertices = new ArrayList<>();
 		interiorVertexIndex = new HashMap<>();
 
@@ -110,17 +114,18 @@ public class TangencyPack {
 
 		int boundaryIndex = 0;
 		PVector meanVertexPos = new PVector();
+		int vi = 0;
 		for (Vertex v : allVertices) {
 			if (perimeterVertices.contains(v)) {
 				radiiArray[vertexToId.get(v)] = boundaryRadii[boundaryIndex++ % boundaryRadii.length];
 			} else {
 				List<Vertex> flower = neighbors.neighborListOf(v);
 				flower.sort(new RadialComparator(v));
-				List<Integer> flowerIds = new ArrayList<>();
-				for (Vertex neighbor : flower) {
-					flowerIds.add(vertexToId.get(neighbor));
+				int[] flowerIds = new int[flower.size()];
+				for (int i = 0; i < flowerIds.length; i++) {
+					flowerIds[i] = vertexToId.get(flower.get(i));
 				}
-				flowersIds.add(flowerIds);
+				flowersIds[vi++] = flowerIds;
 				interiorVertices.add(v);
 				int vid = vertexToId.get(v);
 				radiiArray[vid] = boundaryRadii[0] / 10;
@@ -144,6 +149,19 @@ public class TangencyPack {
 				centralVertex = v;
 			}
 		}
+
+		// Precompute flower sizes and trigonometric terms
+		flowerSizes = new int[interiorVertices.size()];
+		delArray = new double[interiorVertices.size()];
+		factorDelArray = new double[interiorVertices.size()];
+
+		for (int i = 0; i < interiorVertices.size(); i++) {
+			int n = flowersIds[i].length;
+			flowerSizes[i] = n;
+			double del = FastMath.sin(Math.PI / n); // del = sin(π / n)
+			delArray[i] = del;
+			factorDelArray[i] = (1 - del) / del; // Precompute (1-del)/del
+		}
 	}
 
 	public List<PVector> pack() {
@@ -151,16 +169,16 @@ public class TangencyPack {
 		computeCenters();
 		return circles;
 	}
-	
+
 	private void computeRadii() {
 		double ttoler;
 		// adapt tolerance based on input size. seems sufficient
-	    if (interiorVertices.size() <= 100) {
-	        ttoler = 1e-3; // Base case
-	    } else {
-	        double exponent = 3.5 + (interiorVertices.size()) / 100.0;
-	        ttoler = Math.pow(10, -exponent);
-	    }
+		if (interiorVertices.size() <= 100) {
+			ttoler = 1e-3; // Base case
+		} else {
+			double exponent = 3.5 + (interiorVertices.size()) / 100.0;
+			ttoler = Math.pow(10, -exponent);
+		}
 		int key = 1;
 		double accumErr2 = Double.MAX_VALUE;
 		int localPasses = 0;
@@ -228,114 +246,122 @@ public class TangencyPack {
 	}
 
 	private void computeRadiiSuperStep() {
-		double ttoler;
-	    if (interiorVertices.size() <= 10) {
-	        ttoler = 1e-2; // Base case
-	    } else {
-	        double exponent = 3.5 + (interiorVertices.size()) / 100.0;
-	        ttoler = Math.pow(10, -exponent);
-	    }
-	    int key = 1; // initial superstep type
-	    double accumErr2 = Double.MAX_VALUE;
-	    int localPasses = 1;
-	    while ((accumErr2 > ttoler && localPasses < 3 * interiorVertices.size())) { // main loop
-	        double[] R1 = Arrays.copyOf(radiiArray, radiiArray.length);
-	        double c1;
+		// Precompute tolerance based on problem size
+		final double ttoler = interiorVertices.size() <= 10 ? 1e-2 : Math.pow(10, -(3.5 + interiorVertices.size() / 100.0));
+
+		// Preallocate working arrays once
+		final double[] R1 = new double[radiiArray.length];
+		final double[] R2 = new double[radiiArray.length];
+
+		int key = 1;
+		double accumErr2 = Double.MAX_VALUE;
+		int localPasses = 1;
+		final int maxPasses = 3 * interiorVertices.size();
+
+		while (accumErr2 > ttoler && localPasses < maxPasses) {
+			// Phase 1: Standard iteration
+			System.arraycopy(radiiArray, 0, R1, 0, radiiArray.length);
+			double c1;
+			double factor;
+
+			// Single-pass factor calculation
+			do {
+				c1 = Math.sqrt(computeAngleSums());
+				factor = c1 / accumErr2;
+				if (factor >= 1.0) {
+					accumErr2 = c1;
+					key = 1;
+				}
+			} while (factor >= 1.0);
+
+			// Phase 2: Super-step preparation
+			System.arraycopy(radiiArray, 0, R2, 0, radiiArray.length);
+
+			// Lambda calculation with precomputed values
+			final double lambda = calculateLambda(R1, R2, factor, key);
+
+			// Vectorized radius update
+			updateRadii(R1, R2, lambda);
+
+			// Error calculation with early exit check
+			accumErr2 = Math.sqrt(computeAngleSums());
+
+			// Convergence monitoring
+			if (!updateState(R1, R2, c1, accumErr2, factor, key, lambda)) {
+				key = (key == 1) ? 2 : 1;
+			}
+
+			localPasses++;
+		}
+	}
 	
-	        double factor;
-	
-	        do { // Make sure factor < 1.0
-	            c1 = computeAngleSums();
-	            c1 = Math.sqrt(c1);
-	
-	            factor = c1 / accumErr2;
-	            if (factor >= 1.0) {
-	                accumErr2 = c1;
-	                key = 1;
-	            }
-	        } while (factor >= 1.0);
-	
-	        // ================= superstep calculation ====================
-	        double[] R2 = Arrays.copyOf(radiiArray, radiiArray.length);
-	
-	        // find maximum step one can safely take
-	        double lmax = 10000;
-	        for (int vid : interiorVertexIds) {
-	            double r1 = R1[vid];
-	            double r2 = R2[vid];
-	            double rat = r2 - r1;
-	            if (rat < 0) {
-	                double tr = (-r2 / rat);
-	                lmax = Math.min(lmax, tr); // to keep R>0
-	            }
-	        }
-	        lmax = lmax / 2;
-	
-	        // do super step
-	        double m = 1;
-	        int sct = 1;
-	        int fct = 2;
-	        double lambda;
-	        if (key == 1) { // type 1 SS
-	            lambda = m * factor;
-	            double mmax = 0.75 / (1 - factor); // upper limit on m
-	            double mm = (1 + 0.8 / (sct + 1)) * m;
-	            m = Math.min(mmax, mm);
-	        } else { // type 2 SS
-	            double fact0 = 0.0;
-	            double ftol = 0.0;
-	            if (sct > fct && Math.abs(factor - fact0) < ftol) {
-	                lambda = factor / (1 - factor);
-	                sct = -1;
-	            } else {
-	                lambda = factor;
-	            }
-	        }
-	        lambda = Math.min(lambda, lmax);
-	
-	        // interpolate new radii labels
-	        for (int vid : interiorVertexIds) {
-	            double r1 = R1[vid];
-	            double r2 = R2[vid];
-	            radiiArray[vid] = r2 + lambda * (r2 - r1);
-	        }
-	
-	        // check results
-	        accumErr2 = computeAngleSums();
-	        accumErr2 = Math.sqrt(accumErr2);
-	
-	        double pred = FastMath.exp(lambda * FastMath.log(factor));
-	        double act = accumErr2 / c1;
-	        if (act < 1) {
-	            if (act > pred) { // not as good as expected: reset
-	                if (key == 1) key = 2;
-	            }
-	        } else { // reset to before superstep
-	            System.arraycopy(R2, 0, radiiArray, 0, radiiArray.length);
-	            accumErr2 = c1;
-	            if (key == 2) key = 1;
-	        }
-	
-	        localPasses++;
-	    }
+	private double calculateLambda(double[] R1, double[] R2, double factor, int key) {
+		double lmax = Double.MAX_VALUE;
+
+		// Parallel safe iteration (if needed)
+		for (int vid : interiorVertexIds) {
+			final double r1 = R1[vid];
+			final double r2 = R2[vid];
+			final double rat = r2 - r1;
+			if (rat < 0) {
+				lmax = Math.min(lmax, -r2 / rat);
+			}
+		}
+		lmax /= 2;
+
+		if (key == 1) {
+			return Math.min(0.75 / (1 - factor), factor);
+		} else {
+			return Math.min(factor / (1 - factor), lmax);
+		}
+	}
+
+	private void updateRadii(double[] R1, double[] R2, double lambda) {
+		for (int vid : interiorVertexIds) {
+			final double delta = R2[vid] - R1[vid];
+			radiiArray[vid] = R2[vid] + lambda * delta;
+		}
+	}
+
+	private boolean updateState(double[] R1, double[] R2, double c1, double accumErr2, double factor, int key, double lambda) {
+		final double pred = FastMath.exp(lambda * FastMath.log(factor));
+		final double act = accumErr2 / c1;
+
+		if (act >= 1) {
+			System.arraycopy(R2, 0, radiiArray, 0, radiiArray.length);
+			return false;
+		}
+		return act <= pred;
 	}
 
 	private double computeAngleSums() {
 		double error = 0;
 		for (int i = 0; i < interiorVertices.size(); i++) {
 			int vId = interiorVertexIds[i];
-			List<Integer> flower = flowersIds.get(i);
+			int[] flower = flowersIds[i];
 			double ra = radiiArray[vId];
-			double angleSum = angleSum(ra, flower);
 
-			int N = 2 * flower.size();
-			double del = FastMath.sin(TWO_PI / N);
-			double bet = FastMath.sin(angleSum / N);
-			double r2 = ra * bet * (1 - del) / (del * (1 - bet));
+			// Compute angle sum for the flower
+			double angleSum = 0;
+			int n = flowerSizes[i];
+			// NOTE inlined angleSum
+			for (int j = 0; j < n; j++) {
+				int currentId = flower[j];
+				int nextId = (j + 1 < n) ? flower[j + 1] : flower[0];
+				double b = radiiArray[currentId];
+				double c = radiiArray[nextId];
+				double bc = b * c;
+				double denominator = ra * ra + ra * (b + c) + bc;
+				angleSum += FastMath.acos(1 - (2 * bc) / denominator);
+			}
+
+			// Update radius using precomputed values
+			double factorDel = factorDelArray[i];
+			double bet = FastMath.sin(angleSum / (2 * n));
+			double r2 = ra * bet * factorDel / (1 - bet);
 
 			radiiArray[vId] = r2;
-			angleSum -= TWO_PI;
-			error += angleSum * angleSum;
+			error += (angleSum - TWO_PI) * (angleSum - TWO_PI);
 		}
 		return error;
 	}
@@ -362,8 +388,8 @@ public class TangencyPack {
 		placementsArray[centralId] = new Complex(0, 0);
 
 		int centralIndex = interiorVertexIndex.get(centralVertex);
-		List<Integer> centralFlower = flowersIds.get(centralIndex);
-		int k2Id = centralFlower.get(0);
+		int[] centralFlower = flowersIds[centralIndex];
+		int k2Id = centralFlower[0];
 		placementsArray[k2Id] = new Complex(radiiArray[centralId] + radiiArray[k2Id], 0);
 
 		place(centralVertex);
@@ -386,14 +412,14 @@ public class TangencyPack {
 		}
 
 		int centreIndex = interiorVertexIndex.get(centre);
-		List<Integer> flower = flowersIds.get(centreIndex);
-		int nc = flower.size();
+		int[] flower = flowersIds[centreIndex];
+		int nc = flower.length;
 		double rcentre = radiiArray[centreId];
 		Complex minusI = new Complex(0, -1);
 
 		for (int i = 0; i < nc; i++) {
-			int sId = flower.get(i);
-			int tId = flower.get((i + 1) % nc);
+			int sId = flower[i];
+			int tId = flower[(i + 1) % nc];
 
 			if (placementsArray[sId] != null && placementsArray[tId] == null) {
 				double rs = radiiArray[sId];
