@@ -239,8 +239,8 @@ public final class PGS_PointSet {
 		final SplittableRandom random = new SplittableRandom(seed);
 		final List<PVector> points = new ArrayList<>(n);
 		for (int i = 0; i < n; i++) {
-			final float x = (float) (xMin + (xMax - xMin) * random.nextDouble());
-			final float y = (float) (yMin + (yMax - yMin) * random.nextDouble());
+			final float x = (float) random.nextDouble(xMin, xMax);
+			final float y = (float) random.nextDouble(yMin, yMax);
 			points.add(new PVector(x, y));
 		}
 		return points;

@@ -533,7 +533,6 @@ public final class PGS_Voronoi {
 	 * @since 2.0
 	 */
 	public static PShape multiplicativelyWeightedVoronoi(Collection<PVector> sites, double[] bounds, boolean forceConforming) {
-
 		var faces = MultiplicativelyWeightedVoronoi.getMWVFromPVectors(sites.stream().toList(), bounds);
 		Geometry geoms = PGS.GEOM_FACTORY.createGeometryCollection(faces.toArray(new Geometry[] {}));
 		if (forceConforming) {
