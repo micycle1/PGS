@@ -71,6 +71,7 @@ import micycle.betterbeziers.CubicBezier;
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
+import net.jafama.FastMath;
 import processing.core.PConstants;
 import processing.core.PMatrix;
 import processing.core.PShape;
@@ -1449,7 +1450,7 @@ public final class PGS_Conversion {
 	 * @see #fromArray(double[][], boolean)
 	 */
 	public static double[][] toArray(PShape shape, boolean keepClosed) {
-		List<PVector> points = toPVector(shape); // CLOSE
+		List<PVector> points = toPVector(shape); // unclosed
 		if (shape.isClosed() && keepClosed) {
 			points.add(points.get(0).copy()); // since toPVector returns unclosed view
 		}
@@ -1603,6 +1604,7 @@ public final class PGS_Conversion {
 	 *
 	 * @param shape
 	 * @return the input object (having now been mutated)
+	 * @see #setAllStrokeColor(PShape, int, double, int)
 	 * @see #setAllFillColor(PShape, int)
 	 */
 	public static PShape setAllStrokeColor(PShape shape, int color, double strokeWeight) {
@@ -1610,6 +1612,27 @@ public final class PGS_Conversion {
 			child.setStroke(true);
 			child.setStroke(color);
 			child.setStrokeWeight((float) strokeWeight);
+		});
+		return shape;
+	}
+
+	/**
+	 * Sets the stroke color and cap style for the PShape and all of its children
+	 * recursively.
+	 *
+	 * @param strokeCap either <code>SQUARE</code>, <code>PROJECT</code>, or
+	 *                  <code>ROUND</code>
+	 * @return the input object (having now been mutated)
+	 * @see #setAllStrokeColor(PShape, int, double)
+	 * @see #setAllFillColor(PShape, int)
+	 * @since 2.1
+	 */
+	public static PShape setAllStrokeColor(PShape shape, int color, double strokeWeight, int strokeCap) {
+		getChildren(shape).forEach(child -> {
+			child.setStroke(true);
+			child.setStroke(color);
+			child.setStrokeWeight((float) strokeWeight);
+			child.setStrokeCap(strokeCap);
 		});
 		return shape;
 	}
@@ -1711,21 +1734,27 @@ public final class PGS_Conversion {
 
 	/**
 	 * Rounds the x and y coordinates (to the closest int) of all vertices belonging
-	 * to the shape, <b>mutating</b> the shape. This can sometimes fix a visual
-	 * problem in Processing where narrow gaps can appear between otherwise flush
-	 * shapes.
+	 * to the shape. This can sometimes fix a visual problem in Processing where
+	 * narrow gaps can appear between otherwise flush shapes. If the shape is a
+	 * GROUP, the rounding is applied to all child shapes.
 	 *
-	 * @return the input object (having now been mutated)
+	 * @param shape the PShape to round vertex coordinates for
+	 * @return a rounded copy of the input shape
 	 * @since 1.1.3
 	 */
 	public static PShape roundVertexCoords(PShape shape) {
-		getChildren(shape).forEach(c -> {
+		return roundVertexCoords(shape, 0);
+	}
+
+	public static PShape roundVertexCoords(PShape shape, int n) {
+		return PGS_Processing.transform(shape, s -> {
+			var c = copy(s);
 			for (int i = 0; i < c.getVertexCount(); i++) {
 				final PVector v = c.getVertex(i);
-				c.setVertex(i, Math.round(v.x), Math.round(v.y));
+				c.setVertex(i, round(v.x, n), round(v.y, n));
 			}
+			return c;
 		});
-		return shape;
 	}
 
 	/**
@@ -1945,6 +1974,12 @@ public final class PGS_Conversion {
 			reversed[i] = original[original.length - 1 - i];
 		}
 		return reversed;
+	}
+
+	private static float round(float x, float n) {
+		float m = (float) FastMath.pow(10, n);
+
+		return FastMath.floor(m * x + 0.5f) / m;
 	}
 
 	/**
