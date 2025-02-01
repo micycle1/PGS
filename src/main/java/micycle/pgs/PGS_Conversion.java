@@ -1060,32 +1060,43 @@ public final class PGS_Conversion {
 	 */
 	static SimpleGraph<PShape, DefaultEdge> toDualGraph(Collection<PShape> meshFaces) {
 		final SimpleGraph<PShape, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
-		// map of which edge belong to each face; used to detect half-edges
-		final HashMap<PEdge, PShape> edgesMap = new HashMap<>(meshFaces.size() * 4);
+		final Map<PEdge, List<PShape>> edgeFacesMap = new HashMap<>();
 
+		// Phase 1: Collect edges and their associated faces
 		for (PShape face : meshFaces) {
-			graph.addVertex(face); // always add child so disconnected shapes are colored
+			graph.addVertex(face);
 			for (int i = 0; i < face.getVertexCount(); i++) {
-				final PVector a = face.getVertex(i);
-				final PVector b = face.getVertex((i + 1) % face.getVertexCount());
+				PVector a = face.getVertex(i);
+				PVector b = face.getVertex((i + 1) % face.getVertexCount());
 				if (a.equals(b)) {
 					continue;
 				}
-				final PEdge e = new PEdge(a, b);
-				final PShape neighbour = edgesMap.get(e);
 
-				if (neighbour != null) {
-					// edge seen before, so faces must be adjacent; create edge between faces
-					if (neighbour.equals(face)) { // probably bad input (3 edges the same)
-						System.err.println("toDualGraph(): Bad input — saw the same edge 3 times.");
-						continue; // continue to prevent self-loop in graph
-					}
-					graph.addEdge(neighbour, face);
-				} else {
-					edgesMap.put(e, face); // edge is new
-				}
+				PEdge edge = new PEdge(a, b);
+				edgeFacesMap.computeIfAbsent(edge, k -> new ArrayList<>()).add(face);
 			}
 		}
+
+		// Phase 2: Process edges in sorted order for graph iteration consistency
+		edgeFacesMap.entrySet().stream().sorted(Comparator.comparing(e -> e.getKey())) // Sort edges to ensure deterministic processing
+				.forEach(entry -> {
+					List<PShape> faces = entry.getValue();
+					if (faces.size() == 2) {
+						// If exactly two faces share this edge, connect them in the dual graph
+						PShape f1 = faces.get(0);
+						PShape f2 = faces.get(1);
+						if (!f1.equals(f2)) {
+							graph.addEdge(f1, f2); // Avoid self-loops
+						} else {
+							// Handle case where the same face is associated with the edge twice
+							System.err.println("toDualGraph(): Bad input — saw the same edge 3+ times for face: " + f1);
+						}
+					} else if (faces.size() > 2) {
+						// Handle edges shared by more than two faces
+						System.err.println("toDualGraph(): Bad input — edge shared by more than two faces: " + entry.getKey().toString());
+					}
+				});
+
 		return graph;
 	}
 
@@ -1738,14 +1749,27 @@ public final class PGS_Conversion {
 	 * narrow gaps can appear between otherwise flush shapes. If the shape is a
 	 * GROUP, the rounding is applied to all child shapes.
 	 *
-	 * @param shape the PShape to round vertex coordinates for
-	 * @return a rounded copy of the input shape
+	 * @param shape the PShape to round vertex coordinates for.
+	 * @return a rounded copy of the input shape.
+	 * @see #roundVertexCoords(PShape, int)
 	 * @since 1.1.3
 	 */
 	public static PShape roundVertexCoords(PShape shape) {
 		return roundVertexCoords(shape, 0);
 	}
 
+	/**
+	 * Rounds the x and y coordinates (to <code>n</code> decimal places) of all
+	 * vertices belonging to the shape. This can sometimes fix a visual problem in
+	 * Processing where narrow gaps can appear between otherwise flush shapes. If
+	 * the shape is a GROUP, the rounding is applied to all child shapes.
+	 *
+	 * @param shape the PShape to round vertex coordinates for.
+	 * @param n     The number of decimal places to which the coordinates should be
+	 *              rounded.
+	 * @return a rounded copy of the input shape.
+	 * @since 2.1
+	 */
 	public static PShape roundVertexCoords(PShape shape, int n) {
 		return PGS_Processing.transform(shape, s -> {
 			var c = copy(s);

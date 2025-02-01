@@ -11,7 +11,7 @@ import processing.core.PVector;
  * @author Michael Carleton
  *
  */
-public class PEdge {
+public class PEdge implements Comparable<PEdge> {
 
 	public final PVector a, b;
 
@@ -70,8 +70,7 @@ public class PEdge {
 			to = 1;
 		}
 		if (from < 0 || to > 1 || from > to) {
-			throw new IllegalArgumentException(
-					"Parameters 'from' and 'to' must be between 0 and 1, and 'from' must be less than or equal to 'to'.");
+			throw new IllegalArgumentException("Parameters 'from' and 'to' must be between 0 and 1, and 'from' must be less than or equal to 'to'.");
 		}
 
 		final PVector pointFrom;
@@ -122,5 +121,25 @@ public class PEdge {
 
 	private static boolean equals(PVector a, PVector b) {
 		return a.x == b.x && a.y == b.y;
+	}
+
+	@Override
+	public int compareTo(PEdge other) {
+		PVector thisMidpoint = midpoint();
+		PVector otherMidpoint = other.midpoint();
+		return comparePVectors(thisMidpoint, otherMidpoint);
+	}
+
+	/**
+	 * Helper method to compare two PVectors lexicographically.
+	 */
+	private int comparePVectors(PVector v1, PVector v2) {
+		if (v1.x != v2.x) {
+			return Float.compare(v1.x, v2.x);
+		}
+		if (v1.y != v2.y) {
+			return Float.compare(v1.y, v2.y);
+		}
+		return Float.compare(v1.z, v2.z);
 	}
 }
