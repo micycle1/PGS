@@ -796,7 +796,7 @@ public class PGS_Construction {
 	 * @param cellWidth  visual/pixel width of each cell
 	 * @param cellHeight visual/pixel width of each cell
 	 * @param seed       random seed
-	 * @return a stroked PATH PShape
+	 * @return a mitered stroked PATH PShape
 	 * @see #createRandomSFCurve(int, int, double, double)
 	 * @since 1.4.0
 	 */

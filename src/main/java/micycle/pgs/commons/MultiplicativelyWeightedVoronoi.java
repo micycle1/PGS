@@ -14,6 +14,7 @@ import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
+import org.locationtech.jts.operation.overlayng.RingClipper;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.tinspin.index.Index.PointEntryKnn;
@@ -90,9 +91,9 @@ public class MultiplicativelyWeightedVoronoi {
 		// intersection(all ap_circles containing s)-union(all ap_circles not containing
 		// s)
 
-		sites.sort((s1,s2) -> Double.compare(s1.z, s2.z));
-		
+		sites.sort((s1, s2) -> Double.compare(s1.z, s2.z));
 		final Geometry extentGeometry = geometryFactory.toGeometry(extent);
+		final RingClipper rc = new RingClipper(extent);
 
 		return sites.parallelStream().map(site -> { // NOTE parallel
 			// s2 dominates s1 (hence s1 contained in apollo circle)
@@ -124,7 +125,7 @@ public class MultiplicativelyWeightedVoronoi {
 			if (inCircleData.isEmpty()) {
 				// if no incircles, cell is simply defined by difference between plane and
 				// exCircles
-				exCircleData.forEach(c -> exCircles.add(createCircle(c[0], c[1], c[2])));
+				exCircleData.forEach(c -> exCircles.add(createClippedCircle(c[0], c[1], c[2], rc)));
 				var outerDom = UnaryUnionOp.union(exCircles);
 				return extentGeometry.difference(outerDom);
 			}
@@ -149,7 +150,7 @@ public class MultiplicativelyWeightedVoronoi {
 				});
 			}
 
-			essentialCircles.forEach(c -> inCircles.add(createCircle(c[0], c[1], c[2])));
+			essentialCircles.forEach(c -> inCircles.add(createClippedCircle(c[0], c[1], c[2], rc)));
 			// intersect all inCircles to find the dominant region for this site
 			var localDominance = inCircles.stream().reduce((geom1, geom2) -> OverlayNG.overlay(geom1, geom2, OverlayNG.INTERSECTION)).get();
 
@@ -172,17 +173,17 @@ public class MultiplicativelyWeightedVoronoi {
 			}).collect(Collectors.toList());
 
 			/*
-			 * NOTE optmisation, similar to inCircleData optimisation, but this time, remove
-			 * any SMALLER circles that are contained by another.
+			 * NOTE optimisation, similar to inCircleData optimisation, but this time,
+			 * remove any SMALLER circles that are contained by another.
 			 */
 			exCircleData = filterContainedCircles(exCircleData);
-			exCircleData.forEach(c -> exCircles.add(createCircle(c[0], c[1], c[2])));
+			exCircleData.forEach(c -> exCircles.add(createClippedCircle(c[0], c[1], c[2], rc)));
 
 			if (exCircles.isEmpty()) {
-				return localDominance.intersection(extentGeometry);
+				return localDominance;
 			} else {
 				var outerDom = UnaryUnionOp.union(exCircles);
-				return localDominance.difference(outerDom).intersection(extentGeometry);
+				return localDominance.difference(outerDom);
 			}
 		}).toList();
 	}
@@ -310,7 +311,7 @@ public class MultiplicativelyWeightedVoronoi {
 			Coordinate center = new Coordinate(circle[0], circle[1]); // often lies outside bounds
 			double radius = circle[2];
 			double distance = s1.distance(center);
-			localDominanceCircle = createCircle(center.x, center.y, radius);
+			localDominanceCircle = createClippedCircle(center.x, center.y, radius, null);
 			/*
 			 * The circle will either enclose site 1 (i.e. it's dominated by site 2), or
 			 * will bend away from site 1 (enclosing and dominating site 2).
@@ -384,11 +385,11 @@ public class MultiplicativelyWeightedVoronoi {
 		final double d = Math.sqrt(((s1x - s2x) * (s1x - s2x) + (s1y - s2y) * (s1y - s2y)));
 		// NOTE r can be huge (as circle may tend towards straight line)
 		final double r = Math.abs(w1 * w2 * d * den);
-		
+
 		return new double[] { cx, cy, r };
 	}
 
-	private static Polygon createCircle(double x, double y, double r) {
+	private static Polygon createClippedCircle(double x, double y, double r, RingClipper rc) {
 		final double maxDeviation = 0.49;
 		// Calculate the number of points based on the radius and maximum deviation.
 		int nPts = (int) Math.ceil(2 * Math.PI / Math.acos(1 - maxDeviation / r));
@@ -408,6 +409,8 @@ public class MultiplicativelyWeightedVoronoi {
 		}
 		pts[nPts] = new Coordinate(pts[0]); // Close the circle
 
-		return geometryFactory.createPolygon(pts);
+		// NOTE clip the circle to bounds now. slightly speeds up 2d boolean ops later
+		// on.
+		return geometryFactory.createPolygon(rc == null ? pts : rc.clip(pts));
 	}
 }

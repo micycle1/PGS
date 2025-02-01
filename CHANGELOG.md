@@ -5,6 +5,22 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
+## **2.1** *(2025-xx-xx)*
+
+### Added
+* `smoothLaneRiesenfeld` to `PGS_Morphology`. Smooths a shape using Lane-Riesenfeld curve subdivision with 4-point refinement to reduce contraction.
+* Additional method signature for `PGS_Conversion.roundVertexCoords()` that accepts a number of decimal places.
+
+### Changes
+* Optimised `PGS_CirclePacking.tangencyPack()`. It's now around 1.5-2x faster and has higher precision.
+* `PGS_Conversion.roundVertexCoords()` now returns a rounded copy of the input (rather than mutating the input).
+* Outputs from `PGS_Conversion.toDualGraph()` will now always iterate deterministically on inputs with the same geometry but having a different structure.
+
+### Fixed
+* Fixed invalid results given by `PGS_Morphology.rounding()`.
+
+### Removed
+
 ## **2.0** *(2025-01-11)*
 
 **NOTE: Beginning at v2.0, PGS is built with Java 17.**
