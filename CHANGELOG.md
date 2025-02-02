@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 * `smoothLaneRiesenfeld` to `PGS_Morphology`. Smooths a shape using Lane-Riesenfeld curve subdivision with 4-point refinement to reduce contraction.
 * Additional method signature for `PGS_Conversion.roundVertexCoords()` that accepts a number of decimal places.
+* `interiorAngles()` to `PGS_ShapePredicates`. Calculates all interior angles of a polygon.
 
 ### Changes
 * Optimised `PGS_CirclePacking.tangencyPack()`. It's now around 1.5-2x faster and has higher precision.

@@ -172,23 +172,15 @@ Much of the functionality (but by no means all) is demonstrated below:
 
 
 ### Metrics
-* Length/perimeter
-* Width & Height
-* Diameter
-* Circularity
-* Similarity
-* Sphericity
-* Elongation
-* Density
-* Holes
-* Maximum interior angle
-* Is simple?
-* Is convex?
-* Equal? (structural and topological equivalence)
-* Distance
-* Area
-* Centroid
-* Median
+
+| <!-- -->    | <!-- -->    | <!-- -->    |
+|-------------|-------------|-------------|
+| Length/perimeter | Similarity | Is simple? |
+| Width & Height | Sphericity | Is convex? |
+| Diameter | Elongation | Equal? (structural and topological equivalence) |
+| Circularity | Density | Distance |
+| Area | Holes | Centroid |
+| Interior angles | Maximum interior angle | Median |
 
 ## *Contour*
 

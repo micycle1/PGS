@@ -64,6 +64,37 @@ class PGS_ShapePredicatesTests {
 	}
 
 	@Test
+	void testInteriorAnglesSquare() {
+		var angles = PGS_ShapePredicates.interiorAngles(square);
+		assertEquals(4, angles.size(), "Square should have 4 angles");
+
+		double expectedAngleRadians = Math.PI / 2.0; // 90 degrees in radians
+		double expectedAngleSumRadians = Math.PI * 2; // 360 degrees for a square
+		double actualAngleSumRadians = 0;
+
+		for (double angle : angles.values()) {
+			assertEquals(expectedAngleRadians, angle, 1e-6, "Interior angle should be approximately 90 degrees");
+			actualAngleSumRadians += angle;
+		}
+		assertEquals(expectedAngleSumRadians, actualAngleSumRadians, 1e-6, "Sum of square interior angles should be approximately 360 degrees");
+
+	}
+
+	@Test
+	void testInteriorAnglesTriangle() {
+		var angles = PGS_ShapePredicates.interiorAngles(triangle);
+
+		assertEquals(3, angles.size(), "Triangle should have 3 angles");
+
+		double expectedAngleSumRadians = Math.PI; // 180 degrees for a triangle
+		double actualAngleSumRadians = 0;
+		for (double angle : angles.values()) {
+			actualAngleSumRadians += angle;
+		}
+		assertEquals(expectedAngleSumRadians, actualAngleSumRadians, 1e-6, "Sum of triangle interior angles should be approximately 180 degrees");
+	}
+
+	@Test
 	void testHoles() {
 		assertEquals(0, PGS_ShapePredicates.holes(square));
 		PShape withHole = PGS_ShapeBoolean.subtract(square, PGS_Transformation.scale(square, 0.5));
@@ -77,15 +108,15 @@ class PGS_ShapePredicatesTests {
 		coverage.removeChild(0); // remove a mesh face; mesh no longer forms a hole
 		assertEquals(0, PGS_ShapePredicates.holes(coverage));
 	}
-	
+
 	@Test
 	void testIsClockwise() {
 		assertTrue(PGS_ShapePredicates.isClockwise(square));
-		List<PVector> ccw = PGS_Conversion.toPVector(square);//.reversed();
+		List<PVector> ccw = PGS_Conversion.toPVector(square);// .reversed();
 		Collections.reverse(ccw);
 		ccw.add(ccw.get(0)); // close
 		assertFalse(PGS_ShapePredicates.isClockwise(PGS_Conversion.fromPVector(ccw)));
-		
+
 	}
 
 }
