@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_Morphology.rounding()` no longer gives invalid results.
 * `PGS_ShapePredicates.elongation()` now correctly measures shape elongation (previously inverted, now returns 1 for highly elongated shapes).
 * `PGS_Conversion.toGraph()` now processes `LINES` shapes correctly.
+* `PGS_Meshing.urquhartFaces()` no longer errors on triangulation inputs with no constraints.
 
 ### Removed
 
