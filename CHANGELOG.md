@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 * Fixed invalid results given by `PGS_Morphology.rounding()`.
+* `PGS_ShapePredicates.elongation()` now correctly measures shape elongation (previously inverted, now returns 1 for highly elongated shapes).
 
 ### Removed
 
