@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 * `smoothLaneRiesenfeld` to `PGS_Morphology`. Smooths a shape using Lane-Riesenfeld curve subdivision with 4-point refinement to reduce contraction.
 * Additional method signature for `PGS_Conversion.roundVertexCoords()` that accepts a number of decimal places.
+* `forEachShape()` and `forEachShapeWithIndex()`* to `PGS_Processing`. Applies a specified transformation function of a desired type `T` to each child of the given PShape, returning a list of  `T` (*additionally with child's index).
 
 ### Changes
 * Optimised `PGS_CirclePacking.tangencyPack()`. It's now around 1.5-2x faster and has higher precision.
@@ -17,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Outputs from `PGS_Conversion.toDualGraph()` will now always iterate deterministically on inputs with the same geometry but having a different structure.
 
 ### Fixed
-* Fixed invalid results given by `PGS_Morphology.rounding()`.
+* `PGS_Morphology.rounding()` no longer gives invalid results.
 * `PGS_ShapePredicates.elongation()` now correctly measures shape elongation (previously inverted, now returns 1 for highly elongated shapes).
 * `PGS_Conversion.toGraph()` now processes `LINES` shapes correctly.
 
