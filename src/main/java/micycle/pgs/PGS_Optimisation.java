@@ -39,6 +39,7 @@ import micycle.pgs.commons.FarthestPointPair;
 import micycle.pgs.commons.LargestEmptyCircles;
 import micycle.pgs.commons.MaximumInscribedAARectangle;
 import micycle.pgs.commons.MaximumInscribedRectangle;
+import micycle.pgs.commons.MaximumInscribedTriangle;
 import micycle.pgs.commons.MinimumBoundingEllipse;
 import micycle.pgs.commons.MinimumBoundingTriangle;
 import micycle.pgs.commons.Nullable;
@@ -107,7 +108,7 @@ public final class PGS_Optimisation {
 	 * Finds an approximate largest area rectangle (of arbitrary orientation)
 	 * contained within a polygon.
 	 * 
-	 * @param shape
+	 * @param shape a polygonal shape
 	 * @return a rectangle shape
 	 * @see #maximumInscribedAARectangle(PShape, boolean)
 	 *      maximumInscribedAARectangle() - the largest axis-aligned rectangle
@@ -116,6 +117,20 @@ public final class PGS_Optimisation {
 		Polygon polygon = (Polygon) fromPShape(shape);
 		MaximumInscribedRectangle mir = new MaximumInscribedRectangle(polygon);
 		return toPShape(mir.computeMIR());
+	}
+	
+	/**
+	 * Finds an approximate largest area triangle (of arbitrary orientation)
+	 * contained within a polygon.
+	 * 
+	 * @param shape a polygonal shape
+	 * @return a triangular shape
+	 * @since 2.1
+	 */
+	public static PShape maximumInscribedTriangle(PShape shape) {
+		Polygon polygon = (Polygon) fromPShape(shape);
+		var mit = new MaximumInscribedTriangle(polygon);
+		return toPShape(mit.computeMIT());
 	}
 
 	/**
