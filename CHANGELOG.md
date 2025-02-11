@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Optimised `PGS_CirclePacking.tangencyPack()`. It's now around 1.5-2x faster and has higher precision.
 * `PGS_Conversion.roundVertexCoords()` now returns a rounded copy of the input (rather than mutating the input).
 * Outputs from `PGS_Conversion.toDualGraph()` will now always iterate deterministically on inputs with the same geometry but having a different structure.
+* `PGS_Contour.straightSkeleton()` now always uses a more robust approach (which has been sped up considerably too).
 
 ### Fixed
 * `PGS_Morphology.rounding()` no longer gives invalid results.
