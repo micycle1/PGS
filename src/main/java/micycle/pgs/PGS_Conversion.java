@@ -901,24 +901,25 @@ public final class PGS_Conversion {
 	/**
 	 * Transforms a given PShape into a simple graph representation. In this
 	 * representation, the vertices of the graph correspond to the vertices of the
-	 * shape, and the edges of the graph correspond to the edges of the shape. This
-	 * transformation is specifically applicable to polygonal shapes where edges are
-	 * formed by adjacent vertices.
+	 * shape, and the edges of the graph correspond to the edges of the shape.
 	 * <p>
-	 * The edge weights in the graph are set to the length of the corresponding edge
-	 * in the shape.
+	 * The edge weights in the graph are set to the length (euclidean distance) of
+	 * the corresponding geometric edge in the shape.
 	 * 
-	 * @param shape the PShape to convert into a graph
+	 * @param shape the PShape to convert into a graph. LINES and polygonal shapes
+	 *              are accepted (and GROUP shapes thereof).
 	 * @return A SimpleGraph object that represents the structure of the input shape
 	 * @since 1.3.0
 	 * @see #toDualGraph(PShape)
 	 */
 	public static SimpleGraph<PVector, PEdge> toGraph(PShape shape) {
 		final SimpleGraph<PVector, PEdge> graph = new SimpleWeightedGraph<>(PEdge.class);
-		for (PShape face : getChildren(shape)) {
-			for (int i = 0; i < face.getVertexCount() - (face.isClosed() ? 0 : 1); i++) {
-				final PVector a = face.getVertex(i);
-				final PVector b = face.getVertex((i + 1) % face.getVertexCount());
+		for (PShape child : getChildren(shape)) {
+			final int stride = child.getKind() == PShape.LINES ? 2 : 1;
+			// Handle other child shapes (e.g., faces)
+			for (int i = 0; i < child.getVertexCount() - (child.isClosed() ? 0 : 1); i += stride) {
+				final PVector a = child.getVertex(i);
+				final PVector b = child.getVertex((i + 1) % child.getVertexCount());
 				if (a.equals(b)) {
 					continue;
 				}
@@ -948,23 +949,27 @@ public final class PGS_Conversion {
 	}
 
 	/**
-	 * Takes as input a graph and computes a layout for the graph vertices using a
-	 * Force-Directed placement algorithm (not vertex coordinates, if any exist).
-	 * Vertices are joined by their edges.
+	 * Computes a layout for the vertices of a graph using a Force-Directed
+	 * placement algorithm. The algorithm generates vertex coordinates based on the
+	 * graph's topology, preserving its structure (i.e., connectivity and
+	 * relationships between vertices and edges). Existing vertex coordinates, if
+	 * any, are ignored.
 	 * <p>
-	 * The output is a rather abstract representation of the input graph, and not a
-	 * geometric equivalent (unlike most other conversion methods in the class).
+	 * The output is an abstract representation of the input graph, not a geometric
+	 * equivalent (unlike most other conversion methods in this class). The layout
+	 * is bounded by the specified dimensions and anchored at (0, 0).
 	 *
-	 * @param <V>                 any vertex type
-	 * @param <E>                 any edge type
-	 * @param graph               the graph whose edges and vertices to lay out
-	 * @param normalizationFactor normalization factor for the optimal distance,
-	 *                            between 0 and 1.
-	 * @param boundsX             horizontal vertex bounds
-	 * @param boundsY             vertical vertex bounds
-	 * @return a GROUP PShape consisting of 2 children; child 0 is the linework
-	 *         (LINES) depicting edges and child 1 is the points (POINTS) depicting
-	 *         vertices. The bounds of the layout are anchored at (0, 0);
+	 * @param <V>                 the type of vertices in the graph
+	 * @param <E>                 the type of edges in the graph
+	 * @param graph               the graph whose vertices and edges are to be laid
+	 *                            out
+	 * @param normalizationFactor the normalization factor for the optimal distance
+	 *                            between vertices, clamped between 0.001 and 1
+	 * @param boundsX             the horizontal bounds for the layout
+	 * @param boundsY             the vertical bounds for the layout
+	 * @return a GROUP PShape containing two children: child 0 represents the edges
+	 *         as linework (LINES), and child 1 represents the vertices as points
+	 *         (POINTS)
 	 * @since 1.3.0
 	 */
 	public static <V, E> PShape fromGraph(SimpleGraph<V, E> graph, double normalizationFactor, double boundsX, double boundsY) {

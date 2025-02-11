@@ -511,6 +511,9 @@ public class PGS_Meshing {
 	 */
 	private static PShape removeHoles(PShape faces, IIncrementalTin triangulation) {
 		List<IConstraint> holes = new ArrayList<>(triangulation.getConstraints()); // copy list
+		if (holes.size() <= 1) {
+			return faces;
+		}
 		holes = holes.subList(1, holes.size()); // slice off perimeter constraint (not a hole)
 
 		STRtree tree = new STRtree();

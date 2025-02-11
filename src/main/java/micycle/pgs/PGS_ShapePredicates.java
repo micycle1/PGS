@@ -417,11 +417,14 @@ public final class PGS_ShapePredicates {
 	}
 
 	/**
-	 * Measures the elongation of a shape; the ratio of a shape's bounding box
-	 * length to its width.
+	 * Measures the elongation of a shape as the ratio of the difference between the
+	 * bounding box's length and width to the maximum dimension. A value of 1
+	 * indicates a highly elongated shape, while a value of 0 indicates a square or
+	 * nearly square shape.
 	 * 
 	 * @param shape
-	 * @return a value in [0, 1]
+	 * @return a value in the range [0, 1], where 1 represents high elongation and 0
+	 *         represents no elongation
 	 */
 	public static double elongation(final PShape shape) {
 		Geometry obb = MinimumDiameter.getMinimumRectangle(fromPShape(shape));
@@ -431,11 +434,9 @@ public final class PGS_ShapePredicates {
 		Coordinate c2 = rect.getCoordinates()[2];
 		double l = c0.distance(c1);
 		double w = c1.distance(c2);
-		if (l >= w) {
-			return w / l;
-		} else {
-			return l / w;
-		}
+		double max = Math.max(l, w);
+		double min = Math.min(l, w);
+		return 1 - (min / max);
 	}
 
 	/**

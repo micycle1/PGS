@@ -18,7 +18,7 @@ class PGS_ShapePredicatesTests {
 
 	private static final double EPSILON = 1E-4;
 
-	static PShape square, triangle;
+	static PShape square, triangle, rect;
 
 	@BeforeAll
 	static void initShapes() {
@@ -29,6 +29,14 @@ class PGS_ShapePredicatesTests {
 		square.vertex(10, 10);
 		square.vertex(0, 10);
 		square.endShape(PConstants.CLOSE); // close affects rendering only -- does not append another vertex
+		
+		rect = new PShape(PShape.GEOMETRY); // 10x10 rect
+		rect.beginShape();
+		rect.vertex(0, 0);
+		rect.vertex(10, 0);
+		rect.vertex(10, 20);
+		rect.vertex(0, 20);
+		rect.endShape(PConstants.CLOSE); // close affects rendering only -- does not append another vertex
 
 		float[] centroid = new float[] { 0, 0 };
 		float side_length = 10;
@@ -117,6 +125,12 @@ class PGS_ShapePredicatesTests {
 		ccw.add(ccw.get(0)); // close
 		assertFalse(PGS_ShapePredicates.isClockwise(PGS_Conversion.fromPVector(ccw)));
 
+	}
+	
+	@Test
+	void testElongation() {
+		assertEquals(0, PGS_ShapePredicates.elongation(square));
+		assertEquals(0.5, PGS_ShapePredicates.elongation(rect));
 	}
 
 }

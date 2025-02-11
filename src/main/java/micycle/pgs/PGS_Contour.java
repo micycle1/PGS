@@ -17,6 +17,8 @@ import java.util.stream.Collectors;
 
 import javax.vecmath.Point3d;
 
+import org.jgrapht.alg.interfaces.ShortestPathAlgorithm;
+import org.jgrapht.alg.shortestpath.BFSShortestPath;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 import org.joml.Vector2d;
@@ -634,6 +636,55 @@ public final class PGS_Contour {
 		PShape i = PGS_ShapeBoolean.intersect(shape, out);
 		PGS_Conversion.disableAllFill(i); // since some shapes may be polygons
 		return i;
+	}
+
+	/**
+	 * Generates a tree structure representing the shortest paths from a given start
+	 * point to all other vertices in the provided mesh. The paths are computed
+	 * using the existing connectivity of the mesh edges, ensuring that the
+	 * shortest-path tree respects the original mesh structure. The tree is
+	 * constructed using a Breadth-First Search (BFS) algorithm.
+	 * <p>
+	 * The shortest-path tree represents the minimal set of mesh edges required to
+	 * connect the start point to all other vertices in the mesh, following the
+	 * mesh's inherent connectivity. This ensures that the paths are constrained by
+	 * the mesh's topology rather than creating arbitrary connections between
+	 * vertices.
+	 * <p>
+	 * If the provided start point does not exactly match a vertex in the mesh, the
+	 * closest vertex in the mesh to the start point is used as the actual starting
+	 * point for the shortest-path computation.
+	 *
+	 * @param mesh       A GROUP shape representing a mesh from which the graph is
+	 *                   constructed. The mesh defines the connectivity between
+	 *                   vertices via its edges.
+	 * @param startPoint The starting point from which the shortest paths are
+	 *                   calculated. If this point does not exactly match a vertex
+	 *                   in the mesh, the closest vertex in the mesh will be used as
+	 *                   the starting point.
+	 * @return A PShape object representing the tree of shortest paths from the
+	 *         start point to all other vertices in the mesh. The paths are
+	 *         visualized with a semi-transparent pink stroke and are constrained by
+	 *         the mesh's edge connectivity.
+	 * @since 2.1
+	 */
+	public static PShape distanceTree(PShape mesh, PVector source) {
+		var g = PGS_Conversion.toGraph(mesh);
+		ShortestPathAlgorithm<PVector, PEdge> spa = new BFSShortestPath<>(g);
+
+		final PVector sourceActual = PGS_Optimisation.closestPoint(g.vertexSet(), source);
+		var paths = spa.getPaths(sourceActual);
+
+//		var edges = g.vertexSet().stream().filter(v -> !v.equals(sourceActual)) // Exclude the source vertex
+//				.flatMap(v -> paths.getPath(v).getEdgeList().stream()) // Flatten the edge lists into a single stream
+//				.collect(Collectors.toSet()); // Collect the edges into a Set to remove duplicates
+
+		var pathLines = g.vertexSet().stream() //
+				.filter(v -> v != sourceActual) // Exclude the source vertex
+				.map(v -> PGS_Conversion.fromPVector(paths.getPath(v).getVertexList())).toList();
+		var group = PGS_Conversion.flatten(pathLines);
+		PGS_Conversion.setAllStrokeColor(group, ColorUtils.setAlpha(Colors.PINK, 50), 2);
+		return group;
 	}
 
 	/**
