@@ -215,7 +215,7 @@
 		<dependency>
 			<groupId>com.github.twak</groupId>
 			<artifactId>campskeleton</artifactId>
-			<version>8df5b241d5</version>
+			<version>453a603706</version>
 		</dependency>
 		<dependency>
 			<groupId>org.jgrapht</groupId>
@@ -274,6 +274,12 @@
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>space-filling-curves</artifactId>
 			<version>1.0</version>
+			<exclusions>
+				<exclusion>
+					<groupId>quil</groupId>
+					<artifactId>processing-core</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
@@ -289,6 +295,12 @@
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>TrapMap</artifactId>
 			<version>1.0</version>
+			<exclusions>
+				<exclusion>
+					<groupId>quil</groupId>
+					<artifactId>processing-core</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>it.unimi.dsi</groupId>
