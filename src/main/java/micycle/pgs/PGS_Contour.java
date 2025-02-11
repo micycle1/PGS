@@ -14,9 +14,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.vecmath.Point3d;
 
+import org.jgrapht.alg.interfaces.ShortestPathAlgorithm;
+import org.jgrapht.alg.shortestpath.BFSShortestPath;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 import org.joml.Vector2d;
@@ -232,15 +235,26 @@ public final class PGS_Contour {
 	 * consisting of straight-line segments only. Roughly, it is the geometric graph
 	 * whose edges are the traces of vertices of shrinking mitered offset curves of
 	 * the polygon.
-	 *
+	 * <p>
+	 * For a single polygon, this method returns a GROUP PShape containing three
+	 * children:
+	 * <ul>
+	 * <li>Child 0: GROUP PShape consisting of skeleton faces.</li>
+	 * <li>Child 1: LINES PShape representing branches, which are lines connecting
+	 * the skeleton to the polygon's edge.</li>
+	 * <li>Child 2: LINES PShape composed of bones, depicting the pure straight
+	 * skeleton of the polygon.</li>
+	 * </ul>
+	 * <p>
+	 * For multi-polygons, the method returns a master GROUP PShape. This master
+	 * shape includes multiple skeleton GROUP shapes, each corresponding to a single
+	 * polygon and structured as described above.
+	 * 
 	 * @param shape a single polygon (that can contain holes), or a multi polygon
 	 *              (whose polygons can contain holes)
-	 * @return when the input is a single polygon, returns a GROUP PShape containing
-	 *         3 children: child 1 = GROUP PShape of skeleton faces; child 2 = LINES
-	 *         PShape of branches (lines that connect skeleton to edge); child 3 =
-	 *         LINES PShape of bones (the pure straight skeleton). For
-	 *         multi-polygons, a master GROUP shape of skeleton GROUP shapes
-	 *         (described above) is returned.
+	 * 
+	 * @return PShape based on the input polygon structure, either as a single or
+	 *         multi-polygon skeleton representation.
 	 */
 	public static PShape straightSkeleton(PShape shape) {
 		final Geometry g = fromPShape(shape);
@@ -255,25 +269,7 @@ public final class PGS_Contour {
 		return shape;
 	}
 
-	/**
-	 * 
-	 * @param polygon a single polygon that can contain holes
-	 * @return
-	 */
 	private static PShape straightSkeleton(Polygon polygon) {
-		/*
-		 * Kenzi implementation (since PGS 1.3.0) is much faster (~50x!) but can fail on
-		 * more complicated inputs. Therefore try Kenzi implementation first, but fall
-		 * back to Twak implementation if it fails.
-		 */
-		try {
-			return straightSkeletonKendzi(polygon);
-		} catch (Exception e) {
-			return straightSkeletonTwak(polygon);
-		}
-	}
-
-	private static PShape straightSkeletonTwak(Polygon polygon) {
 		if (polygon.getCoordinates().length > 1000) {
 			polygon = (Polygon) DouglasPeuckerSimplifier.simplify(polygon, 2);
 		}
@@ -301,7 +297,7 @@ public final class PGS_Contour {
 			skeleton.skeleton(); // compute skeleton
 
 			skeleton.output.faces.values().forEach(f -> {
-				final List<Point3d> vertices = f.getLoopL().iterator().next().asList();
+				List<Point3d> vertices = f.getLoopL().iterator().next().stream().toList();
 				List<PVector> faceVertices = new ArrayList<>();
 
 				for (int i = 0; i < vertices.size(); i++) {
@@ -350,95 +346,20 @@ public final class PGS_Contour {
 		return lines;
 	}
 
-	private static PShape straightSkeletonKendzi(Polygon polygon) {
-		final LinearRing[] rings = new LinearRingIterator(polygon).getLinearRings();
-		Set<Vector2dc> edgeCoordsSet = new HashSet<>();
-		final List<Vector2dc> points = ringToVec(rings[0], edgeCoordsSet);
-		final List<List<Vector2dc>> holes = new ArrayList<>();
-		for (int i = 1; i < rings.length; i++) {
-			holes.add(ringToVec(rings[i], edgeCoordsSet));
-		}
-
-		final SkeletonOutput so = kendzi.math.geometry.skeleton.Skeleton.skeleton(points, holes, new SkeletonConfiguration());
-		final PShape skeleton = new PShape(PConstants.GROUP);
-		final PShape faces = new PShape(PConstants.GROUP);
-		/*
-		 * Create PEdges first to prevent lines being duplicated in output shapes since
-		 * faces share branches and bones.
-		 */
-		final Set<PEdge> branchEdges = new HashSet<>();
-		final Set<PEdge> boneEdges = new HashSet<>();
-		so.getFaces().forEach(f -> {
-			/*
-			 * q stores the index of second vertex of the face that is a shape vertex. This
-			 * is used to rotate f.getPoints() so that the vertices of every face PShape
-			 * begin at the shape edge.
-			 */
-			int q = 0;
-			for (int i = 0; i < f.getPoints().size(); i++) {
-				final Vector2dc p1 = f.getPoints().get(i);
-				final Vector2dc p2 = f.getPoints().get((i + 1) % f.getPoints().size());
-				final boolean a = edgeCoordsSet.contains(p1);
-				final boolean b = edgeCoordsSet.contains(p2);
-				if (a ^ b) { // branch (xor)
-					branchEdges.add(new PEdge(p1.x(), p1.y(), p2.x(), p2.y()));
-					q = i;
-				} else {
-					if (!a) { // bone
-						boneEdges.add(new PEdge(p1.x(), p1.y(), p2.x(), p2.y()));
-					} else {
-						q = i;
-					}
-				}
-			}
-
-			List<PVector> faceVertices = new ArrayList<>(f.getPoints().size());
-			Collections.rotate(f.getPoints(), -q + 1);
-			f.getPoints().forEach(p -> faceVertices.add(new PVector((float) p.x(), (float) p.y())));
-
-			PShape face = PGS_Conversion.fromPVector(faceVertices);
-			face.setStroke(true);
-			face.setStrokeWeight(2);
-			face.setStroke(ColorUtils.composeColor(147, 112, 219));
-			faces.addChild(face);
-		});
-
-		final PShape bones = prepareLinesPShape(null, null, 4);
-		boneEdges.forEach(e -> {
-			bones.vertex(e.a.x, e.a.y);
-			bones.vertex(e.b.x, e.b.y);
-		});
-		bones.endShape();
-
-		final PShape branches = prepareLinesPShape(ColorUtils.composeColor(40, 235, 180), null, null);
-		branchEdges.forEach(e -> {
-			branches.vertex(e.a.x, e.a.y);
-			branches.vertex(e.b.x, e.b.y);
-		});
-		branches.endShape();
-
-		skeleton.addChild(faces);
-		skeleton.addChild(branches);
-		skeleton.addChild(bones);
-
-		return skeleton;
-	}
-
 	/**
-	 * Generates a topographic-like isoline contour map from the shape's vertices.
-	 * The "elevation" (or z value) of points is the euclidean distance between a
-	 * point in the shape and the given "high" point.
+	 * Generates a topographic-like isoline contour map from the shape's vertices
+	 * and a given "high point". Isolines represent the "elevation", or euclidean
+	 * distance, between a location in the shape and the "high point".
 	 * <p>
 	 * Assigns each point feature a number equal to the distance between geometry's
 	 * centroid and the point.
 	 *
-	 * @param shape
+	 * @param shape           the bounds in which to draw isolines
 	 * @param highPoint       position of "high" point within the shape
 	 * @param intervalSpacing distance between successive isolines
-	 * @return PShape containing isolines linework 
+	 * @return PShape containing isolines linework
 	 */
 	public static PShape isolines(PShape shape, PVector highPoint, double intervalSpacing) {
-
 		/*
 		 * Also See:
 		 * https://github.com/hageldave/JPlotter/blob/master/jplotter/src/main/java/
@@ -634,6 +555,55 @@ public final class PGS_Contour {
 		PShape i = PGS_ShapeBoolean.intersect(shape, out);
 		PGS_Conversion.disableAllFill(i); // since some shapes may be polygons
 		return i;
+	}
+
+	/**
+	 * Generates a tree structure representing the shortest paths from a given start
+	 * point to all other vertices in the provided mesh. The paths are computed
+	 * using the existing connectivity of the mesh edges, ensuring that the
+	 * shortest-path tree respects the original mesh structure. The tree is
+	 * constructed using a Breadth-First Search (BFS) algorithm.
+	 * <p>
+	 * The shortest-path tree represents the minimal set of mesh edges required to
+	 * connect the start point to all other vertices in the mesh, following the
+	 * mesh's inherent connectivity. This ensures that the paths are constrained by
+	 * the mesh's topology rather than creating arbitrary connections between
+	 * vertices.
+	 * <p>
+	 * If the provided start point does not exactly match a vertex in the mesh, the
+	 * closest vertex in the mesh to the start point is used as the actual starting
+	 * point for the shortest-path computation.
+	 *
+	 * @param mesh       A GROUP shape representing a mesh from which the graph is
+	 *                   constructed. The mesh defines the connectivity between
+	 *                   vertices via its edges.
+	 * @param startPoint The starting point from which the shortest paths are
+	 *                   calculated. If this point does not exactly match a vertex
+	 *                   in the mesh, the closest vertex in the mesh will be used as
+	 *                   the starting point.
+	 * @return A PShape object representing the tree of shortest paths from the
+	 *         start point to all other vertices in the mesh. The paths are
+	 *         visualized with a semi-transparent pink stroke and are constrained by
+	 *         the mesh's edge connectivity.
+	 * @since 2.1
+	 */
+	public static PShape distanceTree(PShape mesh, PVector source) {
+		var g = PGS_Conversion.toGraph(mesh);
+		ShortestPathAlgorithm<PVector, PEdge> spa = new BFSShortestPath<>(g);
+
+		final PVector sourceActual = PGS_Optimisation.closestPoint(g.vertexSet(), source);
+		var paths = spa.getPaths(sourceActual);
+
+//		var edges = g.vertexSet().stream().filter(v -> !v.equals(sourceActual)) // Exclude the source vertex
+//				.flatMap(v -> paths.getPath(v).getEdgeList().stream()) // Flatten the edge lists into a single stream
+//				.collect(Collectors.toSet()); // Collect the edges into a Set to remove duplicates
+
+		var pathLines = g.vertexSet().stream() //
+				.filter(v -> v != sourceActual) // Exclude the source vertex
+				.map(v -> PGS_Conversion.fromPVector(paths.getPath(v).getVertexList())).toList();
+		var group = PGS_Conversion.flatten(pathLines);
+		PGS_Conversion.setAllStrokeColor(group, ColorUtils.setAlpha(Colors.PINK, 50), 2);
+		return group;
 	}
 
 	/**

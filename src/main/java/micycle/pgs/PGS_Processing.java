@@ -19,6 +19,7 @@ import java.util.SplittableRandom;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
@@ -1333,6 +1334,86 @@ public final class PGS_Processing {
 	public static PShape transformWithIndex(PShape shape, BiFunction<Integer, PShape, PShape> function) {
 		List<PShape> children = PGS_Conversion.getChildren(shape);
 		return PGS_Conversion.flatten(IntStream.range(0, children.size()).mapToObj(i -> function.apply(i, children.get(i))).filter(Objects::nonNull).toList());
+	}
+
+	/**
+	 * Applies a specified transformation function to each child of the given PShape
+	 * and returns a list of results produced by the function.
+	 * <p>
+	 * This method processes each child of the input shape using the provided
+	 * function, which can transform the shape into any desired type T. The function
+	 * can return null to exclude a shape from the result list.
+	 * <p>
+	 * Unlike the {@link #transform(PShape, UnaryOperator)} method, this method does
+	 * not flatten the results into a PShape. Instead, it returns a list of
+	 * arbitrary objects (type T) produced by the transformation function. This
+	 * makes it more flexible for use cases where the transformation does not
+	 * necessarily produce PShape objects.
+	 * <p>
+	 * The transformation function can:
+	 * <ul>
+	 * <li>Transform the shape into a new object of type T</li>
+	 * <li>Return null to exclude the shape from the result list</li>
+	 * </ul>
+	 * <p>
+	 * Note: This method does not modify the original shape or its children. It only
+	 * applies the transformation function to each child and collects the results.
+	 *
+	 * @param <T>      The type of the objects produced by the transformation
+	 *                 function.
+	 * @param shape    The PShape whose children will be transformed.
+	 * @param function A Function that takes a PShape as input and returns an object
+	 *                 of type T. If the function returns null for a shape, that
+	 *                 shape will be excluded from the result list.
+	 * @return A list of objects of type T produced by applying the transformation
+	 *         function to each child of the input shape.
+	 * @see #transform(PShape, UnaryOperator)
+	 * @since 2.1
+	 */
+	public static <T> List<T> forEachShape(PShape shape, Function<PShape, T> function) {
+		return PGS_Conversion.getChildren(shape).stream().map(function).filter(Objects::nonNull).toList();
+	}
+
+	/**
+	 * Applies a specified transformation function to each child of the given PShape
+	 * along with its index and returns a list of results produced by the function.
+	 * <p>
+	 * This method processes each child of the input shape using the provided
+	 * function, which takes both the index of the child and the child itself as
+	 * input. The function can transform the shape into any desired type T or return
+	 * null to exclude the shape from the result list.
+	 * <p>
+	 * Unlike the {@link #transformWithIndex(PShape, BiFunction)} method, this
+	 * method does not flatten the results into a PShape. Instead, it returns a list
+	 * of arbitrary objects (type T) produced by the transformation function. This
+	 * makes it more flexible for use cases where the transformation does not
+	 * necessarily produce PShape objects.
+	 * <p>
+	 * The transformation function can:
+	 * <ul>
+	 * <li>Transform the shape into a new object of type T</li>
+	 * <li>Return null to exclude the shape from the result list</li>
+	 * </ul>
+	 * <p>
+	 * Note: This method does not modify the original shape or its children. It only
+	 * applies the transformation function to each child and collects the results.
+	 *
+	 * @param <T>      The type of the objects produced by the transformation
+	 *                 function.
+	 * @param shape    The PShape whose children will be transformed.
+	 * @param function A BiFunction that takes an integer index and a PShape as
+	 *                 input and returns an object of type T. If the function
+	 *                 returns null for a shape, that shape will be excluded from
+	 *                 the result list.
+	 * @return A list of objects of type T produced by applying the transformation
+	 *         function to each child of the input shape along with its index.
+	 * @see #transformWithIndex(PShape, BiFunction)
+	 * @see #forEachShape(PShape, Function)
+	 * @since 2.1
+	 */
+	public static <T> List<T> forEachShapeWithIndex(PShape shape, BiFunction<Integer, PShape, T> function) {
+		List<PShape> children = PGS_Conversion.getChildren(shape);
+		return IntStream.range(0, children.size()).mapToObj(i -> function.apply(i, children.get(i))).filter(Objects::nonNull).toList();
 	}
 
 	/**

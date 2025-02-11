@@ -37,10 +37,12 @@ import micycle.pgs.PGS_Contour.OffsetStyle;
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.ChaikinCut;
 import micycle.pgs.commons.CornerRounding;
+import micycle.pgs.commons.CornerRounding.RoundingStyle;
 import micycle.pgs.commons.DiscreteCurveEvolution;
 import micycle.pgs.commons.DiscreteCurveEvolution.DCETerminationCallback;
 import micycle.pgs.commons.EllipticFourierDesc;
 import micycle.pgs.commons.GaussianLineSmoothing;
+import micycle.pgs.commons.LaneRiesenfeldSmoothing;
 import micycle.pgs.commons.ShapeInterpolation;
 import micycle.uniformnoise.UniformNoise;
 import processing.core.PConstants;
@@ -545,20 +547,59 @@ public final class PGS_Morphology {
 	}
 
 	/**
-	 * Modifies the corners of a specified shape by replacing each angular corner
-	 * with a smooth, circular arc. The radius of each arc is determined
-	 * proportionally to the shorter of the two lines forming the corner.
+	 * Smooths a shape using Lane-Riesenfeld curve subdivision with 4-point
+	 * refinement to reduce contraction.
 	 * 
-	 * @param shape  The original PShape object whose corners are to be rounded.
-	 * @param extent Specifies the degree of corner rounding, with a range from 0 to
-	 *               1. A value of 0 corresponds to no rounding, whereas a value of
-	 *               1 yields maximum rounding while still maintaining the validity
-	 *               of the shape. Values above 1 are accepted but may produce
-	 *               unpredictable results.
+	 * @param shape                 A shape having lineal geometries (polygons or
+	 *                              linestrings). Can be a GROUP shape consiting of
+	 *                              these.
+	 * @param degree                The degree of the LR algorithm. Higher degrees
+	 *                              influence the placement of vertices and the
+	 *                              overall shape of the curve, but only slightly
+	 *                              increase the number of vertices generated.
+	 *                              Increasing the degree also increases the
+	 *                              contraction of the curve toward its control
+	 *                              points. The degree does not directly control the
+	 *                              smoothness of the curve. A value of 3 or 4 is
+	 *                              usually sufficient for most applications.
+	 * @param subdivisions          The number of times the subdivision process is
+	 *                              applied. More subdivisions result in finer
+	 *                              refinement and visually smoother curves between
+	 *                              vertices. A value of 3 or 4 is usually
+	 *                              sufficient for most applications.
+	 * @param antiContractionFactor The weight parameter for the 4-point refinement.
+	 *                              Controls the interpolation strength. A value of
+	 *                              0 effectively disables the contraction
+	 *                              reduction. Generally suitable values are in
+	 *                              [0...0.1]. Larger values may create
+	 *                              self-intersecting geometry.
+	 * @return A Shape having same structure as the input, whose geometries are now
+	 *         smooth.
+	 * @since 2.1
+	 */
+	public static PShape smoothLaneRiesenfeld(PShape shape, int degree, int subdivisions, double antiContractionFactor) {
+		return PGS.applyToLinealGeometries(shape, lineal -> LaneRiesenfeldSmoothing.subdivide(lineal, degree, subdivisions, antiContractionFactor));
+	}
+
+	/**
+	 * Modifies the corners of a specified shape by replacing each angular corner
+	 * with a smooth, circular arc.
+	 * 
+	 * @param shape  A polygonal PShape, or GROUP shape having polygonal children.
+	 * @param radius The radius of the circular arc used to round each corner. This
+	 *               determines how much a circle of the given radius "cuts into"
+	 *               the corner. The effective radius is bounded by the lengths of
+	 *               the edges forming the corner: If the radius is larger than half
+	 *               the length of either edge, it is clamped to the smaller of the
+	 *               two half-lengths to prevent overlapping or invalid geometry.
 	 * @return A new PShape object with corners rounded to the specified extent.
 	 */
-	public static PShape round(PShape shape, double extent) {
-		return CornerRounding.round(shape, extent);
+	public static PShape round(PShape shape, double radius) {
+		return PGS_Processing.transform(shape, s -> {
+			var styling = PGS_Conversion.getShapeStylingData(shape);
+			var t = CornerRounding.roundCorners(s, radius, RoundingStyle.CIRCLE);
+			return styling.applyTo(t);
+		});
 	}
 
 	/**

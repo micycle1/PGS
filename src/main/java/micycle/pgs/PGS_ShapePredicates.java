@@ -5,7 +5,9 @@ import static micycle.pgs.PGS_Conversion.fromPShape;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.vecmath.Point3d;
 import javax.vecmath.Point4d;
@@ -415,11 +417,14 @@ public final class PGS_ShapePredicates {
 	}
 
 	/**
-	 * Measures the elongation of a shape; the ratio of a shape's bounding box
-	 * length to its width.
+	 * Measures the elongation of a shape as the ratio of the difference between the
+	 * bounding box's length and width to the maximum dimension. A value of 1
+	 * indicates a highly elongated shape, while a value of 0 indicates a square or
+	 * nearly square shape.
 	 * 
 	 * @param shape
-	 * @return a value in [0, 1]
+	 * @return a value in the range [0, 1], where 1 represents high elongation and 0
+	 *         represents no elongation
 	 */
 	public static double elongation(final PShape shape) {
 		Geometry obb = MinimumDiameter.getMinimumRectangle(fromPShape(shape));
@@ -429,11 +434,9 @@ public final class PGS_ShapePredicates {
 		Coordinate c2 = rect.getCoordinates()[2];
 		double l = c0.distance(c1);
 		double w = c1.distance(c2);
-		if (l >= w) {
-			return w / l;
-		} else {
-			return l / w;
-		}
+		double max = Math.max(l, w);
+		double min = Math.min(l, w);
+		return 1 - (min / max);
 	}
 
 	/**
@@ -508,6 +511,45 @@ public final class PGS_ShapePredicates {
 			maxAngle = Math.max(maxAngle, Angle.interiorAngle(p0, p1, p2));
 		}
 		return maxAngle;
+	}
+
+	/**
+	 * Calculates the interior angles of a polygon represented by a {@link PShape}.
+	 * The method calculates the interior angle at each vertex.
+	 * <p>
+	 * The vertices of the input {@code shape} are assumed to represent a simple
+	 * polygon.
+	 *
+	 * @param shape The {@link PShape} representing the polygon for which to
+	 *              calculate interior angles. It's expected to be a polygon shape.
+	 * @return A map where keys are {@link PVector} vertices of the polygon and
+	 *         values are their corresponding interior angles in radians as double
+	 *         values.
+	 * @since 2.1
+	 */
+	public static Map<PVector, Double> interiorAngles(PShape shape) {
+		Map<PVector, Double> anglesMap = new HashMap<>();
+
+		var vertices = PGS_Conversion.toPVector(shape); // unclosed
+		if (!PGS.isClockwise(vertices)) {
+			Collections.reverse(vertices);
+		}
+
+		int n = vertices.size();
+		for (int i = 0; i < n; i++) {
+			PVector currentVertex = vertices.get(i);
+			PVector previousVertex = vertices.get((i - 1 + n) % n); // Get previous vertex, wrapping around
+			PVector nextVertex = vertices.get((i + 1) % n); // Get next vertex, wrapping around
+
+			Coordinate p0 = new Coordinate(previousVertex.x, previousVertex.y);
+			Coordinate p1 = new Coordinate(currentVertex.x, currentVertex.y);
+			Coordinate p2 = new Coordinate(nextVertex.x, nextVertex.y);
+			double angleRadians = Angle.interiorAngle(p0, p1, p2); // CW
+			anglesMap.put(currentVertex, angleRadians);
+		}
+
+		return anglesMap;
+
 	}
 
 	/**

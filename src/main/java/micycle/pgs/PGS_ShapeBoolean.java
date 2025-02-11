@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
@@ -85,21 +86,34 @@ public final class PGS_ShapeBoolean {
 	 * @since 1.3.0
 	 */
 	public static PShape intersectMesh(final PShape mesh, final PShape area) {
-		final Geometry g = fromPShape(area);
-		final PreparedGeometry cache = PreparedGeometryFactory.prepare(g);
+		final Geometry areaGeometry = fromPShape(area);
+		final PreparedGeometry preparedArea = PreparedGeometryFactory.prepare(areaGeometry);
+		final Envelope areaEnvelope = areaGeometry.getEnvelopeInternal();
 
-		List<Geometry> faces = PGS_Conversion.getChildren(mesh).parallelStream().map(s -> {
-			final Geometry f = PGS_Conversion.fromPShape(s);
-			if (cache.containsProperly(f)) {
-				return f;
-			} else {
-				// preserve the fill etc of the PShape during intersection
-				Geometry boundaryIntersect = OverlayNG.overlay(f, g, OverlayNG.INTERSECTION);
-				boundaryIntersect.setUserData(f.getUserData());
-				return boundaryIntersect;
+		return PGS_Conversion.toPShape(PGS_Conversion.getChildren(mesh).parallelStream().filter(s -> {
+			// Quick envelope check before more expensive operations
+			Geometry face = PGS_Conversion.fromPShape(s);
+			return areaEnvelope.intersects(face.getEnvelopeInternal());
+		}).map(s -> {
+			final Geometry face = PGS_Conversion.fromPShape(s);
+
+			// First try contains test as it's faster than intersection
+			if (preparedArea.containsProperly(face)) {
+				return face;
 			}
-		}).collect(Collectors.toList());
-		return PGS_Conversion.toPShape(faces);
+
+			// Only perform intersection if faces actually overlap
+			if (preparedArea.intersects(face)) {
+				Geometry intersection = OverlayNG.overlay(face, areaGeometry, OverlayNG.INTERSECTION);
+				// Only return non-empty intersections
+				if (!intersection.isEmpty()) {
+					intersection.setUserData(face.getUserData());
+					return intersection;
+				}
+			}
+
+			return null;
+		}).filter(g -> g != null).collect(Collectors.toList()));
 	}
 
 	/**
@@ -380,7 +394,9 @@ public final class PGS_ShapeBoolean {
 		shapeFactory.setNumPoints(4);
 		shapeFactory.setWidth(width);
 		shapeFactory.setHeight(height);
-		return toPShape(shapeFactory.createRectangle().difference(fromPShape(shape)));
+		// unioning difference shape helps robustness (when it comprises overlapping
+		// children)
+		return toPShape(shapeFactory.createRectangle().difference(fromPShape(shape).union()));
 	}
 
 }
