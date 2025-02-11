@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Additional method signature for `PGS_Conversion.roundVertexCoords()` that accepts a number of decimal places.
 * `forEachShape()` and `forEachShapeWithIndex()`* to `PGS_Processing`. Applies a specified transformation function of a desired type `T` to each child of the given PShape, returning a list of  `T` (*additionally with child's index).
 * `maximumInscribedTriangle()` to `PGS_Optimisation`. Finds an approximate largest area triangle (of arbitrary orientation) contained within a polygon.
+* `closestPoint()` to `PGS_Optimisation`. Finds the closest point in a collection of points to a specified point.
 
 ### Changes
 * Optimised `PGS_CirclePacking.tangencyPack()`. It's now around 1.5-2x faster and has higher precision.

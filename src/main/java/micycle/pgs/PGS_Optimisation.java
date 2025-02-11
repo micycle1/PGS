@@ -582,13 +582,43 @@ public final class PGS_Optimisation {
 	 * 
 	 * @param shape
 	 * @param point
-	 * @return
+	 * @return closest point in the shape to the query (not a reference, but having
+	 *         the same coordinates)
 	 * @see #closestPoints(PShape, PVector)
 	 */
 	public static PVector closestPoint(PShape shape, PVector point) {
 		Geometry g = fromPShape(shape);
 		Coordinate coord = DistanceOp.nearestPoints(g, PGS.pointFromPVector(point))[0];
 		return new PVector((float) coord.x, (float) coord.y);
+	}
+
+	/**
+	 * Finds the closest point in the collection to a specified point.
+	 *
+	 * @param points the collection of points to search within
+	 * @param point  the point to find the closest neighbor for
+	 * @return the closest point from the collection to the specified point
+	 * @since 2.1
+	 */
+	public static PVector closestPoint(Collection<PVector> points, PVector point) {
+	    if (points == null || points.isEmpty()) {
+	        return null; // Handle empty or null collection
+	    }
+
+	    PVector closest = null;
+	    float minDistanceSq = Float.MAX_VALUE;
+
+	    for (PVector p : points) {
+	        float dx = p.x - point.x;
+	        float dy = p.y - point.y;
+	        float distanceSq = dx * dx + dy * dy;
+	        if (distanceSq < minDistanceSq) {
+	            minDistanceSq = distanceSq;
+	            closest = p;
+	        }
+	    }
+
+	    return closest;
 	}
 
 	/**
