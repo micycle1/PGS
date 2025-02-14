@@ -574,36 +574,54 @@ public final class PGS_Contour {
 	 * closest vertex in the mesh to the start point is used as the actual starting
 	 * point for the shortest-path computation.
 	 *
-	 * @param mesh       A GROUP shape representing a mesh from which the graph is
-	 *                   constructed. The mesh defines the connectivity between
-	 *                   vertices via its edges.
-	 * @param startPoint The starting point from which the shortest paths are
-	 *                   calculated. If this point does not exactly match a vertex
-	 *                   in the mesh, the closest vertex in the mesh will be used as
-	 *                   the starting point.
+	 * @param mesh    A GROUP shape representing a mesh from which the graph is
+	 *                constructed. The mesh defines the connectivity between
+	 *                vertices via its edges.
+	 * @param source  The starting point from which the shortest paths are
+	 *                calculated. If this point does not exactly match a vertex in
+	 *                the mesh, the closest vertex in the mesh will be used as the
+	 *                starting point.
+	 * @param flatten Determines the format of the output shortest-path tree.
+	 *                <p>
+	 *                If {@code true}, the method returns a flattened representation
+	 *                of the shortest-path tree as a single set of edges. This
+	 *                removes duplicate edges and combines all paths into a single
+	 *                structure.
+	 *                <p>
+	 *                If {@code false}, the method returns a GROUP shape of
+	 *                individual paths, where each path is a separate line from the
+	 *                start point to each vertex in the mesh. This representation
+	 *                retains the structure of the shortest-path tree as a
+	 *                collection of distinct paths.
+	 *                <p>
 	 * @return A PShape object representing the tree of shortest paths from the
 	 *         start point to all other vertices in the mesh. The paths are
-	 *         visualized with a semi-transparent pink stroke and are constrained by
-	 *         the mesh's edge connectivity.
+	 *         constrained by the mesh's edge connectivity.
 	 * @since 2.1
 	 */
-	public static PShape distanceTree(PShape mesh, PVector source) {
+	public static PShape distanceTree(PShape mesh, PVector source, boolean flatten) {
 		var g = PGS_Conversion.toGraph(mesh);
 		ShortestPathAlgorithm<PVector, PEdge> spa = new BFSShortestPath<>(g);
 
 		final PVector sourceActual = PGS_Optimisation.closestPoint(g.vertexSet(), source);
 		var paths = spa.getPaths(sourceActual);
 
-//		var edges = g.vertexSet().stream().filter(v -> !v.equals(sourceActual)) // Exclude the source vertex
-//				.flatMap(v -> paths.getPath(v).getEdgeList().stream()) // Flatten the edge lists into a single stream
-//				.collect(Collectors.toSet()); // Collect the edges into a Set to remove duplicates
+		PShape out;
+		if (flatten) {
+			var edges = g.vertexSet().stream().filter(v -> !v.equals(sourceActual)) // Exclude the source vertex
+					.flatMap(v -> paths.getPath(v).getEdgeList().stream()) // Flatten the edge lists into a single stream
+					.collect(Collectors.toSet()); // Collect the edges into a Set to remove duplicates
+			out = PGS_SegmentSet.toPShape(edges);
+		}
+		else {
+			var pathLines = g.vertexSet().stream() //
+					.filter(v -> v != sourceActual) // Exclude the source vertex
+					.map(v -> PGS_Conversion.fromPVector(paths.getPath(v).getVertexList())).toList();
+			out = PGS_Conversion.flatten(pathLines);
+			PGS_Conversion.setAllStrokeColor(out, ColorUtils.setAlpha(Colors.PINK, 50), 4);			
+		}
 
-		var pathLines = g.vertexSet().stream() //
-				.filter(v -> v != sourceActual) // Exclude the source vertex
-				.map(v -> PGS_Conversion.fromPVector(paths.getPath(v).getVertexList())).toList();
-		var group = PGS_Conversion.flatten(pathLines);
-		PGS_Conversion.setAllStrokeColor(group, ColorUtils.setAlpha(Colors.PINK, 50), 2);
-		return group;
+		return out;
 	}
 
 	/**
@@ -869,7 +887,7 @@ public final class PGS_Contour {
 	}
 
 	/**
-	 * Generates a grid of points
+	 * Generates a grid of points.
 	 *
 	 * @param minX
 	 * @param minY

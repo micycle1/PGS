@@ -220,10 +220,12 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Distance Field</td>
     <td align="center" valign="center"><b>Center Line</td>
+    <td align="center" valign="center"><b>Distance Tree</td>
   </tr>
   <tr>
     <td valign="top"><img src="resources/contour/distanceField.png"></td>
     <td valign="top"><img src="resources/contour/centerLine.gif"></td>
+    <td valign="top"><img src="resources/contour/distanceTree.png"></td>
   </tr>
     </tr>
     <tr>
@@ -569,12 +571,13 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
-    <td align="center" valign="center" colspan="2"><b>Minimum Bounding Circle</td>
+    <td align="center" valign="center"><b>Maximum Inscribed Triangle</td>
+    <td align="center" valign="center"><b>Minimum Bounding Circle</td>
     <td align="center" valign="center" colspan="2"><b>Minimum Bounding Ellipse</td>
   </tr>
   <tr>
+    <td valign="top"><img src="resources/optimisation/mit.png"></td>
     <td valign="top"><img src="resources/optimisation/minimumBoundingCircle.png"></td>
-    <td valign="top"><img src="resources/optimisation/mbc2.png"></td>
     <td valign="top"><img src="resources/optimisation/mbe1.png"></td>
     <td valign="top" ><img src="resources/optimisation/mbe2.png"></td>
   </tr>
