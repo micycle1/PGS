@@ -1504,7 +1504,7 @@ public final class PGS_Conversion {
 	/**
 	 * Flattens a collection of PShapes into a single GROUP PShape which has the
 	 * input shapes as its children. If the collection contains only one shape, it
-	 * is directly returned.
+	 * is returned directly as a non-GROUP shape.
 	 *
 	 * @since 1.2.0
 	 * @see #flatten(PShape...)

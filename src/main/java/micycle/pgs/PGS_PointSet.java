@@ -43,9 +43,27 @@ import processing.core.PVector;
  * Generation of random sets of 2D points having a variety of different
  * distributions and constraints (and associated functions).
  * 
+ * <p>
+ * <strong>Note on Floating-Point Values and Collisions:</strong>
+ * </p>
+ * <p>
+ * When generating many random points, collisions in coordinate values are
+ * expected due to the limited precision of floating-point numbers. For example:
+ * <ul>
+ * <li>A {@code float} has ~24 bits of precision (23 explicit mantissa bits + 1
+ * implicit leading bit), which allows for ~16.8 million unique values in the
+ * range [0, 1).</li>
+ * <li>When generating a large number of points (e.g., 100,000), the probability
+ * of collisions follows the birthday paradox formula: <code>n² / (2m)</code>,
+ * where <code>n</code> is the number of samples and <code>m</code> is the
+ * number of possible unique values.</li>
+ * <li>For 100,000 points, this results in ~300 expected collisions in the
+ * x-coordinate, even when using a high-quality random number generator.</li>
+ * </ul>
+ * </p>
+ * 
  * @author Michael Carleton
  * @since 1.2.0
- *
  */
 public final class PGS_PointSet {
 

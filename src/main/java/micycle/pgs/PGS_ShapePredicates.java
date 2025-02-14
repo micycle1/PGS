@@ -454,6 +454,18 @@ public final class PGS_ShapePredicates {
 	}
 
 	/**
+	 * Returns the total number of vertices that make up a shape.
+	 * <p>
+	 * Unlike <code>PShape.getVertexCount()</code> this method properly returns the
+	 * number of vertices in GROUP and primitive shapes.
+	 * 
+	 * @since 2.1
+	 */
+	public static int vertexCount(PShape shape) {
+		return fromPShape(shape).getNumPoints();
+	}
+
+	/**
 	 * Counts the number of holes in a shape.
 	 * <p>
 	 * If the shape forms a polygon coverage (a mesh), then this method will count
@@ -514,7 +526,7 @@ public final class PGS_ShapePredicates {
 	}
 
 	/**
-	 * Calculates the interior angles of a polygon represented by a {@link PShape}.
+	 * Calculates all interior angles of a polygon represented by a {@link PShape}.
 	 * The method calculates the interior angle at each vertex.
 	 * <p>
 	 * The vertices of the input {@code shape} are assumed to represent a simple
