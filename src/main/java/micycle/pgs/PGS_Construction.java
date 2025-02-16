@@ -594,7 +594,9 @@ public class PGS_Construction {
 
 		List<PShape> blobs = PGS_Conversion.getChildren(PGS_Meshing.stochasticMerge(voro, classes, seed)).stream().map(c -> {
 			c = PGS_Morphology.buffer(c, -thickness / 2, OffsetStyle.MITER);
-			c = PGS_Morphology.smoothGaussian(c, smoothing);
+			if (smoothing != 0) {
+				c = PGS_Morphology.smoothGaussian(c, smoothing);
+			}
 			return c;
 		}).collect(Collectors.toList());
 

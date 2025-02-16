@@ -1,6 +1,7 @@
 package micycle.pgs;
 
 import static micycle.pgs.PGS_Conversion.toPShape;
+import static micycle.pgs.PGS_Conversion.fromPShape;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -68,7 +69,7 @@ public class PGS_Hull {
 	 * @since 1.3.0
 	 */
 	public static PShape concaveHull(PShape shapeSet, double concavity, boolean tight) {
-		Geometry g = PGS_Conversion.fromPShape(shapeSet);
+		Geometry g = fromPShape(shapeSet);
 		if (g.getGeometryType().equals(Geometry.TYPENAME_MULTIPOLYGON) || g.getGeometryType().equals(Geometry.TYPENAME_GEOMETRYCOLLECTION)) {
 			g = g.union();
 		}
@@ -190,7 +191,7 @@ public class PGS_Hull {
 	 */
 	public static PShape snapHull(PShape shape, double convexity) {
 		convexity = Math.max(Math.min(convexity, 1), 0); // constrain 0...1
-		ConcaveHullOfPolygons hull = new ConcaveHullOfPolygons(PGS_Conversion.fromPShape(shape)); // union in case multipolygon
+		ConcaveHullOfPolygons hull = new ConcaveHullOfPolygons(fromPShape(shape)); // union in case multipolygon
 		hull.setMaximumEdgeLengthRatio(convexity);
 		return toPShape(hull.getHull());
 	}

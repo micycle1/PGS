@@ -462,7 +462,7 @@ public final class PGS_ShapePredicates {
 	 * @since 2.1
 	 */
 	public static int vertexCount(PShape shape) {
-		return fromPShape(shape).getNumPoints();
+		return PGS_Conversion.getChildren(shape).stream().mapToInt(s -> s.getVertexCount()).sum();
 	}
 
 	/**
