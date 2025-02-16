@@ -16,7 +16,11 @@ import java.util.stream.IntStream;
 
 import org.apache.commons.math3.random.RandomGenerator;
 import org.jgrapht.alg.connectivity.ConnectivityInspector;
+import org.jgrapht.alg.interfaces.MatchingAlgorithm;
 import org.jgrapht.alg.interfaces.VertexColoringAlgorithm.Coloring;
+import org.jgrapht.alg.matching.blossom.v5.KolmogorovWeightedMatching;
+import org.jgrapht.alg.matching.blossom.v5.KolmogorovWeightedPerfectMatching;
+import org.jgrapht.alg.matching.blossom.v5.ObjectiveSense;
 import org.jgrapht.alg.spanning.GreedyMultiplicativeSpanner;
 import org.jgrapht.alg.util.NeighborCache;
 import org.jgrapht.graph.AbstractBaseGraph;
@@ -366,7 +370,9 @@ public class PGS_Meshing {
 
 		/*-
 		 * Now ideally "regularize" the mesh using techniques explored here:
+		 * Towards Fully Regular Quad Mesh Generation - 
 		 * https://acdl.mit.edu/ESP/Publications/AIAApaper2019-1988.pdf
+		 * A REGULARIZATION APPROACH FOR AUTOMATIC QUAD MESH GENERATION - 
 		 * https://acdl.mit.edu/ESP/Publications/IMR28.pdf
 		 */
 
@@ -391,6 +397,8 @@ public class PGS_Meshing {
 	 *                          triangles being included in the output).
 	 * @return a GROUP PShape, where each child shape is one quadrangle
 	 * @since 1.2.0
+	 * @see #matchingQuadrangulation(IIncrementalTin) matchingQuadrangulation() -- a
+	 *      similar approach, but faster
 	 */
 	public static PShape edgeCollapseQuadrangulation(final IIncrementalTin triangulation, final boolean preservePerimeter) {
 		/*-
@@ -492,6 +500,69 @@ public class PGS_Meshing {
 		} else {
 			return removeHoles(quads, triangulation);
 		}
+	}
+
+	/**
+	 * Converts a triangulation into a quadrangulation, by pairing up ("matching")
+	 * triangles and merging them into quads. (This is the first step of the
+	 * <i>Blossom-Quad algorithm</i>.)
+	 * <p>
+	 * The method tries to maximise the quality of the quads of the output, meaning
+	 * it aims to create quadrilaterals that are as regular and well-shaped
+	 * (square-like) as possible.
+	 * <p>
+	 * Sometimes, it’s not possible to pair all triangles perfectly (such as when
+	 * there is not an even number of triangles). In those cases, the result will
+	 * include some leftover triangles along with the quads.
+	 * <p>
+	 * This method follows a similar principle to
+	 * {@link #edgeCollapseQuadrangulation(IIncrementalTin, boolean)
+	 * edgeCollapseQuadrangulation()}, but instead of using graph coloring to
+	 * identify triangle pairs, it uses the Kolmogorov algorithm to find pairings.
+	 *
+	 * @param triangulation The input mesh made of triangles. This is the starting
+	 *                      point for creating the quadrangulation.
+	 * @return A GROUP PShape made of quadrilaterals (and possibly some triangles if
+	 *         pairing wasn’t perfect).
+	 *
+	 * @since 2.1
+	 */
+	public static PShape matchingQuadrangulation(final IIncrementalTin triangulation) {
+		var g = PGS_Triangulation.toDualGraph(triangulation);
+		MatchingAlgorithm<SimpleTriangle, DefaultEdge> m;
+
+		/*
+		 * A perfect matching is not always possible, so fall back to regular matching.
+		 * When this happens not all edges can be collapsed, so the output will contain
+		 * some triangles alongside the quads.
+		 */
+		try {
+			m = new KolmogorovWeightedPerfectMatching<>(g, ObjectiveSense.MAXIMIZE);
+			m.getMatching();
+		} catch (Exception e2) {
+			m = new KolmogorovWeightedMatching<>(g, ObjectiveSense.MAXIMIZE);
+		}
+		var collapsedEdges = m.getMatching().getEdges();
+
+		Set<SimpleTriangle> seen = new HashSet<>(g.vertexSet());
+		var quads = collapsedEdges.stream().map(e -> {
+			var t1 = g.getEdgeSource(e);
+			var f1 = toPShape(t1);
+			var t2 = g.getEdgeTarget(e);
+			var f2 = toPShape(t2);
+
+			seen.remove(t1);
+			seen.remove(t2);
+			var quad = PGS_ShapeBoolean.union(f1, f2);
+			return quad;
+		}).collect(Collectors.toList()); // modifiable list
+
+		// include uncollapsed triangles (if any)
+		seen.forEach(t -> {
+			quads.add(toPShape(t));
+		});
+
+		return PGS_Conversion.flatten(quads);
 	}
 
 	/**
@@ -776,8 +847,10 @@ public class PGS_Meshing {
 	 * <p>
 	 * This subdivision method is most effective on meshes whose faces are convex
 	 * and have a low vertex count (i.e., less than 6), where edge division points
-	 * correspond between adjacent faces. This method may fail on meshes with highly
-	 * concave faces because centroid-vertex visibility is not guaranteed.
+	 * correspond between adjacent faces.
+	 * <p>
+	 * <b>Note</b>: This method may fail on meshes with highly concave faces because
+	 * centroid-vertex visibility is not guaranteed.
 	 * 
 	 * @param mesh           The mesh containing faces to subdivide.
 	 * @param edgeSplitRatio The distance ratio [0...1] along each edge where the
@@ -1019,6 +1092,13 @@ public class PGS_Meshing {
 		double y = a.y + b.y + c.y;
 		y /= 3;
 		return new Vertex(x, y, 0);
+	}
+
+	private static PShape toPShape(SimpleTriangle t) {
+		PVector vertexA = new PVector((float) t.getVertexA().x, (float) t.getVertexA().y);
+		PVector vertexB = new PVector((float) t.getVertexB().x, (float) t.getVertexB().y);
+		PVector vertexC = new PVector((float) t.getVertexC().x, (float) t.getVertexC().y);
+		return PGS_Conversion.fromPVector(Arrays.asList(vertexA, vertexB, vertexC, vertexA));
 	}
 
 }

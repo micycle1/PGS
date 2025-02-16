@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `closestPoint()` to `PGS_Optimisation`. Finds the closest point in a collection of points to a specified point.
 * `distanceTree()` to `PGS_Contour`. Generates a tree structure representing the shortest paths from a start point to all other vertices in a mesh.
 * `vertexCount()` to `PGS_ShapePredicates`. Returns the total number of vertices that make up a shape.
+* `matchingQuadrangulation()` to `PGS_Meshing`. Converts a triangulation into a quadrangulation, by pairing up triangles and merging them into high-quality quads.
 
 ### Changes
 * Optimised `PGS_CirclePacking.tangencyPack()`. It's now around 1.5-2x faster and has higher precision.

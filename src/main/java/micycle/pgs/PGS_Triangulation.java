@@ -3,6 +3,7 @@ package micycle.pgs;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -28,6 +29,7 @@ import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.PolygonConstraint;
 import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
+import org.tinfour.edge.QuadEdge;
 import org.tinfour.standard.IncrementalTin;
 import org.tinfour.utils.HilbertSort;
 import org.tinfour.utils.TriangleCollector;
@@ -93,8 +95,7 @@ public final class PGS_Triangulation {
 	 * @see #delaunayTriangulationPoints(PShape, Collection, boolean, int, boolean)
 	 * @see #delaunayTriangulationMesh(PShape, Collection, boolean, int, boolean)
 	 */
-	public static PShape delaunayTriangulation(PShape shape, @Nullable Collection<PVector> steinerPoints, boolean constrain,
-			int refinements, boolean pretty) {
+	public static PShape delaunayTriangulation(PShape shape, @Nullable Collection<PVector> steinerPoints, boolean constrain, int refinements, boolean pretty) {
 		final IIncrementalTin tin = delaunayTriangulationMesh(shape, steinerPoints, constrain, refinements, pretty);
 		return toPShape(tin);
 	}
@@ -175,8 +176,8 @@ public final class PGS_Triangulation {
 	 * @see #delaunayTriangulation(PShape, Collection, boolean, int, boolean)
 	 * @see #delaunayTriangulationMesh(PShape, Collection, boolean, int, boolean)
 	 */
-	public static List<PVector> delaunayTriangulationPoints(PShape shape, @Nullable Collection<PVector> steinerPoints, boolean constrain,
-			int refinements, boolean pretty) {
+	public static List<PVector> delaunayTriangulationPoints(PShape shape, @Nullable Collection<PVector> steinerPoints, boolean constrain, int refinements,
+			boolean pretty) {
 		final IIncrementalTin tin = delaunayTriangulationMesh(shape, steinerPoints, constrain, refinements, pretty);
 
 		final ArrayList<PVector> triangles = new ArrayList<>();
@@ -254,8 +255,8 @@ public final class PGS_Triangulation {
 	 * @see #delaunayTriangulation(PShape, Collection, boolean, int, boolean)
 	 * @see #delaunayTriangulationPoints(PShape, Collection, boolean, int, boolean)
 	 */
-	public static IIncrementalTin delaunayTriangulationMesh(@Nullable PShape shape, @Nullable Collection<PVector> steinerPoints,
-			boolean constrain, int refinements, boolean pretty) {
+	public static IIncrementalTin delaunayTriangulationMesh(@Nullable PShape shape, @Nullable Collection<PVector> steinerPoints, boolean constrain,
+			int refinements, boolean pretty) {
 		return delaunayTriangulationMesh(shape, steinerPoints, constrain, refinements, pretty, true);
 
 	}
@@ -298,8 +299,8 @@ public final class PGS_Triangulation {
 	 *                            part of the triangulation (=true), or as a
 	 *                            boundary constraint only (=false).
 	 */
-	private static IIncrementalTin delaunayTriangulationMesh(@Nullable PShape shape, @Nullable Collection<PVector> steinerPoints,
-			boolean constrain, int refinements, boolean pretty, boolean insertShapeVertices) {
+	private static IIncrementalTin delaunayTriangulationMesh(@Nullable PShape shape, @Nullable Collection<PVector> steinerPoints, boolean constrain,
+			int refinements, boolean pretty, boolean insertShapeVertices) {
 		Geometry g = shape == null ? PGS.GEOM_FACTORY.createEmpty(2) : fromPShape(shape);
 		final IncrementalTin tin = new IncrementalTin(10);
 
@@ -460,8 +461,7 @@ public final class PGS_Triangulation {
 	public static IIncrementalTin poissonTriangulationMesh(PShape shape, double spacing) {
 		final Envelope e = fromPShape(shape).getEnvelopeInternal();
 
-		final List<PVector> poissonPoints = PGS_PointSet.poisson(e.getMinX(), e.getMinY(), e.getMinX() + e.getWidth(),
-				e.getMinY() + e.getHeight(), spacing, 0);
+		final List<PVector> poissonPoints = PGS_PointSet.poisson(e.getMinX(), e.getMinY(), e.getMinX() + e.getWidth(), e.getMinY() + e.getHeight(), spacing, 0);
 
 		final IIncrementalTin tin = delaunayTriangulationMesh(shape, poissonPoints, true, 0, false);
 		return tin;
@@ -584,14 +584,21 @@ public final class PGS_Triangulation {
 	 * <p>
 	 * A dual graph of a triangulation has a vertex for each constrained triangle of
 	 * the input, and an edge connecting each pair of triangles that are adjacent.
+	 * <p>
+	 * Edges are weighted, where weights represent a quality measure ([0...1], where
+	 * 1 is a perfect square) for the quadrilateral formed by collapsing the shared
+	 * edge between the two triangles.
 	 * 
 	 * @param triangulation triangulation mesh
-	 * @return
 	 * @since 1.3.0
+	 * @return a simple weighted dual graph
 	 * @see #toTinfourGraph(IIncrementalTin)
 	 */
 	public static SimpleGraph<SimpleTriangle, DefaultEdge> toDualGraph(IIncrementalTin triangulation) {
-		final SimpleGraph<SimpleTriangle, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
+		final SimpleGraph<SimpleTriangle, DefaultEdge> graph = new SimpleWeightedGraph<>(DefaultEdge.class);
+		// vertex supplier required in some graph algorithms
+		QuadEdge dummy = new QuadEdge(0);
+		graph.setVertexSupplier(() -> new SimpleTriangle(null, dummy, dummy, dummy));
 
 		final boolean notConstrained = triangulation.getConstraints().isEmpty();
 		final Map<IQuadEdge, SimpleTriangle> edgeMap = new HashMap<>(triangulation.countTriangles().getCount() * 3);
@@ -602,22 +609,39 @@ public final class PGS_Triangulation {
 				edgeMap.put(t.getEdgeA(), t);
 				edgeMap.put(t.getEdgeB(), t);
 				edgeMap.put(t.getEdgeC(), t);
-				graph.addVertex(t);
+				graph.addVertex(t); // triangle
 			}
 		});
 
+		/*
+		 * Set the edge weight. This provides a quality measure for the quadrilateral
+		 * element formed by collapsing the shared edge between two triangles. This
+		 * weight is used in Blossom Quad algorithm.
+		 */
 		graph.vertexSet().forEach(t -> {
-			final SimpleTriangle n1 = edgeMap.get(t.getEdgeA().getDual());
-			final SimpleTriangle n2 = edgeMap.get(t.getEdgeB().getDual());
-			final SimpleTriangle n3 = edgeMap.get(t.getEdgeC().getDual());
-			if (n1 != null) {
-				graph.addEdge(t, n1);
+			final SimpleTriangle t1 = edgeMap.get(t.getEdgeA().getDual());
+			final SimpleTriangle t2 = edgeMap.get(t.getEdgeB().getDual());
+			final SimpleTriangle t3 = edgeMap.get(t.getEdgeC().getDual());
+			if (t1 != null) {
+				var edge = graph.addEdge(t, t1);
+				if (edge != null) {
+					double weight = computeQuadQuality(t, t1, t.getEdgeA());
+					graph.setEdgeWeight(edge, weight);
+				}
 			}
-			if (n2 != null) {
-				graph.addEdge(t, n2);
+			if (t2 != null) {
+				var edge = graph.addEdge(t, t2);
+				if (edge != null) {
+					double weight = computeQuadQuality(t, t2, t.getEdgeB());
+					graph.setEdgeWeight(edge, weight);
+				}
 			}
-			if (n3 != null) {
-				graph.addEdge(t, n3);
+			if (t3 != null) {
+				var edge = graph.addEdge(t, t3);
+				if (edge != null) {
+					double weight = computeQuadQuality(t, t3, t.getEdgeC());
+					graph.setEdgeWeight(edge, weight);
+				}
 			}
 		});
 
@@ -665,4 +689,51 @@ public final class PGS_Triangulation {
 		y /= 3;
 		return new Coordinate(x, y);
 	}
+
+	/**
+	 * Computes the quality measure of a quadrilateral formed by merging two
+	 * adjacent triangles. The quality measure is based on the maximum deviation of
+	 * the interior angles of the quadrilateral from 90 degrees (π/2 radians). A
+	 * perfect rectangle or square will have a quality measure of 1, while a
+	 * quadrilateral with an angle of 0 or π radians will have a quality measure of
+	 * 0.
+	 * 
+	 * @param t1         The first triangle sharing the edge with the second
+	 *                   triangle.
+	 * @param t2         The second triangle sharing the edge with the first
+	 *                   triangle.
+	 * @param sharedEdge The edge shared by t1 and t2, belonging to t1. The dual of
+	 *                   this edge (sharedEdge.getDual()) represents the same edge
+	 *                   but belonging to t2.
+	 * @return A quality measure between 0 and 1, where 1 indicates a perfect
+	 *         quadrilateral (all interior angles are 90 degrees) and 0 indicates a
+	 *         degenerate quadrilateral (at least one interior angle is 0 or π
+	 *         radians).
+	 */
+	private static double computeQuadQuality(SimpleTriangle t1, SimpleTriangle t2, IQuadEdge sharedEdge) {
+		PVector a = toPVector(sharedEdge.getReverse().getA());
+		PVector b = toPVector(sharedEdge.getA());
+		PVector c = toPVector(sharedEdge.getReverseFromDual().getA());
+		PVector d = toPVector(sharedEdge.getB());
+
+		List<PVector> vertices = Arrays.asList(a, b, c, d);
+
+		PShape quad = PGS_Conversion.fromPVector(vertices);
+
+		Map<PVector, Double> angles = PGS_ShapePredicates.interiorAngles(quad);
+
+		// Calculate maximum deviation from 90 degrees
+		double maxDeviation = 0.0;
+		for (double angle : angles.values()) {
+			double deviation = Math.abs(Math.PI / 2 - angle);
+			if (deviation > maxDeviation) {
+				maxDeviation = deviation;
+			}
+		}
+
+		double cost = 1 - (2 / Math.PI) * maxDeviation;
+		cost = Math.max(cost, 0); // Ensure cost is non-negative
+		return cost;
+	}
+
 }

@@ -547,10 +547,12 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Extract Inner Vertices</td>
     <td align="center" valign="center"><b>Fix Breaks</td>
+    <td align="center" valign="center"><b>Matching Quadrangulation</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/meshing/extractInnerVertices.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/cleanCoverage.gif"></td>
+    <td valign="top" width="25%"><img src="resources/meshing/matchingQuadrangulation.png"></td>
   </tr>
 </table>
 
