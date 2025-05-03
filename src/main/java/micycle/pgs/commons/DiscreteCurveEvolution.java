@@ -1,5 +1,6 @@
 package micycle.pgs.commons;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -8,6 +9,7 @@ import java.util.stream.IntStream;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.util.UniqueCoordinateArrayFilter;
 
 import net.jafama.FastMath;
 
@@ -42,6 +44,9 @@ public class DiscreteCurveEvolution {
 	 * The callback interface for determining the termination condition of the
 	 * Discrete Curve Evolution (DCE) process.
 	 * <p>
+	 * Vertices are supplied in order of significance starting with the least
+	 * significant.
+	 * <p>
 	 * This functional interface defines a single method that decides whether the
 	 * DCE algorithm should terminate based on the current kink (having a candidate
 	 * vertex), using its coordinates, relevance score, and the number of vertices
@@ -50,6 +55,7 @@ public class DiscreteCurveEvolution {
 	 * a threshold relevance score, a specific number of vertices to preserve, or
 	 * other criteria.
 	 *
+	 * 
 	 * @see #process(LineString, DCETerminationCallback)
 	 */
 	@FunctionalInterface
@@ -131,8 +137,8 @@ public class DiscreteCurveEvolution {
 		final TreeSet<Kink> kinkRelevanceTree = new TreeSet<>(kinks);
 		if (kinks.size() != kinkRelevanceTree.size()) {
 			int lostKinks = kinks.size() - kinkRelevanceTree.size();
-			throw new IllegalStateException(String.format(
-					"%d Kink objects were lost during the conversion from the kinks list to the kinkRelevanceTree set.", lostKinks));
+			throw new IllegalStateException(
+					String.format("%d Kink objects were lost during the conversion from the kinks list to the kinkRelevanceTree set.", lostKinks));
 		}
 		while (kinkRelevanceTree.size() > 2) {
 			Kink candidate = kinkRelevanceTree.pollFirst();
@@ -164,7 +170,15 @@ public class DiscreteCurveEvolution {
 	}
 
 	private static List<Kink> createKinksWithIds(Coordinate[] coords) {
-		return IntStream.range(0, coords.length).mapToObj(i -> new Kink(coords[i], i)).collect(Collectors.toList());
+		List<Kink> result = new ArrayList<>();
+
+		for (int i = 0; i < coords.length; i++) {
+			if (i == 0 || !coords[i].equals2D(coords[i - 1])) {
+				result.add(new Kink(coords[i], result.size()));
+			}
+		}
+
+		return result;
 	}
 
 	/**

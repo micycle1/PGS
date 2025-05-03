@@ -517,8 +517,8 @@ public class PGS_SegmentSet {
 	}
 
 	/**
-	 * Removes any segment that lies closer than a given threshold to a previously
-	 * retained segment.
+	 * Removes segments that are near others. More specifically, removes any segment
+	 * that lies closer than a given threshold to a previously retained segment.
 	 * <p>
 	 * This method uses a simple greedy, O(n²) algorithm: it iterates through the
 	 * input {@code segments} in order, keeps the first segment unconditionally, and

@@ -272,12 +272,12 @@ public final class PGS_Morphology {
 	 * Simplifies a shape via <i>Discrete Curve Evolution</i>.
 	 * <p>
 	 * This algorithm simplifies a shape by iteratively removing kinks from the
-	 * shape, starting with those having the least shape-relevance.
+	 * shape, <b>starting with those having the least shape-relevance</b>.
 	 * <p>
 	 * The simplification process terminates according to a user-specified
 	 * {@link DCETerminationCallback#shouldTerminate(Coordinate, double, int)
 	 * callback} that decides whether the DCE algorithm should terminate based on
-	 * the current kink (having a candidate vertex), using its coordinates,
+	 * the current kink (having a candidate vertex), using its: coordinate,
 	 * relevance score, and the number of vertices remaining in the simplified
 	 * geometry. Implementations can use this method to provide custom termination
 	 * logic which may depend on various factors, such as a threshold relevance

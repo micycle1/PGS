@@ -805,10 +805,12 @@ public class PGS_Meshing {
 		displacementCutoff = Math.max(displacementCutoff, 1e-3);
 		PMesh m = new PMesh(mesh);
 
+		int iteration = 0;
+		int maxIterations = 10000;
 		double displacement;
 		do {
 			displacement = m.smoothTaubin(0.25, -0.251, preservePerimeter);
-		} while (displacement > displacementCutoff);
+		} while (displacement > displacementCutoff && iteration++ < maxIterations);
 		return m.getMesh();
 	}
 

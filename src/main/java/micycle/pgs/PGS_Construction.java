@@ -134,6 +134,9 @@ public class PGS_Construction {
 		shapeFactory.setCentre(new Coordinate(centerX, centerY));
 		shapeFactory.setWidth(width * 2);
 		shapeFactory.setHeight(width * 2);
+		double ia = (Math.PI * (n - 2)) / n;
+		// flat edge facing down
+		shapeFactory.setRotation(ia / 2);
 
 		return toPShape(shapeFactory.createCircle());
 	}
