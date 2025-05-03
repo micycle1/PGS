@@ -1,5 +1,8 @@
 package micycle.pgs.commons;
 
+import org.locationtech.jts.algorithm.Distance;
+import org.locationtech.jts.geom.Coordinate;
+
 import processing.core.PVector;
 
 /**
@@ -14,10 +17,23 @@ import processing.core.PVector;
 public class PEdge implements Comparable<PEdge> {
 
 	public final PVector a, b;
+	private final Coordinate aCoord, bCoord;
+
+	/**
+	 * A null PEdge.
+	 */
+	public PEdge() {
+		this.a = null;
+		this.b = null;
+		aCoord = null;
+		bCoord = null;
+	}
 
 	public PEdge(PVector a, PVector b) {
 		this.a = a;
 		this.b = b;
+		aCoord = coordFromPVector(a);
+		bCoord = coordFromPVector(b);
 	}
 
 	public PEdge(double x1, double y1, double x2, double y2) {
@@ -43,11 +59,23 @@ public class PEdge implements Comparable<PEdge> {
 
 	/**
 	 * Calculates the Euclidean distance of this PEdge.
-	 * 
-	 * @return
 	 */
 	public float length() {
 		return a.dist(b);
+	}
+
+	/**
+	 * Computes the minimum distance between this and another edge.
+	 */
+	public double distance(PEdge other) {
+		return Distance.segmentToSegment(aCoord, bCoord, other.aCoord, other.bCoord);
+	}
+
+	/**
+	 * Computes the distance from a point p to this edge.
+	 */
+	public double distance(PVector point) {
+		return Distance.pointToSegment(coordFromPVector(point), aCoord, bCoord);
 	}
 
 	/**
@@ -100,8 +128,7 @@ public class PEdge implements Comparable<PEdge> {
 
 	@Override
 	public boolean equals(Object obj) {
-		if (obj instanceof PEdge) {
-			PEdge other = (PEdge) obj;
+		if (obj instanceof PEdge other) {
 			return (equals(a, other.a) && equals(b, other.b)) || (equals(b, other.a) && equals(a, other.b));
 		}
 		return false;
@@ -141,5 +168,9 @@ public class PEdge implements Comparable<PEdge> {
 			return Float.compare(v1.y, v2.y);
 		}
 		return Float.compare(v1.z, v2.z);
+	}
+
+	private static final Coordinate coordFromPVector(final PVector p) {
+		return new Coordinate(p.x, p.y);
 	}
 }
