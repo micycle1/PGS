@@ -73,13 +73,50 @@ public final class PGS_Optimisation {
 	}
 
 	/**
-	 * The Maximum Inscribed Circle is determined by a point in the interior of the
-	 * area which has the farthest distance from the area boundary, along with a
-	 * boundary point at that distance.
+	 * Computes the maximum inscribed circle within a given shape.
+	 * <p>
+	 * The Maximum Inscribed Circle (MIC) is defined as the largest possible circle
+	 * that can be completely contained within the area of the input shape. It is
+	 * determined by locating a point inside the shape that has the greatest
+	 * distance from the shape's boundary (i.e., the center of the MIC), and
+	 * returning a circle centered at this point with a radius equal to that
+	 * distance.
+	 * </p>
+	 * <p>
+	 * This method automatically selects a reasonable tolerance value for computing
+	 * the center point of the MIC, balancing precision and computational
+	 * efficiency.
+	 * </p>
+	 *
+	 * @param shape the {@link PShape} representing the area within which to compute
+	 *              the MIC
+	 * @return a {@link PShape} instance representing the maximum inscribed circle
+	 * @since 2.1
+	 */
+	public static PShape maximumInscribedCircle(PShape shape) {
+		MaximumInscribedCircle mic = new MaximumInscribedCircle(fromPShape(shape));
+		final double r = mic.getRadiusLine().getLength();
+		Polygon circle = createCircle(PGS.coordFromPoint(mic.getCenter()), r);
+		return toPShape(circle);
+	}
+
+	/**
+	 * Computes the maximum inscribed circle within a given shape, using a specified
+	 * tolerance.
+	 * <p>
+	 * The Maximum Inscribed Circle (MIC) is the largest possible circle that can be
+	 * fully contained within the area of the input shape. The center of the MIC is
+	 * the point in the interior that is farthest from the shape's boundary, and the
+	 * radius is the distance from this center point to the closest boundary point.
+	 * </p>
 	 * 
-	 * @param shape
-	 * @param tolerance the distance tolerance for computing the centre point
-	 *                  (around 1)
+	 * @param shape     the {@link PShape} representing the area within which to
+	 *                  compute the MIC
+	 * @param tolerance the distance tolerance for computing the center point; must
+	 *                  be non-negative. Smaller values result in a more accurate
+	 *                  circle but may require more computation (typical values are
+	 *                  around 1).
+	 * @return a {@link PShape} instance representing the maximum inscribed circle
 	 */
 	public static PShape maximumInscribedCircle(PShape shape, double tolerance) {
 		MaximumInscribedCircle mic = new MaximumInscribedCircle(fromPShape(shape), tolerance);
@@ -118,7 +155,7 @@ public final class PGS_Optimisation {
 		MaximumInscribedRectangle mir = new MaximumInscribedRectangle(polygon);
 		return toPShape(mir.computeMIR());
 	}
-	
+
 	/**
 	 * Finds an approximate largest area triangle (of arbitrary orientation)
 	 * contained within a polygon.
@@ -281,7 +318,6 @@ public final class PGS_Optimisation {
 	 *                       correspond to a pixel distance). 0.001 to 0.01
 	 *                       recommended. Higher values are a looser (yet quicker)
 	 *                       fit.
-	 * @return
 	 */
 	public static PShape minimumBoundingEllipse(PShape shape, double errorTolerance) {
 		final Geometry hull = fromPShape(shape).convexHull();
@@ -312,7 +348,6 @@ public final class PGS_Optimisation {
 	 * Computes the minimum-area bounding triangle that encloses a shape.
 	 * 
 	 * @param shape
-	 * @return
 	 */
 	public static PShape minimumBoundingTriangle(PShape shape) {
 		MinimumBoundingTriangle mbt = new MinimumBoundingTriangle(fromPShape(shape));
@@ -328,7 +363,6 @@ public final class PGS_Optimisation {
 	 * can be moved through, with a single rotation.
 	 * 
 	 * @param shape
-	 * @return
 	 */
 	public static PShape minimumDiameter(PShape shape) {
 		LineString md = (LineString) MinimumDiameter.getMinimumDiameter(fromPShape(shape));
@@ -601,24 +635,24 @@ public final class PGS_Optimisation {
 	 * @since 2.1
 	 */
 	public static PVector closestPoint(Collection<PVector> points, PVector point) {
-	    if (points == null || points.isEmpty()) {
-	        return null; // Handle empty or null collection
-	    }
+		if (points == null || points.isEmpty()) {
+			return null; // Handle empty or null collection
+		}
 
-	    PVector closest = null;
-	    float minDistanceSq = Float.MAX_VALUE;
+		PVector closest = null;
+		float minDistanceSq = Float.MAX_VALUE;
 
-	    for (PVector p : points) {
-	        float dx = p.x - point.x;
-	        float dy = p.y - point.y;
-	        float distanceSq = dx * dx + dy * dy;
-	        if (distanceSq < minDistanceSq) {
-	            minDistanceSq = distanceSq;
-	            closest = p;
-	        }
-	    }
+		for (PVector p : points) {
+			float dx = p.x - point.x;
+			float dy = p.y - point.y;
+			float distanceSq = dx * dx + dy * dy;
+			if (distanceSq < minDistanceSq) {
+				minDistanceSq = distanceSq;
+				closest = p;
+			}
+		}
 
-	    return closest;
+		return closest;
 	}
 
 	/**
