@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `vertexCount()` to `PGS_ShapePredicates`. Returns the total number of vertices that make up a shape.
 * `matchingQuadrangulation()` to `PGS_Meshing`. Converts a triangulation into a quadrangulation, by pairing up triangles and merging them into high-quality quads.
 * `filterNear()` to `PGS_SegmentSet`. Removes segments that are near others.
+* `spiralSortFaces()` to `PGS_Optimisation`. Reorders the faces of a mesh into an anti-clockwise “spiral” (breadth-first rings) starting from a given face.
 
 ### Changes
 * Optimised `PGS_CirclePacking.tangencyPack()`. It's now around 1.5-2x faster and has higher precision.

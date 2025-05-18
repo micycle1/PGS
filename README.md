@@ -634,9 +634,11 @@ Much of the functionality (but by no means all) is demonstrated below:
 
   <tr>
     <td align="center" valign="center"><b>Hilbert Sort Faces</td>
+    <td align="center" valign="center"><b>Spiral Sort Faces</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/optimisation/hilbertSortFaces.gif"></td>
+    <td valign="top" width="25%"><img src="resources/optimisation/spiralSort.gif"></td>
   </tr>
   
 </table>

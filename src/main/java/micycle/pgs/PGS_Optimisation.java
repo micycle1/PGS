@@ -43,6 +43,7 @@ import micycle.pgs.commons.MaximumInscribedTriangle;
 import micycle.pgs.commons.MinimumBoundingEllipse;
 import micycle.pgs.commons.MinimumBoundingTriangle;
 import micycle.pgs.commons.Nullable;
+import micycle.pgs.commons.SpiralIterator;
 import micycle.pgs.commons.VisibilityPolygon;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -734,6 +735,26 @@ public final class PGS_Optimisation {
 
 		List<PVector> points = new ArrayList<>(map.keySet());
 		return PGS_Conversion.flatten(PGS_PointSet.hilbertSort(points).stream().map(map::get).collect(Collectors.toList()));
+	}
+
+	/**
+	 * Reorders the faces of a mesh into an anti-clockwise “spiral” (breadth-first
+	 * rings) starting from a given face, then returns a new, flattened PShape
+	 * containing exactly those faces in spiral order.
+	 * 
+	 * @param mesh      mesh-like GROUP PShape
+	 * @param startFace One of the child‐faces of {@code mesh}. This face will
+	 *                  appear first in the returned ordering; subsequent faces
+	 *                  follow in concentric breadth‐first “rings” around it, sorted
+	 *                  anti-clockwise.
+	 * @return A new, flattened PShape whose set of faces equals the children of
+	 *         {@code mesh}, but ordered in a spiral starting at
+	 *         {@code startingFace}.
+	 * @since 2.1
+	 */
+	public static PShape spiralSortFaces(PShape mesh, PShape startFace) {
+		var faces = SpiralIterator.spiral(startFace, PGS_Conversion.getChildren(mesh));
+		return PGS_Conversion.flatten(faces);
 	}
 
 	/**
