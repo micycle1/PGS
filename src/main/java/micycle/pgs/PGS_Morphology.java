@@ -75,8 +75,7 @@ public final class PGS_Morphology {
 	 * @see #buffer(PShape, double, OffsetStyle)
 	 */
 	public static PShape buffer(PShape shape, double buffer) {
-		final int segments = (int) Math.ceil(BufferParameters.DEFAULT_QUADRANT_SEGMENTS + Math.sqrt(buffer));
-		return toPShape(fromPShape(shape).buffer(buffer, segments));
+		return buffer(shape, buffer, OffsetStyle.ROUND);
 	}
 
 	/**
@@ -91,12 +90,11 @@ public final class PGS_Morphology {
 	 */
 	public static PShape buffer(PShape shape, double buffer, OffsetStyle bufferStyle) {
 		Geometry g = fromPShape(shape);
-		final int segments = (int) Math.ceil(BufferParameters.DEFAULT_QUADRANT_SEGMENTS + Math.sqrt(buffer));
-		BufferParameters bufParams = new BufferParameters(segments, BufferParameters.CAP_FLAT, bufferStyle.style, BufferParameters.DEFAULT_MITRE_LIMIT);
+		BufferParameters bufParams = createBufferParams(buffer, 0.5, bufferStyle);		
 		BufferOp b = new BufferOp(g, bufParams);
 		return toPShape(b.getResultGeometry(buffer));
 	}
-
+	
 	/**
 	 * Buffers a shape with a varying buffer distance (interpolated between a start
 	 * distance and an end distance) along the shape's perimeter.
@@ -930,6 +928,36 @@ public final class PGS_Morphology {
 	 */
 	public static PShape reducePrecision(PShape shape, double precision) {
 		return toPShape(GeometryPrecisionReducer.reduce(fromPShape(shape), new PrecisionModel(-Math.max(Math.abs(precision), 1e-10))));
+	}
+
+	private static BufferParameters createBufferParams(double r, double delta, OffsetStyle bufferStyle) {
+	    r = Math.abs(r);
+	
+	    // compute the number of points for the full circle
+	    double ang = Math.acos(1.0 - delta / r);
+	    // if delta/r > 2 or so acos will fail – clamp it
+	    if (Double.isNaN(ang) || ang <= 0) {
+	      // in this degenerate case just fall back to a small number
+	      ang = Math.PI / 8.0;
+	    }
+	
+	    // total points
+	    double nPtsDbl = Math.PI / ang;
+	    int nPts = (int) Math.ceil(nPtsDbl);
+	
+	    // segments per quadrant
+	    int quadSeg = (int) Math.ceil(nPts / 4.0);
+	
+	    // enforce a sensible minimum
+	    quadSeg = Math.max(quadSeg, BufferParameters.DEFAULT_QUADRANT_SEGMENTS);
+	
+	    // cap style affects linestrings only
+	    return new BufferParameters(
+	        quadSeg,
+	        BufferParameters.CAP_FLAT,
+	        bufferStyle.style,
+	        BufferParameters.DEFAULT_MITRE_LIMIT
+	    );
 	}
 
 }
