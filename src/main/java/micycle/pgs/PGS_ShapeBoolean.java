@@ -12,11 +12,15 @@ import java.util.stream.Collectors;
 
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.PrecisionModel;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.locationtech.jts.geom.util.GeometryFixer;
+import org.locationtech.jts.geom.util.LinearComponentExtracter;
+import org.locationtech.jts.operation.overlay.OverlayOp;
 import org.locationtech.jts.operation.overlayng.CoverageUnion;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
+import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
@@ -168,9 +172,34 @@ public final class PGS_ShapeBoolean {
 	 * @see #union(PShape, PShape) For a union operation on two shapes.
 	 * @see #union(PShape...) For a union operation on a list of shapes.
 	 */
-
 	public static PShape union(PShape... shapes) {
 		return union(Arrays.asList(shapes));
+	}
+
+	/**
+	 * Unions the <b>linework</b> of two shapes, creating polygonal faces from their
+	 * intersecting lines. This method focuses on the linework (linear components)
+	 * of the input geometries rather than their areas. It differs from a standard
+	 * polygon union operation, as it processes the lines to find intersections and
+	 * generates new polygonal faces based on the resulting linework.
+	 * 
+	 * @param a The first input geometry as a {@link PShape}.
+	 * @param b The second input geometry as a {@link PShape}.
+	 * @return A new {@link PShape} representing the polygonal faces created by the
+	 *         union of the input geometries' linework. Returns {@code null} if the
+	 *         input geometries do not produce any valid polygonal faces.
+	 * @since 2.1
+	 */
+	public static PShape unionLines(PShape a, PShape b) {
+		var aG = fromPShape(a);
+		var bG = fromPShape(b);
+		var lA = LinearComponentExtracter.getGeometry(aG);
+		var lB = LinearComponentExtracter.getGeometry(bG);
+
+		Polygonizer polygonizer = new Polygonizer();
+		polygonizer.add(OverlayNG.overlay(lA, lB, OverlayOp.UNION, new PrecisionModel(-1e-3)));
+
+		return toPShape(polygonizer.getGeometry());
 	}
 
 	/**

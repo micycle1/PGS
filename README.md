@@ -112,6 +112,13 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/boolean/intersectMesh.gif"></td>
     <td valign="top" width="25%"><img src="resources/boolean/subtractMesh.gif"></td>
   </tr>
+
+  <tr>
+    <td align="center" valign="center"><b>Union Lines</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/boolean/unionLines.gif"></td>
+  </tr>
 </table>
 
 ## *Transformation*
