@@ -611,14 +611,51 @@ public final class PGS_Optimisation {
 	}
 
 	/**
-	 * Returns the nearest point of the shape to the given point. If the shape is
-	 * has multiple children/geometries (a GROUP shape), the single closest point is
-	 * returned.
-	 * 
-	 * @param shape
-	 * @param point
-	 * @return closest point in the shape to the query (not a reference, but having
-	 *         the same coordinates)
+	 * Returns the closest vertex of a shape to a query point. For GROUP shapes, any
+	 * child geometry's vertex may be returned.
+	 *
+	 * @param shape      the PShape to search for the closest vertex
+	 * @param queryPoint the query PVector
+	 * @return a new PVector at the position of the closest vertex (not a reference
+	 *         to existing shape data)
+	 * @since 2.1
+	 */
+	public static PVector closestVertex(PShape shape, PVector queryPoint) {
+		List<PVector> vertices = PGS_Conversion.toPVector(shape);
+		if (vertices.isEmpty()) {
+			return null;
+		}
+		float minDistSq = Float.POSITIVE_INFINITY;
+		PVector closest = null;
+		for (PVector v : vertices) {
+			float distSq = PVector.dist(v, queryPoint);
+			if (distSq < minDistSq) {
+				minDistSq = distSq;
+				closest = v;
+			}
+		}
+		return closest;
+	}
+
+	/**
+	 * Returns the nearest point along the edges of the given shape to the specified
+	 * query point.
+	 * <p>
+	 * This method computes the point on the perimeter (including all edges, not
+	 * only the vertices) of the given shape that is closest to the given
+	 * {@code point}. For composite shapes (such as GROUP shapes made of multiple
+	 * child geometries), the single closest point across all children is returned.
+	 * </p>
+	 * <p>
+	 * <strong>Note:</strong> The nearest location may be somewhere along an edge of
+	 * the shape, not necessarily at one of the original shape's vertices.
+	 * </p>
+	 *
+	 * @param shape the {@code PShape} to search for the closest boundary point.
+	 * @param point the {@code PVector} point to which the nearest point is sought.
+	 * @return a new {@code PVector} representing the exact coordinates of the
+	 *         closest point on the shape's boundary or edge (not a reference to the
+	 *         original coordinate).
 	 * @see #closestPoints(PShape, PVector)
 	 */
 	public static PVector closestPoint(PShape shape, PVector point) {
