@@ -573,10 +573,8 @@ public final class PGS_Transformation {
 	}
 
 	/**
-	 * Flips the shape horizontally based on its centre point.
-	 * 
-	 * @param shape
-	 * @return
+	 * Flips the shape horizontally based on its centre point (mirror over the
+	 * x-axis passing through its centroid).
 	 */
 	public static PShape flipHorizontal(PShape shape) {
 		Geometry g = fromPShape(shape);
@@ -598,10 +596,8 @@ public final class PGS_Transformation {
 	}
 
 	/**
-	 * Flips the shape vertically based on its centre point.
-	 * 
-	 * @param shape
-	 * @return
+	 * Flips the shape vertically based on its centre point (mirror over the y-axis
+	 * passing through its centroid).
 	 */
 	public static PShape flipVertical(PShape shape) {
 		Geometry g = fromPShape(shape);

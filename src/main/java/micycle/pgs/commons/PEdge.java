@@ -2,6 +2,7 @@ package micycle.pgs.commons;
 
 import org.locationtech.jts.algorithm.Distance;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.LineSegment;
 
 import processing.core.PVector;
 
@@ -9,7 +10,7 @@ import processing.core.PVector;
  * An undirected edge / line segment joining 2 PVectors.
  * <p>
  * Note: PEdges <code>PEdge(a, b)</code> and <code>PEdge(b, a)</code> are
- * considered equal.
+ * considered equal (though the ordering for .a and .b is preserved).
  * 
  * @author Michael Carleton
  *
@@ -76,6 +77,11 @@ public class PEdge implements Comparable<PEdge> {
 	 */
 	public double distance(PVector point) {
 		return Distance.pointToSegment(coordFromPVector(point), aCoord, bCoord);
+	}
+
+	public PVector closestPoint(PVector point) {
+		LineSegment l = new LineSegment(aCoord, bCoord);
+		return coordToPVector(l.closestPoint(coordFromPVector(point)));
 	}
 
 	/**
@@ -172,5 +178,9 @@ public class PEdge implements Comparable<PEdge> {
 
 	private static final Coordinate coordFromPVector(final PVector p) {
 		return new Coordinate(p.x, p.y);
+	}
+
+	private static final PVector coordToPVector(Coordinate c) {
+		return new PVector((float) c.x, (float) c.y);
 	}
 }

@@ -210,12 +210,12 @@
 		<dependency>
 			<groupId>org.locationtech.jts</groupId>
 			<artifactId>jts-core</artifactId>
-			<version>1.20.0</version>
+			<version>1.20.1-SNAPSHOT</version>
 		</dependency>
 		<dependency>
-			<groupId>com.github.twak</groupId>
+			<groupId>com.github.micycle1</groupId>
 			<artifactId>campskeleton</artifactId>
-			<version>453a603706</version>
+			<version>spatial-index-845e720af6-1</version>
 		</dependency>
 		<dependency>
 			<groupId>org.jgrapht</groupId>
