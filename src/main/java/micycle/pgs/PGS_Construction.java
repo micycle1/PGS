@@ -1105,6 +1105,62 @@ public class PGS_Construction {
 	}
 
 	/**
+	 * Sample a circular arc from startAngle→endAngle (radians), producing a List of
+	 * PVectors so that no straight‐line chord deviates by more than maxDev pixels
+	 * from the true circle.
+	 *
+	 * @param cx         center x
+	 * @param cy         center y
+	 * @param r          radius (>0)
+	 * @param startAngle start angle in radians
+	 * @param endAngle   end angle in radians
+	 * @param maxDev     maximum sagitta error in pixels (>0)
+	 * @return List of PVectors, inclusive of both endpoints.
+	 * @since 2.1
+	 */
+	static List<PVector> arcPoints(double cx, double cy, double r, double startAngle, double endAngle, double maxDev) {
+		List<PVector> pts = new ArrayList<>();
+
+		// 1) Compute raw sweep and direction
+		double rawRange = endAngle - startAngle;
+		int dir = rawRange >= 0 ? +1 : -1;
+		double range = Math.abs(rawRange);
+
+		// 2) Cap at a full circle if the user overshoots
+		if (range > 2.0 * Math.PI) {
+			range = 2.0 * Math.PI;
+		}
+
+		// 3) Solve for maximum step so that sagitta s = R*(1–cos(dθ/2)) ≤ maxDev
+		// ⇒ dθ ≤ 2 * acos(1 – maxDev / R)
+		double cosArg = 1.0 - maxDev / r;
+		// clamp to avoid NaNs
+		cosArg = Math.max(-1.0, Math.min(1.0, cosArg));
+		double maxStep = 2.0 * Math.acos(cosArg);
+
+		// 4) If that step is wider than the entire arc, just use one segment
+		if (maxStep >= range) {
+			maxStep = range;
+		}
+
+		// 5) Determine how many segments are needed (at least 1)
+		int nSeg = Math.max(1, (int) Math.ceil(range / maxStep));
+
+		// 6) Compute the actual signed step
+		double step = dir * (range / nSeg);
+
+		// 7) Sample from i=0…nSeg (inclusive) so endpoints are exact
+		for (int i = 0; i <= nSeg; i++) {
+			double a = startAngle + i * step;
+			double px = cx + r * FastMath.cos(a);
+			double py = cy + r * FastMath.sin(a);
+			pts.add(new PVector((float) px, (float) py));
+		}
+
+		return pts;
+	}
+
+	/**
 	 * Sierpinski curve subdivide.
 	 */
 	private static List<double[]> subdivide(double[][] triangle, int iters) {

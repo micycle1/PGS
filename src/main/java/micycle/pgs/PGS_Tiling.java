@@ -1,6 +1,7 @@
 package micycle.pgs;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.SplittableRandom;
 
@@ -246,10 +247,8 @@ public final class PGS_Tiling {
 		for (int x = 0; x < width; x += w * 2) {
 			for (int y = 0; y < height; y += h * 2) {
 				for (int i = 0; i <= vector.length; i++) {
-					segments.add(
-							new PVector((float) (vector[i % vector.length] + x + w), (float) (vector[(i + 6) % vector.length] + y + h)));
-					segments.add(new PVector((float) (vector[(i + 1) % vector.length] + x + w),
-							(float) (vector[(i + 1 + 6) % vector.length] + y + h)));
+					segments.add(new PVector((float) (vector[i % vector.length] + x + w), (float) (vector[(i + 6) % vector.length] + y + h)));
+					segments.add(new PVector((float) (vector[(i + 1) % vector.length] + x + w), (float) (vector[(i + 1 + 6) % vector.length] + y + h)));
 				}
 			}
 		}
@@ -298,6 +297,70 @@ public final class PGS_Tiling {
 	public static PShape squareTriangleTiling(double width, double height, double tileSize, long seed) {
 		final SquareTriangleTiling stt = new SquareTriangleTiling(width, height, tileSize);
 		return stt.getTiling(seed);
+	}
+
+	/**
+	 * Generates a geometric arrangement composed of annular-sector bricks arranged
+	 * in concentric circular rings. Rings progressively expand from the inside out
+	 * based on the growth rates provided. Brick sizes (arc length) adapt radially
+	 * according to growth factors.
+	 *
+	 * @param nRings      Number of annular rings to generate.
+	 * @param cx          The x-coordinate of the center of the generated pattern.
+	 * @param cy          The y-coordinate of the center of the generated pattern.
+	 * @param innerRadius The radius of the innermost ring in pixels.
+	 * @param ringGrowth  The growth factor of each successive ring radius; values
+	 *                    greater than 1.0 cause rings to expand radially outward.
+	 * @param segGrowth   The growth factor controlling segment (brick) arc length
+	 *                    adjustment along each ring; values greater than 1.0
+	 *                    increase brick length progressively outward.
+	 * @return A single flattened {@code PShape} consisting of annular-sector bricks
+	 *         forming concentric rings around the specified center point
+	 *         ({@code cx}, {@code cy}).
+	 * @since 2.1
+	 */
+	public static PShape annularBricks(int nRings, double cx, double cy, double innerRadius, double ringGrowth, double segGrowth) {
+		segGrowth = Math.max(segGrowth, 1e-6);
+		ringGrowth = Math.max(ringGrowth, 1e-6);
+		List<PShape> bricks = new ArrayList<>();
+		final double GOLDEN_ANGLE = 2.0 * Math.PI * 0.38196601125;
+		double segSize = innerRadius;
+		final double maxDev = 0.25; // max chord sagitta in pixels
+	
+		for (int i = 0; i < nRings; i++) {
+			// ring geometry in double
+			double r = innerRadius * Math.pow(ringGrowth, i);
+			double dr = (r * (ringGrowth - 1.0)) * 0.90;
+			double perim = 2.0 * Math.PI * r;
+			int count = (int) Math.max(1.0, Math.floor(perim / segSize));
+			double dang = 2.0 * Math.PI / count;
+			double gapAng = (dr / 6.0) / perim * 2.0 * Math.PI;
+			double offset = (i * GOLDEN_ANGLE) % (2.0 * Math.PI);
+	
+			// tile this ring
+			for (int k = 0; k < count; k++) {
+				double a0 = offset + k * dang + 0.5 * gapAng;
+				double a1 = offset + (k + 1) * dang - 0.5 * gapAng;
+	
+				List<PVector> outer = PGS_Construction.arcPoints(cx, cy, r + dr, a0, a1, maxDev);
+	
+				// generate inner in the same direction and reverse it
+				List<PVector> inner = PGS_Construction.arcPoints(cx, cy, r, a0, a1, maxDev);
+				Collections.reverse(inner);
+	
+				outer.addAll(inner);
+				outer.add(outer.get(0)); // close the loop
+	
+				PShape brick = PGS_Conversion.fromPVector(outer);
+				brick.setStroke(false);
+				bricks.add(brick);
+			}
+	
+			segSize *= segGrowth;
+			segSize = Math.max(segSize, 1);
+		}
+	
+		return PGS_Conversion.flatten(bricks);
 	}
 
 	/**
