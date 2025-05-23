@@ -1,20 +1,18 @@
 package micycle.pgs.commons;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
-import java.util.concurrent.ThreadLocalRandom;
-
 import org.jgrapht.Graph;
 import org.jgrapht.alg.interfaces.VertexColoringAlgorithm;
 import org.jgrapht.alg.util.NeighborCache;
-import org.jgrapht.util.CollectionUtil;
 
 /**
  * The Recursive Largest First (RLF) algorithm for graph coloring.
@@ -49,85 +47,91 @@ import org.jgrapht.util.CollectionUtil;
  */
 public class RLFColoring<V, E> implements VertexColoringAlgorithm<V> {
 
-	/*
-	 * TODO see 'Efficiency issues in the RLF heuristic for graph coloring' for data
-	 * structure and better time complexity.
-	 */
-
 	private final Graph<V, E> graph;
-	/** let U denote the set of uncolored vertices */
-	private final Set<V> U;
-	/**
-	 * let W be the set (initially empty) of uncolored vertices with at least one
-	 * neighbor in C
-	 */
-	private final Set<V> W;
-	/** the colored vertices, and their corresponding color */
-	final Map<V, Integer> C;
-	private final NeighborCache<V, E> neighborCache;
+	private final List<V> vertexList;
+	private final Map<V, Integer> vertexIndex;
+	private final int n;
+
+	private final BitSet U; // uncolored vertices
+	private final BitSet W; // uncolored vertices with neighbor in C
+	private final Map<V, Integer> C; // colored vertices
 
 	/**
-	 * These maps store the numbers AU(x) and AW(x). Each time a vertex is removed
-	 * from U (and its uncolored neighbours added to W) they are updated (provided
-	 * an efficient computing the value each call).
+	 * An array storing the number of uncolored neighbors for each vertex (AU(x) in
+	 * the RLF algorithm).
 	 */
-	final Map<V, Integer> AU;
-	final Map<V, Integer> AW;
+	private final int[] AU;
+	/**
+	 * An array storing the number of neighbors in the set W for each vertex (AW(x)
+	 * in the RLF algorithm).
+	 */
+	private final int[] AW;
+
+	// Pre-computed adjacency lists as indices
+	private final int[][] adjacency;
+	private final NeighborCache<V, E> neighborCache;
 
 	private int activeColor;
 
-	public RLFColoring(Graph<V, E> graph) {
-		this(graph, ThreadLocalRandom.current().nextLong());
-	}
-
 	public RLFColoring(Graph<V, E> graph, long seed) {
-		this.graph = Objects.requireNonNull(graph, "Graph cannot be null");
+		this.graph = Objects.requireNonNull(graph);
+		this.n = graph.vertexSet().size();
+		this.neighborCache = new NeighborCache<>(graph);
 
-		List<V> vertices = new ArrayList<>(graph.vertexSet());
-		Collections.shuffle(vertices, new Random(seed));
-		U = new LinkedHashSet<>(vertices);
+		// Create vertex indexing
+		vertexList = new ArrayList<>(graph.vertexSet());
+		Collections.shuffle(vertexList, new Random(seed));
+		vertexIndex = new HashMap<>(n);
+		for (int i = 0; i < n; i++) {
+			vertexIndex.put(vertexList.get(i), i);
+		}
 
-		W = new HashSet<>(graph.vertexSet().size());
-		C = CollectionUtil.newHashMapWithExpectedSize(graph.vertexSet().size());
-		neighborCache = new NeighborCache<>(graph);
-		AU = CollectionUtil.newHashMapWithExpectedSize(graph.vertexSet().size());
-		AW = CollectionUtil.newHashMapWithExpectedSize(graph.vertexSet().size());
+		U = new BitSet(n);
+		U.set(0, n); // all initially uncolored
+		W = new BitSet(n);
+
+		AU = new int[n];
+		AW = new int[n];
+		C = new HashMap<>(n);
+
+		// Pre-compute adjacency as indices
+		adjacency = new int[n][];
+		for (int i = 0; i < n; i++) {
+			V v = vertexList.get(i);
+			Set<V> neighbors = neighborCache.neighborsOf(v);
+			adjacency[i] = new int[neighbors.size()];
+			int j = 0;
+			for (V neighbor : neighbors) {
+				adjacency[i][j++] = vertexIndex.get(neighbor);
+			}
+			AU[i] = adjacency[i].length;
+		}
 	}
 
 	@Override
 	public Coloring<V> getColoring() {
-		final int n = graph.vertexSet().size();
+		activeColor = -1;
 
-		V nextClassInitialVertex = null;
-		int maxDegree = 0;
-		activeColor = -1; // current color class (RLF builds color classes sequentially)
-
-		for (V v : U) {
-			AU.put(v, neighborCache.neighborsOf(v).size());
-			AW.put(v, 0);
-		}
-
-		while (C.size() < n) { // while G contains uncolored vertices
-			/*
-			 * Recompute U (set of uncolored vertices).
-			 */
-			U.addAll(graph.vertexSet());
-			U.removeAll(C.keySet());
+		while (C.size() < n) {
+			// Recompute U
+			U.set(0, n);
+			for (V v : C.keySet()) {
+				U.clear(vertexIndex.get(v));
+			}
 
 			activeColor++;
 
-			// Choose a vertex v ∈ U with largest value AU(v).
-			// Select the uncolored vertex which has the largest degree for coloring.
-			maxDegree = Integer.MIN_VALUE;
-			for (V v : U) {
-				int d = AU.get(v);
-				if (d > maxDegree) {
-					maxDegree = d; // may be negative (which is fine)
-					nextClassInitialVertex = v;
+			// Find vertex with largest AU value
+			int maxAU = Integer.MIN_VALUE;
+			V nextVertex = null;
+			for (int i = U.nextSetBit(0); i >= 0; i = U.nextSetBit(i + 1)) {
+				if (AU[i] > maxAU) {
+					maxAU = AU[i];
+					nextVertex = vertexList.get(i);
 				}
 			}
 
-			createColorClass(nextClassInitialVertex);
+			createColorClass(nextVertex);
 		}
 
 		return new ColoringImpl<>(C, activeColor + 1);
@@ -139,88 +143,81 @@ public class RLFColoring<V, E> implements VertexColoringAlgorithm<V> {
 	 * 
 	 * @param vertex inital vertex of color class
 	 */
-	void createColorClass(V vertex) {
-		// Initialize W as the set of vertices in U adjacent to v
+	private void createColorClass(V initialVertex) {
 		W.clear();
+		Arrays.fill(AW, 0); // Reset AW for this color class
 
-		color(vertex);
+		color(initialVertex);
 
-		while (!U.isEmpty()) {
-			V candidate = findNextCandidate(); // select a vertex u ∈ U with largest value AW(u)
+		while (U.cardinality() > 0) {
+			V candidate = findNextCandidate();
+			if (candidate == null)
+				break;
 			color(candidate);
 		}
-	}
-
-	/**
-	 * Colors the given vertex with the current color class.
-	 */
-	private void color(V vertex) {
-		// Move all neighbors w ∈ U of u to W
-		final Set<V> uncoloredNeighbours = findUncoloredNeighbours(vertex);
-		W.addAll(uncoloredNeighbours);
-		U.removeAll(uncoloredNeighbours);
-
-		// Move u from U to C
-		U.remove(vertex);
-		C.put(vertex, activeColor);
-
-		uncoloredNeighbours.forEach(n -> {
-			final Set<V> neighbours = neighborCache.neighborsOf(n); // NOTE use graph adjacency (not uncolored neighbours)
-			/*
-			 * Each time a vertex w is moved from U to W, AW(x) is incremented by one unit
-			 * and AU(x) is decreased by one unit for all neighbors x ∈ U of w.
-			 */
-			neighbours.forEach(n2 -> {
-				AW.merge(n2, 1, Integer::sum);
-				AU.merge(n2, -1, Integer::sum);
-			});
-			/*
-			 * When a vertex u ∈ U is moved from U to Cv, AU(x) is decreased by one unit for
-			 * all neighbors x ∈ U of u.
-			 */
-			AU.merge(n, -1, Integer::sum);
-		});
 	}
 
 	/**
 	 * Find next vertex that should belong to the current color class. The next
 	 * vertex to be moved from U to C is one having the largest number of neighbors
 	 * in W (the set of uncolored vertices with at least one neighbor in C).
-	 * 
-	 * @return
 	 */
 	private V findNextCandidate() {
 		V candidate = null;
+		int maxAW = -1;
 
-		int maxDegree = -1;
-		// TODO optimise this O(n) loop
-		// look at https://imada.sdu.dk/~marco/Publications/Files/MIC2011-ChiGalGua.pdf
-		for (V v : U) {
-			int d = AW.get(v);
-			if (d > maxDegree) {
-				maxDegree = d;
-				candidate = v;
+		// Find vertex in U with maximum AW value
+		for (int i = U.nextSetBit(0); i >= 0; i = U.nextSetBit(i + 1)) {
+			if (AW[i] > maxAW) {
+				maxAW = AW[i];
+				candidate = vertexList.get(i);
 			}
 		}
-		/*
-		 * NOTE Leighton specifies tie-breaking at this stage: "Ties are, if possible,
-		 * broken by choosing a vertex with the smallest number of neighbors in U", but
-		 * I've found that such tie-breaking consistently leads to worse colorings
-		 * (higher chromatic number), so tie-breaking has not been included.
-		 */
 
 		return candidate;
 	}
 
 	/**
-	 * Finds the neighbours of u in U (the set of uncolored vertices).
-	 * 
-	 * @return set of uncolored neighbouring vertices of u
+	 * Colors the given vertex with the current color class.
 	 */
-	private Set<V> findUncoloredNeighbours(V u) {
-		// neighborsOf(v) does not include v (which is desirable)
-		final Set<V> aU = new HashSet<>(neighborCache.neighborsOf(u));
-		aU.retainAll(U);
-		return aU;
+	private void color(V vertex) {
+		int vIdx = vertexIndex.get(vertex);
+
+		// Get uncolored neighbors efficiently
+		BitSet uncoloredNeighbors = new BitSet(n);
+		for (int nIdx : adjacency[vIdx]) {
+			if (U.get(nIdx)) {
+				uncoloredNeighbors.set(nIdx);
+			}
+		}
+
+		// Move uncolored neighbors to W
+		for (int nIdx = uncoloredNeighbors.nextSetBit(0); nIdx >= 0; nIdx = uncoloredNeighbors.nextSetBit(nIdx + 1)) {
+
+			W.set(nIdx);
+			U.clear(nIdx);
+
+			// Update AW and AU for neighbors of this moved vertex
+			for (int nnIdx : adjacency[nIdx]) {
+				if (U.get(nnIdx)) {
+					AW[nnIdx]++;
+					AU[nnIdx]--;
+				}
+			}
+
+			// Update AU for the moved vertex itself
+			AU[nIdx]--;
+		}
+
+		// Move vertex from U to C
+		U.clear(vIdx);
+		C.put(vertex, activeColor);
+
+		// Update AU for remaining neighbors
+		for (int nIdx : adjacency[vIdx]) {
+			if (U.get(nIdx)) {
+				AU[nIdx]--;
+			}
+		}
 	}
 }
