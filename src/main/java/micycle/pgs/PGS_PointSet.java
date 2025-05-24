@@ -18,11 +18,8 @@ import org.apache.commons.math3.ml.distance.EuclideanDistance;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.commons.math3.util.Pair;
-import org.jgrapht.alg.interfaces.HamiltonianCycleAlgorithm;
 import org.jgrapht.alg.interfaces.SpanningTreeAlgorithm;
 import org.jgrapht.alg.spanning.PrimMinimumSpanningTree;
-import org.jgrapht.alg.tour.FarthestInsertionHeuristicTSP;
-import org.jgrapht.alg.tour.TwoOptHeuristicTSP;
 import org.jgrapht.graph.SimpleGraph;
 import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.Vertex;
@@ -33,6 +30,7 @@ import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
 import micycle.pgs.commons.GeometricMedian;
+import micycle.pgs.commons.GreedyTSP;
 import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.PoissonDistributionJRUS;
 import micycle.pgs.commons.ThomasPointProcess;
@@ -974,16 +972,12 @@ public final class PGS_PointSet {
 
 	/**
 	 * Computes an <i>approximate</i> Traveling Salesman path for the set of points
-	 * provided. Utilises a heuristic based TSP solver, starting with the farthest
-	 * insertion method followed by 2-opt heuristic improvements for tour
-	 * optimization.
-	 * <p>
-	 * Note: The algorithm's runtime grows rapidly as the number of points
-	 * increases. Large datasets (>1000) may result in long computation times and
-	 * should be used with caution.
+	 * provided. Utilises a heuristic based TSP solver, followed by 2-opt heuristic
+	 * improvements for further tour optimisation.
 	 * <p>
 	 * Note {@link PGS_Hull#concaveHullBFS(List, double) concaveHullBFS()} produces
-	 * a similar result (somewhat longer tours) but is <b>much</b> more performant.
+	 * a similar result (somewhat longer tours, i.e. 10%) but is <b>much</b> more
+	 * performant.
 	 * 
 	 * @param points the list of points for which to compute the approximate
 	 *               shortest tour
@@ -993,14 +987,8 @@ public final class PGS_PointSet {
 	 * @since 2.0
 	 */
 	public static PShape findShortestTour(List<PVector> points) {
-		HamiltonianCycleAlgorithm<PVector, PEdge> tsp = new FarthestInsertionHeuristicTSP<>();
-		TwoOptHeuristicTSP<PVector, PEdge> tspImprover = new TwoOptHeuristicTSP<>();
-
-		var graph = PGS.makeCompleteGraph(points);
-		var tour = tsp.getTour(graph);
-		tour = tspImprover.improveTour(tour);
-
-		return PGS_Conversion.fromPVector(tour.getVertexList());
+		var tour = new GreedyTSP<>(points, (a, b) -> a.dist(b));
+		return PGS_Conversion.fromPVector(tour.getTour());
 	}
 
 	/**

@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Outputs from `PGS_Conversion.toDualGraph()` will now always iterate deterministically on inputs with the same geometry but having a different structure.
 * `PGS_Contour.straightSkeleton()` now always uses a more robust approach (which has been sped up considerably too).
 * Optimised `ColoringAlgorithm.RLF`. Speed increase grows with input size.
+* Improved `PGS_PointSet.findShortestTour()` TSP algorithm. It now uses a more effective heuristic that find shorter tours in less time.
 
 ### Fixed
 * `PGS_Morphology.rounding()` no longer gives invalid results.
