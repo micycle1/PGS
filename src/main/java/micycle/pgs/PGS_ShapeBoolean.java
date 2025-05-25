@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.locationtech.jts.geom.Envelope;
@@ -91,33 +92,32 @@ public final class PGS_ShapeBoolean {
 	 */
 	public static PShape intersectMesh(final PShape mesh, final PShape area) {
 		final Geometry areaGeometry = fromPShape(area);
-		final PreparedGeometry preparedArea = PreparedGeometryFactory.prepare(areaGeometry);
 		final Envelope areaEnvelope = areaGeometry.getEnvelopeInternal();
+		final PreparedGeometry preparedArea = PreparedGeometryFactory.prepare(areaGeometry);
 
-		return PGS_Conversion.toPShape(PGS_Conversion.getChildren(mesh).parallelStream().filter(s -> {
-			// Quick envelope check before more expensive operations
-			Geometry face = PGS_Conversion.fromPShape(s);
-			return areaEnvelope.intersects(face.getEnvelopeInternal());
-		}).map(s -> {
-			final Geometry face = PGS_Conversion.fromPShape(s);
-
-			// First try contains test as it's faster than intersection
+		List<Geometry> intersections = PGS_Conversion.getChildren(mesh).parallelStream().map(child -> {
+			Geometry face = PGS_Conversion.fromPShape(child);
+			// Quick check: if the envelopes don’t even intersect, skip this face.
+			if (!areaEnvelope.intersects(face.getEnvelopeInternal())) {
+				return null;
+			}
+			// Fast test: if the area completely contains the face then no need for overlay.
 			if (preparedArea.containsProperly(face)) {
 				return face;
 			}
-
-			// Only perform intersection if faces actually overlap
+			// Otherwise, if the face intersects the area, compute the actual intersection.
 			if (preparedArea.intersects(face)) {
 				Geometry intersection = OverlayNG.overlay(face, areaGeometry, OverlayNG.INTERSECTION);
-				// Only return non-empty intersections
 				if (!intersection.isEmpty()) {
+					// Propagate any user data
 					intersection.setUserData(face.getUserData());
 					return intersection;
 				}
 			}
-
 			return null;
-		}).filter(g -> g != null).collect(Collectors.toList()));
+		}).filter(Objects::nonNull).collect(Collectors.toList());
+		
+		return PGS_Conversion.toPShape(intersections);
 	}
 
 	/**
