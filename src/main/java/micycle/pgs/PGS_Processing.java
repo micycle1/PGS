@@ -1257,7 +1257,7 @@ public final class PGS_Processing {
 	 */
 	public static PShape filterChildren(PShape shape, Predicate<PShape> filterFunction) {
 		filterFunction = filterFunction.negate();
-		List<PShape> filteredFaces = PGS_Conversion.getChildren(shape).stream().filter(filterFunction::test).collect(Collectors.toList());
+		List<PShape> filteredFaces = PGS_Conversion.getChildren(shape).stream().filter(filterFunction::test).toList();
 		return PGS_Conversion.flatten(filteredFaces);
 	}
 
@@ -1371,7 +1371,7 @@ public final class PGS_Processing {
 	 * @since 2.1
 	 */
 	public static <T> List<T> forEachShape(PShape shape, Function<PShape, T> function) {
-		return PGS_Conversion.getChildren(shape).stream().map(function).filter(Objects::nonNull).toList();
+		return PGS_Conversion.getChildren(shape).stream().map(function).filter(Objects::nonNull).collect(Collectors.toList());
 	}
 
 	/**
@@ -1413,7 +1413,7 @@ public final class PGS_Processing {
 	 */
 	public static <T> List<T> forEachShapeWithIndex(PShape shape, BiFunction<Integer, PShape, T> function) {
 		List<PShape> children = PGS_Conversion.getChildren(shape);
-		return IntStream.range(0, children.size()).mapToObj(i -> function.apply(i, children.get(i))).filter(Objects::nonNull).toList();
+		return IntStream.range(0, children.size()).mapToObj(i -> function.apply(i, children.get(i))).filter(Objects::nonNull).collect(Collectors.toList());
 	}
 
 	/**
