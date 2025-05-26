@@ -115,9 +115,11 @@ Much of the functionality (but by no means all) is demonstrated below:
 
   <tr>
     <td align="center" valign="center"><b>Union Lines</td>
+    <td align="center" valign="center"><b>Overlap Regions</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/boolean/unionLines.gif"></td>
+    <td valign="top" width="25%"><img src="resources/boolean/overlapRegions.gif"></td>
   </tr>
 </table>
 

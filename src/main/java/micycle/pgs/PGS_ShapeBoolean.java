@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
-
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.PrecisionModel;
@@ -25,6 +24,7 @@ import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
+import micycle.pgs.commons.FastOverlapRegions;
 import micycle.pgs.commons.PEdge;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -32,7 +32,7 @@ import processing.core.PVector;
 
 /**
  * Boolean set-operations for 2D shapes.
- * 
+ *
  * @author Michael Carleton
  *
  */
@@ -52,7 +52,7 @@ public final class PGS_ShapeBoolean {
 	 * intersecting parts of individual faces will be collapsed into a single area.
 	 * To preserve individual faces during intersection, use
 	 * {@link #intersectMesh(PShape, PShape) intersectMesh()}.
-	 * 
+	 *
 	 * @param a The first shape to be intersected.
 	 * @param b The second shape to intersect with the first.
 	 * @return A new shape representing the area of intersection between the two
@@ -82,7 +82,7 @@ public final class PGS_ShapeBoolean {
 	 * {@link #intersect(PShape, PShape) intersect(a, b)} method repeatedly for
 	 * every face of a mesh-like shape <code>a</code> against an area
 	 * <code>b</code>.
-	 * 
+	 *
 	 * @param mesh A mesh-like GROUP shape that will be intersected with the
 	 *             polygonal area.
 	 * @param area A polygonal shape with which the mesh will be intersected.
@@ -116,7 +116,7 @@ public final class PGS_ShapeBoolean {
 			}
 			return null;
 		}).filter(Objects::nonNull).collect(Collectors.toList());
-		
+
 		return PGS_Conversion.toPShape(intersections);
 	}
 
@@ -166,7 +166,7 @@ public final class PGS_ShapeBoolean {
 	 * them into a new shape that encompasses the total area of all input shapes.
 	 * Overlapping areas among the shapes are included only once in the resulting
 	 * shape.
-	 * 
+	 *
 	 * @param shapes A variable number of PShape instances to be unified.
 	 * @return A new PShape object representing the union of the input shapes.
 	 * @see #union(PShape, PShape) For a union operation on two shapes.
@@ -182,7 +182,7 @@ public final class PGS_ShapeBoolean {
 	 * of the input geometries rather than their areas. It differs from a standard
 	 * polygon union operation, as it processes the lines to find intersections and
 	 * generates new polygonal faces based on the resulting linework.
-	 * 
+	 *
 	 * @param a The first input geometry as a {@link PShape}.
 	 * @param b The second input geometry as a {@link PShape}.
 	 * @return A new {@link PShape} representing the polygonal faces created by the
@@ -298,11 +298,40 @@ public final class PGS_ShapeBoolean {
 	}
 
 	/**
+	 * Finds all regions covered by at least two input shapes.
+	 * <ul>
+	 * <li>If {@code merged} is true, each child in the output is a disjoint
+	 * component representing the union of all overlapping regions. No returned
+	 * children overlap each other (multi-way overlaps are merged).</li>
+	 * <li>If {@code merged} is false, each child is an individual pairwise overlap
+	 * region. These children may themselves overlap (e.g., areas with three or more
+	 * input overlaps will appear in multiple children).</li>
+	 * </ul>
+	 * Only regions covered by two or more inputs are included.
+	 *
+	 * Use {@code merged = true} for a clean, non-overlapping set of overlap regions
+	 * (as merged maximal patches). Use {@code merged = false} to examine or style
+	 * every individual pairwise overlap, noting that children may overlap.
+	 *
+	 * @param shapes input collection of {@code PShape} area shapes (e.g., polygons)
+	 * @param merged if true, merges all overlapping regions into a minimal set of
+	 *               disjoint (non-overlapping) children; if false, each child is a
+	 *               pairwise overlap region, and children may mutually overlap in
+	 *               areas covered by three or more inputs
+	 * @return group {@code PShape} with each child a multiply-covered region
+	 * @since 2.1
+	 */
+	public static PShape overlapRegions(Collection<PShape> shapes, boolean merged) {
+		var worker = new FastOverlapRegions(fromPShape(PGS_Conversion.flatten(shapes)));
+		return toPShape(worker.get(merged));
+	}
+
+	/**
 	 * Subtracts one shape (b) from another shape (a) and returns the resulting
 	 * shape. This procedure is also known as "difference".
 	 * <p>
 	 * Subtract is the opposite of {@link #union(PShape, PShape) union()}.
-	 * 
+	 *
 	 * @param a The PShape from which the other PShape will be subtracted.
 	 * @param b The PShape that will be subtracted from the first PShape.
 	 * @return A new PShape representing the difference between the two input
@@ -325,7 +354,7 @@ public final class PGS_ShapeBoolean {
 	 * {@link #subtract(PShape, PShape) subtract()} but this method produces valid
 	 * results only if <b>all holes lie inside the shell</b> and holes are <b>not
 	 * nested</b>.
-	 * 
+	 *
 	 * @param shell polygonal shape
 	 * @param holes single polygon, or GROUP shape, whose children are holes that
 	 *              lie within the shell
@@ -391,7 +420,7 @@ public final class PGS_ShapeBoolean {
 	 * Calculates the symmetric difference between two shapes. The symmetric
 	 * difference is the set of regions that exist in either of the two shapes but
 	 * not in their intersection.
-	 * 
+	 *
 	 * @param a The first shape.
 	 * @param b The second shape.
 	 * @return A new shape representing the symmetric difference between the two
@@ -411,7 +440,7 @@ public final class PGS_ShapeBoolean {
 	 * The resulting shape corresponds to the portion of the rectangle not covered
 	 * by the input shape. The operation is essentially a subtraction of the input
 	 * shape from the rectangle.
-	 * 
+	 *
 	 * @param shape  The input shape for which the complement is to be determined.
 	 * @param width  The width of the rectangular boundary.
 	 * @param height The height of the rectangular boundary.

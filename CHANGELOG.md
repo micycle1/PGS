@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `unionLines()` to `PGS_ShapeBoolean`. Unions the linework of two shapes, creating polygonal faces from their intersecting lines.
 * `closestVertex()` to `PGS_Optimisation`. Returns the closest vertex of a shape to a query point.
 * `annularBricks()` to `PGS_Tiling`. Generates a geometric arrangement composed of annular-sector bricks arranged in concentric circular rings.
+* `overlapRegions()` to `PGS_ShapeBoolean`. Finds the regions where at least two shapes overlap.
 
 ### Changes
 * Optimised `PGS_CirclePacking.tangencyPack()`. It's now around 1.5-2x faster and has higher precision.
@@ -29,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Outputs from `PGS_Conversion.toDualGraph()` will now always iterate deterministically on inputs with the same geometry but having a different structure.
 * `PGS_Contour.straightSkeleton()` now always uses a more robust approach (which has been sped up considerably too).
 * Optimised `ColoringAlgorithm.RLF`. Speed increase grows with input size.
-* Improved `PGS_PointSet.findShortestTour()` TSP algorithm. It now uses a more effective heuristic that find shorter tours in less time.
+* Improved `PGS_PointSet.findShortestTour()` TSP algorithm. It now uses a more effective heuristic that finds shorter tours in less time.
 
 ### Fixed
 * `PGS_Morphology.rounding()` no longer gives invalid results.
