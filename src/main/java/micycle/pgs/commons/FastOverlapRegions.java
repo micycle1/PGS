@@ -5,18 +5,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.Polygonal;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedPolygon;
 import org.locationtech.jts.geom.util.PolygonExtracter;
+import org.locationtech.jts.index.SpatialIndex;
+import org.locationtech.jts.index.hprtree.HilbertEncoder;
 import org.locationtech.jts.index.strtree.STRtree;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
-import org.locationtech.jts.operation.union.UnaryUnionOp;
 
 /**
  * Computes the combined area where two or more input shapes overlap. Optimised
@@ -26,8 +29,8 @@ import org.locationtech.jts.operation.union.UnaryUnionOp;
  */
 public class FastOverlapRegions {
 
-	private final STRtree spatialIndex;
-	private final List<IndexedGeom> allIndexedGeometries;
+	private final SpatialIndex spatialIndex;
+	private final List<IndexedGeom> indexedGeoms;
 	private final GeometryFactory factory;
 
 	@SuppressWarnings("unchecked")
@@ -38,7 +41,7 @@ public class FastOverlapRegions {
 	public FastOverlapRegions(List<Geometry> geometries, GeometryFactory factory) {
 		// build STRtree of valid input geometries
 		spatialIndex = new STRtree();
-		allIndexedGeometries = new ArrayList<>(geometries.size());
+		indexedGeoms = new ArrayList<>(geometries.size());
 		this.factory = factory;
 
 		int k = 0;
@@ -48,56 +51,42 @@ public class FastOverlapRegions {
 				continue;
 			}
 			IndexedGeom ig = new IndexedGeom(g, k++);
-			allIndexedGeometries.add(ig);
+			indexedGeoms.add(ig);
 			spatialIndex.insert(g.getEnvelopeInternal(), ig);
 		}
 
-		spatialIndex.build();
+//		spatialIndex.build();
 	}
 
 	public Geometry get(boolean union) {
-		// 1. find overlapping regions
+		// find overlapping regions
 		var patches = findPairwiseOverlaps();
 
 		if (!union) {
 			return factory.buildGeometry(patches.stream().map(p -> p.geom).toList());
 		}
 
-		// 2. extract connected components
-		var groups = findConnectedComponents(patches);
+		/*
+		 * Before we would find and union connected component groups (groups of patches
+		 * that are known to form an intersecting "blob") to reduce unneccessary union
+		 * operations. However, this optimisation is negligible given the hilbert-sorted
+		 * parallelStream approach.
+		 */
+//		var groups = findConnectedComponents(patches);
 
-		// 3. union connected components
-		// much faster than CascadedPolygonUnion of everything!
-		List<Geometry> unioned = groups.parallelStream().map(group -> {
-			if (group.size() > 25) {
-				return UnaryUnionOp.union(group);
-			} else {
-				// fold with the binary union
-				return group.stream().reduce((g1, g2) -> {
-					var result = g1.union(g2);
-					if (!(result instanceof Polygonal)) {
-						result = factory.buildGeometry(PolygonExtracter.getPolygons(result));
-					}
-					return result;
-				}).orElseThrow();
-			}
-		}).toList();
-
-		if (unioned.isEmpty() || groups.isEmpty()) {
-			return factory.createEmpty(2);
-		}
-		return factory.buildGeometry(unioned);
+		var geoms = patches.stream().map(p -> p.geom).collect(Collectors.toList());
+		return fastUnion(geoms);
 	}
 
 	/**
-	 * Computes intersections between in pairs, with parallelism and efficient
+	 * Computes intersections between all geometries, with parallelism and efficient
 	 * short-circuiting.
 	 * 
 	 * @return
 	 */
 	private List<IntersectPatch> findPairwiseOverlaps() {
 		AtomicInteger patchId = new AtomicInteger(0);
-		var allPairwiseIntersections = allIndexedGeometries.parallelStream().flatMap(igA -> {
+		var allPairwiseIntersections = indexedGeoms.parallelStream().flatMap(igA -> {
 			Stream.Builder<IntersectPatch> builder = Stream.builder();
 			Geometry a = igA.geom;
 
@@ -127,6 +116,26 @@ public class FastOverlapRegions {
 		}).toList();
 
 		return allPairwiseIntersections;
+	}
+
+	/**
+	 * Much faster CascadedPolygonUnion (similar idea, but faster sorting and
+	 * parallel union).
+	 */
+	private Geometry fastUnion(List<Geometry> geoms) {
+		HilbertEncoder.sort(geoms);
+		return geoms.parallelStream().reduce((g1, g2) -> {
+			var result = g1.union(g2);
+			if (!(result instanceof Polygonal)) {
+				var polygons = PolygonExtracter.getPolygons(result);
+				if (polygons.size() == 1) {
+					result = (Polygon) polygons.get(0);
+				} else {
+					result = factory.buildGeometry(polygons);
+				}
+			}
+			return result;
+		}).orElse(factory.createEmpty(2));
 	}
 
 	/**
