@@ -21,7 +21,8 @@ import uk.osgb.algorithm.concavehull.TriCheckerChi;
  * Generates various types of geomtric hulls (convex, concave, etc.) for
  * polygons and point sets.
  * <p>
- * A hull is the smallest enclosing shape that contains all points in a set.
+ * A hull is the smallest enclosing shape of some nature that contains all
+ * points in a set.
  *
  * @author Michael Carleton
  * @since 1.3.0
@@ -29,6 +30,51 @@ import uk.osgb.algorithm.concavehull.TriCheckerChi;
 public class PGS_Hull {
 
 	private PGS_Hull() {
+	}
+
+	/**
+	 * Calculates the bounding box (envelope) for the given {@link PShape} and
+	 * returns it as a new {@link PShape}.
+	 * <p>
+	 * The returned shape represents the axis-aligned bounding rectangle that
+	 * contains the input shape.
+	 * </p>
+	 * 
+	 * @param shape the input shape for which to compute the bounding box
+	 * @return a {@link PShape} representing the bounding box of the input shape
+	 * @since 2.1
+	 */
+	public static PShape boundingBox(PShape shape) {
+		return boundingBox(shape, new double[4]);
+	}
+
+	/**
+	 * Computes the bounding box (envelope) of the given {@link PShape} and writes
+	 * its coordinates to the provided array.
+	 * <p>
+	 * The coordinates are written as: <code>{minX, minY, maxX, maxY}</code>.
+	 * </p>
+	 * 
+	 * @param shape the shape for which to calculate the bounding box
+	 * @param out   an array (length ≥ 4) that will hold the bounding box
+	 *              coordinates:
+	 *              <ul>
+	 *              <li>out[0] = minX</li>
+	 *              <li>out[1] = minY</li>
+	 *              <li>out[2] = maxX</li>
+	 *              <li>out[3] = maxY</li>
+	 *              </ul>
+	 * @return a {@link PShape} representing the bounding box of the input shape
+	 * @since 2.1
+	 */
+	public static PShape boundingBox(PShape shape, double[] out) {
+		var g = fromPShape(shape);
+		var e = g.getEnvelopeInternal();
+		out[0] = e.getMinX();
+		out[1] = e.getMinY();
+		out[2] = e.getMaxX();
+		out[3] = e.getMaxY();
+		return toPShape(g.getEnvelope());
 	}
 
 	/**

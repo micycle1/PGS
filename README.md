@@ -340,10 +340,12 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Convex Hull</td>
     <td align="center" valign="center"><b>Snap Hull</td>
+    <td align="center" valign="center"><b>Bounding Box</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/morphology/convexHull.png"></td>
     <td valign="top" width="25%"><img src="resources/morphology/snapHull.gif"></td>
+    <td valign="top" width="25%"><img src="resources/optimisation/envelope.png"></td>
   </tr>
   <tr>
     <td align="center" valign="center"></td>
@@ -595,12 +597,12 @@ Much of the functionality (but by no means all) is demonstrated below:
 
   <tr>
     <td align="center" valign="center"><b>Minimum Bounding Triangle</td>
-    <td align="center" valign="center"><b>Envelope</td>
+    <td align="center" valign="center"><b>Circle Covering</td>
     <td align="center" valign="center" colspan="2"><b>Problem of Apollonius</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/optimisation/mbt.png"></td>
-    <td valign="top" width="25%"><img src="resources/optimisation/envelope.png"></td>
+    <td valign="top" width="25%"><img src="resources/optimisation/circleCoverage.gif"></td>
     <td valign="top"><img src="resources/optimisation/apollonius1.gif"></td>
     <td valign="top"><img src="resources/optimisation/apollonius2.gif"></td>
   </tr>
@@ -620,12 +622,10 @@ Much of the functionality (but by no means all) is demonstrated below:
 
   <tr>
     <td align="center" valign="center"><b>Closest Vertex</td>
-    <td align="center" valign="center"><b>Circle Covering</td>
     <td align="center" valign="center" colspan="2"><b>Visibility Polygon / Isovist</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/pgs/closestVertex.gif"></td>
-    <td valign="top" width="25%"><img src="resources/optimisation/circleCoverage.gif"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/visibility.gif"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/visibility2.gif"></td>
   </tr>

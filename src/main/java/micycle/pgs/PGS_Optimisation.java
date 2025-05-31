@@ -68,7 +68,10 @@ public final class PGS_Optimisation {
 	 * 
 	 * @param shape a rectangular shape that covers/bounds the input
 	 * @return polygonal shape having 4 coordinates
+	 * @deprecated since 2.1; use {@link micycle.pgs.PGS_Hull#boundingBox(PShape)
+	 *             boundingBox(PShape)} instead.
 	 */
+	@Deprecated
 	public static PShape envelope(PShape shape) {
 		return toPShape(fromPShape(shape).getEnvelope());
 	}
