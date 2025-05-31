@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `annularBricks()` to `PGS_Tiling`. Generates a geometric arrangement composed of annular-sector bricks arranged in concentric circular rings.
 * `overlapRegions()` to `PGS_ShapeBoolean`. Finds the regions where at least two shapes overlap.
 * `normalise()` to `PGS_Processing`. Normalises a shape by standardising its vertex ordering and orientation.
+* `boundingBox()` to `PGS_Hull`. Calculates the axis-aligned bounding box (replaces `envelope()` in `PGS_Optimisation`.)
+* `farthestPointVoronoi()` to `PGS_Voronoi`. Generates a farthest-point Voronoi diagram for a given set of sites and a bounding box.
 
 ### Changes
 * Optimised `PGS_CirclePacking.tangencyPack()`. It's now around 1.5-2x faster and has higher precision.

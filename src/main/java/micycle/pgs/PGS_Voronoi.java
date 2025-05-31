@@ -1,6 +1,7 @@
 package micycle.pgs;
 
 import static micycle.pgs.PGS_Conversion.fromPShape;
+import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
@@ -26,6 +27,7 @@ import org.tinfour.voronoi.BoundedVoronoiDiagram;
 import org.tinfour.voronoi.ThiessenPolygon;
 
 import micycle.pgs.color.Colors;
+import micycle.pgs.commons.FarthestPointVoronoi;
 import micycle.pgs.commons.MultiplicativelyWeightedVoronoi;
 import micycle.pgs.commons.Nullable;
 import processing.core.PConstants;
@@ -541,6 +543,47 @@ public final class PGS_Voronoi {
 		var s = PGS_Conversion.toPShape(geoms);
 //		s = PGS_Meshing.fixBreaks(s, 1e-4, 10); // faster than GeometrySnapper, less robust
 		return s;
+	}
+
+	/**
+	 * Generates a <b>farthest-point Voronoi diagram</b> (FPVD) for a given set of
+	 * sites and a bounding box.
+	 * <p>
+	 * The <i>farthest-point Voronoi diagram</i> is a variant of the Voronoi diagram
+	 * in which the region for each site <code>p</code> consists of all points in
+	 * the plane for which <code>p</code> is the <b>farthest</b> site among all
+	 * sites. In contrast to a regular (nearest-point) Voronoi diagram, where each
+	 * region surrounds and contains its generating site, in the FPVD, regions do
+	 * <b>not</b> hug their site; instead, the generator of a region is {typically
+	 * distant and not even contained within} its region.
+	 * <p>
+	 * <b>Properties:</b>
+	 * <ul>
+	 * <li>Only sites that are vertices of the convex hull have non-empty regions in
+	 * the FPVD, since only those can be farthest from some location in the
+	 * plane.</li>
+	 * <li>A useful interpretation: all points in a given FPVD region share the same
+	 * farthest generator site. However, the generator site is not visually apparent
+	 * from the region itself, as it is not located within or even near the region.
+	 * </ul>
+	 * 
+	 * @param sites  A collection of {@link PVector}s representing sites; only the
+	 *               convex hull vertices will have corresponding regions in the
+	 *               output diagram.
+	 * @param bounds A double array of form <code>[minX, minY, maxX, maxY]</code>
+	 *               representing the axis-aligned bounding box for clipping the
+	 *               diagram.
+	 * @return A {@link PShape} representing the farthest-point Voronoi diagram.
+	 *         Each cell corresponds to the region for one convex hull vertex site.
+	 * @since 2.1
+	 */
+	public static PShape farthestPointVoronoi(Collection<PVector> sites, double[] bounds) {
+		FarthestPointVoronoi fpvd = new FarthestPointVoronoi();
+		Envelope e = new Envelope(bounds[0], bounds[2], bounds[1], bounds[3]); // x,x,y,y
+		fpvd.setClipEnvelope(e);
+		fpvd.setSites(sites.stream().map(s -> PGS.coordFromPVector(s)).toList());
+
+		return toPShape(fpvd.getDiagram());
 	}
 
 	static Polygon toPolygon(ThiessenPolygon polygon) {
