@@ -1230,6 +1230,25 @@ public final class PGS_Processing {
 	}
 
 	/**
+	 * Normalises a shape by standardising its vertex ordering and orientation:
+	 * <ul>
+	 * <li>The outer shell (exterior contour) is oriented clockwise (CW).</li>
+	 * <li>All holes (interior contours) are oriented counterclockwise (CCW).</li>
+	 * <li>Each contour (shell or hole) is rotated so its sequence starts at the
+	 * vertex with the minimum coordinate (lexicographically by x, then y).</li>
+	 * </ul>
+	 *
+	 * @param shape the {@code PShape} to normalise
+	 * @return a new {@code PShape} instance with standardised vertex winding and
+	 *         canonicalised vertex rotation
+	 * @since 2.1
+	 */
+	public static PShape normalise(PShape shape) {
+		var g = fromPShape(shape);
+		g.normalize();
+		return toPShape(g);
+	}
+	/**
 	 * Filters out the children of a given PShape object based on a given Predicate
 	 * function. Child shapes are filtered when the predicate is true: <i>"remove
 	 * if..."</i>.

@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `closestVertex()` to `PGS_Optimisation`. Returns the closest vertex of a shape to a query point.
 * `annularBricks()` to `PGS_Tiling`. Generates a geometric arrangement composed of annular-sector bricks arranged in concentric circular rings.
 * `overlapRegions()` to `PGS_ShapeBoolean`. Finds the regions where at least two shapes overlap.
+* `normalise()` to `PGS_Processing`. Normalises a shape by standardising its vertex ordering and orientation.
 
 ### Changes
 * Optimised `PGS_CirclePacking.tangencyPack()`. It's now around 1.5-2x faster and has higher precision.
