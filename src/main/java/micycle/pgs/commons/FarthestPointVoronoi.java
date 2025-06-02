@@ -4,7 +4,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.locationtech.jts.algorithm.ConvexHull;
@@ -13,11 +16,14 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.MultiPoint;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.Triangle;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
+
+import micycle.pgs.commons.FarthestPointVoronoi.DCELVertex;
 
 /**
  * Farthest-Point Voronoi Diagram
@@ -85,11 +91,12 @@ public class FarthestPointVoronoi {
 		getDCEL();
 
 		var clipPoly = ((Polygon) gf.toGeometry(env)).getExteriorRing();
-		var segs = dcel.edges.stream().map(e -> (Geometry) gf.createLineString(new Coordinate[] { e.origVertex, e.destVertex })).collect(Collectors.toList());
-		segs.add(clipPoly);
-		var geom = segs.stream().reduce((a, b) -> a.union(b)).get();
+		var segs = dcel.getEdges().stream().map(e -> gf.createLineString(new Coordinate[] { e.origVertex, e.destVertex }))
+				.collect(Collectors.toList());
+		var segsGeom = gf.createMultiLineString(segs.toArray(new LineString[0]));
+		var geom = segsGeom.union(clipPoly); // node
 
-		var polygonizer = new Polygonizer();
+		var polygonizer = new Polygonizer(false);
 		polygonizer.add(geom);
 		return gf.createMultiPolygon(GeometryFactory.toPolygonArray(polygonizer.getPolygons()));
 	}
@@ -107,7 +114,7 @@ public class FarthestPointVoronoi {
 
 			double far = env.getDiameter() * 2;
 
-			// 3) compute convex hull of the sites (so hull is in CCW order)
+			// 3) compute convex hull of the sites
 			MultiPoint mp = gf.createMultiPointFromCoords(sites.toArray(new Coordinate[0]));
 			Geometry ch = new ConvexHull(mp).getConvexHull();
 			List<Coordinate> hullCoords = Arrays.asList(ch.getCoordinates());
@@ -118,7 +125,9 @@ public class FarthestPointVoronoi {
 		return dcel;
 	}
 
-	private static DCEL computeFPVD(List<Coordinate> hull, double far) {
+	private static DCEL computeFPVD(List<Coordinate> hull, final double far) {
+		// routine from
+		// https://dccg.upc.edu/people/vera/Applet/smallest_enclosing_circle.html
 		int n = hull.size();
 		DCEL dcel = new DCEL(n);
 
@@ -177,12 +186,14 @@ public class FarthestPointVoronoi {
 			int e1 = e2 - 1;
 
 			// create new real vertex
-			dcel.vertices.add(new DCELVertex(center, e2, e1, true));
+			DCELVertex v = new DCELVertex(center, e2, e1, true);
+			v.setCircumcircle(Pq, Pp, Pr);
+			dcel.vertices.add(v);
 			dcel.points[(int) Pp.z] = newVid;
 
 			// update Pq‐vertex to point to these half‐edges
 			int vq = dcel.points[(int) Pq.z];
-			dcel.vertices.set(vq, new DCELVertex(center, e2, e1, true));
+			dcel.vertices.set(vq, v);
 			dcel.points[(int) Pq.z] = vq;
 
 			S.remove(p);
@@ -199,6 +210,10 @@ public class FarthestPointVoronoi {
 		return dcel;
 	}
 
+	/**
+	 * Finds index i of the vertex triplet (i-1,i,i+1) that form the circumcircle
+	 * having the possible largest radius.
+	 */
 	private static int maximize(List<Coordinate> S) {
 		double bestR = -1;
 		int bestI = -1, N = S.size();
@@ -206,7 +221,7 @@ public class FarthestPointVoronoi {
 			Coordinate prev = S.get((i - 1 + N) % N);
 			Coordinate cur = S.get(i);
 			Coordinate next = S.get((i + 1) % N);
-			double r = Triangle.circumradius(prev, cur, next);
+			double r = circumradiusMetric(prev, cur, next);
 			if (r > bestR) {
 				bestR = r;
 				bestI = i;
@@ -216,7 +231,42 @@ public class FarthestPointVoronoi {
 	}
 
 	/**
+	 * Computes a value proportional to the square of the circumradius of the
+	 * triangle defined by three coordinates. The actual circumradius is not
+	 * computed; instead, the returned value can be used for circumradius
+	 * comparisons between triangles (lower values correspond to smaller
+	 * circumradii).
+	 * <p>
+	 * This method is optimized for speed and does not compute any square roots or
+	 * trigonometric functions.
+	 */
+	public static double circumradiusMetric(Coordinate a, Coordinate b, Coordinate c) {
+		// Edge vectors
+		double abx = b.x - a.x, aby = b.y - a.y;
+		double acx = c.x - a.x, acy = c.y - a.y;
+		double bcx = c.x - b.x, bcy = c.y - b.y;
+
+		// Squared edge lengths
+		double ab2 = abx * abx + aby * aby;
+		double bc2 = bcx * bcx + bcy * bcy;
+		double ca2 = acx * acx + acy * acy; // |CA|² = |AC|²
+
+		// Squared twice-area (safer than uu*vv - uv*uv)
+		double cross = abx * acy - aby * acx;
+		double cross2 = cross * cross;
+		if (cross2 == 0.0) // collinear or degenerate
+			return Double.POSITIVE_INFINITY;
+
+		// metric ∝ R² (the constant 4 is dropped)
+		return ab2 * bc2 * ca2 / cross2;
+	}
+
+	/**
 	 * A directed DCEL edge from origVertex → destVertex.
+	 * <p>
+	 * However, {@link #hashCode()} and {@link #equals(Object)} are implemented such
+	 * that this edge is considered equal (and hashes equally) to the edge from
+	 * destVertex → origVertex for undirected comparisons.
 	 */
 	public static class DCELEdge {
 		public final Coordinate origVertex;
@@ -230,6 +280,33 @@ public class FarthestPointVoronoi {
 			this.origIndex = origIndex;
 			this.destIndex = destIndex;
 		}
+
+		@Override
+		public int hashCode() {
+			// For vertices, order agnostic
+			int verticesHash = origVertex.hashCode() ^ destVertex.hashCode();
+			// For indices, order agnostic
+			int indicesHash = Integer.hashCode(origIndex) ^ Integer.hashCode(destIndex);
+			// Combine
+			return 31 * verticesHash + indicesHash;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null || getClass() != obj.getClass())
+				return false;
+			DCELEdge other = (DCELEdge) obj;
+
+			// Direction-agnostic comparison
+			boolean case1 = origVertex.equals(other.origVertex) && destVertex.equals(other.destVertex) && origIndex == other.origIndex
+					&& destIndex == other.destIndex;
+			boolean case2 = origVertex.equals(other.destVertex) && destVertex.equals(other.origVertex) && origIndex == other.destIndex
+					&& destIndex == other.origIndex;
+
+			return case1 || case2;
+		}
 	}
 
 	/**
@@ -238,8 +315,9 @@ public class FarthestPointVoronoi {
 	 */
 	public static class DCELVertex {
 		public final Coordinate point;
+		public Coordinate[] circumcircle;
 		/** whether this is a “real” Voronoi vertex vs. the dummy ray‐start */
-		private final boolean real;
+		public final boolean real;
 
 		DCELVertex(Coordinate p, int next, int prev, boolean real) {
 			this.point = p;
@@ -248,6 +326,13 @@ public class FarthestPointVoronoi {
 
 		DCELVertex(Coordinate p) {
 			this(p, -1, -1, false);
+		}
+
+		void setCircumcircle(Coordinate a, Coordinate b, Coordinate c) {
+			this.circumcircle = new Coordinate[3];
+			circumcircle[0] = a;
+			circumcircle[1] = b;
+			circumcircle[2] = c;
 		}
 	}
 
@@ -260,13 +345,27 @@ public class FarthestPointVoronoi {
 		/**
 		 * Non-infinite vertices comprising the FPVD.
 		 */
-		public final List<DCELVertex> vertices;
+		private final List<DCELVertex> vertices;
 		private final int[] points;
 
 		DCEL(int nHullVertices) {
 			this.edges = new ArrayList<>();
 			this.vertices = new ArrayList<>();
 			this.points = new int[nHullVertices];
+		}
+
+		/**
+		 * Returns all (inner/non-infinite) vertices comprising the FPVD edges.
+		 */
+		public List<DCELVertex> getVertices() {
+			return new ArrayList<>(vertices.stream().filter(v -> v.real).collect(Collectors.toSet()));
+		}
+
+		/**
+		 * Returns all unique edges comprising the FPVD.
+		 */
+		public List<DCELEdge> getEdges() {
+			return new ArrayList<>(new HashSet<>(edges));
 		}
 	}
 
