@@ -731,6 +731,62 @@ public final class PGS_Optimisation {
 		final ClosestPointPair closestPointPair = new ClosestPointPair(points);
 		return closestPointPair.execute();
 	}
+	
+	/**
+	 * Returns the farthest vertex of a shape from a query point. For GROUP shapes,
+	 * any child geometry's vertex may be returned.
+	 *
+	 * @param shape      the PShape to search for the farthest vertex
+	 * @param queryPoint the query PVector
+	 * @return a new PVector at the position of the farthest vertex (not a reference
+	 *         to existing shape data)
+	 * @since 2.1
+	 */
+	public static PVector farthestVertex(PShape shape, PVector queryPoint) {
+		List<PVector> vertices = PGS_Conversion.toPVector(shape);
+		if (vertices.isEmpty()) {
+			return null;
+		}
+		float maxDistSq = Float.NEGATIVE_INFINITY;
+		PVector farthest = null;
+		for (PVector v : vertices) {
+			float distSq = PVector.dist(v, queryPoint);
+			if (distSq > maxDistSq) {
+				maxDistSq = distSq;
+				farthest = v;
+			}
+		}
+		return farthest;
+	}
+
+	/**
+	 * Finds the farthest point in the collection from a specified point.
+	 *
+	 * @param points the collection of points to search within
+	 * @param point  the point from which the farthest neighbor is sought
+	 * @return the farthest point from the collection to the specified point
+	 * @since 2.1
+	 */
+	public static PVector farthestPoint(Collection<PVector> points, PVector point) {
+		if (points == null || points.isEmpty()) {
+			return null; // Handle empty or null collection
+		}
+
+		PVector farthest = null;
+		float maxDistanceSq = Float.NEGATIVE_INFINITY;
+
+		for (PVector p : points) {
+			float dx = p.x - point.x;
+			float dy = p.y - point.y;
+			float distanceSq = dx * dx + dy * dy;
+			if (distanceSq > maxDistanceSq) {
+				maxDistanceSq = distanceSq;
+				farthest = p;
+			}
+		}
+
+		return farthest;
+	}
 
 	/**
 	 * Computes the farthest pair of points (the "diametral pair") in a set of n
