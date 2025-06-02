@@ -20,7 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `filterNear()` to `PGS_SegmentSet`. Removes segments that are near others.
 * `spiralSortFaces()` to `PGS_Optimisation`. Reorders the faces of a mesh into an anti-clockwise “spiral” (breadth-first rings) starting from a given face.
 * `unionLines()` to `PGS_ShapeBoolean`. Unions the linework of two shapes, creating polygonal faces from their intersecting lines.
-* `closestVertex()` to `PGS_Optimisation`. Returns the closest vertex of a shape to a query point.
+* `closestVertex()` and `farthestVertex()` to `PGS_Optimisation`. Returns the closest/farthest vertex of a shape to a query point.
+* `farthestPoint()` to `PGS_Optimsation`. Finds the farthest point in the collection from a specified point.
 * `annularBricks()` to `PGS_Tiling`. Generates a geometric arrangement composed of annular-sector bricks arranged in concentric circular rings.
 * `overlapRegions()` to `PGS_ShapeBoolean`. Finds the regions where at least two shapes overlap.
 * `normalise()` to `PGS_Processing`. Normalises a shape by standardising its vertex ordering and orientation.
@@ -32,8 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_Conversion.roundVertexCoords()` now returns a rounded copy of the input (rather than mutating the input).
 * Outputs from `PGS_Conversion.toDualGraph()` will now always iterate deterministically on inputs with the same geometry but having a different structure.
 * `PGS_Contour.straightSkeleton()` now always uses a more robust approach (which has been sped up considerably too).
-* Optimised `ColoringAlgorithm.RLF`. Speed increase grows with input size.
+* Optimised `ColoringAlgorithm.RLF` (the speed increase grows with input size).
 * Improved `PGS_PointSet.findShortestTour()` TSP algorithm. It now uses a more effective heuristic that finds shorter tours in less time.
+* `PGS_Meshing.extractInnerEdges()` no longer dissolves edges in the output.
 
 ### Fixed
 * `PGS_Morphology.rounding()` no longer gives invalid results.

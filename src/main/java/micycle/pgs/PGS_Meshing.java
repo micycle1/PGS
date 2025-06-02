@@ -895,7 +895,7 @@ public class PGS_Meshing {
 	 * edges comprising holes within faces.
 	 * 
 	 * @param mesh The conforming mesh shape to extract inner edges from.
-	 * @return A shape representing the dissolved linework of inner mesh edges.
+	 * @return A shape representing the linework of inner mesh edges.
 	 * @since 1.4.0
 	 */
 	public static PShape extractInnerEdges(PShape mesh) {
@@ -906,7 +906,7 @@ public class PGS_Meshing {
 		});
 
 		List<PEdge> innerEdges = bag.entrySet().stream().filter(e -> e.getValue() > 1).map(e -> e.getKey()).collect(Collectors.toList());
-		return PGS_SegmentSet.dissolve(innerEdges);
+		return PGS_SegmentSet.toPShape(innerEdges);
 	}
 
 	/**
