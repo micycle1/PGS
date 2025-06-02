@@ -1244,7 +1244,7 @@ public final class PGS_Conversion {
 	 * Google <i>Encoded Polyline</i> format.
 	 * 
 	 * @param shape single (holeless) polygon or line
-	 * @return
+	 * @return String with the encoded polyline representing the shape
 	 * @since 1.3.0
 	 */
 	public static String toEncodedPolyline(PShape shape) {
@@ -1405,7 +1405,6 @@ public final class PGS_Conversion {
 	 * 
 	 * @param shell vertices of the shell of the polygon
 	 * @param holes (optional) list of holes
-	 * @return
 	 * @since 1.4.0
 	 */
 	public static PShape fromContours(List<PVector> shell, @Nullable List<List<PVector>> holes) {
@@ -1557,11 +1556,11 @@ public final class PGS_Conversion {
 		while (!parents.isEmpty()) {
 			final PShape parent = parents.pop(); // will always be a GROUP PShape
 			if (parent.getChildCount() > 0) { // avoid NPE on .getChildren()
-				for (PShape child : parent.getChildren()) {
-					if (child.getFamily() == GROUP) {
-						parents.add(child);
+				for (PShape candidate : parent.getChildren()) {
+					if (candidate.getFamily() == GROUP) {
+						parents.add(candidate);
 					} else {
-						children.add(child);
+						children.add(candidate);
 					}
 				}
 			}
@@ -1797,6 +1796,7 @@ public final class PGS_Conversion {
 	public static PShape copy(PShape shape) {
 		final PShape copy = new PShape();
 		copy.setName(shape.getName());
+		final PShapeData style = new PShapeData(shape);
 
 		try {
 			Method method;
@@ -1831,17 +1831,18 @@ public final class PGS_Conversion {
 			e.printStackTrace();
 		}
 
-		return copy;
+		return style.applyTo(copy);
 	}
 
 	/**
 	 * Creates a PATH PShape representing a quadratic bezier curve, given by its
 	 * parameters.
-	 * 
-	 * @param start
-	 * @param controlPoint
-	 * @param end
-	 * @return
+	 *
+	 * @param start        starting point of the bezier curve
+	 * @param controlPoint control point of the curve
+	 * @param end          end point of the bezier curve
+	 * @return a PShape representing the quadratic bezier curve as a PATH, sampled
+	 *         every 2 units along its length
 	 * @since 1.4.0
 	 */
 	public static PShape fromQuadraticBezier(PVector start, PVector controlPoint, PVector end) {
@@ -1854,12 +1855,13 @@ public final class PGS_Conversion {
 	/**
 	 * Creates a PATH PShape representing a cubic bezier curve, given by its
 	 * parameters.
-	 * 
-	 * @param start
-	 * @param controlPoint1
-	 * @param controlPoint2
-	 * @param end
-	 * @return
+	 *
+	 * @param start         starting point of the bezier curve
+	 * @param controlPoint1 first control point of the curve
+	 * @param controlPoint2 second control point of the curve
+	 * @param end           end point of the bezier curve
+	 * @return a PShape representing the cubic bezier curve as a PATH, sampled every
+	 *         2 units along its length
 	 * @since 1.4.0
 	 */
 	public static PShape fromCubicBezier(PVector start, PVector controlPoint1, PVector controlPoint2, PVector end) {
@@ -2041,8 +2043,10 @@ public final class PGS_Conversion {
 		public int fillColor, strokeColor;
 		public float strokeWeight;
 		public boolean fill, stroke;
+		private final PShape source;
 
 		PShapeData(PShape shape) {
+			source = shape;
 			try {
 				fillColor = fillColorF.getInt(shape);
 				fill = fillF.getBoolean(shape);
@@ -2061,7 +2065,13 @@ public final class PGS_Conversion {
 		 * @return other (fluent interface)
 		 */
 		public PShape applyTo(PShape other) {
+			if (source.getFamily() == GROUP && other.getFamily() != GROUP) {
+				// opinionated -- don't apply group styling to non-group
+				return other;
+			}
+
 			if (other.getFamily() == GROUP) {
+				// ONLY IF child fill/stroke aren't defaults!?
 				getChildren(other).forEach(c -> applyTo(c));
 			}
 			other.setFill(fill);

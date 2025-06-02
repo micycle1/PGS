@@ -17,6 +17,7 @@ import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.PrecisionModel;
 
+import micycle.pgs.PGS_Conversion.PShapeData;
 import micycle.pgs.color.ColorUtils;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -417,13 +418,22 @@ class PGS_ConversionTests {
 		PShape a = PGS_Construction.createSierpinskiCurve(0, 0, 10, 3);
 		PShape b = PGS_Construction.createHeart(0, 0, 10);
 		PShape group = PGS_Conversion.flatten(a, b);
+		PGS_Conversion.setAllFillColor(group, 1337);
+		PShapeData d = new PShapeData(group.getChild(0));
+		assertEquals(1337, d.fillColor);
 		
 		PShape copy = PGS_Conversion.copy(group);
 
+		// test geom structure preserved
 		assertTrue(PGS_ShapePredicates.equalsNorm(group, copy));
 		
 		copy.getChild(0).setVertex(0, -999,-999); // shouldn't change group
 		assertFalse(PGS_ShapePredicates.equalsNorm(group, copy));
+		
+		// test styling preserved
+		d = new PShapeData(copy.getChild(0));
+		
+		assertEquals(1337, d.fillColor);
 	}
 
 	@Test

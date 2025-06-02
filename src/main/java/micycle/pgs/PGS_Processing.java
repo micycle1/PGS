@@ -259,6 +259,9 @@ public final class PGS_Processing {
 					ring = ring.reverse();
 				}
 				final LengthIndexedLine l = new LengthIndexedLine(ring);
+				if (l.getEndIndex() == 0) {
+					return;
+				}
 				final int points = (int) Math.round(l.getEndIndex() / interPointDistance);
 				final double increment = 1d / points;
 				for (double distance = 0; distance < 1; distance += increment) {

@@ -995,21 +995,20 @@ public class PGS_Meshing {
 	}
 
 	/**
-	 * Merges the small faces within a mesh into their adjacent faces recursively,
-	 * ensuring that no faces smaller than a specified area remain. This process is
-	 * repeated until all faces are at least as large as the minimum area defined by
-	 * the areaThreshold parameter.
-	 * 
-	 * @param mesh          a PShape object representing the mesh to which the area
-	 *                      merge operation will be applied. It must be of type
-	 *                      GROUP. Meshes with holes are supported; holes will be
-	 *                      preserved.
-	 * @param areaThreshold the minimum area a face must have to avoid being merged.
-	 *                      This is used as a threshold to determine which small
-	 *                      faces should be merged into adjacent larger ones.
-	 * @return PShape object representing the mesh after the merge operation, where
-	 *         all faces have an area greater than or equal to the specified
-	 *         areaThreshold.
+	 * Merges all faces in the given mesh that are smaller than a specified area
+	 * threshold into their larger neighbors, and repeats this process until no face
+	 * remains below the threshold.
+	 * <p>
+	 * Holes in the original mesh are preserved; only small faces are absorbed into
+	 * adjacent larger faces.
+	 *
+	 * @param mesh          a PShape of type GROUP representing the input mesh. May
+	 *                      contain holes, which will be carried through.
+	 * @param areaThreshold the minimum allowed area for any face. Any face whose
+	 *                      area is strictly less than this value will be merged
+	 *                      into one of its adjacent faces.
+	 * @return a new PShape containing the merged mesh, with original styling
+	 *         applied, in which every face has area ≥ areaThreshold.
 	 * @since 1.4.0
 	 */
 	public static PShape areaMerge(PShape mesh, double areaThreshold) {

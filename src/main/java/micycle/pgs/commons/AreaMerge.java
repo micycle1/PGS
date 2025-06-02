@@ -38,7 +38,6 @@ public class AreaMerge {
 	 * 
 	 * @param mesh
 	 * @param areaThreshold
-	 * @return
 	 */
 	public static PShape areaMerge(PShape mesh, double areaThreshold) {
 		SimpleGraph<PShape, DefaultEdge> graph = PGS_Conversion.toDualGraph(mesh);
@@ -88,13 +87,8 @@ public class AreaMerge {
 			}
 		}
 
-		final boolean hasHoles = PGS_ShapePredicates.holes(mesh) > 0;
 		return PGS_Conversion.flatten(groupsGraph.vertexSet().stream().map(g -> {
-			if (hasHoles) {
-				return PGS_ShapeBoolean.unionMesh(g.faces.keySet());
-			} else {
-				return PGS_ShapeBoolean.unionMeshWithoutHoles(g.faces.keySet());
-			}
+			return PGS_ShapeBoolean.unionMesh(g.faces.keySet());
 		}).collect(Collectors.toList()));
 	}
 

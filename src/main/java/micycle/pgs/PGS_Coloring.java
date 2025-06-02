@@ -267,7 +267,7 @@ public final class PGS_Coloring {
 				break;
 			case RLF :
 			default :
-				coloring = new RLFColoring<>(graph, 1337).getColoring(); // NOTE fixed seed of 1337
+				coloring = new RLFColoring<>(graph, SEED).getColoring(); // NOTE fixed seed of 1337
 		}
 		return coloring;
 	}

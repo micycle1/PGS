@@ -291,12 +291,32 @@ public final class PGS_Triangulation {
 	 * @since 2.0
 	 */
 	public static IIncrementalTin delaunayTriangulationMesh(Collection<PVector> points, PShape shapeConstraint) {
-		return delaunayTriangulationMesh(shapeConstraint, points, false, 0, false, false);
+		return delaunayTriangulationMesh(shapeConstraint, points, true, 0, false, false);
 	}
 
 	/**
-	 * @param insertShapeVertices Determines input shape vertices are treated: as
-	 *                            part of the triangulation (=true), or as a
+	 * @param shape               the shape to generate a triangulation from. <b>Can
+	 *                            be null</b>.
+	 * @param steinerPoints       A list of additional points to insert into the
+	 *                            triangulation in addition to the vertices of the
+	 *                            input shape. <b>Can be null</b>.
+	 * @param constrain           whether to constrain the triangulation to the
+	 *                            shape's boundary. If using a shape, it is
+	 *                            recommended to set this to true.
+	 * @param refinements         The number of times to subdivide the triangulation
+	 *                            by inserting the centroid of each triangle. Should
+	 *                            be 0 or greater, typically no more than 5.
+	 * @param pretty              Whether to maintain Delaunay nature when
+	 *                            constraining the triangulation and check that
+	 *                            centroid locations are within the shape during
+	 *                            refinement. This can result in more regular
+	 *                            triangle shapes and sizes, but with a performance
+	 *                            overhead that increases with higher refinement
+	 *                            levels. Has no effect if
+	 *                            <code>constrain=false</code> and
+	 *                            <code>refinements=0</code>.
+	 * @param insertShapeVertices Determines how input shape vertices are treated:
+	 *                            as part of the triangulation (=true), or as a
 	 *                            boundary constraint only (=false).
 	 */
 	private static IIncrementalTin delaunayTriangulationMesh(@Nullable PShape shape, @Nullable Collection<PVector> steinerPoints, boolean constrain,
