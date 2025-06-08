@@ -30,6 +30,7 @@ import micycle.pgs.color.Colors;
 import micycle.pgs.commons.FarthestPointVoronoi;
 import micycle.pgs.commons.MultiplicativelyWeightedVoronoi;
 import micycle.pgs.commons.Nullable;
+import micycle.pgs.commons.PEdge;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -349,7 +350,7 @@ public final class PGS_Voronoi {
 	 *      diagram generation process.
 	 */
 
-	public static BoundedVoronoiDiagram innerVoronoiRaw(Collection<PVector> points, double[] bounds, int relaxations) {
+	public static BoundedVoronoiDiagram innerVoronoiRaw(Collection<PVector> points, @Nullable double[] bounds, int relaxations) {
 		return innerVoronoiRaw(PGS_Conversion.toPointsPShape(points), false, bounds, null, relaxations);
 	}
 
@@ -543,6 +544,39 @@ public final class PGS_Voronoi {
 		var s = PGS_Conversion.toPShape(geoms);
 //		s = PGS_Meshing.fixBreaks(s, 1e-4, 10); // faster than GeometrySnapper, less robust
 		return s;
+	}
+
+	/**
+	 * Generates the <b>farthest-point Voronoi diagram</b> (FPVD) for a set of
+	 * sites.
+	 * <p>
+	 * The farthest-point Voronoi diagram partitions the plane into regions such
+	 * that each region consists of all points for which a particular site is the
+	 * <b>farthest</b> among all provided sites (not the nearest). Only sites that
+	 * are convex hull vertices have regions in the FPVD.
+	 * <p>
+	 * The resulting diagram is not clipped to a bounding box and may extend well
+	 * beyond the convex hull of the input sites, but it is still represented by a
+	 * finite set of edges.
+	 *
+	 * @param sites a collection of {@link PVector} representing the sites; only
+	 *              convex hull vertices have regions
+	 * @return a {@link PShape} representing the farthest-point Voronoi diagram as a
+	 *         set of edges
+	 * @see #farthestPointVoronoi(Collection, double[])
+	 * @since 2.1
+	 */
+	public static PShape farthestPointVoronoi(Collection<PVector> sites) {
+		FarthestPointVoronoi fpvd = new FarthestPointVoronoi();
+		fpvd.setSites(sites.stream().map(s -> PGS.coordFromPVector(s)).toList());
+
+		var edges = fpvd.getDCEL().getEdges().stream().map(e -> {
+			var a = PGS.toPVector(e.origVertex);
+			var b = PGS.toPVector(e.destVertex);
+			return new PEdge(a, b);
+		}).toList();
+
+		return PGS_SegmentSet.toPShape(edges);
 	}
 
 	/**
