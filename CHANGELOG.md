@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `farthestPointVoronoi()` to `PGS_Voronoi`. Generates a farthest-point Voronoi diagram for a given set of sites and a bounding box.
 * `intersections()` to `PGS_SegmentSet`. Computes all intersection points between two collections of line segments.
 * `minimumWidthAnnulus()` to `PGS_Optimisation`. Computes the minimum-width annulus (ring) that encloses the vertices of a shape.
+* Overloads of `minimumBoundingCircle()` and `maximumInscribedCircle()` that accept a PVector to output the circle center and radius.
 
 ### Changes
 * Optimised `PGS_CirclePacking.tangencyPack()`. It's now around 1.5-2x faster and has higher precision.

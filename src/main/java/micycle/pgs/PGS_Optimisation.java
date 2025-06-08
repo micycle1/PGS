@@ -7,11 +7,13 @@ import static processing.core.PConstants.GROUP;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.tuple.Triple;
 import org.locationtech.jts.algorithm.MinimumAreaRectangle;
 import org.locationtech.jts.algorithm.MinimumBoundingCircle;
 import org.locationtech.jts.algorithm.MinimumDiameter;
@@ -113,19 +115,55 @@ public final class PGS_Optimisation {
 	 * the point in the interior that is farthest from the shape's boundary, and the
 	 * radius is the distance from this center point to the closest boundary point.
 	 * </p>
-	 * 
+	 *
 	 * @param shape     the {@link PShape} representing the area within which to
-	 *                  compute the MIC
-	 * @param tolerance the distance tolerance for computing the center point; must
-	 *                  be non-negative. Smaller values result in a more accurate
-	 *                  circle but may require more computation (typical values are
-	 *                  around 1).
-	 * @return a {@link PShape} instance representing the maximum inscribed circle
+	 *                  compute the maximum inscribed circle; typically a simple
+	 *                  polygon or multipolygon
+	 * @param tolerance the distance tolerance or resolution for approximation; must
+	 *                  be non-negative. Lower values yield a more accurate result
+	 *                  but increase computation time (e.g., 0.5 or 1 is common).
+	 * @return a {@link PShape} representing the maximum inscribed circle within the
+	 *         input shape
+	 * @see #maximumInscribedCircle(PShape, double, PVector)
 	 */
 	public static PShape maximumInscribedCircle(PShape shape, double tolerance) {
 		MaximumInscribedCircle mic = new MaximumInscribedCircle(fromPShape(shape), tolerance);
 		final double r = mic.getRadiusLine().getLength();
 		Polygon circle = createCircle(PGS.coordFromPoint(mic.getCenter()), r);
+		return toPShape(circle);
+	}
+
+	/**
+	 * Computes the <b>maximum inscribed circle</b> (MIC) within a given shape,
+	 * using the specified accuracy, and optionally outputs the center and radius.
+	 * <p>
+	 * The maximum inscribed circle is the largest possible circle completely
+	 * contained within the input shape. If a non-null {@code result} vector is
+	 * provided, its <code>x</code> and <code>y</code> values will be set to the
+	 * coordinates of the circle's center, and <code>z</code> will be set to its
+	 * radius.
+	 * <p>
+	 * The returned {@link PShape} is a polygonal approximation of the inscribed
+	 * circle.
+	 *
+	 * @param shape     the {@link PShape} to analyze
+	 * @param tolerance the resolution (smaller values increase accuracy but reduce
+	 *                  performance)
+	 * @param result    if not {@code null}, will receive center (x, y) and radius
+	 *                  (z) of the MIC
+	 * @return a {@link PShape} representing the maximum inscribed circle within the
+	 *         input shape
+	 * @see #maximumInscribedCircle(PShape, double)
+	 * @since 2.1
+	 */
+	public static PShape maximumInscribedCircle(PShape shape, double tolerance, @Nullable PVector result) {
+		MaximumInscribedCircle mic = new MaximumInscribedCircle(fromPShape(shape), tolerance);
+		final double r = mic.getRadiusLine().getLength();
+		var c = mic.getCenter();
+		Polygon circle = createCircle(PGS.coordFromPoint(c), r);
+		if (result != null) {
+			result.set((float) c.getX(), (float) c.getY(), (float) r);
+		}
 		return toPShape(circle);
 	}
 
@@ -270,15 +308,53 @@ public final class PGS_Optimisation {
 	}
 
 	/**
-	 * Computes the Minimum Bounding Circle (MBC) for the points in a Geometry. The
-	 * MBC is the smallest circle which covers all the vertices of the input shape
-	 * (this is also known as the Smallest Enclosing Circle). This is equivalent to
-	 * computing the Maximum Diameter of the input vertex set.
+	 * Computes the <b>minimum bounding circle</b> (MBC) that encloses all vertices
+	 * of the provided shape.
+	 * <p>
+	 * The minimum bounding circle is the smallest circle that contains all vertices
+	 * of the input shape.
+	 *
+	 * @param shape the input {@link PShape}; all its vertices will be considered
+	 *              for the bounding circle computation
+	 * @return a {@link PShape} object representing the minimum bounding circle that
+	 *         encloses all vertices of the input shape
+	 * @see #minimumBoundingCircle(PShape, PVector)
 	 */
 	public static PShape minimumBoundingCircle(PShape shape) {
 		MinimumBoundingCircle mbc = new MinimumBoundingCircle(fromPShape(shape));
 		final double r = mbc.getRadius();
 		Polygon circle = createCircle(mbc.getCentre(), r);
+		return toPShape(circle);
+	}
+
+	/**
+	 * Computes the <b>minimum bounding circle</b> (MBC) for the given shape, and
+	 * optionally returns the center and radius.
+	 * <p>
+	 * The minimum bounding circle is the smallest circle that contains all vertices
+	 * of the input shape. If the provided {@code result} vector is non-null, its
+	 * {@code x} and {@code y} fields will be set to the coordinates of the circle's
+	 * center, and its {@code z} field will be set to the circle's radius.
+	 * <p>
+	 * This method returns a new {@link PShape} representing the computed circle.
+	 *
+	 * @param shape  the shape whose vertices will be used to compute the minimum
+	 *               bounding circle
+	 * @param result a {@link PVector}; if non-null, receives the center as (x, y)
+	 *               and radius as (z)
+	 * @return a {@link PShape} representing the minimum bounding circle enclosing
+	 *         all vertices of the input shape
+	 * @see #minimumBoundingCircle(PShape)
+	 * @since 2.1
+	 */
+	public static PShape minimumBoundingCircle(PShape shape, @Nullable PVector result) {
+		MinimumBoundingCircle mbc = new MinimumBoundingCircle(fromPShape(shape));
+		final double r = mbc.getRadius();
+		var c = mbc.getCentre();
+		Polygon circle = createCircle(c, r);
+		if (result != null) {
+			result.set((float) c.getX(), (float) c.getY(), (float) r);
+		}
 		return toPShape(circle);
 	}
 
@@ -375,7 +451,7 @@ public final class PGS_Optimisation {
 
 	/**
 	 * Computes the minimum-width annulus (the donut-like region between two
-	 * concentric circles with minimal width that encloses the given
+	 * concentric circles with minimal width that encloses the vertices of the given
 	 * {@link PShape}).
 	 * <p>
 	 * The annulus is defined as the region between two concentric circles (with
