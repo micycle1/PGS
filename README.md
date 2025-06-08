@@ -599,12 +599,12 @@ Much of the functionality (but by no means all) is demonstrated below:
 
   <tr>
     <td align="center" valign="center"><b>Minimum Bounding Triangle</td>
-    <td align="center" valign="center"><b>Circle Covering</td>
+    <td align="center" valign="center"><b>Minimum-width Annulus</td>
     <td align="center" valign="center" colspan="2"><b>Problem of Apollonius</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/optimisation/mbt.png"></td>
-    <td valign="top" width="25%"><img src="resources/optimisation/circleCoverage.gif"></td>
+    <td valign="top" width="25%"><img src="resources/optimisation/minWidthAnnulus.png"></td>
     <td valign="top"><img src="resources/optimisation/apollonius1.gif"></td>
     <td valign="top"><img src="resources/optimisation/apollonius2.gif"></td>
   </tr>
@@ -623,10 +623,12 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
+    <td align="center" valign="center"><b>Circle Covering</td>
     <td align="center" valign="center"><b>Closest Vertex</td>
     <td align="center" valign="center" colspan="2"><b>Visibility Polygon / Isovist</td>
   </tr>
   <tr>
+    <td valign="top" width="25%"><img src="resources/optimisation/circleCoverage.gif"></td>
     <td valign="top" width="25%"><img src="resources/pgs/closestVertex.gif"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/visibility.gif"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/visibility2.gif"></td>

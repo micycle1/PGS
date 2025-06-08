@@ -374,6 +374,85 @@ public final class PGS_Optimisation {
 	}
 
 	/**
+	 * Computes the minimum-width annulus (the donut-like region between two
+	 * concentric circles with minimal width that encloses the given
+	 * {@link PShape}).
+	 * <p>
+	 * The annulus is defined as the region between two concentric circles (with
+	 * computed center and radii), such that all vertices of the input shape lie
+	 * between the inner and outer circle, and the distance between these circles
+	 * (the "width" of the annulus) is minimized.
+	 * <p>
+	 * The algorithm considers only the <b>vertices of the input shape</b> (not the
+	 * filled area or edges) as points to be enclosed.
+	 *
+	 * @param shape the {@link PShape} whose <b>vertices</b> are to be enclosed by
+	 *              the minimum-width annulus; must be non-null and contain at least
+	 *              three points
+	 * @return a {@link PShape} representing the minimum-width annulus (as a ring
+	 *         shape)
+	 * @since 2.1
+	 */
+	public static PShape minimumWidthAnnulus(PShape shape) {
+		var points = PGS_Conversion.toPVector(shape);
+		var d = PGS_ShapePredicates.diameter(shape);
+		var convexHull = PGS_Conversion.toPVector(PGS_Hull.convexHull(points));
+		var tree = PGS.makeKdtree(points);
+
+		var bounds = new double[4];
+		PGS_Hull.boundingBox(shape, bounds); // write to bounds
+		bounds[0] -= d;
+		bounds[1] -= d;
+		bounds[2] += d;
+		bounds[3] += d;
+
+		var vd = PGS_Voronoi.innerVoronoi(points, bounds);
+		var fpvd = PGS_Voronoi.farthestPointVoronoi(points);
+
+		/*
+		 * NOTE here we find inner edges/vertices in a generic way without geometric
+		 * shortcuts given by VD/FPVD geometry (i.e. we know the circumcircle of each
+		 * FPVD vertex -- its circumradius gives us outerR immediately).
+		 */
+		var a = PGS_Meshing.extractInnerEdgesAndVertices(vd);
+		var b = PGS_Meshing.extractInnerEdgesAndVertices(fpvd);
+		var vdVertices = a.getRight();
+		var vdEdges = a.getLeft();
+		var fpvdVertices = b.getRight();
+		var fpvdEdges = b.getLeft();
+
+		var overlayVerices = PGS_SegmentSet.intersections(vdEdges, fpvdEdges);
+
+		/*
+		 * Candidate centers for the smallest-width annulus have 3 sources. For each
+		 * candidate we find the distance both to the closest and farthest vertex. The
+		 * difference between these distances is the annulus width; we select the
+		 * candidate having the smallest width.
+		 */
+		/*-
+		 * The 3 centerpoint sources are:
+		 * 		Vertices of the FPVD
+		 * 		Vertices of the VD
+		 * 		Vertices from the intersection between edges of VD and FPVD
+		 */
+		var candidates = new ArrayList<PVector>();
+		candidates.addAll(vdVertices);
+		candidates.addAll(fpvdVertices);
+		candidates.addAll(overlayVerices);
+
+		var result = candidates.parallelStream().map(v -> {
+			// farthest point must lie on convex hull
+			var far = PGS_Optimisation.farthestPoint(convexHull, v);
+			var close = tree.query1nn(new double[] { v.x, v.y });
+			double outerR = far.dist(v);
+			double innerR = close.dist();
+			return Triple.of(v, outerR, innerR);
+		}).min(Comparator.comparingDouble(t -> t.getMiddle() - t.getRight())).get();
+
+		return PGS_Construction.createRing(result.getLeft().x, result.getLeft().y, result.getMiddle(), result.getRight());
+	}
+
+	/**
 	 * Computes the largest empty circle that does not intersect any obstacles (up
 	 * to a specified tolerance).
 	 * <p>
@@ -731,7 +810,7 @@ public final class PGS_Optimisation {
 		final ClosestPointPair closestPointPair = new ClosestPointPair(points);
 		return closestPointPair.execute();
 	}
-	
+
 	/**
 	 * Returns the farthest vertex of a shape from a query point. For GROUP shapes,
 	 * any child geometry's vertex may be returned.

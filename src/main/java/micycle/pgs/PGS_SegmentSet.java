@@ -383,7 +383,7 @@ public class PGS_SegmentSet {
 	}
 
 	public static Map<PEdge, Integer> toBag(List<PEdge> edges) {
-		Map<PEdge, Integer> edgeBag = new HashMap<>();
+		Map<PEdge, Integer> edgeBag = new HashMap<>(edges.size());
 		for (PEdge edge : edges) {
 			edgeBag.put(edge, edgeBag.getOrDefault(edge, 0) + 1);
 		}
@@ -411,6 +411,26 @@ public class PGS_SegmentSet {
 		}
 		Geometry dissolved = LineDissolver.dissolve(g);
 		return PGS_Conversion.toPShape(dissolved);
+	}
+
+	/**
+	 * Computes all intersection points between two collections of line segments.
+	 * <p>
+	 * Given two collections of edges, this method finds and returns all points
+	 * where a segment from the first collection intersects with a segment from the
+	 * second collection, including intersection endpoints if applicable.
+	 * </p>
+	 *
+	 * @param edgesA the first collection of line segments to compare
+	 * @param edgesB the second collection of line segments to compare
+	 * @return a list of {@link PVector} representing all intersection points found
+	 *         between the two collections of segments
+	 * @since 2.1
+	 */
+	public static List<PVector> intersections(Collection<PEdge> edgesA, Collection<PEdge> edgesB) {
+		var segsA = fromPEdges(edgesA);
+		var segsB = fromPEdges(edgesB);
+		return PGS_Processing.intersections(segsA, segsB);
 	}
 
 	/**

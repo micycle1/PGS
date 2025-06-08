@@ -36,6 +36,8 @@ import org.locationtech.jts.noding.SegmentString;
 import org.locationtech.jts.noding.snapround.SnapRoundingNoder;
 import org.locationtech.jts.operation.linemerge.LineMerger;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
+import org.tinspin.index.IndexConfig;
+import org.tinspin.index.kdtree.KDTree;
 
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.Nullable;
@@ -450,6 +452,17 @@ final class PGS {
 		}
 
 		return rings;
+	}
+
+	/**
+	 * Creates a 2D KDTree populated with <code>points</code>.
+	 */
+	static KDTree<PVector> makeKdtree(Collection<PVector> points) {
+		KDTree<PVector> tree = KDTree.create(IndexConfig.create(2).setDefensiveKeyCopy(false));
+		points.forEach(p -> {
+			tree.insert(new double[] { p.x, p.y }, p);
+		});
+		return tree;
 	}
 
 	/**

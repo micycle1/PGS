@@ -900,13 +900,16 @@ public class PGS_Meshing {
 	 */
 	public static PShape extractInnerEdges(PShape mesh) {
 		List<PEdge> edges = PGS_SegmentSet.fromPShape(mesh);
-		Map<PEdge, Integer> bag = new HashMap<>(edges.size());
-		edges.forEach(edge -> {
-			bag.merge(edge, 1, Integer::sum);
-		});
+		Set<PEdge> seenEdges = new HashSet<>(edges.size());
+		Set<PEdge> innerEdges = new HashSet<>();
 
-		List<PEdge> innerEdges = bag.entrySet().stream().filter(e -> e.getValue() > 1).map(e -> e.getKey()).collect(Collectors.toList());
-		return PGS_SegmentSet.toPShape(innerEdges);
+		for (PEdge edge : edges) {
+			if (!seenEdges.add(edge)) { // add() returns false if edge is already present
+				innerEdges.add(edge);
+			}
+		}
+
+		return PGS_SegmentSet.toPShape(new ArrayList<>(innerEdges));
 	}
 
 	/**
@@ -919,13 +922,64 @@ public class PGS_Meshing {
 	 * @since 2.0
 	 */
 	public static List<PVector> extractInnerVertices(PShape mesh) {
-		var allVertices = PGS_Conversion.toPVector(mesh);
-		var perimeterVertices = PGS_Conversion.toPVector(PGS_ShapeBoolean.unionMesh(mesh));
-		var allVerticesSet = new HashSet<>(allVertices);
-		var perimeterVerticesSet = new HashSet<>(perimeterVertices);
+		List<PVector> allVertices = PGS_Conversion.toPVector(mesh);
+		Set<PVector> perimeterVertices = new HashSet<>(PGS_Conversion.toPVector(PGS_ShapeBoolean.unionMesh(mesh)));
 
-		allVerticesSet.removeAll(perimeterVerticesSet);
-		return new ArrayList<>(allVerticesSet);
+		// Create a new list of only those vertices not in the perimeter.
+		return allVertices.stream().filter(vertex -> !perimeterVertices.contains(vertex)).collect(Collectors.toList());
+	}
+
+	/**
+	 * Extracts inner edges and vertices of a mesh. Faster than calling both
+	 * extractInnerVertices() and extractInnerEdges() in tandem.
+	 */
+	static Pair<List<PEdge>, List<PVector>> extractInnerEdgesAndVertices(PShape mesh) {
+		// 1) Get all (undirected) edges
+		List<PEdge> edges = PGS_SegmentSet.fromPShape(mesh);
+		int n = edges.size();
+
+		// 2) Classify edges:
+		// - 'single' holds edges seen exactly once so far
+		// - 'inner' holds edges seen ≥2 times
+		// Using a LinkedHashSet for 'inner' preserves insertion order (if you care)
+		Set<PEdge> single = new HashSet<>((int) (n / 0.75f) + 1);
+		Set<PEdge> inner = new HashSet<>((int) (n / 0.75f) + 1);
+
+		for (PEdge e : edges) {
+			if (single.contains(e)) {
+				// second time we see it → move to inner
+				single.remove(e);
+				inner.add(e);
+			} else if (!inner.contains(e)) {
+				// first time → keep in single
+				single.add(e);
+			}
+			// otherwise: already in 'inner', do nothing
+		}
+
+		// 3) Collect boundary vertices from the edges that remained 'single'
+		Set<PVector> boundary = new HashSet<>(single.size() * 2);
+		for (PEdge e : single) {
+			boundary.add(e.a);
+			boundary.add(e.b);
+		}
+
+		// 4) Finally, collect inner‐vertices from the 'inner' edges
+		// but only those not in 'boundary' and avoid duplicates
+		List<PVector> innerVerts = new ArrayList<>();
+		Set<PVector> seenVertices = new HashSet<>();
+		for (PEdge e : inner) {
+			PVector a = e.a, b = e.b;
+			if (!boundary.contains(a) && seenVertices.add(a)) {
+				innerVerts.add(a);
+			}
+			if (!boundary.contains(b) && seenVertices.add(b)) {
+				innerVerts.add(b);
+			}
+		}
+
+		// 5) Return!
+		return Pair.of(new ArrayList<>(inner), innerVerts);
 	}
 
 	/**

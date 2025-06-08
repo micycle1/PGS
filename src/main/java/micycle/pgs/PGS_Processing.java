@@ -456,8 +456,8 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Computes all <b>points</b> of intersection between the <b>perimeters</b> of
-	 * two shapes.
+	 * Computes all <b>points</b> of intersection between the <b>linework</b> of two
+	 * shapes.
 	 * <p>
 	 * NOTE: This method shouldn't be confused with
 	 * {@link micycle.pgs.PGS_ShapeBoolean#intersect(PShape, PShape)
@@ -469,13 +469,30 @@ public final class PGS_Processing {
 	 * @return list of all intersecting points (as PVectors)
 	 */
 	public static List<PVector> shapeIntersection(PShape a, PShape b) {
-		final HashSet<PVector> points = new HashSet<>();
+		final Collection<?> segmentStringsA = SegmentStringUtil.extractSegmentStrings(fromPShape(a));
+		final Collection<?> segmentStringsB = SegmentStringUtil.extractSegmentStrings(fromPShape(b));
 
-		final Collection<?> segmentStrings = SegmentStringUtil.extractSegmentStrings(fromPShape(a));
-		final MCIndexSegmentSetMutualIntersector mci = new MCIndexSegmentSetMutualIntersector(segmentStrings);
+		return intersections(segmentStringsA, segmentStringsB);
+	}
+
+	static List<PVector> intersections(Collection<?> segmentStringsA, Collection<?> segmentStringsB) {
+		final Collection<?> larger, smaller;
+		if (segmentStringsA.size() > segmentStringsB.size()) {
+			larger = segmentStringsA;
+			smaller = segmentStringsB;
+		} else {
+			larger = segmentStringsB;
+			smaller = segmentStringsA;
+
+		}
+
+		final Set<PVector> points = new HashSet<>();
+		// finds possibly overlapping bounding boxes
+		final MCIndexSegmentSetMutualIntersector mci = new MCIndexSegmentSetMutualIntersector(larger);
+		// checks if two segments actually intersect
 		final SegmentIntersectionDetector sid = new SegmentIntersectionDetector();
 
-		mci.process(SegmentStringUtil.extractSegmentStrings(fromPShape(b)), new SegmentIntersector() {
+		mci.process(smaller, new SegmentIntersector() {
 			@Override
 			public void processIntersections(SegmentString e0, int segIndex0, SegmentString e1, int segIndex1) {
 				sid.processIntersections(e0, segIndex0, e1, segIndex1);
