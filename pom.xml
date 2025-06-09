@@ -187,30 +187,20 @@
 			<name>jitpack</name>
 			<url>https://jitpack.io</url>
 		</repository>
-		<repository>
-			<id>jts-snapshots</id>
-			<url>https://repo.eclipse.org/content/repositories/jts-snapshots</url>
-			<releases>
-				<enabled>false</enabled>
-			</releases>
-			<snapshots>
-				<enabled>true</enabled>
-			</snapshots>
-		</repository>
 	</repositories>
 
 	<dependencies>
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>processing-core-4</artifactId>
-			<version>4.3.3</version>
+			<version>4.4.4</version>
 			<scope>provided</scope> <!-- don't package into uber jar -->
 			<optional>true</optional> <!-- user artifact should override when provided -->
 		</dependency>
 		<dependency>
-			<groupId>org.locationtech.jts</groupId>
-			<artifactId>jts-core</artifactId>
-			<version>1.20.1-SNAPSHOT</version>
+			<groupId>com.github.locationtech</groupId>
+			<artifactId>jts</artifactId>
+			<version>ba30c6eaab</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
@@ -223,9 +213,9 @@
 			<version>1.5.2</version>
 		</dependency>
 		<dependency>
-			<groupId>org.tinfour</groupId>
-			<artifactId>TinfourCore</artifactId>
-			<version>2.1.8</version>
+			<groupId>com.github.gwlucastrig</groupId>
+			<artifactId>Tinfour</artifactId>
+			<version>903008f037</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.micycle1</groupId>

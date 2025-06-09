@@ -1,11 +1,14 @@
 package micycle.pgs.commons;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.locationtech.jts.geom.Envelope;
@@ -123,7 +126,7 @@ public class FastOverlapRegions {
 	 * parallel union).
 	 */
 	private Geometry fastUnion(List<Geometry> geoms) {
-		HilbertEncoder.sort(geoms);
+		sort(geoms, 12);
 		return geoms.parallelStream().reduce((g1, g2) -> {
 			var result = g1.union(g2);
 			if (!(result instanceof Polygonal)) {
@@ -172,6 +175,68 @@ public class FastOverlapRegions {
 		}
 		return new ArrayList<>(islands.values());
 	}
+	
+	 /**
+	   * Sorts a list of {@link Geometry} objects in-place by their spatial order
+	   * using Hilbert curve encoding of their envelopes.
+	   *
+	   * @param geoms the list of geometries to sort
+	   * @param level the resolution level for Hilbert curve encoding
+	   */
+	  private static void sort(List<Geometry> geoms, int level) {
+	    int n = geoms.size();
+	    if (n < 2)
+	      return;
+
+	    Envelope globalExtent = new Envelope();
+	    for (Geometry g : geoms) {
+	      globalExtent.expandToInclude(g.getEnvelopeInternal());
+	    }
+
+	    HilbertEncoder encoder = new HilbertEncoder(level, globalExtent);
+	    int[] keys = new int[n];
+	    for (int i = 0; i < n; i++) {
+	      Envelope e = geoms.get(i).getEnvelopeInternal();
+	      keys[i] = encoder.encode(e);
+	    }
+	    sortInPlaceByKeys(keys, geoms);
+	  }
+
+	  /**
+	   * Used by sort().
+	   */
+	  private static <T> void sortInPlaceByKeys(int[] keys, List<T> values) {
+	    final int n = keys.length;
+
+	    Integer[] idx = IntStream.range(0, n).boxed().toArray(Integer[]::new);
+	    Arrays.sort(idx, Comparator.comparingInt(i -> keys[i]));
+
+	    // rearrange keys and values in-place by following permutation cycles,
+	    // so that both arrays are sorted according to hilbert order key.
+	    boolean[] seen = new boolean[n];
+	    for (int i = 0; i < n; i++) {
+	      if (seen[i] || idx[i] == i)
+	        continue;
+
+	      int cycleStart = i;
+	      int j = i;
+	      int savedKey = keys[j];
+	      T savedVal = values.get(j);
+
+	      do {
+	        seen[j] = true;
+	        int next = idx[j];
+	        keys[j] = keys[next];
+	        values.set(j, values.get(next));
+
+	        j = next;
+	      } while (j != cycleStart);
+
+	      keys[j] = savedKey;
+	      values.set(j, savedVal);
+	      seen[j] = true;
+	    }
+	  }
 
 	private static record IndexedGeom(Geometry geom, int idx, PreparedGeometry preparedGeometry) {
 		private IndexedGeom(Geometry geom, int idx) {

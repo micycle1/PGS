@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.SplittableRandom;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -142,7 +143,6 @@ public final class PGS_Processing {
 	 *                          point away from the shape (outwards); negative
 	 *                          values offset the point inwards towards its
 	 *                          interior.
-	 * @return
 	 * @see #pointsOnExterior(PShape, int, double)
 	 */
 	public static PVector pointOnExterior(PShape shape, double perimeterPosition, double offsetDistance) {
@@ -169,7 +169,6 @@ public final class PGS_Processing {
 	 *                          point away from the shape (outwards); negative
 	 *                          values offset the point inwards towards its
 	 *                          interior.
-	 * @return
 	 * @since 1.4.0
 	 */
 	public static PVector pointOnExteriorByDistance(PShape shape, double perimeterDistance, double offsetDistance) {
