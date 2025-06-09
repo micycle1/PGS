@@ -201,6 +201,7 @@
 			<groupId>com.github.locationtech</groupId>
 			<artifactId>jts</artifactId>
 			<version>ba30c6eaab</version>
+			<type>jar</type>
 		</dependency>
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
@@ -222,6 +223,12 @@
 			<artifactId>JMedialAxis</artifactId>
 			<version>5207bec2f2</version>
 			<optional>true</optional> <!-- user artifact should override when provided -->
+			<exclusions>
+				<exclusion>
+					<groupId>org.locationtech.jts</groupId>
+					<artifactId>jts-core</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>org.dyn4j</groupId>
@@ -264,6 +271,12 @@
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>space-filling-curves</artifactId>
 			<version>1.0</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.locationtech.jts</groupId>
+					<artifactId>jts-core</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
@@ -300,6 +313,12 @@
 			<groupId>com.github.openjump-gis</groupId>
 			<artifactId>topology-extension</artifactId>
 			<version>9c1d788f8d</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.locationtech.jts</groupId>
+					<artifactId>jts-core</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>com.github.scoutant</groupId>
@@ -330,6 +349,12 @@
 			<groupId>com.github.whitegreen</groupId>
 			<artifactId>Dalsoo-Bin-Packing</artifactId>
 			<version>bde2a3ef09</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.locationtech.jts</groupId>
+					<artifactId>jts-core</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
