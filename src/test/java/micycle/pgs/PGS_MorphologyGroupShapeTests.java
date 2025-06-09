@@ -48,35 +48,35 @@ class PGS_MorphologyGroupShapeTests {
 	}
 
 	@Test
-	void test_PGS_Morphology_buffer() {
+	void testBuffer() {
 		assumeTrue(GROUP_SHAPE.getChildCount() == 2);
 		PShape out = PGS_Morphology.buffer(GROUP_SHAPE, -1);
 		assertEquals(2, out.getChildCount());
 	}
 
 	@Test
-	void test_PGS_Morphology_chaikinCut() {
+	void testChaikinCut() {
 		assumeTrue(GROUP_SHAPE.getChildCount() == 2);
 		PShape out = PGS_Morphology.chaikinCut(GROUP_SHAPE, 0.5, 2);
 		assertEquals(2, out.getChildCount());
 	}
 
 	@Test
-	void test_PGS_Morphology_erosionDilation() {
+	void testErosionDilation() {
 		assumeTrue(GROUP_SHAPE.getChildCount() == 2);
 		PShape out = PGS_Morphology.erosionDilation(GROUP_SHAPE, 0);
 		assertEquals(2, out.getChildCount());
 	}
 
 	@Test
-	void test_PGS_Morphology_fieldWarp() {
+	void testFieldWarp() {
 		assumeTrue(GROUP_SHAPE.getChildCount() == 2);
 		PShape out = PGS_Morphology.fieldWarp(GROUP_SHAPE, 10, 1, false);
 		assertEquals(2, out.getChildCount());
 	}
 
 	@Test
-	void test_PGS_Morphology_minkDifference() {
+	void testMinkDifference() {
 		assumeTrue(GROUP_SHAPE.getChildCount() == 2);
 		final PShape mink = new PShape(PShape.PATH);
 		mink.beginShape();
@@ -91,7 +91,7 @@ class PGS_MorphologyGroupShapeTests {
 	}
 
 	@Test
-	void test_PGS_Morphology_minkSum() {
+	void testMinkSum() {
 		assumeTrue(GROUP_SHAPE.getChildCount() == 2);
 		final PShape mink = new PShape(PShape.PATH);
 		mink.beginShape();
@@ -106,49 +106,49 @@ class PGS_MorphologyGroupShapeTests {
 	}
 
 	@Test
-	void test_PGS_Morphology_radialWarp() {
+	void testRadialWarp() {
 		assumeTrue(GROUP_SHAPE.getChildCount() == 2);
 		PShape out = PGS_Morphology.radialWarp(GROUP_SHAPE, 10, 1, false);
 		assertEquals(2, out.getChildCount());
 	}
 
 	@Test
-	void test_PGS_Morphology_round() {
+	void testRound() {
 		assumeTrue(GROUP_SHAPE.getChildCount() == 2);
 		PShape out = PGS_Morphology.round(GROUP_SHAPE, 0.5);
 		assertEquals(2, out.getChildCount());
 	}
 
 	@Test
-	void test_PGS_Morphology_simplify() {
+	void testSimplify() {
 		assumeTrue(GROUP_SHAPE.getChildCount() == 2);
 		PShape out = PGS_Morphology.simplify(GROUP_SHAPE, 1);
 		assertEquals(2, out.getChildCount());
 	}
 
 	@Test
-	void test_PGS_Morphology_simplifyTopology() {
+	void testSimplifyTopology() {
 		assumeTrue(GROUP_SHAPE.getChildCount() == 2);
 		PShape out = PGS_Morphology.simplifyTopology(GROUP_SHAPE, 1);
 		assertEquals(2, out.getChildCount());
 	}
 
 	@Test
-	void test_PGS_Morphology_simplifyVW() {
+	void testSimplifyVW() {
 		assumeTrue(GROUP_SHAPE.getChildCount() == 2);
 		PShape out = PGS_Morphology.simplifyVW(GROUP_SHAPE, 1);
 		assertEquals(2, out.getChildCount());
 	}
 
 	@Test
-	void test_PGS_Morphology_smooth() {
+	void testSmooth() {
 		assumeTrue(GROUP_SHAPE.getChildCount() == 2);
 		PShape out = PGS_Morphology.smooth(GROUP_SHAPE, 0.5);
 		assertEquals(2, out.getChildCount());
 	}
 
 	@Test
-	void test_PGS_Morphology_smoothGaussian() {
+	void testSmoothGaussian() {
 		assumeTrue(GROUP_SHAPE.getChildCount() == 2);
 		PShape out = PGS_Morphology.smoothGaussian(GROUP_SHAPE, 10);
 		assertEquals(2, out.getChildCount());

@@ -90,11 +90,11 @@ public final class PGS_Morphology {
 	 */
 	public static PShape buffer(PShape shape, double buffer, OffsetStyle bufferStyle) {
 		Geometry g = fromPShape(shape);
-		BufferParameters bufParams = createBufferParams(buffer, 0.5, bufferStyle);		
+		BufferParameters bufParams = createBufferParams(buffer, 0.5, bufferStyle);
 		BufferOp b = new BufferOp(g, bufParams);
 		return toPShape(b.getResultGeometry(buffer));
 	}
-	
+
 	/**
 	 * Buffers a shape with a varying buffer distance (interpolated between a start
 	 * distance and an end distance) along the shape's perimeter.
@@ -348,7 +348,7 @@ public final class PGS_Morphology {
 	 * @since 1.4.0
 	 */
 	public static PShape simplifyHobby(PShape shape, double tension) {
-		tension = Math.max(tension, 0.668); // prevent degeneracy
+		tension = Math.max(tension, 0.1); // prevent degeneracy
 		double[][] vertices = PGS_Conversion.toArray(shape, false);
 		HobbyCurve curve = new HobbyCurve(vertices, tension, shape.isClosed(), 0.5, 0.5);
 		List<PVector> points = new ArrayList<>();
@@ -453,7 +453,7 @@ public final class PGS_Morphology {
 				LineString[] rings = lri.getLinearRings();
 				LinearRing[] ringSmoothed = new LinearRing[rings.length];
 				for (int i = 0; i < rings.length; i++) {
-					Coordinate[] coords = GaussianLineSmoothing.get(rings[i], Math.max(sigma, 1), 1).getCoordinates();
+					Coordinate[] coords = GaussianLineSmoothing.get(rings[i], Math.max(sigma, 1)).getCoordinates();
 					if (coords.length > 2) {
 						ringSmoothed[i] = PGS.GEOM_FACTORY.createLinearRing(coords);
 					} else {
@@ -469,7 +469,7 @@ public final class PGS_Morphology {
 			case Geometry.TYPENAME_LINEARRING :
 			case Geometry.TYPENAME_LINESTRING :
 				LineString l = (LineString) g;
-				return toPShape(GaussianLineSmoothing.get(l, Math.max(sigma, 1), 1));
+				return toPShape(GaussianLineSmoothing.get(l, Math.max(sigma, 1)));
 			default :
 				System.err.println(g.getGeometryType() + " are not supported for the smoothGaussian() method."); // pointal geoms
 				return new PShape(); // return empty (so element is invisible if not processed)
@@ -931,33 +931,28 @@ public final class PGS_Morphology {
 	}
 
 	private static BufferParameters createBufferParams(double r, double delta, OffsetStyle bufferStyle) {
-	    r = Math.abs(r);
-	
-	    // compute the number of points for the full circle
-	    double ang = Math.acos(1.0 - delta / r);
-	    // if delta/r > 2 or so acos will fail – clamp it
-	    if (Double.isNaN(ang) || ang <= 0) {
-	      // in this degenerate case just fall back to a small number
-	      ang = Math.PI / 8.0;
-	    }
-	
-	    // total points
-	    double nPtsDbl = Math.PI / ang;
-	    int nPts = (int) Math.ceil(nPtsDbl);
-	
-	    // segments per quadrant
-	    int quadSeg = (int) Math.ceil(nPts / 4.0);
-	
-	    // enforce a sensible minimum
-	    quadSeg = Math.max(quadSeg, BufferParameters.DEFAULT_QUADRANT_SEGMENTS);
-	
-	    // cap style affects linestrings only
-	    return new BufferParameters(
-	        quadSeg,
-	        BufferParameters.CAP_FLAT,
-	        bufferStyle.style,
-	        BufferParameters.DEFAULT_MITRE_LIMIT
-	    );
+		r = Math.abs(r);
+
+		// compute the number of points for the full circle
+		double ang = Math.acos(1.0 - delta / r);
+		// if delta/r > 2 or so acos will fail – clamp it
+		if (Double.isNaN(ang) || ang <= 0) {
+			// in this degenerate case just fall back to a small number
+			ang = Math.PI / 8.0;
+		}
+
+		// total points
+		double nPtsDbl = Math.PI / ang;
+		int nPts = (int) Math.ceil(nPtsDbl);
+
+		// segments per quadrant
+		int quadSeg = (int) Math.ceil(nPts / 4.0);
+
+		// enforce a sensible minimum
+		quadSeg = Math.max(quadSeg, BufferParameters.DEFAULT_QUADRANT_SEGMENTS);
+
+		// cap style affects linestrings only
+		return new BufferParameters(quadSeg, BufferParameters.CAP_FLAT, bufferStyle.style, BufferParameters.DEFAULT_MITRE_LIMIT);
 	}
 
 }
