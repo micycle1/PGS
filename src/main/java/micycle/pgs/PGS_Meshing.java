@@ -125,7 +125,7 @@ public class PGS_Meshing {
 				edges.add(t.getEdgeB().getBaseReference());
 				edges.add(t.getEdgeC().getBaseReference());
 				final IQuadEdge longestEdge = findLongestEdge(t).getBaseReference();
-				if (!preservePerimeter || (preservePerimeter && !longestEdge.isConstrainedRegionBorder())) {
+				if (!preservePerimeter || (preservePerimeter && !longestEdge.isConstraintRegionBorder())) {
 					uniqueLongestEdges.add(longestEdge);
 				}
 			}
@@ -189,7 +189,7 @@ public class PGS_Meshing {
 			final double[] midpoint = midpoint(edge);
 			final Vertex near = tree.query1nn(midpoint).value();
 			if (near != edge.getA() && near != edge.getB()) {
-				if (!preservePerimeter || (preservePerimeter && !edge.isConstrainedRegionBorder())) { // don't remove constraint borders (holes)
+				if (!preservePerimeter || (preservePerimeter && !edge.isConstraintRegionBorder())) { // don't remove constraint borders (holes)
 					nonGabrielEdges.add(edge); // base reference
 				}
 			}
@@ -234,14 +234,14 @@ public class PGS_Meshing {
 			double l = e.getLength();
 			cache.neighborsOf(e.getA()).forEach(n -> {
 				if (Math.max(n.getDistance(e.getA()), n.getDistance(e.getB())) < l) {
-					if (!preservePerimeter || (preservePerimeter && !e.isConstrainedRegionBorder())) {
+					if (!preservePerimeter || (preservePerimeter && !e.isConstraintRegionBorder())) {
 						edges.remove(e);
 					}
 				}
 			});
 			cache.neighborsOf(e.getB()).forEach(n -> {
 				if (Math.max(n.getDistance(e.getA()), n.getDistance(e.getB())) < l) {
-					if (!preservePerimeter || (preservePerimeter && !e.isConstrainedRegionBorder())) {
+					if (!preservePerimeter || (preservePerimeter && !e.isConstraintRegionBorder())) {
 						edges.remove(e);
 					}
 				}
@@ -281,7 +281,7 @@ public class PGS_Meshing {
 			if (triangulation.getConstraints().isEmpty()) { // does not have constraints
 				spannerEdges.addAll(triangulation.getPerimeter().stream().map(PGS_Triangulation::toPEdge).collect(Collectors.toList()));
 			} else { // has constraints
-				spannerEdges.addAll(triangulation.getEdges().stream().filter(IQuadEdge::isConstrainedRegionBorder).map(PGS_Triangulation::toPEdge)
+				spannerEdges.addAll(triangulation.getEdges().stream().filter(IQuadEdge::isConstraintRegionBorder).map(PGS_Triangulation::toPEdge)
 						.collect(Collectors.toList()));
 			}
 		}
@@ -444,7 +444,7 @@ public class PGS_Meshing {
 			 * triangles". -- ideal, but not implemented here...
 			 */
 			// NOTE could now apply Topological optimization, as given in paper.
-			if ((color < 2) || (preservePerimeter && (edge.isConstrainedRegionBorder() || perimeter.contains(edge)))) {
+			if ((color < 2) || (preservePerimeter && (edge.isConstraintRegionBorder() || perimeter.contains(edge)))) {
 				meshEdges.add(new PEdge(edge.getA().x, edge.getA().y, edge.getB().x, edge.getB().y));
 			}
 		});
@@ -491,7 +491,7 @@ public class PGS_Meshing {
 		if (preservePerimeter) {
 			List<IQuadEdge> perimeter = triangulation.getPerimeter();
 			triangulation.edges().forEach(edge -> {
-				if (edge.isConstrainedRegionBorder() || (unconstrained && perimeter.contains(edge))) {
+				if (edge.isConstraintRegionBorder() || (unconstrained && perimeter.contains(edge))) {
 					edges.add(new PEdge(edge.getA().x, edge.getA().y, edge.getB().x, edge.getB().y));
 				}
 			});

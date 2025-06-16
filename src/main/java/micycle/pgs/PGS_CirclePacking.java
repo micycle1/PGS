@@ -664,7 +664,7 @@ public final class PGS_CirclePacking {
 	 * A streams filter to remove triangulation triangles that share at least one
 	 * edge with the shape edge.
 	 */
-	private static final Predicate<SimpleTriangle> filterBorderTriangles = t -> t.getContainingRegion() != null && !t.getEdgeA().isConstrainedRegionBorder()
-			&& !t.getEdgeB().isConstrainedRegionBorder() && !t.getEdgeC().isConstrainedRegionBorder();
+	private static final Predicate<SimpleTriangle> filterBorderTriangles = t -> t.getContainingRegion() != null && !t.getEdgeA().isConstraintRegionBorder()
+			&& !t.getEdgeB().isConstraintRegionBorder() && !t.getEdgeC().isConstraintRegionBorder();
 
 }

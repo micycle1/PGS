@@ -166,8 +166,8 @@ public final class PGS_Contour {
 			switch (graph.outDegreeOf(t)) {
 				case 1 : // Terminal triangle (2 edges in perimeter)
 					final IQuadEdge interiorEdge; // one edge is interior
-					if (t.getEdgeA().isConstrainedRegionBorder()) {
-						if (t.getEdgeB().isConstrainedRegionBorder()) {
+					if (t.getEdgeA().isConstraintRegionBorder()) {
+						if (t.getEdgeB().isConstraintRegionBorder()) {
 							interiorEdge = t.getEdgeC();
 						} else {
 							interiorEdge = t.getEdgeB();
@@ -181,10 +181,10 @@ public final class PGS_Contour {
 				case 2 : // Sleeve triangle (one edge in perimeter)
 					final IQuadEdge interiorEdgeA; // 2 edges are interior
 					final IQuadEdge interiorEdgeB;
-					if (t.getEdgeA().isConstrainedRegionBorder()) {
+					if (t.getEdgeA().isConstraintRegionBorder()) {
 						interiorEdgeA = t.getEdgeB();
 						interiorEdgeB = t.getEdgeC();
-					} else if (t.getEdgeB().isConstrainedRegionBorder()) {
+					} else if (t.getEdgeB().isConstraintRegionBorder()) {
 						interiorEdgeA = t.getEdgeA();
 						interiorEdgeB = t.getEdgeC();
 					} else {

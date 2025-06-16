@@ -554,7 +554,7 @@ public final class PGS_Triangulation {
 //			if (isEdgeOnPerimeter(e)) {
 //				return; // skip to next triangle
 //			}
-			if (notConstrained || e.isConstrainedRegionMember()) {
+			if (notConstrained || e.isConstraintRegionMember()) {
 				final IQuadEdge base = e.getBaseReference();
 				PVector a = toPVector(base.getA());
 				PVector b = toPVector(base.getB());
@@ -588,7 +588,7 @@ public final class PGS_Triangulation {
 //			if (isEdgeOnPerimeter(e)) {
 //				return; // skip to next triangle
 //			}
-			if ((notConstrained || e.isConstrainedRegionMember())) {
+			if ((notConstrained || e.isConstraintRegionMember())) {
 				final IQuadEdge base = e.getBaseReference();
 				graph.addVertex(base.getA());
 				graph.addVertex(base.getB());
