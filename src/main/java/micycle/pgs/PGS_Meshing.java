@@ -217,7 +217,6 @@ public class PGS_Meshing {
 	 * @param preservePerimeter whether to retain/preserve edges on the perimeter
 	 *                          even if they should be removed according to the
 	 *                          relative neighbor condition
-	 * @return
 	 * @since 1.3.0
 	 */
 	public static PShape relativeNeighborFaces(final IIncrementalTin triangulation, final boolean preservePerimeter) {
@@ -1070,6 +1069,29 @@ public class PGS_Meshing {
 	 */
 	public static PShape areaMerge(PShape mesh, double areaThreshold) {
 		PShape merged = AreaMerge.areaMerge(mesh, areaThreshold);
+		return applyOriginalStyling(merged, mesh);
+	}
+
+	/**
+	 * Merges the <b>smallest faces</b> (by area) in the given mesh into their
+	 * adjacent neighbors until the mesh has no more than a specified number of
+	 * faces.
+	 * <p>
+	 * If the input mesh has more faces than {@code remainingFaces}, the smallest
+	 * faces are iteratively merged into their larger neighbors until the total face
+	 * count is ≤ {@code remainingFaces}. Holes in the mesh are preserved.
+	 *
+	 * @param mesh           a PShape of type GROUP representing the input mesh. May
+	 *                       contain holes, which will be carried through.
+	 * @param remainingFaces the target maximum number of faces. The algorithm will
+	 *                       merge the smallest faces until the mesh has at most
+	 *                       this many faces.
+	 * @return a new PShape containing the merged mesh, with original styling
+	 *         applied, in which the total number of faces is ≤ remainingFaces.
+	 * @since 2.1
+	 */
+	public static PShape areaMerge(PShape mesh, int remainingFaces) {
+		PShape merged = AreaMerge.areaMerge(mesh, remainingFaces);
 		return applyOriginalStyling(merged, mesh);
 	}
 
