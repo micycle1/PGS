@@ -207,22 +207,22 @@ final class PGS {
 	 * formula in the function's logic will actually correspond to what is visually
 	 * counter-clockwise in Processing.
 	 */
-    static boolean isClockwise(final List<PVector> points) {
-        if (points == null || points.size() < 3) {
-            throw new IllegalArgumentException("Polygon must have at least 3 points.");
-        }
+	static boolean isClockwise(final List<PVector> points) {
+		if (points == null || points.size() < 3) {
+			throw new IllegalArgumentException("Polygon must have at least 3 points.");
+		}
 
-        double area = 0;
-        int n = points.size();
+		double area = 0;
+		int n = points.size();
 
-        for (int i = 0; i < n; i++) {
-            PVector p1 = points.get(i);
-            PVector p2 = points.get((i + 1) % n);
-            area += (p1.x * p2.y - p2.x * p1.y);
-        }
+		for (int i = 0; i < n; i++) {
+			PVector p1 = points.get(i);
+			PVector p2 = points.get((i + 1) % n);
+			area += (p1.x * p2.y - p2.x * p1.y);
+		}
 
-        return area < 0; // negative area means clockwise (in standard y-up system)
-    }
+		return area < 0; // negative area means clockwise (in standard y-up system)
+	}
 
 	/**
 	 * Nodes (optional) then polygonizes a set of line segments.

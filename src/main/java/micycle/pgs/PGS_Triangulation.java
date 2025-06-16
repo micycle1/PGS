@@ -322,7 +322,7 @@ public final class PGS_Triangulation {
 	private static IIncrementalTin delaunayTriangulationMesh(@Nullable PShape shape, @Nullable Collection<PVector> steinerPoints, boolean constrain,
 			int refinements, boolean pretty, boolean insertShapeVertices) {
 		Geometry g = shape == null ? PGS.GEOM_FACTORY.createEmpty(2) : fromPShape(shape);
-		final IncrementalTin tin = new IncrementalTin(10);
+		final IncrementalTin tin = new IncrementalTin(1);
 
 		final List<Vertex> vertices = new ArrayList<>();
 		final Coordinate[] coords = g.getCoordinates();
@@ -360,7 +360,7 @@ public final class PGS_Triangulation {
 				 */
 				refinementVertices.clear();
 				TriangleCollector.visitSimpleTriangles(tin, t -> {
-					if (t.getArea() > 99) { // don't refine small triangles
+					if (t.getArea() > 99) { // don't refine small triangles (NOTE magic constant)
 						final Coordinate center = centroid(t); // use centroid rather than circumcircle center
 						if (pretty || pointLocator.locate(center) != Location.EXTERIOR) {
 							refinementVertices.add(new Vertex(center.x, center.y, Double.NaN));

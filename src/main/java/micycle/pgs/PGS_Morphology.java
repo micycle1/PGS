@@ -440,6 +440,7 @@ public final class PGS_Morphology {
 		Geometry g = fromPShape(shape);
 
 		switch (g.getGeometryType()) {
+			// NOTE see GeometryTransformer interface?
 			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
 			case Geometry.TYPENAME_MULTIPOLYGON :
 			case Geometry.TYPENAME_MULTILINESTRING :

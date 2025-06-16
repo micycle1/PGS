@@ -225,7 +225,7 @@
 		<dependency>
 			<groupId>com.github.gwlucastrig</groupId>
 			<artifactId>Tinfour</artifactId>
-			<version>903008f037</version>
+			<version>a9031ce70c</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
