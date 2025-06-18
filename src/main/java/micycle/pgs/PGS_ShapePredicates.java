@@ -526,6 +526,40 @@ public final class PGS_ShapePredicates {
 	}
 
 	/**
+	 * Computes the minimum/interior angle of a polygon.
+	 *
+	 * @param shape simple polygonal shape
+	 * @return the smallest interior angle in the range [0, 2*PI]
+	 * @since 2.1
+	 */
+	public static double minimumInteriorAngle(PShape shape) {
+		// Extract coordinates from PShape
+		final Coordinate[] coordz = fromPShape(shape).getCoordinates();
+		final CoordinateList coords = new CoordinateList(coordz);
+		// Remove the closing duplicate (last == first)
+		coords.remove(coords.size() - 1);
+
+		// Ensure consistent winding (we want CW ordering for interior‐angle convention)
+		if (Orientation.isCCW(coordz)) {
+			Collections.reverse(coords);
+		}
+
+		// Initialize to the largest possible angle
+		double minAngle = 2 * Math.PI;
+
+		// Walk triples of consecutive vertices to compute interior angles
+		for (int i = 0; i < coords.size(); i++) {
+			Coordinate p0 = coords.get(i);
+			Coordinate p1 = coords.get((i + 1) % coords.size());
+			Coordinate p2 = coords.get((i + 2) % coords.size());
+			double angle = Angle.interiorAngle(p0, p1, p2);
+			minAngle = Math.min(minAngle, angle);
+		}
+
+		return minAngle;
+	}
+
+	/**
 	 * Calculates all interior angles of a polygon represented by a {@link PShape}.
 	 * The method calculates the interior angle at each vertex.
 	 * <p>

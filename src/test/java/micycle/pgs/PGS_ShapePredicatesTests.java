@@ -16,7 +16,7 @@ import processing.core.PVector;
 
 class PGS_ShapePredicatesTests {
 
-	private static final double EPSILON = 1E-4;
+	private static final double EPSILON = 1E-5;
 
 	static PShape square, triangle, rect;
 
@@ -29,7 +29,7 @@ class PGS_ShapePredicatesTests {
 		square.vertex(10, 10);
 		square.vertex(0, 10);
 		square.endShape(PConstants.CLOSE); // close affects rendering only -- does not append another vertex
-		
+
 		rect = new PShape(PShape.GEOMETRY); // 10x10 rect
 		rect.beginShape();
 		rect.vertex(0, 0);
@@ -126,11 +126,17 @@ class PGS_ShapePredicatesTests {
 		assertFalse(PGS_ShapePredicates.isClockwise(PGS_Conversion.fromPVector(ccw)));
 
 	}
-	
+
 	@Test
 	void testElongation() {
 		assertEquals(0, PGS_ShapePredicates.elongation(square));
 		assertEquals(0.5, PGS_ShapePredicates.elongation(rect));
+	}
+
+	@Test
+	void testMinimumInteriorAngle() {
+		assertEquals(Math.PI / 2, PGS_ShapePredicates.minimumInteriorAngle(rect), EPSILON);
+		assertEquals(Math.PI / 3, PGS_ShapePredicates.minimumInteriorAngle(triangle), EPSILON);
 	}
 
 }

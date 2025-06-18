@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Overloads of `minimumBoundingCircle()` and `maximumInscribedCircle()` that accept a PVector to output the circle center and radius.
 * `createRect()` to  `PGS_Construction`. Creates a rectangle with uniformly rounded corners
 * Additional method signature for `PGS_Meshing.areaMerge()` that allows merging faces until the mesh contains exactly a user-specified number of faces.
+* `minimumInteriorAngle()` to `PGS_ShapePredicates`. Computes the minimum interior angle of a shape.
 
 ### Changes
 * Optimised `PGS_CirclePacking.tangencyPack()`. It's now around 1.5-2x faster and has higher precision.
