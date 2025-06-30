@@ -230,11 +230,13 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center"><b>Distance Field</td>
     <td align="center" valign="center"><b>Center Line</td>
     <td align="center" valign="center"><b>Distance Tree</td>
+    <td align="center" valign="center"><b>Contrast Field</td>
   </tr>
   <tr>
     <td valign="top"><img src="resources/contour/distanceField.png"></td>
     <td valign="top"><img src="resources/contour/centerLine.gif"></td>
     <td valign="top"><img src="resources/contour/distanceTree.png"></td>
+    <td valign="top"><img src="resources/contour/contrastField.png"></td>
   </tr>
     </tr>
     <tr>

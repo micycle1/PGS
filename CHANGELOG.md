@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 * `smoothLaneRiesenfeld` to `PGS_Morphology`. Smooths a shape using Lane-Riesenfeld curve subdivision with 4-point refinement to reduce contraction.
-* Additional method signature for `PGS_Conversion.roundVertexCoords()` that accepts a number of decimal places.
+* New method signature for `PGS_Conversion.roundVertexCoords()` that accepts a number of decimal places.
 * `interiorAngles()` to `PGS_ShapePredicates`. Calculates all interior angles of a polygon.
 * `forEachShape()` and `forEachShapeWithIndex()`* to `PGS_Processing`. Applies a specified transformation function of a desired type `T` to each child of the given PShape, returning a list of  `T` (*additionally with child's index).
 * `maximumInscribedTriangle()` to `PGS_Optimisation`. Finds an approximate largest area triangle (of arbitrary orientation) contained within a polygon.
@@ -31,8 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `minimumWidthAnnulus()` to `PGS_Optimisation`. Computes the minimum-width annulus (ring) that encloses the vertices of a shape.
 * Overloads of `minimumBoundingCircle()` and `maximumInscribedCircle()` that accept a PVector to output the circle center and radius.
 * `createRect()` to  `PGS_Construction`. Creates a rectangle with uniformly rounded corners
-* Additional method signature for `PGS_Meshing.areaMerge()` that allows merging faces until the mesh contains exactly a user-specified number of faces.
+* New method signature for `PGS_Meshing.areaMerge()` that allows merging faces until the mesh contains exactly a user-specified number of faces.
 * `minimumInteriorAngle()` to `PGS_ShapePredicates`. Computes the minimum interior angle of a shape.
+* New method signature for `isolines()` having an intervals parameter that specifies the number of contour levels to generate.
+* New method signature for `straightSkeleton()` that accepts an integer to control the number of nearest neighboring edges considered during collision detection.
+* `contrastField()` to `PGS_Contour`. Generates vector contour lines representing a "contrast field" of a shape with respect to a given reference point.
+
 
 ### Changes
 * Optimised `PGS_CirclePacking.tangencyPack()`. It's now around 1.5-2x faster and has higher precision.
