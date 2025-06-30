@@ -945,7 +945,7 @@ public final class PGS_Conversion {
 	 * @since 1.4.0
 	 */
 	public static PShape fromGraph(SimpleGraph<PVector, PEdge> graph) {
-		return PGS.polygonizeEdges(graph.edgeSet());
+		return PGS.polygonizeNodedEdges(graph.edgeSet());
 	}
 
 	/**

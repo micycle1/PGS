@@ -8,14 +8,11 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
-
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.jgrapht.alg.connectivity.ConnectivityInspector;
@@ -136,7 +133,7 @@ public class PGS_Meshing {
 		final Collection<PEdge> meshEdges = new ArrayList<>(edges.size());
 		edges.forEach(edge -> meshEdges.add(new PEdge(edge.getA().x, edge.getA().y, edge.getB().x, edge.getB().y)));
 
-		PShape mesh = PGS.polygonizeEdges(meshEdges);
+		PShape mesh = PGS.polygonizeNodedEdges(meshEdges);
 
 		return removeHoles(mesh, triangulation);
 	}
@@ -199,7 +196,7 @@ public class PGS_Meshing {
 		final Collection<PEdge> meshEdges = new ArrayList<>(edges.size());
 		edges.forEach(edge -> meshEdges.add(new PEdge(edge.getA().x, edge.getA().y, edge.getB().x, edge.getB().y)));
 
-		PShape mesh = PGS.polygonizeEdges(meshEdges);
+		PShape mesh = PGS.polygonizeNodedEdges(meshEdges);
 		return removeHoles(mesh, triangulation);
 	}
 
@@ -249,7 +246,7 @@ public class PGS_Meshing {
 
 		List<PEdge> edgesOut = edges.stream().map(PGS_Triangulation::toPEdge).collect(Collectors.toList());
 
-		PShape mesh = PGS.polygonizeEdges(edgesOut);
+		PShape mesh = PGS.polygonizeNodedEdges(edgesOut);
 		return removeHoles(mesh, triangulation);
 	}
 
@@ -285,7 +282,7 @@ public class PGS_Meshing {
 			}
 		}
 
-		PShape mesh = PGS.polygonizeEdges(spannerEdges);
+		PShape mesh = PGS.polygonizeNodedEdges(spannerEdges);
 
 		return removeHoles(mesh, triangulation);
 	}
@@ -448,7 +445,7 @@ public class PGS_Meshing {
 			}
 		});
 
-		PShape quads = PGS.polygonizeEdges(meshEdges);
+		PShape quads = PGS.polygonizeNodedEdges(meshEdges);
 		if (triangulation.getConstraints().size() < 2) { // assume constraint 1 is the boundary (not a hole)
 			return quads;
 		} else {
@@ -496,7 +493,7 @@ public class PGS_Meshing {
 			});
 		}
 
-		final PShape quads = PGS.polygonizeEdges(edges);
+		final PShape quads = PGS.polygonizeNodedEdges(edges);
 		if (triangulation.getConstraints().size() < 2) { // assume constraint 1 is the boundary (not a hole)
 			return quads;
 		} else {
@@ -647,7 +644,7 @@ public class PGS_Meshing {
 	 */
 	public static PShape spiralQuadrangulation(List<PVector> points) {
 		SpiralQuadrangulation sq = new SpiralQuadrangulation(points);
-		return PGS.polygonizeEdges(sq.getQuadrangulationEdges());
+		return PGS.polygonizeNodedEdges(sq.getQuadrangulationEdges());
 	}
 
 	/**
@@ -1124,7 +1121,7 @@ public class PGS_Meshing {
 			}
 		}
 
-		return PGS.polygonizeEdges(splitEdges);
+		return PGS.polygonizeNodedEdges(splitEdges);
 	}
 
 	/**

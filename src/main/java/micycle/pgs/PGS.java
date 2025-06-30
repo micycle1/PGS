@@ -245,18 +245,52 @@ final class PGS {
 			}
 		});
 		Collections.shuffle(meshEdges);
-		return polygonizeEdges(meshEdges);
+		return polygonizeNodedEdges(meshEdges);
 	}
 
 	/**
-	 * Polygonizes a set of edges.
+	 * Given a (possibly non‐noded) set of PEdge’s, optionally nodes all
+	 * intersections, and polygonizes. Does NOT convert back into PEdge; it goes
+	 * straight from noded SegmentStrings → JTS LineStrings → Polygonizer → PShape.
+	 *
+	 * @param edges the input edges
+	 * @param node  if true, splits at all interior intersections
+	 * @return a GROUP PShape whose children are each polygon face
+	 */
+	static final PShape polygonizeEdges(Collection<PEdge> edges) {
+		List<NodedSegmentString> segStrs = new HashSet<>(edges).stream().map(e -> {
+			Coordinate c0 = coordFromPVector(e.a);
+			Coordinate c1 = coordFromPVector(e.b);
+			return new NodedSegmentString(new Coordinate[] { c0, c1 }, null);
+		}).toList();
+
+		Collection<SegmentString> noded = nodeSegmentStrings(segStrs);
+
+		Polygonizer polygonizer = new Polygonizer();
+		for (SegmentString ss : noded) {
+			var coords = ss.getCoordinates();
+			for (int i = 0; i < coords.length - 1; i++) {
+				Coordinate p0 = coords[i];
+				Coordinate p1 = coords[i + 1];
+				LineString ls = GEOM_FACTORY.createLineString(new Coordinate[] { p0, p1 });
+				polygonizer.add(ls);
+			}
+		}
+
+		@SuppressWarnings("unchecked")
+		Collection<Polygon> polys = polygonizer.getPolygons();
+		return PGS_Conversion.toPShape(polys);
+	}
+
+	/**
+	 * Polygonizes a set of pre-noded edges.
 	 * 
 	 * @param edges a collection of NODED (i.e. non intersecting / must only meet at
 	 *              their endpoints) edges. The collection can contain duplicates.
 	 * @return a GROUP PShape, where each child shape represents a polygon face
 	 *         formed by the given edges
 	 */
-	static final PShape polygonizeEdges(Collection<PEdge> edges) {
+	static final PShape polygonizeNodedEdges(Collection<PEdge> edges) {
 		return polygonizeEdgesRobust(edges);
 	}
 
@@ -273,7 +307,7 @@ final class PGS {
 	private static final PShape polygonizeEdgesRobust(Collection<PEdge> edges) {
 		final Set<PEdge> edgeSet = new HashSet<>(edges);
 		final Polygonizer polygonizer = new Polygonizer();
-		polygonizer.setCheckRingsValid(false);
+//		polygonizer.setCheckRingsValid(false);
 		edgeSet.forEach(ss -> {
 			/*
 			 * NOTE: If the same LineString is added more than once to the polygonizer, the
@@ -294,7 +328,7 @@ final class PGS {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	static final Collection<SegmentString> nodeSegmentStrings(Collection<SegmentString> segments) {
+	static final Collection<SegmentString> nodeSegmentStrings(Collection<? extends SegmentString> segments) {
 		/*
 		 * Other noder implementations do not node correctly (fail to detect
 		 * intersections) on many inputs; furthermore, using a very small tolerance
