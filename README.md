@@ -940,10 +940,18 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center"><b>Penrose Tiling</td>
     <td align="center" valign="center"><b>Square-Triangle Tiling</td>
     <td align="center" valign="center"><b>Annular Bricks</td>
+    <td align="center" valign="center"><b>Slice Division</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/tiling/penrose.png"></td>
     <td valign="top" width="25%"><img src="resources/tiling/stTiling.png"></td>
     <td valign="top" width="25%"><img src="resources/tiling/annularBricks.png"></td>
+    <td valign="top" width="25%"><img src="resources/tiling/sliceDivision.png"></td>
+  </tr>
+  <tr>
+    <td align="center" valign="center"><b>Arc Division</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/tiling/arcDivision.png"></td>
   </tr>
 </table>

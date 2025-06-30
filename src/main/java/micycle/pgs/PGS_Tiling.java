@@ -1,13 +1,24 @@
 package micycle.pgs;
 
+import static micycle.pgs.PGS.GEOM_FACTORY;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.SplittableRandom;
 
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Envelope;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.operation.overlayng.RingClipper;
+import org.locationtech.jts.operation.polygonize.Polygonizer;
+import org.locationtech.jts.operation.union.UnaryUnionOp;
+
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.DoyleSpiral;
 import micycle.pgs.commons.HatchTiling;
+import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.PenroseTiling;
 import micycle.pgs.commons.RectangularSubdivision;
 import micycle.pgs.commons.SquareTriangleTiling;
@@ -22,7 +33,16 @@ import processing.core.PVector;
  * <p>
  * A tiling is created when a collection of tiles fills a plane such that no
  * gaps occur between the tiles and no two tiles overlap each other.
- * 
+ * </p>
+ * <p>
+ * <b>Naming convention in this class:</b><br>
+ * Methods ending with "subdivision" recursively break the plane down into
+ * smaller and smaller shapes, usually of the same geometric type at each step
+ * (for example, rectangles are split into smaller rectangles).<br>
+ * Methods ending with "division" split the plane all at once, in a single step,
+ * often by making several cuts or slices, with no recursion.
+ * </p>
+ *
  * @author Michael Carleton
  * @since 1.2.0
  */
@@ -35,20 +55,20 @@ public final class PGS_Tiling {
 
 	/**
 	 * Recursively and randomly subdivides the given/bounded plane into rectangles.
-	 * 
+	 *
 	 * @param width    width of the quad subdivision plane
 	 * @param height   height of the quad subdivision plane
 	 * @param maxDepth maximum number of subdivisions (recursion depth)
 	 * @return a GROUP PShape, where each child shape is a face of the subdivision
 	 * @see #rectSubdivision(double, double, int, long) seeded rectSubdivsion()
 	 */
-	public static PShape rectSubdivision(double width, double height, int maxDepth) {
+	public static PShape rectSubdivision(final double width, final double height, final int maxDepth) {
 		return rectSubdivision(width, height, maxDepth, System.nanoTime());
 	}
 
 	/**
 	 * Recursively and randomly subdivides the given/bounded plane into rectangles.
-	 * 
+	 *
 	 * @param width    width of the quad subdivision plane
 	 * @param height   height of the quad subdivision plane
 	 * @param maxDepth maximum number of subdivisions (recursion depth)
@@ -56,7 +76,7 @@ public final class PGS_Tiling {
 	 * @return a GROUP PShape, where each child shape is a face of the subdivision
 	 * @see #rectSubdivision(double, double, int) non-seeded rectSubdivsion()
 	 */
-	public static PShape rectSubdivision(double width, double height, int maxDepth, long seed) {
+	public static PShape rectSubdivision(final double width, final double height, int maxDepth, final long seed) {
 		maxDepth++; // so that given depth==0 returns non-divided square
 		final RectangularSubdivision rectangularSubdivision = new RectangularSubdivision(width, height, maxDepth, seed);
 		return rectangularSubdivision.divide();
@@ -64,7 +84,7 @@ public final class PGS_Tiling {
 
 	/**
 	 * Recursively and randomly subdivides the given/bounded plane into triangles.
-	 * 
+	 *
 	 * @param width    width of the subdivision plane
 	 * @param height   height of the subdivision plane
 	 * @param maxDepth maximum number of subdivisions (recursion depth)
@@ -72,13 +92,13 @@ public final class PGS_Tiling {
 	 * @see #triangleSubdivision(double, double, int, long) seeded
 	 *      triangleSubdivsion()
 	 */
-	public static PShape triangleSubdivision(double width, double height, int maxDepth) {
+	public static PShape triangleSubdivision(final double width, final double height, final int maxDepth) {
 		return triangleSubdivision(width, height, maxDepth, System.nanoTime());
 	}
 
 	/**
 	 * Recursively and randomly subdivides the given/bounded plane into triangles.
-	 * 
+	 *
 	 * @param width    width of the subdivision plane
 	 * @param height   height of the subdivision plane
 	 * @param maxDepth maximum number of subdivisions (recursion depth)
@@ -87,7 +107,7 @@ public final class PGS_Tiling {
 	 * @see PGS_Tiling#triangleSubdivision(double, double, int) non-seeded
 	 *      triangleSubdivision()
 	 */
-	public static PShape triangleSubdivision(double width, double height, int maxDepth, long seed) {
+	public static PShape triangleSubdivision(final double width, final double height, int maxDepth, final long seed) {
 		maxDepth++; // so that given depth==0 returns non-divided triangle
 		final TriangleSubdivision subdivision = new TriangleSubdivision(width, height, maxDepth, seed);
 		return subdivision.divide();
@@ -96,21 +116,21 @@ public final class PGS_Tiling {
 	/**
 	 * Recursively and randomly subdivides the given/bounded plane into convex quad
 	 * polygons.
-	 * 
+	 *
 	 * @param width  width of the plane that is subdivided
 	 * @param height height of the plane that is subdivided
 	 * @param depth  number of subdivisions (recursion depth)
 	 * @return a GROUP PShape, where each child shape is a face of the subdivision
 	 * @see #quadSubdivision(double, double, int, long) seeded quadSubdivision()
 	 */
-	public static PShape quadSubdivision(double width, double height, int depth) {
+	public static PShape quadSubdivision(final double width, final double height, final int depth) {
 		return quadSubdivision(width, height, depth, System.nanoTime());
 	}
 
 	/**
 	 * Recursively and randomly subdivides the given/bounded plane into convex quad
 	 * polygons.
-	 * 
+	 *
 	 * @param width  width of the quad subdivision plane
 	 * @param height height of the quad subdivision plane
 	 * @param depth  number of subdivisions (recursion depth)
@@ -118,7 +138,7 @@ public final class PGS_Tiling {
 	 * @return a GROUP PShape, where each child shape is a face of the subdivision
 	 * @see #quadSubdivision(double, double, int) non-seeded quadSubdivision()
 	 */
-	public static PShape quadSubdivision(double width, double height, int depth, long seed) {
+	public static PShape quadSubdivision(final double width, final double height, final int depth, final long seed) {
 		// https://openprocessing.org/sketch/1045334
 		final float w = (float) width;
 		final float h = (float) height;
@@ -139,7 +159,7 @@ public final class PGS_Tiling {
 
 	/**
 	 * Randomly subdivides the plane into equal-width strips having varying lengths.
-	 * 
+	 *
 	 * @param width      width of the subdivision plane
 	 * @param height     height of the subdivision plane
 	 * @param gridCountX horizontal grid count
@@ -148,11 +168,148 @@ public final class PGS_Tiling {
 	 * @return a GROUP PShape, where each child shape is a face of the subdivision
 	 * @since 1.3.0
 	 */
-	public static PShape hatchSubdivision(double width, double height, int gridCountX, int gridCountY, long seed) {
+	public static PShape hatchSubdivision(final double width, final double height, final int gridCountX, final int gridCountY, final long seed) {
 		final HatchTiling ht = new HatchTiling((int) width, (int) height, gridCountX, gridCountY);
-		PShape tiling = ht.getTiling(seed);
+		final PShape tiling = ht.getTiling(seed);
 		PGS_Conversion.setAllStrokeColor(tiling, Colors.PINK, 4);
 		return tiling;
+	}
+
+	/**
+	 * Divides the plane into randomly “sliced” polygonal regions.
+	 * <p>
+	 * {@code slices} random cuts are generated across the plane (dimensions w×h, at
+	 * (0,0)). Each cut connects a random point on one side of the plane to a random
+	 * point on another side. If {@code forceOpposite} is true, each cut always
+	 * connects opposite sides; otherwise the two sides are chosen at random (but
+	 * never the same side).
+	 * </p>
+	 * <p>
+	 * <strong>In practice:</strong>
+	 * <ul>
+	 * <li>forceOpposite == <code>true</code> → mostly long, quadrilateral strips
+	 * that span the full width or height of the rectangle.</li>
+	 * <li>forceOpposite == <code>false</code> → a richer variety of cell shapes
+	 * (triangles, trapezoids, L-shapes, etc.) that may not stretch all the way
+	 * across.</li>
+	 * </ul>
+	 * </p>
+	 *
+	 * @param width         the width of the plane
+	 * @param height        the height of the plane
+	 * @param slices        the number of random interior cuts to perform
+	 * @param forceOpposite if true, each cut connects opposite sides of the
+	 *                      rectangle; if false, cuts connect any two distinct sides
+	 * @param seed          the random seed for reproducible slice placement
+	 * @return a GROUP PShape containing the subdivided polygonal regions
+	 * @since 2.1
+	 */
+	public static PShape sliceDivision(final double width, final double height, final int slices, final boolean forceOpposite, final long seed) {
+		final List<PEdge> cuts = new ArrayList<>(slices + 4);
+		final double x = 0, y = 0;
+		final PVector A = new PVector((float) x, (float) y);
+		final PVector B = new PVector((float) (x + width), (float) y);
+		final PVector C = new PVector((float) (x + width), (float) (y + height));
+		final PVector D = new PVector((float) x, (float) (y + height));
+
+		cuts.add(new PEdge(A, B));
+		cuts.add(new PEdge(B, C));
+		cuts.add(new PEdge(C, D));
+		cuts.add(new PEdge(D, A));
+
+		final SplittableRandom r = new SplittableRandom(seed);
+		for (int i = 0; i < slices; i++) {
+			final int s1 = r.nextInt(4);
+			int s2;
+			if (forceOpposite) {
+				// always pick the side directly opposite s1
+				s2 = (s1 + 2) % 4;
+			} else {
+				// pick any side except s1
+				do {
+					s2 = r.nextInt(4);
+				} while (s2 == s1);
+			}
+
+			final var p1 = PGS.toPVector(pointOnSide(s1, r, x, y, width, height));
+			final var p2 = PGS.toPVector(pointOnSide(s2, r, x, y, width, height));
+			final PEdge cut = new PEdge(p1, p2);
+			cuts.add(cut);
+		}
+
+		return PGS.polygonizeEdges(cuts);
+	}
+
+	/**
+	 * Creates a cellular partition of the plane using arcs formed by circles seeded
+	 * along its boundary. Each circle’s radius is chosen large enough to guarantee
+	 * it intersects at least two distinct sides of the plane, forming an arc cut.
+	 * <p>
+	 * <strong>In practice:</strong>
+	 * <ul>
+	 * <li>You get a “cellular” subdivision where each circle carves out roughly
+	 * circular holes or bulges against the rectangle boundary.</li>
+	 * <li>Because every radius ≥ the minimum distance to a second side, each circle
+	 * always spans at least two sides (forming an arc).</li>
+	 * </ul>
+	 * </p>
+	 * 
+	 * @param width        the width of the plane
+	 * @param height       the height of the plane
+	 * @param arcs         the number of circles to seed along the boundary
+	 * @param circlePoints the number of linear segments used to approximate each
+	 *                     circle
+	 * @param seed         the random seed for reproducible circle placement & radii
+	 * @return a GROUP PShape containing the polygonal faces formed by the plane
+	 *         plus the seeded circles
+	 * @since 2.1
+	 */
+	public static PShape arcDivision(final double width, final double height, final int arcs, final long seed) {
+		final SplittableRandom rnd = new SplittableRandom(seed);
+		final double maxDim = Math.max(width, height);
+		final double x = 0, y = 0;
+		final var e = new Envelope(x, x + width, y, y + height);
+		final RingClipper clipper = new RingClipper(e);
+
+		final List<Geometry> polys = new ArrayList<>(arcs);
+		polys.add(((Polygon) GEOM_FACTORY.toGeometry(e)).getExteriorRing());
+
+		// 2) Seed 'seeds' circles along random sides
+		for (int i = 0; i < arcs; i++) {
+			// pick a side 0=top,1=right,2=bottom,3=left
+			final int side = rnd.nextInt(4);
+			// pick a random point along that side
+			final Coordinate center = pointOnSide(side, rnd, x, y, width, height);
+
+			// compute min distance from center to any *other* side
+			double minReq = Double.POSITIVE_INFINITY;
+			// top edge y=y, bottom y=y+h, left x=x, right x=x+w
+			final double cx = center.x, cy = center.y;
+			if (side != 0) {
+				minReq = Math.min(minReq, Math.abs(cy - y));
+			}
+			if (side != 2) {
+				minReq = Math.min(minReq, Math.abs(cy - (y + height)));
+			}
+			if (side != 3) {
+				minReq = Math.min(minReq, Math.abs(cx - x));
+			}
+			if (side != 1) {
+				minReq = Math.min(minReq, Math.abs(cx - (x + width)));
+			}
+
+			final double radius = minReq + rnd.nextDouble() * (maxDim - minReq);
+
+			final var circle = PGS_Construction.createCirclePoly(cx, cy, radius);
+			final var clip = clipper.clip(circle.getCoordinates());
+			polys.add(GEOM_FACTORY.createLineString(clip));
+
+		}
+
+		final Polygonizer polygonizer = new Polygonizer();
+		polygonizer.setCheckRingsValid(false);
+		polygonizer.add(UnaryUnionOp.union(polys));
+		return PGS_Conversion.toPShape(polygonizer.getPolygons());
 	}
 
 	/**
@@ -160,7 +317,7 @@ public final class PGS_Tiling {
 	 * circles, where the radius of each circle in a packing is proportional to the
 	 * distance of its centre from a central point. Each circle is tangent to six
 	 * others that surround it by a ring of tangent circles
-	 * 
+	 *
 	 * @param centerX   x coordinate of the center of the spiral
 	 * @param centerY   y coordinate of the center of the spiral
 	 * @param p         at least 2
@@ -171,11 +328,11 @@ public final class PGS_Tiling {
 	 * @return A list of PVectors, each representing one circle in the spiral: (.x,
 	 *         .y) represent the center point and .z represents radius.
 	 */
-	public static List<PVector> doyleSpiral(double centerX, double centerY, int p, int q, double maxRadius) {
+	public static List<PVector> doyleSpiral(final double centerX, final double centerY, final int p, final int q, final double maxRadius) {
 		// A closed-form solution for a single p, q (now deprecated).
 		/*
 		 * double start = 0; // starting circle n double sr, ang, cr;
-		 * 
+		 *
 		 * for (int i = 0; i < nCircles; i++) { sr = Math.exp((start + i) * 0.06101); //
 		 * spiral radius ang = (start + i) * 0.656; // spiral angle cr = 0.3215 *
 		 * Math.exp((start + i) * 0.06101); // circle radius circles.add(new
@@ -189,7 +346,7 @@ public final class PGS_Tiling {
 
 	/**
 	 * Generates a hexagonal tiling of the plane.
-	 * 
+	 *
 	 * @param width      width of the tiling plane
 	 * @param height     height of the tiling plane
 	 * @param sideLength side length of each hexagon
@@ -197,7 +354,7 @@ public final class PGS_Tiling {
 	 *                   top is flat, or pointy
 	 * @return a GROUP PShape, where each child shape is a hexagon of the tiling
 	 */
-	public static PShape hexTiling(double width, double height, double sideLength, boolean flat) {
+	public static PShape hexTiling(final double width, final double height, final double sideLength, final boolean flat) {
 		final double span = sideLength * ROOT3;
 		final PShape tiling = new PShape(PConstants.GROUP);
 		double x = 0;
@@ -233,14 +390,14 @@ public final class PGS_Tiling {
 
 	/**
 	 * Generates an "islamic-style" (Girih) tiling of the plane.
-	 * 
+	 *
 	 * @param width  width of the tiling plane
 	 * @param height height of the tiling plane
 	 * @param w
 	 * @param h
 	 * @return a GROUP PShape, where each child shape is a tile of the tiling
 	 */
-	public static PShape islamicTiling(double width, double height, double w, double h) {
+	public static PShape islamicTiling(final double width, final double height, final double w, final double h) {
 		// adapted from https://openprocessing.org/sketch/320133
 		final double[] vector = { -w, 0, w, -h, w, 0, -w, h };
 		final ArrayList<PVector> segments = new ArrayList<>();
@@ -257,36 +414,36 @@ public final class PGS_Tiling {
 
 	/**
 	 * Generates a Penrose Tiling (consisting of rhombi).
-	 * 
+	 *
 	 * @param centerX x coordinate of the center/origin of the tiling
 	 * @param centerY y coordinate of the center/origin of the tiling
 	 * @param radius  maximum radius of the tiling (measured from the center)
 	 * @param steps   number of tiling subdivisions
 	 * @return a GROUP PShape, where each child shape is a face of the tiling
 	 */
-	public static PShape penroseTiling(double centerX, double centerY, final double radius, final int steps) {
+	public static PShape penroseTiling(final double centerX, final double centerY, final double radius, final int steps) {
 		final PenroseTiling pr = new PenroseTiling(centerX, centerY, radius, steps);
-		return PGS.polygonizeEdges(pr.getEdges());
+		return PGS.polygonizeNodedEdges(pr.getEdges());
 	}
 
 	/**
 	 * Generates a non-periodic tiling, comprising squares and equilateral
 	 * triangles.
-	 * 
+	 *
 	 * @param width    width of the tiling plane
 	 * @param height   height of the tiling plane
 	 * @param tileSize diameter of each tile
 	 * @return a GROUP PShape, where each child shape is a tile of the tiling
 	 * @since 1.3.0
 	 */
-	public static PShape squareTriangleTiling(double width, double height, double tileSize) {
+	public static PShape squareTriangleTiling(final double width, final double height, final double tileSize) {
 		return squareTriangleTiling(width, height, tileSize, System.nanoTime());
 	}
 
 	/**
 	 * Generates a non-periodic tiling, comprising squares and equilateral
 	 * triangles, having a given seed.
-	 * 
+	 *
 	 * @param width    width of the tiling plane
 	 * @param height   height of the tiling plane
 	 * @param tileSize diameter of each tile
@@ -294,7 +451,7 @@ public final class PGS_Tiling {
 	 * @return a GROUP PShape, where each child shape is a tile of the tiling
 	 * @since 1.3.0
 	 */
-	public static PShape squareTriangleTiling(double width, double height, double tileSize, long seed) {
+	public static PShape squareTriangleTiling(final double width, final double height, final double tileSize, final long seed) {
 		final SquareTriangleTiling stt = new SquareTriangleTiling(width, height, tileSize);
 		return stt.getTiling(seed);
 	}
@@ -319,53 +476,53 @@ public final class PGS_Tiling {
 	 *         ({@code cx}, {@code cy}).
 	 * @since 2.1
 	 */
-	public static PShape annularBricks(int nRings, double cx, double cy, double innerRadius, double ringGrowth, double segGrowth) {
+	public static PShape annularBricks(final int nRings, final double cx, final double cy, final double innerRadius, double ringGrowth, double segGrowth) {
 		segGrowth = Math.max(segGrowth, 1e-6);
 		ringGrowth = Math.max(ringGrowth, 1e-6);
-		List<PShape> bricks = new ArrayList<>();
+		final List<PShape> bricks = new ArrayList<>();
 		final double GOLDEN_ANGLE = 2.0 * Math.PI * 0.38196601125;
 		double segSize = innerRadius;
 		final double maxDev = 0.25; // max chord sagitta in pixels
-	
+
 		for (int i = 0; i < nRings; i++) {
 			// ring geometry in double
-			double r = innerRadius * Math.pow(ringGrowth, i);
-			double dr = (r * (ringGrowth - 1.0)) * 0.90;
-			double perim = 2.0 * Math.PI * r;
-			int count = (int) Math.max(1.0, Math.floor(perim / segSize));
-			double dang = 2.0 * Math.PI / count;
-			double gapAng = (dr / 6.0) / perim * 2.0 * Math.PI;
-			double offset = (i * GOLDEN_ANGLE) % (2.0 * Math.PI);
-	
+			final double r = innerRadius * Math.pow(ringGrowth, i);
+			final double dr = (r * (ringGrowth - 1.0)) * 0.90;
+			final double perim = 2.0 * Math.PI * r;
+			final int count = (int) Math.max(1.0, Math.floor(perim / segSize));
+			final double dang = 2.0 * Math.PI / count;
+			final double gapAng = (dr / 6.0) / perim * 2.0 * Math.PI;
+			final double offset = (i * GOLDEN_ANGLE) % (2.0 * Math.PI);
+
 			// tile this ring
 			for (int k = 0; k < count; k++) {
-				double a0 = offset + k * dang + 0.5 * gapAng;
-				double a1 = offset + (k + 1) * dang - 0.5 * gapAng;
-	
-				List<PVector> outer = PGS_Construction.arcPoints(cx, cy, r + dr, a0, a1, maxDev);
-	
+				final double a0 = offset + k * dang + 0.5 * gapAng;
+				final double a1 = offset + (k + 1) * dang - 0.5 * gapAng;
+
+				final List<PVector> outer = PGS_Construction.arcPoints(cx, cy, r + dr, a0, a1, maxDev);
+
 				// generate inner in the same direction and reverse it
-				List<PVector> inner = PGS_Construction.arcPoints(cx, cy, r, a0, a1, maxDev);
+				final List<PVector> inner = PGS_Construction.arcPoints(cx, cy, r, a0, a1, maxDev);
 				Collections.reverse(inner);
-	
+
 				outer.addAll(inner);
 				outer.add(outer.get(0)); // close the loop
-	
-				PShape brick = PGS_Conversion.fromPVector(outer);
+
+				final PShape brick = PGS_Conversion.fromPVector(outer);
 				brick.setStroke(false);
 				bricks.add(brick);
 			}
-	
+
 			segSize *= segGrowth;
 			segSize = Math.max(segSize, 1);
 		}
-	
+
 		return PGS_Conversion.flatten(bricks);
 	}
 
 	/**
 	 * Generates a hexagon shape.
-	 * 
+	 *
 	 * @param x          x-position of hexagon envelope's top left corner
 	 * @param y          y-position of hexagon envelope's top left corner
 	 * @param sideLength hexagon side length
@@ -373,7 +530,7 @@ public final class PGS_Tiling {
 	 *                   pointy)
 	 * @return a PATH PShape
 	 */
-	private static PShape hexagon(double x, double y, double sideLength, boolean flat) {
+	private static PShape hexagon(final double x, final double y, final double sideLength, final boolean flat) {
 		final double span = sideLength * ROOT3;
 		final PShape hexagon = new PShape(PShape.PATH);
 		hexagon.setStroke(true);
@@ -403,10 +560,11 @@ public final class PGS_Tiling {
 		return hexagon;
 	}
 
-	private static void divideRect(PVector p1, PVector p2, PVector p3, PVector p4, int n, PShape parent, SplittableRandom r) {
+	private static void divideRect(final PVector p1, final PVector p2, final PVector p3, final PVector p4, int n, final PShape parent,
+			final SplittableRandom r) {
 		n--;
 		if (n == 0) {
-			PShape division = new PShape(PShape.PATH);
+			final PShape division = new PShape(PShape.PATH);
 			division.setStrokeJoin(PConstants.MITER);
 			division.beginShape();
 			division.vertex(p1.x, p1.y);
@@ -416,23 +574,50 @@ public final class PGS_Tiling {
 			division.endShape(PConstants.CLOSE);
 			parent.addChild(division);
 		} else if (n > 0) {
-			float w = PVector.dist(p1, p2) + PVector.dist(p3, p4);
-			float h = PVector.dist(p1, p4) + PVector.dist(p2, p3);
-			int t = 3;
-			float r1 = (1f / t) * r.nextInt(1, t);
-			float r2 = (1f / t) * r.nextInt(1, t);
+			final float w = PVector.dist(p1, p2) + PVector.dist(p3, p4);
+			final float h = PVector.dist(p1, p4) + PVector.dist(p2, p3);
+			final int t = 3;
+			final float r1 = (1f / t) * r.nextInt(1, t);
+			final float r2 = (1f / t) * r.nextInt(1, t);
 			if (w < h) {
-				PVector v1 = PVector.lerp(p1, p4, r1);
-				PVector v2 = PVector.lerp(p2, p3, r2);
+				final PVector v1 = PVector.lerp(p1, p4, r1);
+				final PVector v2 = PVector.lerp(p2, p3, r2);
 				divideRect(p1, p2, v2, v1, n, parent, r);
 				divideRect(v1, v2, p3, p4, n, parent, r);
 			} else {
-				PVector v1 = PVector.lerp(p1, p2, r1);
-				PVector v2 = PVector.lerp(p3, p4, r2);
+				final PVector v1 = PVector.lerp(p1, p2, r1);
+				final PVector v2 = PVector.lerp(p3, p4, r2);
 				divideRect(p1, v1, v2, p4, n, parent, r);
 				divideRect(v1, p2, p3, v2, n, parent, r);
 			}
 		}
+	}
+
+	/**
+	 * Returns a random point on one of the four sides of the rectangle. side =
+	 * 0→top, 1→right, 2→bottom, 3→left.
+	 */
+	private static Coordinate pointOnSide(final int side, final SplittableRandom r, final double x, final double y, final double w, final double h) {
+		double px, py;
+		switch (side) {
+			case 0 : // top
+				px = x + r.nextDouble() * w;
+				py = y;
+				break;
+			case 1 : // right
+				px = x + w;
+				py = y + r.nextDouble() * h;
+				break;
+			case 2 : // bottom
+				px = x + r.nextDouble() * w;
+				py = y + h;
+				break;
+			default : // left
+				px = x;
+				py = y + r.nextDouble() * h;
+				break;
+		}
+		return new Coordinate(px, py);
 	}
 
 }
