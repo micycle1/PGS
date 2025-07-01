@@ -8,7 +8,7 @@ import java.util.SplittableRandom;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
 
-import micycle.betterbeziers.CubicBezier;
+import com.github.micycle1.betterbeziers.CubicBezier;
 import net.jafama.FastMath;
 
 /**

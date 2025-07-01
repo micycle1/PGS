@@ -351,16 +351,21 @@ public final class PGS_Morphology {
 		tension = Math.max(tension, 0.1); // prevent degeneracy
 		double[][] vertices = PGS_Conversion.toArray(shape, false);
 		HobbyCurve curve = new HobbyCurve(vertices, tension, shape.isClosed(), 0.5, 0.5);
-		List<PVector> points = new ArrayList<>();
-		for (double[] b : curve.getBeziers()) {
+
+		double[][] beziers = curve.getBeziers();
+
+		List<PVector> points = Arrays.stream(beziers).parallel().flatMap(b -> {
+			// unpack the array into the 4 PVector points
 			int i = 0;
 			PVector p1 = new PVector((float) b[i++], (float) b[i++]);
 			PVector cp1 = new PVector((float) b[i++], (float) b[i++]);
 			PVector cp2 = new PVector((float) b[i++], (float) b[i++]);
 			PVector p2 = new PVector((float) b[i++], (float) b[i]);
-			PShape bezier = PGS_Conversion.fromCubicBezier(p1, cp1, cp2, p2);
-			points.addAll(PGS_Conversion.toPVector(bezier));
-		}
+
+			PShape bezierShape = PGS_Conversion.fromCubicBezier(p1, cp1, cp2, p2);
+
+			return PGS_Conversion.toPVector(bezierShape).stream(); // to stream (for flattening)
+		}).toList();
 
 		return PGS_Conversion.fromPVector(points);
 	}

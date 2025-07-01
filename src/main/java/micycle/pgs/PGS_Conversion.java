@@ -63,11 +63,12 @@ import org.locationtech.jts.io.geojson.GeoJsonWriter;
 import org.locationtech.jts.util.GeometricShapeFactory;
 import org.scoutant.polyline.PolylineDecoder;
 
+import com.github.micycle1.betterbeziers.CubicBezier;
+
 import it.rambow.master.javautils.PolylineEncoder;
 import it.rambow.master.javautils.Track;
 import it.rambow.master.javautils.Trackpoint;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
-import micycle.betterbeziers.CubicBezier;
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;

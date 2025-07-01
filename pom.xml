@@ -347,12 +347,12 @@
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>BetterBeziers</artifactId>
-			<version>19567c7be4</version>
+			<version>1.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>Hobby-Curves</artifactId>
-			<version>1.0</version>
+			<version>1.1</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.whitegreen</groupId>
