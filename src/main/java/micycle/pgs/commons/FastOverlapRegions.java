@@ -23,6 +23,7 @@ import org.locationtech.jts.index.SpatialIndex;
 import org.locationtech.jts.index.hprtree.HilbertEncoder;
 import org.locationtech.jts.index.strtree.STRtree;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
+import org.locationtech.jts.shape.fractal.HilbertCode;
 
 /**
  * Computes the combined area where two or more input shapes overlap. Optimised
@@ -126,7 +127,9 @@ public class FastOverlapRegions {
 	 * parallel union).
 	 */
 	private Geometry fastUnion(List<Geometry> geoms) {
-		sort(geoms, 12);
+		int n = geoms.size();
+		sort(geoms, HilbertCode.level(n)); // sort according to center point of MBR 
+
 		return geoms.parallelStream().reduce((g1, g2) -> {
 			var result = g1.union(g2);
 			if (!(result instanceof Polygonal)) {
@@ -175,68 +178,68 @@ public class FastOverlapRegions {
 		}
 		return new ArrayList<>(islands.values());
 	}
-	
-	 /**
-	   * Sorts a list of {@link Geometry} objects in-place by their spatial order
-	   * using Hilbert curve encoding of their envelopes.
-	   *
-	   * @param geoms the list of geometries to sort
-	   * @param level the resolution level for Hilbert curve encoding
-	   */
-	  private static void sort(List<Geometry> geoms, int level) {
-	    int n = geoms.size();
-	    if (n < 2)
-	      return;
 
-	    Envelope globalExtent = new Envelope();
-	    for (Geometry g : geoms) {
-	      globalExtent.expandToInclude(g.getEnvelopeInternal());
-	    }
+	/**
+	 * Sorts a list of {@link Geometry} objects in-place by their spatial order
+	 * using Hilbert curve encoding of their envelopes.
+	 *
+	 * @param geoms the list of geometries to sort
+	 * @param level the resolution level for Hilbert curve encoding
+	 */
+	private static void sort(List<Geometry> geoms, int level) {
+		int n = geoms.size();
+		if (n < 2)
+			return;
 
-	    HilbertEncoder encoder = new HilbertEncoder(level, globalExtent);
-	    int[] keys = new int[n];
-	    for (int i = 0; i < n; i++) {
-	      Envelope e = geoms.get(i).getEnvelopeInternal();
-	      keys[i] = encoder.encode(e);
-	    }
-	    sortInPlaceByKeys(keys, geoms);
-	  }
+		Envelope globalExtent = new Envelope();
+		for (Geometry g : geoms) {
+			globalExtent.expandToInclude(g.getEnvelopeInternal());
+		}
 
-	  /**
-	   * Used by sort().
-	   */
-	  private static <T> void sortInPlaceByKeys(int[] keys, List<T> values) {
-	    final int n = keys.length;
+		HilbertEncoder encoder = new HilbertEncoder(level, globalExtent);
+		int[] keys = new int[n];
+		for (int i = 0; i < n; i++) {
+			Envelope e = geoms.get(i).getEnvelopeInternal();
+			keys[i] = encoder.encode(e);
+		}
+		sortInPlaceByKeys(keys, geoms);
+	}
 
-	    Integer[] idx = IntStream.range(0, n).boxed().toArray(Integer[]::new);
-	    Arrays.sort(idx, Comparator.comparingInt(i -> keys[i]));
+	/**
+	 * Used by sort().
+	 */
+	private static <T> void sortInPlaceByKeys(int[] keys, List<T> values) {
+		final int n = keys.length;
 
-	    // rearrange keys and values in-place by following permutation cycles,
-	    // so that both arrays are sorted according to hilbert order key.
-	    boolean[] seen = new boolean[n];
-	    for (int i = 0; i < n; i++) {
-	      if (seen[i] || idx[i] == i)
-	        continue;
+		Integer[] idx = IntStream.range(0, n).boxed().toArray(Integer[]::new);
+		Arrays.sort(idx, Comparator.comparingInt(i -> keys[i]));
 
-	      int cycleStart = i;
-	      int j = i;
-	      int savedKey = keys[j];
-	      T savedVal = values.get(j);
+		// rearrange keys and values in-place by following permutation cycles,
+		// so that both arrays are sorted according to hilbert order key.
+		boolean[] seen = new boolean[n];
+		for (int i = 0; i < n; i++) {
+			if (seen[i] || idx[i] == i)
+				continue;
 
-	      do {
-	        seen[j] = true;
-	        int next = idx[j];
-	        keys[j] = keys[next];
-	        values.set(j, values.get(next));
+			int cycleStart = i;
+			int j = i;
+			int savedKey = keys[j];
+			T savedVal = values.get(j);
 
-	        j = next;
-	      } while (j != cycleStart);
+			do {
+				seen[j] = true;
+				int next = idx[j];
+				keys[j] = keys[next];
+				values.set(j, values.get(next));
 
-	      keys[j] = savedKey;
-	      values.set(j, savedVal);
-	      seen[j] = true;
-	    }
-	  }
+				j = next;
+			} while (j != cycleStart);
+
+			keys[j] = savedKey;
+			values.set(j, savedVal);
+			seen[j] = true;
+		}
+	}
 
 	private static record IndexedGeom(Geometry geom, int idx, PreparedGeometry preparedGeometry) {
 		private IndexedGeom(Geometry geom, int idx) {

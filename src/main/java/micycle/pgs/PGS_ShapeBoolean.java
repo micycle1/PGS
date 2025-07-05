@@ -25,6 +25,7 @@ import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
 import micycle.pgs.commons.FastOverlapRegions;
+import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -182,17 +183,21 @@ public final class PGS_ShapeBoolean {
 	 * of the input geometries rather than their areas. It differs from a standard
 	 * polygon union operation, as it processes the lines to find intersections and
 	 * generates new polygonal faces based on the resulting linework.
+	 * <p>
+	 * If {@code b} is {@code null}, only the linework from {@code a} is used.
+	 * </p>
 	 *
 	 * @param a The first input geometry as a {@link PShape}.
-	 * @param b The second input geometry as a {@link PShape}.
+	 * @param b b The second input geometry as a {@link PShape}, or {@code null} to
+	 *          use only {@code a}'s linework.
 	 * @return A new {@link PShape} representing the polygonal faces created by the
 	 *         union of the input geometries' linework. Returns {@code null} if the
 	 *         input geometries do not produce any valid polygonal faces.
 	 * @since 2.1
 	 */
-	public static PShape unionLines(PShape a, PShape b) {
+	public static PShape unionLines(PShape a, @Nullable PShape b) {
 		var aG = fromPShape(a);
-		var bG = fromPShape(b);
+		var bG = b == null ? PGS.GEOM_FACTORY.createEmpty(2) : fromPShape(b);
 		var lA = LinearComponentExtracter.getGeometry(aG);
 		var lB = LinearComponentExtracter.getGeometry(bG);
 
@@ -318,7 +323,8 @@ public final class PGS_ShapeBoolean {
 	 *               disjoint (non-overlapping) children; if false, each child is a
 	 *               pairwise overlap region, and children may mutually overlap in
 	 *               areas covered by three or more inputs
-	 * @return group {@code PShape} with each child a multiply-covered region
+	 * @return a group {@code PShape} with each child representing a
+	 *         multiply-covered region
 	 * @since 2.1
 	 */
 	public static PShape overlapRegions(Collection<PShape> shapes, boolean merged) {

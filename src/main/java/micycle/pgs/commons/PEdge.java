@@ -11,7 +11,7 @@ import processing.core.PVector;
  * <p>
  * Note: PEdges <code>PEdge(a, b)</code> and <code>PEdge(b, a)</code> are
  * considered equal (though the ordering for .a and .b is preserved).
- * 
+ *
  * @author Michael Carleton
  *
  */
@@ -30,20 +30,20 @@ public class PEdge implements Comparable<PEdge> {
 		bCoord = null;
 	}
 
-	public PEdge(PVector a, PVector b) {
+	public PEdge(final PVector a, final PVector b) {
 		this.a = a;
 		this.b = b;
 		aCoord = coordFromPVector(a);
 		bCoord = coordFromPVector(b);
 	}
 
-	public PEdge(double x1, double y1, double x2, double y2) {
+	public PEdge(final double x1, final double y1, final double x2, final double y2) {
 		this(new PVector((float) x1, (float) y1), new PVector((float) x2, (float) y2));
 	}
 
 	/**
 	 * Rounds (mutates) the vertex coordinates of this PEdge to their closest ints.
-	 * 
+	 *
 	 * @return this PEdge
 	 */
 	public PEdge round() {
@@ -59,6 +59,21 @@ public class PEdge implements Comparable<PEdge> {
 	}
 
 	/**
+	 * Returns the point on the segment [a, b] at parameter t, where t=0 gives a,
+	 * t=1 gives b, and values in between give the corresponding point on the line.
+	 * If t is outside [0,1] it will be clamped.
+	 */
+	public PVector pointAt(double t) {
+		if (t < 0) {
+			t = 0;
+		} else if (t > 1) {
+			t = 1;
+		}
+		final float ft = (float) t;
+		return new PVector(a.x + (b.x - a.x) * ft, a.y + (b.y - a.y) * ft);
+	}
+
+	/**
 	 * Calculates the Euclidean distance of this PEdge.
 	 */
 	public float length() {
@@ -68,25 +83,25 @@ public class PEdge implements Comparable<PEdge> {
 	/**
 	 * Computes the minimum distance between this and another edge.
 	 */
-	public double distance(PEdge other) {
+	public double distance(final PEdge other) {
 		return Distance.segmentToSegment(aCoord, bCoord, other.aCoord, other.bCoord);
 	}
 
 	/**
 	 * Computes the distance from a point p to this edge.
 	 */
-	public double distance(PVector point) {
+	public double distance(final PVector point) {
 		return Distance.pointToSegment(coordFromPVector(point), aCoord, bCoord);
 	}
 
-	public PVector closestPoint(PVector point) {
-		LineSegment l = new LineSegment(aCoord, bCoord);
+	public PVector closestPoint(final PVector point) {
+		final LineSegment l = new LineSegment(aCoord, bCoord);
 		return coordToPVector(l.closestPoint(coordFromPVector(point)));
 	}
 
 	/**
 	 * Calculates the subsection of this PEdge as a new PEdge.
-	 * 
+	 *
 	 * @param from the start of the subsection as a normalized value along the
 	 *             length of this PEdge. 'from' should be less than or equal to
 	 *             'to'.
@@ -133,8 +148,8 @@ public class PEdge implements Comparable<PEdge> {
 	}
 
 	@Override
-	public boolean equals(Object obj) {
-		if (obj instanceof PEdge other) {
+	public boolean equals(final Object obj) {
+		if (obj instanceof final PEdge other) {
 			return (equals(a, other.a) && equals(b, other.b)) || (equals(b, other.a) && equals(a, other.b));
 		}
 		return false;
@@ -152,21 +167,21 @@ public class PEdge implements Comparable<PEdge> {
 		return a.toString() + " <-> " + b.toString();
 	}
 
-	private static boolean equals(PVector a, PVector b) {
+	private static boolean equals(final PVector a, final PVector b) {
 		return a.x == b.x && a.y == b.y;
 	}
 
 	@Override
-	public int compareTo(PEdge other) {
-		PVector thisMidpoint = midpoint();
-		PVector otherMidpoint = other.midpoint();
+	public int compareTo(final PEdge other) {
+		final PVector thisMidpoint = midpoint();
+		final PVector otherMidpoint = other.midpoint();
 		return comparePVectors(thisMidpoint, otherMidpoint);
 	}
 
 	/**
 	 * Helper method to compare two PVectors lexicographically.
 	 */
-	private int comparePVectors(PVector v1, PVector v2) {
+	private int comparePVectors(final PVector v1, final PVector v2) {
 		if (v1.x != v2.x) {
 			return Float.compare(v1.x, v2.x);
 		}
@@ -180,7 +195,7 @@ public class PEdge implements Comparable<PEdge> {
 		return new Coordinate(p.x, p.y);
 	}
 
-	private static final PVector coordToPVector(Coordinate c) {
+	private static final PVector coordToPVector(final Coordinate c) {
 		return new PVector((float) c.x, (float) c.y);
 	}
 }

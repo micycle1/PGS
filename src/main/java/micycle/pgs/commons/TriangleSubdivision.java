@@ -104,7 +104,7 @@ public class TriangleSubdivision {
 		private PShape getShape() {
 			final PShape triangle = new PShape(PShape.PATH);
 			triangle.setFill(true);
-			triangle.setFill(ColorUtils.composeColor(255, 0, 255, 80));
+			triangle.setFill(ColorUtils.composeColor(237, 50, 162));
 			triangle.setStroke(true);
 			triangle.setStroke(255);
 			triangle.beginShape();

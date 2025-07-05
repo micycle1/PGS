@@ -34,7 +34,6 @@ import org.locationtech.jts.simplify.VWSimplifier;
 import micycle.hobbycurves.HobbyCurve;
 import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.PGS_Contour.OffsetStyle;
-import micycle.pgs.color.Colors;
 import micycle.pgs.commons.ChaikinCut;
 import micycle.pgs.commons.CornerRounding;
 import micycle.pgs.commons.CornerRounding.RoundingStyle;
@@ -182,8 +181,10 @@ public final class PGS_Morphology {
 		buffer = Math.abs(buffer);
 
 		final int segments = (int) Math.ceil(BufferParameters.DEFAULT_QUADRANT_SEGMENTS + Math.sqrt(buffer));
-		Geometry g = BufferOp.bufferOp(fromPShape(shape), -buffer, segments);
+		var in = fromPShape(shape);
+		Geometry g = BufferOp.bufferOp(in, -buffer, segments);
 		g = BufferOp.bufferOp(g, +buffer, segments);
+		g.setUserData(in.getUserData());
 
 		try {
 			return toPShape(g);
@@ -209,8 +210,11 @@ public final class PGS_Morphology {
 		buffer = Math.abs(buffer);
 
 		final int segments = (int) Math.ceil(BufferParameters.DEFAULT_QUADRANT_SEGMENTS + Math.sqrt(buffer));
-		Geometry g = BufferOp.bufferOp(fromPShape(shape), buffer, segments);
+		var in = fromPShape(shape);
+		Geometry g = BufferOp.bufferOp(in, buffer, segments);
 		g = BufferOp.bufferOp(g, -buffer, segments);
+		g.setUserData(in.getUserData());
+
 		try {
 			return toPShape(g);
 		} catch (Exception e) {
@@ -631,10 +635,12 @@ public final class PGS_Morphology {
 		ratio = Math.max(ratio, 1e-6);
 		ratio = Math.min(ratio, 1 - 1e-6);
 		ratio /= 2; // constrain to 0...0.5
-		PShape cut = ChaikinCut.chaikin(shape, (float) ratio, iterations);
-		PGS_Conversion.setAllFillColor(cut, Colors.WHITE);
-		PGS_Conversion.setAllStrokeColor(cut, Colors.PINK, 3);
-		return cut;
+		float r = (float) ratio;
+		return PGS_Processing.transform(shape, s -> {
+			var styling = PGS_Conversion.getShapeStylingData(shape);
+			var cut = ChaikinCut.chaikin(shape, r, iterations);
+			return styling.applyTo(cut);
+		});
 	}
 
 	/**
