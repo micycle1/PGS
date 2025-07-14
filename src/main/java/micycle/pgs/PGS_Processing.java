@@ -748,35 +748,39 @@ public final class PGS_Processing {
 	 * @since 1.4.0
 	 */
 	public static PShape nest(PShape shape, int n, double r) {
-		final Polygon polygon = (Polygon) fromPShape(shape);
+		final double rActual = r == 1 ? r : r % 1;
 
-		if (r != 1) {
-			r %= 1;
-		}
-		final Polygon[] derivedPolygons = new Polygon[n + 1];
-		derivedPolygons[0] = polygon;
-		Polygon currentPolygon = polygon;
+		PShape out = new PShape();
+		PGS_Processing.apply(shape, child -> {
+			final Polygon polygon = (Polygon) fromPShape(child);
 
-		for (int i = 0; i < n; i++) {
-			Coordinate[] inputCoordinates = currentPolygon.getCoordinates();
-			int numVertices = inputCoordinates.length - 1;
+			final Polygon[] derivedPolygons = new Polygon[n + 1];
+			derivedPolygons[0] = polygon;
+			Polygon currentPolygon = polygon;
 
-			Coordinate[] derivedCoordinates = new Coordinate[numVertices + 1];
+			for (int i = 0; i < n; i++) {
+				Coordinate[] inputCoordinates = currentPolygon.getCoordinates();
+				int numVertices = inputCoordinates.length - 1;
 
-			for (int k = 0; k < numVertices; k++) {
-				double x = inputCoordinates[k].x * (1 - r) + inputCoordinates[(k + 1) % numVertices].x * r;
-				double y = inputCoordinates[k].y * (1 - r) + inputCoordinates[(k + 1) % numVertices].y * r;
-				derivedCoordinates[k] = new Coordinate(x, y);
+				Coordinate[] derivedCoordinates = new Coordinate[numVertices + 1];
+
+				for (int k = 0; k < numVertices; k++) {
+					double x = inputCoordinates[k].x * (1 - r) + inputCoordinates[(k + 1) % numVertices].x * rActual;
+					double y = inputCoordinates[k].y * (1 - r) + inputCoordinates[(k + 1) % numVertices].y * rActual;
+					derivedCoordinates[k] = new Coordinate(x, y);
+				}
+				derivedCoordinates[numVertices] = derivedCoordinates[0]; // close the ring
+
+				Polygon derivedPolygon = PGS.GEOM_FACTORY.createPolygon(derivedCoordinates);
+				derivedPolygon.setUserData(polygon.getUserData()); // copy styling
+
+				derivedPolygons[i + 1] = derivedPolygon;
+				currentPolygon = derivedPolygon;
 			}
-			derivedCoordinates[numVertices] = derivedCoordinates[0]; // close the ring
+			out.addChild(toPShape(GEOM_FACTORY.createMultiPolygon(derivedPolygons)));
+		});
 
-			Polygon derivedPolygon = PGS.GEOM_FACTORY.createPolygon(derivedCoordinates);
-
-			derivedPolygons[i + 1] = derivedPolygon;
-			currentPolygon = derivedPolygon;
-		}
-
-		return toPShape(GEOM_FACTORY.createMultiPolygon(derivedPolygons));
+		return out.getChildCount() == 1 ? out.getChild(1) : out;
 	}
 
 	/**
