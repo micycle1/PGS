@@ -1009,6 +1009,43 @@ public final class PGS_Optimisation {
 	}
 
 	/**
+	 * Returns a new, flattened PShape containing the child faces of {@code mesh}
+	 * sorted by the x and then y coordinates of their centroids.
+	 * <p>
+	 * This is commonly used for ordering the faces of a mesh spatially in a
+	 * grid-like manner, first by increasing x-coordinate of the face centroids, and
+	 * breaking ties using y-coordinate.
+	 * </p>
+	 *
+	 * @param mesh a mesh-like GROUP {@link PShape} whose children (faces) will be
+	 *             sorted by centroid
+	 * @return a new, flattened {@code PShape} whose faces are sorted by the
+	 *         centroids’ x and y coordinates
+	 * @since 2.1
+	 */
+	public static PShape centroidSortFaces(PShape mesh) {
+		Map<PVector, PShape> map = new HashMap<>(mesh.getChildCount());
+
+		PGS_Conversion.getChildren(mesh).forEach(child -> {
+			PVector centroid = PGS_ShapePredicates.boundsCenter(child);
+			map.put(centroid, child);
+		});
+
+		List<PVector> centroids = new ArrayList<>(map.keySet());
+
+		centroids.sort((p1, p2) -> {
+			if (p1.x != p2.x) {
+				return Float.compare(p1.x, p2.x);
+			} else {
+				return Float.compare(p1.y, p2.y);
+			}
+		});
+
+		List<PShape> sortedShapes = centroids.stream().map(map::get).toList();
+		return PGS_Conversion.flatten(sortedShapes);
+	}
+
+	/**
 	 * Solves the Problem of Apollonius (finding a circle tangent to three other
 	 * circles in the plane). Circles are represented by PVectors, where the z
 	 * coordinate is interpreted as radius.

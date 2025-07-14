@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `matchingQuadrangulation()` to `PGS_Meshing`. Converts a triangulation into a quadrangulation, by pairing up triangles and merging them into high-quality quads.
 * `filterNear()` to `PGS_SegmentSet`. Removes segments that are near others.
 * `spiralSortFaces()` to `PGS_Optimisation`. Reorders the faces of a mesh into an anti-clockwise “spiral” (breadth-first rings) starting from a given face.
+* `centroidSortFaces()` to `PGS_Optimisation`. Reorders the faces of a mesh by the x and then y coordinates of their centroids.
 * `unionLines()` to `PGS_ShapeBoolean`. Unions the linework of two shapes, creating polygonal faces from their intersecting lines.
 * `closestVertex()` and `farthestVertex()` to `PGS_Optimisation`. Returns the closest/farthest vertex of a shape to a query point.
 * `farthestPoint()` to `PGS_Optimsation`. Finds the farthest point in the collection from a specified point.
