@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Improved `PGS_PointSet.findShortestTour()` TSP algorithm. It now uses a more effective heuristic that finds shorter tours in less time.
 * `PGS_Meshing.extractInnerEdges()` no longer dissolves edges in the output.
 * `PGS_Morphology.simplifyHobby()` is much faster, particularly on shapes with many vertices.
+* Optimised `PGS_Processing.maximumPerimeterSquare()`. It's about 2x faster.
 
 ### Fixed
 * `PGS_Morphology.rounding()` no longer gives invalid results.

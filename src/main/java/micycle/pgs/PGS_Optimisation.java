@@ -260,51 +260,123 @@ public final class PGS_Optimisation {
 	 * @since 1.4.0
 	 */
 	public static PShape maximumPerimeterSquare(PShape shape, double tolerance) {
-		shape = PGS_Morphology.simplify(shape, tolerance / 2);
-		final Polygon p = (Polygon) PGS_Conversion.fromPShape(shape);
-		Geometry buffer = p.getExteriorRing().buffer(tolerance / 2, 4);
-		final Envelope e = buffer.getEnvelopeInternal();
-		buffer = DouglasPeuckerSimplifier.simplify(buffer, tolerance / 2);
-		final IndexedPointInAreaLocator pia = new IndexedPointInAreaLocator(buffer);
-		shape = PGS_Processing.densify(shape, Math.max(0.5, tolerance)); // min of 0.5
-		final List<PVector> points = PGS_Conversion.toPVector(shape);
+		shape = PGS_Morphology.simplify(shape, tolerance * 0.5);
+		Polygon p = (Polygon) PGS_Conversion.fromPShape(shape);
+		Geometry buffer = p.getExteriorRing().buffer(tolerance * 0.5, 4);
+		Envelope env = buffer.getEnvelopeInternal();
+		buffer = DouglasPeuckerSimplifier.simplify(buffer, tolerance * 0.5);
+		IndexedPointInAreaLocator pia = new IndexedPointInAreaLocator(buffer);
 
-		double maxDiagonal = 0;
-		PVector[] maxAreaVertices = new PVector[0];
-		for (final PVector a : points) {
-			for (final PVector b : points) {
-				double dist = PGS.distanceSq(a, b);
+		shape = PGS_Processing.densify(shape, Math.max(0.5, tolerance));
+		List<PVector> points = PGS_Conversion.toPVector(shape);
 
-				if (dist < maxDiagonal) {
-					continue;
-				}
-
-				final PVector m = PVector.add(a, b).div(2);
-				final PVector n = new PVector(b.y - a.y, a.x - b.x).div(2);
-				final PVector c = PVector.sub(m, n);
-
-				final PVector d = PVector.add(m, n);
-				// do envelope checks first -- slightly faster
-				if (within(c, e) && within(d, e)) {
-					if (pia.locate(new Coordinate(c.x, c.y)) != Location.EXTERIOR) {
-						if (pia.locate(new Coordinate(d.x, d.y)) != Location.EXTERIOR) {
-							maxDiagonal = dist;
-							maxAreaVertices = new PVector[] { a, c, b, d, a }; // closed vertices
-						}
-					}
-				}
+		// copy into primitive arrays & compute point‐set AABB
+		int n = points.size();
+		double[] xs = new double[n], ys = new double[n];
+		double ptsMinX = Double.POSITIVE_INFINITY, ptsMaxX = Double.NEGATIVE_INFINITY;
+		double ptsMinY = Double.POSITIVE_INFINITY, ptsMaxY = Double.NEGATIVE_INFINITY;
+		for (int i = 0; i < n; i++) {
+			PVector v = points.get(i);
+			xs[i] = v.x;
+			ys[i] = v.y;
+			if (v.x < ptsMinX) {
+				ptsMinX = v.x;
+			}
+			if (v.x > ptsMaxX) {
+				ptsMaxX = v.x;
+			}
+			if (v.y < ptsMinY) {
+				ptsMinY = v.y;
+			}
+			if (v.y > ptsMaxY) {
+				ptsMaxY = v.y;
 			}
 		}
 
-		PShape out = PGS_Conversion.fromPVector(maxAreaVertices);
+		// 4) Prepare for the double loop
+		double envMinX = env.getMinX(), envMaxX = env.getMaxX();
+		double envMinY = env.getMinY(), envMaxY = env.getMaxY();
+
+		double maxDiag = 0;
+		int bestI = -1, bestJ = -1;
+		double bestCx = 0, bestCy = 0, bestDx = 0, bestDy = 0;
+		Coordinate cCoord = new Coordinate(), dCoord = new Coordinate();
+
+		// 5) Search for the largest‐diagonal pair i,j
+		for (int i = 0; i < n; i++) {
+			double ax = xs[i], ay = ys[i];
+			// quick global prune: maximum possible sq‐dist from this A to any point
+			double dxA = Math.max(ax - ptsMinX, ptsMaxX - ax);
+			double dyA = Math.max(ay - ptsMinY, ptsMaxY - ay);
+			if ((dxA * dxA + dyA * dyA) <= maxDiag) {
+				continue;
+			}
+
+			for (int j = i + 1; j < n; j++) {
+				double bx = xs[j], by = ys[j];
+				double dx = bx - ax, dy = by - ay;
+				double dist = dx * dx + dy * dy;
+				if (dist <= maxDiag) {
+					continue;
+				}
+
+				// midpoint
+				double mx = (ax + bx) * 0.5, my = (ay + by) * 0.5;
+				// half‐perp vector
+				double nx = dy * 0.5, ny = -dx * 0.5;
+				// other two corners
+				double cx = mx - nx, cy = my - ny;
+				double dx2 = mx + nx, dy2 = my + ny;
+
+				// envelope quick‐rejection
+				if (cx < envMinX || cx > envMaxX || cy < envMinY || cy > envMaxY) {
+					continue;
+				}
+				if (dx2 < envMinX || dx2 > envMaxX || dy2 < envMinY || dy2 > envMaxY) {
+					continue;
+				}
+
+				// expensive point‐in‐area tests, reusing coords
+				cCoord.x = cx;
+				cCoord.y = cy;
+				if (pia.locate(cCoord) == Location.EXTERIOR) {
+					continue;
+				}
+				dCoord.x = dx2;
+				dCoord.y = dy2;
+				if (pia.locate(dCoord) == Location.EXTERIOR) {
+					continue;
+				}
+
+				// success: record as new best
+				maxDiag = dist;
+				bestI = i;
+				bestJ = j;
+				bestCx = cx;
+				bestCy = cy;
+				bestDx = dx2;
+				bestDy = dy2;
+			}
+		}
+
+		// 6) If we found none, return an empty shape
+		if (bestI < 0) {
+			return PGS_Conversion.fromPVector(new PVector[0]);
+		}
+
+		// 7) Build the closed‐square ring A→C→B→D→A
+		PVector A = new PVector((float) xs[bestI], (float) ys[bestI]);
+		PVector B = new PVector((float) xs[bestJ], (float) ys[bestJ]);
+		PVector C = new PVector((float) bestCx, (float) bestCy);
+		PVector D = new PVector((float) bestDx, (float) bestDy);
+		PVector[] ring = { A, C, B, D, A };
+
+		// 8) Convert back to PShape, style, and return
+		PShape out = PGS_Conversion.fromPVector(ring);
 		out.setStroke(true);
 		out.setStroke(micycle.pgs.color.Colors.PINK);
 		out.setStrokeWeight(4);
 		return out;
-	}
-
-	private static boolean within(PVector p, Envelope rect) {
-		return p.x >= rect.getMinX() && p.x <= rect.getMaxX() && p.y <= rect.getMaxY() && p.y >= rect.getMinY();
 	}
 
 	/**
