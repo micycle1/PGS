@@ -201,8 +201,28 @@ public final class PGS_Processing {
 	 * @since 1.3.0
 	 */
 	public static List<PVector> pointsOnExterior(PShape shape, int points, double offsetDistance) {
-		// TODO another method that returns concave hull of returned points (when
-		// offset)
+		return pointsOnExterior(shape, points, offsetDistance, 0);
+	}
+
+	/**
+	 * Extracts multiple points evenly distributed along the boundary of individual
+	 * rings within a shape, including both exterior and interior rings (i.e.,
+	 * holes). The offset determines where the first point is sampled on the ring
+	 * (0=at the start, 1=also the start, 0.5=halfway around, etc).
+	 * 
+	 * @param shape          The shape from which to extract points. Should have
+	 *                       polygonal members.
+	 * @param points         The number of points to extract <b>per ring</b>, evenly
+	 *                       distributed around each ring's boundary.
+	 * @param offsetDistance The offset distance measured perpendicular to each
+	 *                       point on the ring's boundary. Positive values offset
+	 *                       outwards, while negative values offset inwards.
+	 * @param startOffset    Start position fraction (0...1) along each ring's
+	 *                       length for the first point
+	 * @return A list of PVector objects, each representing a point on the perimeter
+	 *         or interior rings of the shape.
+	 */
+	public static List<PVector> pointsOnExterior(PShape shape, int points, double offsetDistance, double startOffset) {
 		List<Polygon> polygons = PGS.extractPolygons(fromPShape(shape));
 		List<PVector> coords = new ArrayList<>();
 		polygons.forEach(polygon -> {
@@ -212,13 +232,14 @@ public final class PGS_Processing {
 				}
 				final LengthIndexedLine l = new LengthIndexedLine(ring);
 				final double increment = 1d / points;
-				for (double distance = 0; distance < 1; distance += increment) {
-					final Coordinate coord = l.extractPoint(distance * l.getEndIndex(), offsetDistance);
+				double start = startOffset % 1; // Clamp or wrap offset between 0 and 1
+				for (int i = 0; i < points; i++) {
+					double pos = (start + i * increment) % 1; // always within 0-1
+					final Coordinate coord = l.extractPoint(pos * l.getEndIndex(), offsetDistance);
 					coords.add(PGS.toPVector(coord));
 				}
 			});
 		});
-
 		return coords;
 	}
 
