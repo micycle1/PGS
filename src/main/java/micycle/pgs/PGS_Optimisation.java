@@ -37,6 +37,7 @@ import almadina.rectpacking.RectPacking.PackingHeuristic;
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.ClosestPointPair;
 import micycle.pgs.commons.FarthestPointPair;
+import micycle.pgs.commons.FastAtan2;
 import micycle.pgs.commons.LargestEmptyCircles;
 import micycle.pgs.commons.MaximumInscribedAARectangle;
 import micycle.pgs.commons.MaximumInscribedRectangle;
@@ -1115,6 +1116,73 @@ public final class PGS_Optimisation {
 
 		List<PShape> sortedShapes = centroids.stream().map(map::get).toList();
 		return PGS_Conversion.flatten(sortedShapes);
+	}
+
+	/**
+	 * Sorts the faces (children) of a mesh radially around a given centre, then
+	 * applies a circular rotation to the order based on the offset parameter.
+	 *
+	 * @param mesh   a PShape with polygonal children (the faces to order)
+	 * @param centre the point around which radial sorting is performed (usually the
+	 *               mesh centroid)
+	 * @param offset a fractional value in [0, 1) that specifies where the ordering
+	 *               starts around the centre, as a proportion of a full 360° turn:
+	 *               <ul>
+	 *               <li>offset = 0.0: face whose centroid points directly to the
+	 *               right (positive X direction) comes first</li>
+	 *               <li>offset = 0.25: ordering is rotated 90° counterclockwise;
+	 *               face pointing “up” (positive Y) comes first</li>
+	 *               <li>offset = 0.5: ordering is rotated 180°; face pointing to
+	 *               the left (-X) comes first</li>
+	 *               <li>offset = 0.75: ordering is rotated 270°; face pointing
+	 *               “down” (-Y) comes first</li>
+	 *               </ul>
+	 *               Intermediate values smoothly rotate the sequence; outside [0,1)
+	 *               values wrap around. In other words, this lets you “spin” the
+	 *               order of faces by a fraction of a circle.
+	 * @return a new PShape, with faces flattened into one shape, ordered so that
+	 *         face[0] begins at offset·360° from the right and continues clockwise
+	 */
+	public static PShape radialSortFaces(final PShape mesh, final PVector centre, final double offset) {
+		record FaceInfo(PShape face, double angle, double dist2) {
+		}
+		List<PShape> faces = PGS_Conversion.getChildren(mesh);
+		List<FaceInfo> infoList = new ArrayList<>(faces.size());
+
+		double TWO_PI = Math.PI * 2;
+		// force offset into [0,1)
+		double off = ((offset % 1) + 1) % 1;
+		double rot = off * TWO_PI; // convert to radians
+
+		for (PShape f : faces) {
+			// centroid of this face
+			PVector c = PGS_ShapePredicates.centroid(f);
+			double dx = c.x - centre.x;
+			double dy = c.y - centre.y;
+
+			// raw angle in [–π,+π]
+			double a = FastAtan2.atan2(dy, dx);
+			// remap to [0,2π)
+			if (a < 0) {
+				a += TWO_PI;
+			}
+
+			// now apply offset‐rotation and re‐wrap to [0,2π)
+			a = a - rot;
+			if (a < 0) {
+				a += TWO_PI;
+			}
+
+			double d2 = dx * dx + dy * dy;
+			infoList.add(new FaceInfo(f, a, d2));
+		}
+
+		// Sort by our shifted angle, then (optionally) by distance²
+		infoList.sort(Comparator.comparingDouble((FaceInfo fi) -> fi.angle).thenComparingDouble(fi -> fi.dist2));
+
+		List<PShape> sorted = infoList.stream().map(fi -> fi.face).toList();
+
+		return PGS_Conversion.flatten(sorted);
 	}
 
 	/**
