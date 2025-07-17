@@ -19,7 +19,6 @@ import org.locationtech.jts.algorithm.MinimumBoundingCircle;
 import org.locationtech.jts.algorithm.MinimumDiameter;
 import org.locationtech.jts.algorithm.construct.LargestEmptyCircle;
 import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
-import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Envelope;
@@ -47,6 +46,7 @@ import micycle.pgs.commons.MinimumBoundingTriangle;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.SpiralIterator;
 import micycle.pgs.commons.VisibilityPolygon;
+import micycle.pgs.commons.YStripesPointInAreaLocator;
 import processing.core.PShape;
 import processing.core.PVector;
 import whitegreen.dalsoo.DalsooPack;
@@ -254,7 +254,7 @@ public final class PGS_Optimisation {
 	 * <p>
 	 * The method does not respect holes (for now...).
 	 * 
-	 * @param shape
+	 * @param shape     a polygonal shape
 	 * @param tolerance a value of 2-5 is usually suitable
 	 * @return shape representing the maximum square
 	 * @since 1.4.0
@@ -265,7 +265,7 @@ public final class PGS_Optimisation {
 		Geometry buffer = p.getExteriorRing().buffer(tolerance * 0.5, 4);
 		Envelope env = buffer.getEnvelopeInternal();
 		buffer = DouglasPeuckerSimplifier.simplify(buffer, tolerance * 0.5);
-		IndexedPointInAreaLocator pia = new IndexedPointInAreaLocator(buffer);
+		var index = new YStripesPointInAreaLocator((Polygon) buffer);
 
 		shape = PGS_Processing.densify(shape, Math.max(0.5, tolerance));
 		List<PVector> points = PGS_Conversion.toPVector(shape);
@@ -339,12 +339,12 @@ public final class PGS_Optimisation {
 				// expensive point‐in‐area tests, reusing coords
 				cCoord.x = cx;
 				cCoord.y = cy;
-				if (pia.locate(cCoord) == Location.EXTERIOR) {
+				if (index.locate(cCoord) == Location.EXTERIOR) {
 					continue;
 				}
 				dCoord.x = dx2;
 				dCoord.y = dy2;
-				if (pia.locate(dCoord) == Location.EXTERIOR) {
+				if (index.locate(dCoord) == Location.EXTERIOR) {
 					continue;
 				}
 

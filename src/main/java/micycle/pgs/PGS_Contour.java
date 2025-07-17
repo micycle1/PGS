@@ -63,6 +63,7 @@ import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.color.ColorUtils;
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.PEdge;
+import micycle.pgs.commons.YStripesPointInAreaLocator;
 import net.jafama.FastMath;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -639,7 +640,7 @@ public final class PGS_Contour {
 		final double[] b = new double[4];
 		PGS_Hull.boundingBox(shape, b); // write to bounding box
 		final var g = fromPShape(shape);
-		final IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(g.buffer(10));
+		final var pointLocator = new YStripesPointInAreaLocator((Polygon) g.buffer(10));
 		final IndexedFacetDistance distIndex = new IndexedFacetDistance(g);
 		double adjustedArea = g.getArea() / PGS_ShapePredicates.density(shape);
 
