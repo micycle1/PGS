@@ -444,11 +444,12 @@ Much of the functionality (but by no means all) is demonstrated below:
     <tr>
     <td align="center" valign="center"><b>Extract Holes</td>
     <td align="center" valign="center"><b>Nest</td>
-    
+    <td align="center" valign="center"><b>Centroid Split</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/geometry_processing/extractHoles.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/nest.gif"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/centroidSplit.gif"></td>
   </tr>
 </table>
 

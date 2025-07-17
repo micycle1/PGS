@@ -1031,6 +1031,100 @@ public final class PGS_Processing {
 	}
 
 	/**
+	 * Splits the input shape into multiple wedge-shaped regions by connecting the
+	 * centroid to each <b>vertex</b>.
+	 * <p>
+	 * This method computes the centroid of the given shape, and then draws a line
+	 * from the centroid to every vertex on the shape’s exterior. The shape is then
+	 * split along these lines, partitioning it into distinct regions—one for each
+	 * side of the original shape. For polygons with {@code n} vertices, this
+	 * typically creates {@code n} wedge-shaped regions. In the case of concave
+	 * polygons, this operation may result in more than {@code n} regions due to the
+	 * underlying geometry.
+	 * </p>
+	 * <p>
+	 * The returned shape is a GROUP {@code PShape}, whose children are the
+	 * resulting partitioned regions.
+	 * </p>
+	 *
+	 * @param shape The shape to be partitioned. Typically a polygonal
+	 *              {@code PShape}.
+	 * @return A GROUP {@code PShape} which contains one child for each wedge-shaped
+	 *         partition created by splitting from the centroid to each vertex.
+	 * @since 2.1
+	 * @see #centroidSplit(PShape, int, double)
+	 */
+	public static PShape centroidSplit(PShape shape) {
+		var splits = PGS.prepareLinesPShape(null, null, null);
+		var c = PGS_ShapePredicates.centroid(shape);
+		PGS_Conversion.toPVector(shape).forEach(p -> {
+			splits.vertex(p.x, p.y);
+			splits.vertex(c.x, c.y);
+		});
+		splits.endShape();
+
+		var croppedLines = toPShape(fromPShape(shape).intersection(fromPShape(splits)));
+		var splitPolygons = PGS_ShapeBoolean.unionLines(shape, croppedLines);
+		return PGS_Optimisation.radialSortFaces(splitPolygons, c, 0);
+	}
+
+	/**
+	 * Splits the input shape into {@code n} wedge-shaped regions by connecting the
+	 * centroid to points along the perimeter.
+	 * <p>
+	 * This method computes the centroid of the given shape, and then splits the
+	 * shape by connecting the centroid to {@code n} points sampled evenly (with
+	 * optional offset) around the outer ring (perimeter) of the shape. The split
+	 * lines start at these points and end at the centroid. The operation results in
+	 * approximately {@code n} regions for convex shapes, but may produce more than
+	 * {@code n} partitions for highly concave input.
+	 * </p>
+	 * <p>
+	 * The {@code offset} parameter determines the rotation of the sampling around
+	 * the perimeter.
+	 * </p>
+	 * <p>
+	 * The returned shape is a GROUP {@code PShape}, whose children are the
+	 * resulting wedge-shaped partitions, radially sorted around the centroid.
+	 * </p>
+	 *
+	 * @param shape  The shape to be split; typically a polygonal {@code PShape}.
+	 * @param n      The number of splits (rays) to create from the centroid;
+	 *               usually determines number of regions.
+	 * @param offset The offset for the split lines, as a fraction of the perimeter,
+	 *               in [0, 1).
+	 * @return A GROUP {@code PShape}, with child shapes being the regions created
+	 *         by the centroid splits, sorted radially.
+	 * @see #centroidSplit(PShape)
+	 */
+	public static PShape centroidSplit(PShape shape, int n, double offset) {
+		// 1) build your n radial “spoke” lines from the centroid out to the boundary
+		PVector c = PGS_ShapePredicates.centroid(shape);
+		PShape splits = PGS.prepareLinesPShape(null, null, null);
+		var in = fromPShape(shape);
+		if (in instanceof Polygon) {
+			in = ((Polygon) in).getExteriorRing();
+		}
+		LengthIndexedLine l = new LengthIndexedLine(in);
+
+		for (int i = 0; i < n; i++) {
+			double f = (i / (double) n + offset) % 1.0;
+			Coordinate coord = l.extractPoint(f * l.getEndIndex());
+			PVector p = PGS.toPVector(coord);
+			splits.vertex(p.x, p.y);
+			splits.vertex(c.x, c.y);
+		}
+		splits.endShape();
+
+		// 2) slice the shape by those lines
+		PShape cropLines = toPShape(fromPShape(shape).intersection(fromPShape(splits)));
+		PShape splitPolygons = PGS_ShapeBoolean.unionLines(shape, cropLines);
+
+		// order faces so that face[0] is the wedge starting at offset
+		return PGS_Optimisation.radialSortFaces(splitPolygons, c, offset);
+	}
+
+	/**
 	 * Partitions shape(s) into convex (simple) polygons.
 	 * 
 	 * @param shape the shape to partition. can be a single polygon or a GROUP of
