@@ -203,7 +203,7 @@
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>processing-core-4</artifactId>
-			<version>4.3.3</version>
+			<version>4.4.4</version>
 			<scope>provided</scope> <!-- don't package into uber jar -->
 			<optional>true</optional> <!-- user artifact should override when provided -->
 		</dependency>
