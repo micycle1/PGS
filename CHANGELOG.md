@@ -54,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_Meshing.extractInnerEdges()` no longer dissolves edges in the output.
 * `PGS_Morphology.simplifyHobby()` is much faster, particularly on shapes with many vertices.
 * Optimised `PGS_Processing.maximumPerimeterSquare()`. It's about 2x faster.
+* Varying `sigma` in `PGS_smoothGaussian()` no longer causes "wobblyness" in the output.
 
 ### Fixed
 * `PGS_Morphology.rounding()` no longer gives invalid results.
