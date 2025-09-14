@@ -12,11 +12,18 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.locationtech.jts.geom.util.GeometryFixer;
 import org.locationtech.jts.geom.util.LinearComponentExtracter;
+import org.locationtech.jts.noding.NodedSegmentString;
+import org.locationtech.jts.noding.Noder;
+import org.locationtech.jts.noding.SegmentString;
+import org.locationtech.jts.noding.SegmentStringDissolver;
+import org.locationtech.jts.noding.SegmentStringUtil;
+import org.locationtech.jts.noding.snapround.SnapRoundingNoder;
 import org.locationtech.jts.operation.overlay.OverlayOp;
 import org.locationtech.jts.operation.overlayng.CoverageUnion;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
@@ -205,6 +212,63 @@ public final class PGS_ShapeBoolean {
 		polygonizer.add(OverlayNG.overlay(lA, lB, OverlayOp.UNION, new PrecisionModel(-1e-3)));
 
 		return toPShape(polygonizer.getGeometry());
+	}
+
+	/**
+	 * Unions the linework of the given shapes (varargs form).
+	 * <p>
+	 * This is a convenience overload that forwards to
+	 * {@link #unionLines(Collection)}. Null entries in {@code shapes} are ignored
+	 * by the collection overload.
+	 * </p>
+	 *
+	 * @param shapes Zero or more {@link PShape} instances whose linework will be
+	 *               unioned. May be empty.
+	 * @return A new {@link PShape} representing polygonal faces created by the
+	 *         union of the provided shapes' linework, or {@code null} if no valid
+	 *         polygonal faces resulted.
+	 * @since 2.1
+	 */
+	public static PShape unionLines(PShape... shapes) {
+		return unionLines(Arrays.asList(shapes));
+	}
+
+	/**
+	 * Unions the linework of a collection of shapes, creating polygonal faces from
+	 * their intersecting lines.
+	 * <p>
+	 * This method focuses on the linework (linear components) of the input
+	 * geometries rather than their areas. It differs from a standard polygon union
+	 * operation, as it processes the lines to find intersections and generates new
+	 * polygonal faces based on the resulting linework.
+	 *
+	 * @param shapes A collection of {@link PShape} instances to union. May contain
+	 *               {@code null} elements which will be ignored. The collection
+	 *               itself should not be {@code null}.
+	 * @return A new {@link PShape} representing the polygonal faces created by the
+	 *         union of the provided shapes' linework, or {@code null} if no valid
+	 *         polygonal faces were produced.
+	 * @since 2.1
+	 */
+	@SuppressWarnings("unchecked")
+	public static PShape unionLines(Collection<PShape> shapes) {
+		var totalSegs = shapes.stream().map(s -> fromPShape(s)).filter(Objects::nonNull)
+				.flatMap(g -> ((List<SegmentString>) SegmentStringUtil.extractSegmentStrings(g)).stream()).toList();
+
+		SegmentStringDissolver d = new SegmentStringDissolver();
+		d.dissolve(totalSegs);
+		var dissolvedSegs = d.getDissolved();
+
+		Noder noder = new SnapRoundingNoder(new PrecisionModel(-5e-3));
+		noder.computeNodes(dissolvedSegs);
+		var nodedSegs = noder.getNodedSubstrings();
+
+		var segmentGeometry = SegmentStringUtil.toGeometry(nodedSegs, PGS.GEOM_FACTORY);
+
+		Polygonizer polygonizer = new Polygonizer();
+		polygonizer.add(segmentGeometry);
+		var polys = (List<Polygon>) polygonizer.getPolygons();
+		return toPShape(polys);
 	}
 
 	/**
