@@ -28,6 +28,7 @@ import com.github.micycle1.geoblitz.YStripesPointInAreaLocator;
 import micycle.pgs.commons.FrontChainPacker;
 import micycle.pgs.commons.LargestEmptyCircles;
 import micycle.pgs.commons.RepulsionCirclePack;
+import micycle.pgs.commons.ShapeRandomPointSampler;
 import micycle.pgs.commons.TangencyPack;
 import processing.core.PShape;
 import processing.core.PVector;

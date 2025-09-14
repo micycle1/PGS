@@ -90,6 +90,7 @@ import micycle.pgs.color.ColorUtils;
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.PolygonDecomposition;
 import micycle.pgs.commons.SeededRandomPointsInGridBuilder;
+import micycle.pgs.commons.ShapeRandomPointSampler;
 import micycle.trapmap.TrapMap;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -608,71 +609,8 @@ public final class PGS_Processing {
 	 * @see #generateRandomGridPoints(PShape, int, boolean, double)
 	 */
 	public static List<PVector> generateRandomPoints(PShape shape, int points, long seed) {
-		final ArrayList<PVector> randomPoints = new ArrayList<>(points); // random points out
-
-		final IIncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape);
-		final boolean constrained = !tin.getConstraints().isEmpty();
-		final double totalArea = StreamSupport.stream(tin.getConstraints().spliterator(), false).mapToDouble(c -> ((PolygonConstraint) c).getArea()).sum();
-
-		// use arrays to hold variables (to enable assignment during consumer)
-		final SimpleTriangle[] largestTriangle = new SimpleTriangle[1];
-		final double[] largestArea = new double[1];
-
-		final SplittableRandom r = new SplittableRandom(seed);
-		TriangleCollector.visitSimpleTriangles(tin, triangle -> {
-			final IConstraint constraint = triangle.getContainingRegion();
-			if (!constrained || (constraint != null && constraint.definesConstrainedRegion())) {
-				final Vertex a = triangle.getVertexA();
-				final Vertex b = triangle.getVertexB();
-				final Vertex c = triangle.getVertexC();
-
-				// TODO more robust area (dense input produces slivers)
-				final double triangleArea = 0.5 * ((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y));
-				if (triangleArea > largestArea[0]) {
-					largestTriangle[0] = triangle;
-					largestArea[0] = triangleArea;
-				}
-
-				/*
-				 * Rather than choose a random triangle for each sample, pre-determine the
-				 * number of samples per triangle and sample this number of points in each
-				 * triangle successively. I conjecture that this results in a slightly more
-				 * uniform random distribution, the downside of which is the resulting
-				 * distribution has less entropy.
-				 */
-				double areaWeight = (triangleArea / totalArea) * points;
-				int samples = (int) Math.round(areaWeight);
-				if (r.nextDouble() <= (areaWeight - samples)) {
-					samples += 1;
-				}
-				for (int i = 0; i < samples; i++) {
-					final double s = r.nextDouble();
-					final double t = Math.sqrt(r.nextDouble());
-					final double rX = (1 - t) * a.x + t * ((1 - s) * b.x + s * c.x);
-					final double rY = (1 - t) * a.y + t * ((1 - s) * b.y + s * c.y);
-					randomPoints.add(new PVector((float) rX, (float) rY));
-				}
-			}
-		});
-
-		final int remaining = points - randomPoints.size(); // due to rounding, may be a few above/below target number
-		if (remaining > 0) {
-			final Vertex a = largestTriangle[0].getVertexA();
-			final Vertex b = largestTriangle[0].getVertexB();
-			final Vertex c = largestTriangle[0].getVertexC();
-			for (int i = 0; i < remaining; i++) {
-				double s = r.nextDouble();
-				double t = Math.sqrt(r.nextDouble());
-				double rX = (1 - t) * a.x + t * ((1 - s) * b.x + s * c.x);
-				double rY = (1 - t) * a.y + t * ((1 - s) * b.y + s * c.y);
-				randomPoints.add(new PVector((float) rX, (float) rY));
-			}
-		} else if (remaining < 0) {
-			Collections.shuffle(randomPoints, new XoRoShiRo128PlusRandom(seed)); // shuffle so that points are removed from regions randomly
-			return randomPoints.subList(0, points);
-		}
-
-		return randomPoints;
+		var sampler = new ShapeRandomPointSampler(shape, seed);
+		return sampler.getRandomPoints(points);
 	}
 
 	/**
