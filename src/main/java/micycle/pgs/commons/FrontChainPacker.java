@@ -21,7 +21,7 @@ import processing.core.PVector;
 public class FrontChainPacker {
 
 	// https://observablehq.com/@mbostock/packing-circles-inside-a-rectangle
-	// https://sci-hub.do/http://dx.doi.org/10.1145/1124772.1124851
+	// 'Visualization of large hierarchical data by circle packing'
 
 	private final float width, height;
 	private final float offsetX, offsetY;
@@ -213,7 +213,6 @@ public class FrontChainPacker {
 	 * Determines whether the candidate circle (represented by PVector) cannot cover
 	 * the packing region.
 	 * 
-	 * @param v
 	 * @return true if circle can cover region
 	 */
 	private boolean withinBounds(PVector v) {

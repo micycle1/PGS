@@ -294,7 +294,7 @@ public class TangencyPack {
 			localPasses++;
 		}
 	}
-	
+
 	private double calculateLambda(double[] R1, double[] R2, double factor, int key) {
 		double lmax = Double.MAX_VALUE;
 
@@ -352,7 +352,9 @@ public class TangencyPack {
 				double c = radiiArray[nextId];
 				double bc = b * c;
 				double denominator = ra * ra + ra * (b + c) + bc;
-				angleSum += FastMath.acos(1 - (2 * bc) / denominator);
+				double x = 1 - (2 * bc) / denominator;
+				x = Math.max(-1.0, Math.min(1.0, x));
+				angleSum += FastMath.acos(x);
 			}
 
 			// Update radius using precomputed values

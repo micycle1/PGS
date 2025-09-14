@@ -91,7 +91,9 @@ public final class PGS_Morphology {
 		Geometry g = fromPShape(shape);
 		BufferParameters bufParams = createBufferParams(buffer, 0.5, bufferStyle);
 		BufferOp b = new BufferOp(g, bufParams);
-		return toPShape(b.getResultGeometry(buffer));
+		var out = b.getResultGeometry(buffer);
+		out.setUserData(g.getUserData());
+		return toPShape(out);
 	}
 
 	/**

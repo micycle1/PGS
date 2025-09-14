@@ -1,5 +1,8 @@
 package micycle.pgs.commons;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.locationtech.jts.algorithm.Distance;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.LineSegment;
@@ -137,6 +140,39 @@ public class PEdge implements Comparable<PEdge> {
 		}
 
 		return new PEdge(pointFrom, pointTo);
+	}
+
+	public List<PVector> sample(double d) {
+		if (d <= 0) {
+			throw new IllegalArgumentException("d must be > 0");
+		}
+
+		final double len = length(); // length() returns float, assign to double
+		final List<PVector> samples = new ArrayList<>();
+
+		// degenerate segment
+		if (len == 0.0) {
+			samples.add(new PVector(a.x, a.y));
+			return samples;
+		}
+
+		// always include the first point
+		samples.add(new PVector(a.x, a.y));
+
+		final double step = d / len; // step in parametric [0..1] space
+		// add intermediate samples at t = step, 2*step, ... while t < 1.0
+		for (double t = step; t < 1.0; t += step) {
+			samples.add(pointAt(t));
+		}
+
+		// always include the last point (avoid duplicate if last intermediate ~= b)
+		final PVector last = samples.get(samples.size() - 1);
+		final double eps = 1e-6;
+		if (last.dist(b) > eps) {
+			samples.add(new PVector(b.x, b.y));
+		}
+
+		return samples;
 	}
 
 	@Override
