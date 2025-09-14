@@ -3,6 +3,7 @@ package micycle.pgs;
 import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
@@ -26,6 +27,7 @@ import org.locationtech.jts.shape.fractal.SierpinskiCarpetBuilder;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
+import micycle.hobbycurves.HobbyCurve;
 import micycle.pgs.PGS_Contour.OffsetStyle;
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.BezierShapeGenerator;
@@ -653,25 +655,23 @@ public class PGS_Construction {
 		// A Simple and Effective Geometric Representation for Irregular Porous
 		// Structure Modeling
 		List<PVector> points = PGS_PointSet.random(thickness, thickness / 2, width - thickness / 2, height - thickness / 2, generators, seed);
-		if (points.size() < 6) {
-			return new PShape();
-		}
-		PShape voro = PGS_Voronoi.innerVoronoi(points, 2);
+		PShape voro = PGS_Voronoi.innerVoronoi(points, new double[] { 0, 0, width, height }, 2);
 
-		List<PShape> blobs = PGS_Conversion.getChildren(PGS_Meshing.stochasticMerge(voro, classes, seed)).stream().map(c -> {
-			c = PGS_Morphology.buffer(c, -thickness / 2, OffsetStyle.MITER);
+		var merged = PGS_Meshing.stochasticMerge(voro, classes, seed);
+		var blobs = PGS_Processing.transform(merged, blob -> {
+			blob = PGS_Morphology.buffer(blob, -thickness / 2, OffsetStyle.MITER);
 			if (smoothing != 0) {
-				c = PGS_Morphology.smoothGaussian(c, smoothing);
+				blob = PGS_Morphology.smoothGaussian(blob, smoothing);
 			}
-			return c;
-		}).collect(Collectors.toList());
+			return blob;
+		});
 
 		/*
 		 * Although faster, can't use .simpleSubtract() here because holes (cell
 		 * islands) are *sometimes* nested.
 		 */
-		PShape s = PGS_ShapeBoolean.subtract(PGS.createRect(0, 0, width, height), PGS_Conversion.flatten(blobs));
-		s.setStroke(false);
+		PShape s = PGS_ShapeBoolean.subtract(PGS.createRect(0, 0, width, height), blobs);
+		PGS_Conversion.disableAllStroke(s);
 		return s;
 	}
 
@@ -1011,6 +1011,74 @@ public class PGS_Construction {
 		out.setStroke(255);
 		out.setStrokeWeight(4);
 		return out;
+	}
+
+	/**
+	 * Creates a Hobby Curve from the given list of control points using the
+	 * specified tension. This is a convenience overload that uses a default
+	 * endpoint curl of 0.5.
+	 * <p>
+	 * The first and last points may be equal; in that case the curve will be
+	 * treated as closed.
+	 *
+	 * @param points  the list of vertices to use as the basis for the Hobby Curve.
+	 *                Must be non-null and contain at least two points.
+	 * @param tension a parameter controlling the tightness of the curve. Higher
+	 *                values generally produce tighter curves. A suitable domain is
+	 *                approximately [0.666..., 3]. Values below 0.1 are clamped to
+	 *                0.1 to avoid degeneracy.
+	 * @return a PShape representing the resulting Hobby Curve composed of cubic
+	 *         Bezier segments.
+	 * @since 2.1
+	 */
+	public static PShape createHobbyCurve(List<PVector> points, double tension) {
+		return createHobbyCurve(points, tension, 0.5);
+	}
+
+	/**
+	 * Create a Hobby Curve from the given list of control points using the
+	 * specified tension and endpoint curl parameter.
+	 * <p>
+	 * The curve is constructed from cubic Bezier segments. If the first and last
+	 * points are equal the curve will be treated as closed (continuous), and the
+	 * endpoint curl parameter is effectively ignored for continuity.
+	 *
+	 * @param points       the list of vertices to use as the basis for the Hobby
+	 *                     Curve. Must be non-null and contain at least two points.
+	 * @param tension      a parameter controlling the tightness of the curve.
+	 *                     Higher values generally produce tighter curves. A
+	 *                     suitable domain is approximately [0.666..., 3]. Values
+	 *                     below 0.1 are clamped to 0.1 to avoid degeneracy.
+	 * @param endPointCurl a tuning parameter that controls the "curl" at the start
+	 *                     and end of the curve; typical default is 0.5. When the
+	 *                     curve is closed this value is ignored.
+	 * @return a PShape representing the resulting Hobby Curve composed of cubic
+	 *         Bezier segments.
+	 * @since 2.1
+	 */
+	public static PShape createHobbyCurve(List<PVector> points, double tension, double endPointCurl) {
+		tension = Math.max(tension, 0.1); // prevent degeneracy
+		final boolean closed = points.get(0).equals(points.get(points.size() - 1));
+		double[][] vertices = PGS_Conversion.toArray(points);
+		// param start/end curve
+		HobbyCurve curve = new HobbyCurve(vertices, tension, closed, endPointCurl, endPointCurl);
+
+		double[][] beziers = curve.getBeziers();
+
+		List<PVector> curveVertices = Arrays.stream(beziers).parallel().flatMap(b -> {
+			// unpack the array into the 4 PVector points
+			int i = 0;
+			PVector p1 = new PVector((float) b[i++], (float) b[i++]);
+			PVector cp1 = new PVector((float) b[i++], (float) b[i++]);
+			PVector cp2 = new PVector((float) b[i++], (float) b[i++]);
+			PVector p2 = new PVector((float) b[i++], (float) b[i]);
+
+			PShape bezierShape = PGS_Conversion.fromCubicBezier(p1, cp1, cp2, p2);
+
+			return PGS_Conversion.toPVector(bezierShape).stream(); // to stream (for flattening)
+		}).toList();
+
+		return PGS_Conversion.fromPVector(curveVertices);
 	}
 
 	/**

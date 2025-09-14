@@ -1471,6 +1471,17 @@ public final class PGS_Conversion {
 		if (shape.isClosed() && keepClosed) {
 			points.add(points.get(0).copy()); // since toPVector returns unclosed view
 		}
+		return toArray(points);
+	}
+
+	/**
+	 * Converts a list of PVectors into an array of coordinates.
+	 * 
+	 * @param points
+	 * @return coordinate array in the form [[x1, y1], [x2, y2]]
+	 * @since 2.1
+	 */
+	public static double[][] toArray(List<PVector> points) {
 		double[][] out = new double[points.size()][2];
 		for (int i = 0; i < points.size(); i++) {
 			PVector point = points.get(i);

@@ -31,7 +31,6 @@ import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.simplify.VWSimplifier;
 
-import micycle.hobbycurves.HobbyCurve;
 import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.PGS_Contour.OffsetStyle;
 import micycle.pgs.commons.ChaikinCut;
@@ -354,26 +353,11 @@ public final class PGS_Morphology {
 	 * @since 1.4.0
 	 */
 	public static PShape simplifyHobby(PShape shape, double tension) {
-		tension = Math.max(tension, 0.1); // prevent degeneracy
-		double[][] vertices = PGS_Conversion.toArray(shape, false);
-		HobbyCurve curve = new HobbyCurve(vertices, tension, shape.isClosed(), 0.5, 0.5);
-
-		double[][] beziers = curve.getBeziers();
-
-		List<PVector> points = Arrays.stream(beziers).parallel().flatMap(b -> {
-			// unpack the array into the 4 PVector points
-			int i = 0;
-			PVector p1 = new PVector((float) b[i++], (float) b[i++]);
-			PVector cp1 = new PVector((float) b[i++], (float) b[i++]);
-			PVector cp2 = new PVector((float) b[i++], (float) b[i++]);
-			PVector p2 = new PVector((float) b[i++], (float) b[i]);
-
-			PShape bezierShape = PGS_Conversion.fromCubicBezier(p1, cp1, cp2, p2);
-
-			return PGS_Conversion.toPVector(bezierShape).stream(); // to stream (for flattening)
-		}).toList();
-
-		return PGS_Conversion.fromPVector(points);
+		var points = PGS_Conversion.toPVector(shape);
+		if (shape.isClosed()) {
+			points.add(points.get(0));
+		}
+		return PGS_Construction.createHobbyCurve(points, tension);
 	}
 
 	/**

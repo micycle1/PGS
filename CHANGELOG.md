@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `sliceDivision` to `PGS_Tiling`. Divides the plane into randomly “sliced” polygonal regions.
 * New method signature for `pointsOnExterior()` having a starting point offset parameter that specifies the distance along the perimeter to start sampling points.
 * `centroidSplit()` to `PGS_Processing`. Splits the input shape into n wedge-shaped regions by connecting the centroid to points along the perimeter.
+* `createHobbyCurve()` to `PGS_Construction`. Creates a Hobby curve from a set of control points.
 
 ### Changes
 * Optimised `PGS_CirclePacking.tangencyPack()`. It's now around 1.5-2x faster and has higher precision.
