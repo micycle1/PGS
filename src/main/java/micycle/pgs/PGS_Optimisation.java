@@ -31,6 +31,8 @@ import org.locationtech.jts.operation.distance.DistanceOp;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
+import com.github.micycle1.geoblitz.YStripesPointInAreaLocator;
+
 import almadina.rectpacking.RBPSolution;
 import almadina.rectpacking.Rect;
 import almadina.rectpacking.RectPacking.PackingHeuristic;
@@ -47,7 +49,6 @@ import micycle.pgs.commons.MinimumBoundingTriangle;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.SpiralIterator;
 import micycle.pgs.commons.VisibilityPolygon;
-import micycle.pgs.commons.YStripesPointInAreaLocator;
 import processing.core.PShape;
 import processing.core.PVector;
 import whitegreen.dalsoo.DalsooPack;

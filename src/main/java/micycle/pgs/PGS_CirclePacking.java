@@ -10,7 +10,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
@@ -23,6 +22,8 @@ import org.tinspin.index.Index.PointEntryKnn;
 import org.tinspin.index.PointDistance;
 import org.tinspin.index.PointMap;
 import org.tinspin.index.covertree.CoverTree;
+
+import com.github.micycle1.geoblitz.YStripesPointInAreaLocator;
 
 import micycle.pgs.commons.FrontChainPacker;
 import micycle.pgs.commons.LargestEmptyCircles;
@@ -65,8 +66,7 @@ public final class PGS_CirclePacking {
 	 * continues to generate circles until the sum of the areas of the circles
 	 * exceeds a specified proportion of the area of the given shape.
 	 * 
-	 * @param shape          The shape within which circles will be packed. The
-	 *                       shape should be in the form of PShape.
+	 * @param shape          The shape within which circles will be packed.
 	 * @param pointObstacles A collection of PVector points representing obstacles,
 	 *                       around which circles are packed. Only points contained
 	 *                       within the shape are relevant.
@@ -80,9 +80,10 @@ public final class PGS_CirclePacking {
 	 * @since 1.4.0
 	 */
 	public static List<PVector> obstaclePack(PShape shape, Collection<PVector> pointObstacles, double areaCoverRatio) {
+		areaCoverRatio = Math.min(areaCoverRatio, 1 - (1e-3));
 		final Geometry geometry = fromPShape(shape);
-
-		LargestEmptyCircles lec = new LargestEmptyCircles(fromPShape(PGS_Conversion.toPointsPShape(pointObstacles)), geometry, areaCoverRatio > 0.95 ? 0.5 : 1);
+		final Geometry obstacles = fromPShape(PGS_Conversion.toPointsPShape(pointObstacles));
+		LargestEmptyCircles lec = new LargestEmptyCircles(obstacles, geometry, areaCoverRatio > 0.95 ? 0.5 : 1);
 
 		final double shapeArea = geometry.getArea();
 		double circlesArea = 0;
@@ -278,24 +279,24 @@ public final class PGS_CirclePacking {
 		radiusMax = Math.max(1f, Math.max(radiusMin, radiusMax)); // choose max and constrain
 		final Geometry g = fromPShape(shape);
 		final Envelope e = g.getEnvelopeInternal();
-		IndexedPointInAreaLocator pointLocator;
+		YStripesPointInAreaLocator pointLocator;
 
 		final FrontChainPacker packer = new FrontChainPacker((float) e.getWidth(), (float) e.getHeight(), (float) radiusMin, (float) radiusMax,
 				(float) e.getMinX(), (float) e.getMinY(), seed);
 
 		if (radiusMin == radiusMax) {
 			// if every circle same radius, use faster contains check
-			pointLocator = new IndexedPointInAreaLocator(g.buffer(radiusMax));
+			pointLocator = new YStripesPointInAreaLocator(g.buffer(radiusMax));
 			packer.getCircles().removeIf(p -> pointLocator.locate(PGS.coordFromPVector(p)) == Location.EXTERIOR);
 		} else {
-			pointLocator = new IndexedPointInAreaLocator(g);
+			pointLocator = new YStripesPointInAreaLocator(g);
 			IndexedFacetDistance distance = new IndexedFacetDistance(g);
 			packer.getCircles().removeIf(p -> {
 				// first test whether shape contains circle center point (somewhat faster)
 				if (pointLocator.locate(PGS.coordFromPVector(p)) != Location.EXTERIOR) {
-					return false;
+					return false; // keep if interior
 				}
-				return !distance.isWithinDistance(PGS.pointFromPVector(p), p.z * 0.666);
+				return !distance.isWithinDistance(PGS.pointFromPVector(p), p.z * (2 / 3d));
 			});
 		}
 
@@ -497,13 +498,13 @@ public final class PGS_CirclePacking {
 
 		final List<PVector> packing = packer.getPacking(); // packing result
 
-		IndexedPointInAreaLocator pointLocator;
+		YStripesPointInAreaLocator pointLocator;
 		if (radiusMin == radiusMax) {
 			// if every circle same radius, use faster contains check
-			pointLocator = new IndexedPointInAreaLocator(g.buffer(radiusMax));
+			pointLocator = new YStripesPointInAreaLocator(g.buffer(radiusMax));
 			packing.removeIf(p -> pointLocator.locate(PGS.coordFromPVector(p)) == Location.EXTERIOR);
 		} else {
-			pointLocator = new IndexedPointInAreaLocator(g);
+			pointLocator = new YStripesPointInAreaLocator(g);
 			IndexedFacetDistance distIndex = new IndexedFacetDistance(g);
 			packing.removeIf(p -> {
 				// first test whether shape contains circle center point (somewhat faster)
@@ -537,7 +538,7 @@ public final class PGS_CirclePacking {
 		final Envelope e = g.getEnvelopeInternal();
 		// buffer the geometry to use InAreaLocator to test circles for overlap (this
 		// works because all circles have the same diameter)
-		final IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(g.buffer(radius * 0.95));
+		final YStripesPointInAreaLocator pointLocator = new YStripesPointInAreaLocator(g.buffer(radius * 0.95));
 		final double w = e.getWidth() + diameter + e.getMinX();
 		final double h = e.getHeight() + diameter + e.getMinY();
 
@@ -575,7 +576,7 @@ public final class PGS_CirclePacking {
 		 * Buffer the geometry to use InAreaLocator to test circles for overlap (this
 		 * works because all circles have the same diameter).
 		 */
-		final IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(g.buffer(radius * 0.95));
+		final YStripesPointInAreaLocator pointLocator = new YStripesPointInAreaLocator(g.buffer(radius * 0.95));
 		final double w = e.getWidth() + diameter + e.getMinX();
 		final double h = e.getHeight() + diameter + e.getMinY();
 

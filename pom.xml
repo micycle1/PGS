@@ -288,11 +288,6 @@
 			</exclusions>
 		</dependency>
 		<dependency>
-			<groupId>com.github.micycle1</groupId>
-			<artifactId>kendzi-math</artifactId>
-			<version>99f9217e84</version>
-		</dependency>
-		<dependency>
 			<groupId>com.github.paudan</groupId>
 			<artifactId>jswarmopt</artifactId>
 			<version>1.0.3a</version>
@@ -375,6 +370,11 @@
 			<artifactId>mixbox</artifactId>
 			<version>2.0.0</version>
 			<type>jar</type>
+		</dependency>
+		<dependency>
+			<groupId>com.github.micycle1</groupId>
+			<artifactId>GeoBlitz</artifactId>
+			<version>7aa1d2a292</version>
 		</dependency>
 	</dependencies>
 

@@ -23,7 +23,6 @@ import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 import org.locationtech.jts.algorithm.Angle;
 import org.locationtech.jts.algorithm.Orientation;
-import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.dissolve.LineDissolver;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
@@ -55,6 +54,7 @@ import org.twak.camp.Skeleton;
 import org.twak.utils.collections.Loop;
 import org.twak.utils.collections.LoopL;
 
+import com.github.micycle1.geoblitz.YStripesPointInAreaLocator;
 import com.google.common.collect.Lists;
 
 import micycle.medialAxis.MedialAxis;
@@ -63,7 +63,6 @@ import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.color.ColorUtils;
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.PEdge;
-import micycle.pgs.commons.YStripesPointInAreaLocator;
 import net.jafama.FastMath;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -400,7 +399,7 @@ public final class PGS_Contour {
 			g = DouglasPeuckerSimplifier.simplify(g, 1);
 		}
 		final int buffer = (int) Math.max(10, Math.ceil(intervalSpacing));
-		IndexedPointInAreaLocator cache = new IndexedPointInAreaLocator(g.buffer(buffer));
+		YStripesPointInAreaLocator cache = new YStripesPointInAreaLocator(g.buffer(buffer));
 
 		Coordinate[] e = g.getEnvelope().getCoordinates(); // envelope/bounding box of shape
 		List<PVector> randomPoints = generateGrid(e[0].x - buffer, e[0].y - buffer, e[3].x + buffer, e[1].y + buffer, intervalSpacing / 3, intervalSpacing / 3);

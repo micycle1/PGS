@@ -79,6 +79,8 @@ import org.tinfour.utils.TriangleCollector;
 import org.tinfour.voronoi.BoundedVoronoiBuildOptions;
 import org.tinfour.voronoi.BoundedVoronoiDiagram;
 
+import com.github.micycle1.geoblitz.YStripesPointInAreaLocator;
+
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
 import micycle.balaban.BalabanSolver;
@@ -731,7 +733,7 @@ public final class PGS_Processing {
 	 */
 	public static List<PVector> generateRandomGridPoints(PShape shape, int maxPoints, boolean constrainedToCircle, double gutterFraction, long randomSeed) {
 		Geometry g = fromPShape(shape);
-		IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(g);
+		YStripesPointInAreaLocator pointLocator = new YStripesPointInAreaLocator(g);
 
 		RandomPointsInGridBuilder r = new SeededRandomPointsInGridBuilder(randomSeed);
 		r.setConstrainedToCircle(constrainedToCircle);
