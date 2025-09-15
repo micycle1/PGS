@@ -64,12 +64,16 @@ public final class PGS_Morphology {
 	}
 
 	/**
-	 * Computes a rounded buffer area around the shape, having the given buffer
-	 * width.
-	 * 
-	 * @param shape
-	 * @param buffer extent/width of the buffer (which may be positive or negative)
-	 * @return a polygonal shape representing the buffer region (which may be empty)
+	 * Returns a rounded buffer region of the given shape at the specified distance.
+	 * <p>
+	 * The distance is in the same coordinate units as the shape: positive values
+	 * expand the shape, negative values contract it. The returned shape is a
+	 * polygonal PShape and may be empty. The input shape is not modified.
+	 *
+	 * @param shape  the source shape to buffer
+	 * @param buffer distance (extent/width) of the buffer; may be positive or
+	 *               negative
+	 * @return a polygonal PShape representing the buffer region (may be empty)
 	 * @see #buffer(PShape, double, OffsetStyle)
 	 */
 	public static PShape buffer(PShape shape, double buffer) {
@@ -77,18 +81,48 @@ public final class PGS_Morphology {
 	}
 
 	/**
-	 * Computes a buffer area around the shape, having the given buffer width and
-	 * buffer style (either round, miter, bevel).
-	 * 
-	 * @param shape
-	 * @param buffer extent/width of the buffer (which may be positive or negative)
-	 * @return a polygonal shape representing the buffer region (which may be empty)
+	 * Returns a buffer region of the given shape using the specified join style.
+	 * <p>
+	 * The distance is in the same coordinate units as the shape: positive values
+	 * expand the shape, negative values contract it. The bufferStyle controls how
+	 * corners are joined (e.g. ROUND, MITER, BEVEL). The returned shape is a
+	 * polygonal PShape and may be empty. The input shape is not modified.
+	 *
+	 * @param shape       the source shape to buffer
+	 * @param buffer      distance (extent/width) of the buffer; may be positive or
+	 *                    negative
+	 * @param bufferStyle how to join offset segments (ROUND, MITER, BEVEL)
+	 * @return a polygonal PShape representing the buffer region (may be empty)
 	 * @see #buffer(PShape, double)
 	 * @since 1.3.0
 	 */
 	public static PShape buffer(PShape shape, double buffer, OffsetStyle bufferStyle) {
+		return buffer(shape, buffer, bufferStyle, CapStyle.ROUND);
+	}
+
+	/**
+	 * Returns a buffer region of the given shape using the specified join and cap
+	 * styles.
+	 * <p>
+	 * The distance is in the same coordinate units as the shape: positive values
+	 * expand the shape, negative values contract it. bufferStyle controls how
+	 * corners are joined; capStyle controls the end-cap style used for open
+	 * geometries. The input shape is not modified; the returned PShape preserves
+	 * the user data from the original geometry. The result is a polygonal PShape
+	 * and may be empty.
+	 *
+	 * @param shape       the source shape to buffer
+	 * @param buffer      distance (extent/width) of the buffer; may be positive or
+	 *                    negative
+	 * @param bufferStyle how to join offset segments (ROUND, MITER, BEVEL)
+	 * @param capStyle    how to draw end caps for open geometries (e.g. ROUND,
+	 *                    FLAT)
+	 * @return a polygonal PShape representing the buffer region (may be empty)
+	 * @since 2.1
+	 */
+	public static PShape buffer(PShape shape, double buffer, OffsetStyle bufferStyle, CapStyle capStyle) {
 		Geometry g = fromPShape(shape);
-		BufferParameters bufParams = createBufferParams(buffer, 0.5, bufferStyle);
+		BufferParameters bufParams = createBufferParams(buffer, 0.5, bufferStyle, capStyle);
 		BufferOp b = new BufferOp(g, bufParams);
 		var out = b.getResultGeometry(buffer);
 		out.setUserData(g.getUserData());
@@ -928,7 +962,33 @@ public final class PGS_Morphology {
 		return toPShape(GeometryPrecisionReducer.reduce(fromPShape(shape), new PrecisionModel(-Math.max(Math.abs(precision), 1e-10))));
 	}
 
-	private static BufferParameters createBufferParams(double r, double delta, OffsetStyle bufferStyle) {
+	/**
+	 * The end cap style to use. Cap style specifies the shape of the ends of
+	 * buffered unclosed lines; it has no effect in polygons.
+	 */
+	public enum CapStyle {
+
+		/**
+		 * The usual round end caps.
+		 */
+		ROUND(BufferParameters.CAP_ROUND),
+		/**
+		 * End caps are truncated flat at the line ends.
+		 */
+		FLAT(BufferParameters.CAP_FLAT),
+		/**
+		 * End caps are squared off at the buffer distance beyond the line ends.
+		 */
+		SQUARE(BufferParameters.CAP_SQUARE);
+
+		final int style;
+
+		private CapStyle(int style) {
+			this.style = style;
+		}
+	}
+
+	private static BufferParameters createBufferParams(double r, double delta, OffsetStyle bufferStyle, CapStyle capStyle) {
 		r = Math.abs(r);
 
 		// compute the number of points for the full circle
@@ -950,7 +1010,7 @@ public final class PGS_Morphology {
 		quadSeg = Math.max(quadSeg, BufferParameters.DEFAULT_QUADRANT_SEGMENTS);
 
 		// cap style affects linestrings only
-		return new BufferParameters(quadSeg, BufferParameters.CAP_FLAT, bufferStyle.style, BufferParameters.DEFAULT_MITRE_LIMIT);
+		return new BufferParameters(quadSeg, capStyle.style, bufferStyle.style, BufferParameters.DEFAULT_MITRE_LIMIT);
 	}
 
 }
