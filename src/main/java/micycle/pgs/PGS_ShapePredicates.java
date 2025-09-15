@@ -17,7 +17,7 @@ import org.locationtech.jts.algorithm.MinimumBoundingCircle;
 import org.locationtech.jts.algorithm.MinimumDiameter;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
-import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
+import org.locationtech.jts.algorithm.locate.PointOnGeometryLocator;
 import org.locationtech.jts.algorithm.match.HausdorffSimilarityMeasure;
 import org.locationtech.jts.coverage.CoverageUnion;
 import org.locationtech.jts.coverage.CoverageValidator;
@@ -30,6 +30,8 @@ import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.util.PolygonExtracter;
 import org.locationtech.jts.operation.valid.IsValidOp;
+
+import com.github.micycle1.geoblitz.YStripesPointInAreaLocator;
 
 import micycle.pgs.commons.EllipticFourierDesc;
 import micycle.pgs.commons.GeometricMedian;
@@ -87,7 +89,7 @@ public final class PGS_ShapePredicates {
 	 * @return true if every point is contained within the shape
 	 */
 	public static boolean containsAllPoints(PShape shape, Collection<PVector> points) {
-		final IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(fromPShape(shape));
+		final PointOnGeometryLocator pointLocator = new YStripesPointInAreaLocator(fromPShape(shape));
 		for (PVector p : points) {
 			if (pointLocator.locate(new Coordinate(p.x, p.y)) == Location.EXTERIOR) {
 				return false;
@@ -109,7 +111,7 @@ public final class PGS_ShapePredicates {
 	 *         point at same index
 	 */
 	public static List<Boolean> containsPoints(PShape shape, Collection<PVector> points) {
-		final IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(fromPShape(shape));
+		final PointOnGeometryLocator pointLocator = new YStripesPointInAreaLocator(fromPShape(shape));
 		ArrayList<Boolean> bools = new ArrayList<>(points.size());
 		for (PVector p : points) {
 			bools.add(pointLocator.locate(new Coordinate(p.x, p.y)) != Location.EXTERIOR);
@@ -131,7 +133,7 @@ public final class PGS_ShapePredicates {
 	 * @return a filtered view of the input points
 	 */
 	public static List<PVector> findContainedPoints(PShape shape, Collection<PVector> points) {
-		final IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(fromPShape(shape));
+		final PointOnGeometryLocator pointLocator = new YStripesPointInAreaLocator(fromPShape(shape));
 		List<PVector> contained = new ArrayList<>();
 		for (PVector p : points) {
 			if (pointLocator.locate(new Coordinate(p.x, p.y)) != Location.EXTERIOR) {
