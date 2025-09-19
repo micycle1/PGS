@@ -313,9 +313,8 @@ public final class PGS_PointSet {
 	 * 
 	 * @param xMin x-coordinate of boundary minimum
 	 * @param yMin y-coordinate of boundary minimum
-	 * @param xMax x-coordinate of boundary maximum
-	 * @param yMax y-coordinate of boundary maximum
-	 * @return
+	 * @param xMax x-coordinate of boundary maximum (inclusive)
+	 * @param yMax y-coordinate of boundary maximum (inclusive)
 	 */
 	public static List<PVector> squareGrid(final double xMin, final double yMin, final double xMax, final double yMax, final double pointDistance) {
 		final double width = xMax - xMin;
@@ -323,8 +322,8 @@ public final class PGS_PointSet {
 
 		final List<PVector> points = new ArrayList<>();
 
-		for (double x = 0; x < width; x += pointDistance) {
-			for (double y = 0; y < height; y += pointDistance) {
+		for (double x = 0; x <= width; x += pointDistance) {
+			for (double y = 0; y <= height; y += pointDistance) {
 				points.add(new PVector((float) (x + xMin), (float) (y + yMin)));
 			}
 		}
