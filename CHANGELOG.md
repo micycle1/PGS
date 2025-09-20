@@ -45,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `createHobbyCurve()` to `PGS_Construction`. Creates a Hobby curve from a set of control points.
 * `pruneRandomRemoveN()` to `PGS_PointSet`. Randomly removes exactly N points from a list of points.
 * `pruneRandomToN()` to `PGS_PointSet`. Randomly prunes a list of points to exactly N points.
+* `convexMaximumInscribedCircle()` to `PGS_Optimisation`. Computes the largest inscribed circle of a convex polygon (faster and exact).
 
 ### Changes
 * Optimised `PGS_CirclePacking.tangencyPack()`. It's now around 1.5-2x faster and has higher precision.

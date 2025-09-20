@@ -40,6 +40,7 @@ import micycle.pgs.color.Colors;
 import micycle.pgs.commons.ClosestPointPair;
 import micycle.pgs.commons.FarthestPointPair;
 import micycle.pgs.commons.FastAtan2;
+import micycle.pgs.commons.FastConvexMaximumInscribedCircle;
 import micycle.pgs.commons.LargestEmptyCircles;
 import micycle.pgs.commons.MaximumInscribedAARectangle;
 import micycle.pgs.commons.MaximumInscribedRectangle;
@@ -183,6 +184,23 @@ public final class PGS_Optimisation {
 		double radius = PGS.coordFromPVector(centerPoint).distance(closestEdgePoint);
 		Polygon circle = createCircle(p.getCoordinate(), radius);
 		return toPShape(circle);
+	}
+
+	/**
+	 * Computes the exact largest inscribed circle for a convex polygonal shape.
+	 * <p>
+	 * This method is preferred and faster when the caller knows the shape is
+	 * convex; use it instead of {@link #maximumInscribedCircle(PShape)
+	 * maximumInscribedCircle()} for convex inputs.
+	 * 
+	 * @param shape a convex polygonal PShape (non-null)
+	 * @return a PVector (x, y, r) where x,y is the circle center and z (r) is the
+	 *         radius
+	 * @since 2.1
+	 */
+	public static PVector convexMaximumInscribedCircle(PShape shape) {
+		var c = FastConvexMaximumInscribedCircle.getCircle(fromPShape(shape));
+		return new PVector((float) c.x, (float) c.y, (float) c.z);
 	}
 
 	/**
