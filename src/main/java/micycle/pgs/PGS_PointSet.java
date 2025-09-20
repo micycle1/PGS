@@ -139,6 +139,132 @@ public final class PGS_PointSet {
 	}
 
 	/**
+	 * Remove exactly removeCount points chosen uniformly at random. The returned
+	 * list contains the remaining points in the original iteration order.
+	 *
+	 * @param points      collection of PVector points
+	 * @param removeCount number of points to remove (must be >= 0)
+	 * @return new List<PVector> containing the remaining points
+	 * @since 2.1
+	 */
+	public static List<PVector> pruneRandomRemoveN(Collection<PVector> points, int removeCount) {
+		return pruneRandomRemoveN(points, removeCount, System.nanoTime());
+	}
+
+	/**
+	 * Remove exactly removeCount points chosen uniformly at random, using the
+	 * provided seed.
+	 *
+	 * @param points      collection of PVector points
+	 * @param removeCount number of points to remove (must be >= 0)
+	 * @param seed        RNG seed for reproducibility
+	 * @return new List<PVector> containing the remaining points
+	 * @since 2.1
+	 */
+	public static List<PVector> pruneRandomRemoveN(Collection<PVector> points, int removeCount, long seed) {
+		if (removeCount < 0) {
+			throw new IllegalArgumentException("removeCount must be non-negative");
+		}
+		List<PVector> list = new ArrayList<>(points);
+		final int size = list.size();
+		if (removeCount <= 0) {
+			return new ArrayList<>(list);
+		}
+		if (removeCount >= size) {
+			return new ArrayList<>(); // everything removed
+		}
+
+		// sample removeCount distinct indices using partial Fisher-Yates
+		int[] indices = new int[size];
+		for (int i = 0; i < size; i++) {
+			indices[i] = i;
+		}
+		RandomGenerator r = new XoRoShiRo128PlusRandomGenerator(seed);
+		for (int i = 0; i < removeCount; i++) {
+			int j = i + r.nextInt(size - i);
+			int tmp = indices[i];
+			indices[i] = indices[j];
+			indices[j] = tmp;
+		}
+
+		boolean[] remove = new boolean[size];
+		for (int k = 0; k < removeCount; k++) {
+			remove[indices[k]] = true;
+		}
+
+		List<PVector> out = new ArrayList<>(size - removeCount);
+		for (int i = 0; i < size; i++) {
+			if (!remove[i]) {
+				out.add(list.get(i));
+			}
+		}
+		return out;
+	}
+
+	/**
+	 * Keep exactly keepCount points chosen uniformly at random. The returned list
+	 * contains the kept points in the original iteration order.
+	 *
+	 * @param points    collection of PVector points
+	 * @param keepCount number of points to keep (must be >= 0)
+	 * @return new List<PVector> containing the kept points
+	 * @since 2.1
+	 */
+	public static List<PVector> pruneRandomToN(Collection<PVector> points, int keepCount) {
+		return pruneRandomToN(points, keepCount, System.nanoTime());
+	}
+
+	/**
+	 * Keep exactly keepCount points chosen uniformly at random, using the provided
+	 * seed.
+	 *
+	 * @param points    collection of PVector points
+	 * @param keepCount number of points to keep (must be >= 0)
+	 * @param seed      RNG seed for reproducibility
+	 * @return new List<PVector> containing the kept points
+	 * @since 2.1
+	 */
+	public static List<PVector> pruneRandomToN(Collection<PVector> points, int keepCount, long seed) {
+		if (keepCount < 0) {
+			throw new IllegalArgumentException("keepCount must be non-negative");
+		}
+		List<PVector> list = new ArrayList<>(points);
+		final int size = list.size();
+		if (keepCount <= 0) {
+			return new ArrayList<>();
+		}
+		if (keepCount >= size) {
+			return new ArrayList<>(list);
+		}
+
+		// sample keepCount distinct indices using partial Fisher-Yates
+		int[] indices = new int[size];
+		for (int i = 0; i < size; i++) {
+			indices[i] = i;
+		}
+		RandomGenerator r = new XoRoShiRo128PlusRandomGenerator(seed);
+		for (int i = 0; i < keepCount; i++) {
+			int j = i + r.nextInt(size - i);
+			int tmp = indices[i];
+			indices[i] = indices[j];
+			indices[j] = tmp;
+		}
+
+		boolean[] keep = new boolean[size];
+		for (int k = 0; k < keepCount; k++) {
+			keep[indices[k]] = true;
+		}
+
+		List<PVector> out = new ArrayList<>(keepCount);
+		for (int i = 0; i < size; i++) {
+			if (keep[i]) {
+				out.add(list.get(i));
+			}
+		}
+		return out;
+	}
+
+	/**
 	 * Sorts a list of points according to the Hilbert space-filling curve to ensure
 	 * a high-degree of spatial locality in the sequence of points.
 	 * 
