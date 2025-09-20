@@ -18,6 +18,7 @@ import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.Polygonal;
 import org.locationtech.jts.operation.overlay.snap.GeometrySnapper;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
+import org.locationtech.jts.operation.relateng.RelateNG;
 import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.Vertex;
 import org.tinfour.standard.IncrementalTin;
@@ -144,15 +145,26 @@ public final class PGS_Voronoi {
 	 */
 	public static PShape innerVoronoi(final PShape shape, final boolean constrain, @Nullable final double[] bounds,
 			@Nullable final Collection<PVector> steinerPoints, final int relaxations) {
-		final Geometry g = fromPShape(shape);
-		BoundedVoronoiDiagram v = innerVoronoiRaw(shape, constrain, bounds, steinerPoints, relaxations);
+		BoundedVoronoiDiagram v = innerVoronoiRaw(shape, bounds, steinerPoints, relaxations);
 		List<Geometry> faces = new ArrayList<>();
 		if (v != null && v.getPolygons() != null) {
 			faces = v.getPolygons().stream().filter(p -> p.getEdges().size() > 1).map(PGS_Voronoi::toPolygon).collect(Collectors.toList());
 		}
-		if (constrain && g instanceof Polygonal) {
-			faces = faces.parallelStream().map(f -> OverlayNG.overlay(f, g, OverlayNG.INTERSECTION)).collect(Collectors.toList());
-			faces.removeIf(f -> f.getNumPoints() == 0); // (odd, artifacts of intersection?)
+		if (constrain) {
+			final Geometry g = fromPShape(shape);
+			if (g instanceof Polygonal) {
+				final var index = RelateNG.prepare(g);
+				faces = faces.parallelStream().map(f -> {
+					final var relation = index.evaluate(f);
+					if (relation.isContains()) {
+						return f;
+					} else if (relation.isDisjoint()) {
+						return g.getFactory().createEmpty(2);
+					}
+					return OverlayNG.overlay(f, g, OverlayNG.INTERSECTION);
+				}).collect(Collectors.toList());
+				faces.removeIf(f -> f.isEmpty() || f.getNumPoints() == 0);
+			}
 		}
 
 		PShape facesShape = PGS_Conversion.toPShape(faces);
@@ -186,9 +198,6 @@ public final class PGS_Voronoi {
 	 * 
 	 * @param shape         The shape to generate the inner Voronoi diagram for
 	 *                      (using its vertices for Voronoi sites).
-	 * @param constrain     A flag indicating whether or not to constrain the
-	 *                      resulting diagram to the original shape (if it is
-	 *                      polygonal).
 	 * @param bounds        an optional array of the form [minX, minY, maxX, maxY]
 	 *                      representing the bounds of the diagram. The boundary
 	 *                      must fully contain the shape (but needn't contain all
@@ -197,14 +206,13 @@ public final class PGS_Voronoi {
 	 *                      Steiner points to be used as additional sites in the
 	 *                      diagram.
 	 * @param relaxations   the number of times to relax the diagram. 0 or greater.
-	 * 
 	 * @return a GROUP PShape, where each child shape is a Voronoi cell. The
 	 *         <code>.name</code> value of each cell is set to the integer index of
 	 *         its vertex site.
 	 * @see #innerVoronoi(Collection)
 	 */
-	public static BoundedVoronoiDiagram innerVoronoiRaw(final PShape shape, final boolean constrain, @Nullable final double[] bounds,
-			@Nullable final Collection<PVector> steinerPoints, final int relaxations) {
+	public static BoundedVoronoiDiagram innerVoronoiRaw(final PShape shape, @Nullable final double[] bounds, @Nullable final Collection<PVector> steinerPoints,
+			final int relaxations) {
 		final Geometry g = fromPShape(shape);
 		final List<Vertex> vertices = new ArrayList<>();
 		final Coordinate[] coords = g.getCoordinates();
@@ -260,7 +268,7 @@ public final class PGS_Voronoi {
 					newSites.add(newSite);
 				}
 			}
-			if (maxDistDelta < 0.05) {
+			if (maxDistDelta < 1e-6) {
 				break; // sufficiently converged, exit relaxation early
 			}
 			v = new BoundedVoronoiDiagram(newSites, options);
@@ -351,7 +359,7 @@ public final class PGS_Voronoi {
 	 */
 
 	public static BoundedVoronoiDiagram innerVoronoiRaw(Collection<PVector> points, @Nullable double[] bounds, int relaxations) {
-		return innerVoronoiRaw(PGS_Conversion.toPointsPShape(points), false, bounds, null, relaxations);
+		return innerVoronoiRaw(PGS_Conversion.toPointsPShape(points), bounds, null, relaxations);
 	}
 
 	/**
