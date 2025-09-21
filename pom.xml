@@ -47,7 +47,7 @@
 				<configuration>
 					<failOnError>false</failOnError>
 					<subpackages>micycle.pgs</subpackages>
-					<excludePackageNames>micycle.pgs.color</excludePackageNames>
+					<excludePackageNames>micycle.pgs.color,micycle.pgs.commons</excludePackageNames>
 				</configuration>
 				<executions>
 					<execution>
