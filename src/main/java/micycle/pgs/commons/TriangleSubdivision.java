@@ -30,7 +30,7 @@ public class TriangleSubdivision {
 
 	// salts to separate different random purposes
 	private static final long SALT_DIVIDE = 0xA0761D6478BD642FL;
-	private static final long SALT_LERP   = 0xE7037ED1A0B428DBL;
+	private static final long SALT_LERP = 0xE7037ED1A0B428DBL;
 
 	public TriangleSubdivision(double width, double height, int maxDepth, long seed) {
 		this.width = width;
@@ -40,9 +40,24 @@ public class TriangleSubdivision {
 	}
 
 	public PShape divide() {
+		return divide(mix64(baseSeed) % 2 == 0);
+	}
+
+	public PShape divide(boolean flip) {
+		// flip==false -> diagonal TL->BR (original)
+		// flip==true -> diagonal TR->BL (the other diagonal)
 		division = new PShape(PConstants.GROUP);
-		divideTriangle(0, 0, width, 0, width, height, maxDiv, 1); // top right half
-		divideTriangle(0, 0, 0, height, width, height, maxDiv, 1); // bottom left half
+
+		if (!flip) {
+			// diagonal from top-left (0,0) to bottom-right (width,height)
+			divideTriangle(0, 0, width, 0, width, height, maxDiv, 1); // top-right triangle
+			divideTriangle(0, 0, 0, height, width, height, maxDiv, 1); // bottom-left triangle
+		} else {
+			// diagonal from top-right (width,0) to bottom-left (0,height)
+			divideTriangle(width, 0, width, height, 0, height, maxDiv, 1); // right-bottom triangle
+			divideTriangle(0, 0, width, 0, 0, height, maxDiv, 1); // left-top triangle
+		}
+
 		return division;
 	}
 
@@ -83,7 +98,8 @@ public class TriangleSubdivision {
 		return (bits >>> 11) * 0x1.0p-53;
 	}
 
-	// Hash the triangle in a stable way (order-sensitive, which is fine because construction is deterministic)
+	// Hash the triangle in a stable way (order-sensitive, which is fine because
+	// construction is deterministic)
 	private static long hashTriangle(long seed, PVector p1, PVector p2, PVector p3, long salt) {
 		long h = seed ^ salt;
 		h = mix64(h ^ Float.floatToIntBits(p1.x));
@@ -121,9 +137,7 @@ public class TriangleSubdivision {
 			double maxLength = Math.max(Math.max(d12, d23), d13);
 
 			// Deterministic per-triangle Gaussian for lerp t
-			float randVal = PApplet.constrain(
-				(float) triGaussian(0.5, VARIANCE, p1, p2, p3, SALT_LERP), 0, 1
-			);
+			float randVal = PApplet.constrain((float) triGaussian(0.5, VARIANCE, p1, p2, p3, SALT_LERP), 0, 1);
 
 			if (maxLength == d12) {
 				d = p3.copy();
@@ -151,10 +165,10 @@ public class TriangleSubdivision {
 			triangle.setStroke(255);
 			triangle.beginShape();
 			triangle.vertex(p1.x, p1.y);
-		    	triangle.vertex(p2.x, p2.y);
-		    	triangle.vertex(p3.x, p3.y);
-		    	triangle.endShape(PConstants.CLOSE);
-		    	return triangle;
+			triangle.vertex(p2.x, p2.y);
+			triangle.vertex(p3.x, p3.y);
+			triangle.endShape(PConstants.CLOSE);
+			return triangle;
 		}
 	}
 }
