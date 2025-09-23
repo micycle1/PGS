@@ -48,7 +48,7 @@ import processing.core.PVector;
  */
 public final class PGS_Tiling {
 
-	private static final double ROOT3 = Math.sqrt(3);
+	private static final double ROOT3 = Math.sqrt(3); // for hex
 
 	private PGS_Tiling() {
 	}
@@ -79,7 +79,10 @@ public final class PGS_Tiling {
 	public static PShape rectSubdivision(final double width, final double height, int maxDepth, final long seed) {
 		maxDepth++; // so that given depth==0 returns non-divided square
 		final RectangularSubdivision rectangularSubdivision = new RectangularSubdivision(width, height, maxDepth, seed);
-		return rectangularSubdivision.divide();
+		var division = rectangularSubdivision.divide();
+		division = PGS_Conversion.setAllFillColor(division, Colors.WHITE);
+		division = PGS_Conversion.setAllStrokeColor(division, Colors.PINK, 2);
+		return division;
 	}
 
 	/**
@@ -110,7 +113,10 @@ public final class PGS_Tiling {
 	public static PShape triangleSubdivision(final double width, final double height, int maxDepth, final long seed) {
 		maxDepth++; // so that given depth==0 returns non-divided triangle
 		final TriangleSubdivision subdivision = new TriangleSubdivision(width, height, maxDepth, seed);
-		return subdivision.divide();
+		var division = subdivision.divide();
+		division = PGS_Conversion.setAllFillColor(division, Colors.WHITE);
+		division = PGS_Conversion.setAllStrokeColor(division, Colors.PINK, 2);
+		return division;
 	}
 
 	/**
@@ -142,7 +148,7 @@ public final class PGS_Tiling {
 		// https://openprocessing.org/sketch/1045334
 		final float w = (float) width;
 		final float h = (float) height;
-		final float off = 20;
+		final float off = 0;
 		final SplittableRandom r = new SplittableRandom(seed);
 
 		final PVector p1 = new PVector(off, off);
@@ -329,16 +335,6 @@ public final class PGS_Tiling {
 	 *         .y) represent the center point and .z represents radius.
 	 */
 	public static List<PVector> doyleSpiral(final double centerX, final double centerY, final int p, final int q, final double maxRadius) {
-		// A closed-form solution for a single p, q (now deprecated).
-		/*
-		 * double start = 0; // starting circle n double sr, ang, cr;
-		 *
-		 * for (int i = 0; i < nCircles; i++) { sr = Math.exp((start + i) * 0.06101); //
-		 * spiral radius ang = (start + i) * 0.656; // spiral angle cr = 0.3215 *
-		 * Math.exp((start + i) * 0.06101); // circle radius circles.add(new
-		 * PVector((float) (sr * Math.cos(ang) + centerX), (float) (sr * Math.sin(ang) +
-		 * centerY), (float) cr)); }
-		 */
 		final DoyleSpiral doyleSpiral = new DoyleSpiral(p, q, maxRadius);
 		doyleSpiral.getCircles().forEach(c -> c.add((float) centerX, (float) centerY));
 		return new ArrayList<>(doyleSpiral.getCircles());
