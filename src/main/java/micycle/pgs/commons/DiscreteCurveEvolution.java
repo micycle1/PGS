@@ -3,14 +3,9 @@ package micycle.pgs.commons;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.LineString;
-import org.locationtech.jts.util.UniqueCoordinateArrayFilter;
-
 import net.jafama.FastMath;
 
 /**
@@ -104,6 +99,9 @@ public class DiscreteCurveEvolution {
 	public static Coordinate[] process(LineString lineString, DCETerminationCallback terminationCallback) {
 		final boolean closed = lineString.isClosed();
 		Coordinate[] coords = lineString.getCoordinates();
+		if (coords.length == 0) {
+			return coords;
+		}
 		if (closed && coords.length > 2) {
 			Coordinate[] newCoords = new Coordinate[coords.length - 1];
 			System.arraycopy(coords, 0, newCoords, 0, coords.length - 1);
