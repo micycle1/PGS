@@ -123,6 +123,7 @@ public final class PGS_Contour {
 		final MedialAxis m = new MedialAxis(g);
 		return PGS_SegmentSet.dissolve(m.getPrunedEdges(axialThreshold, distanceThreshold, areaThreshold).stream()
 				.map(e -> new PEdge(e.head.position.x, e.head.position.y, e.tail.position.x, e.tail.position.y)).collect(Collectors.toList()));
+		return PGS_SegmentSet.dissolve(medialSegments);
 	}
 
 	/**

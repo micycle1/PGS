@@ -388,8 +388,8 @@ public final class PGS_Morphology {
 	 */
 	public static PShape simplifyHobby(PShape shape, double tension) {
 		var points = PGS_Conversion.toPVector(shape);
-		if (shape.isClosed()) {
-			points.add(points.get(0));
+		if (shape.isClosed() && !points.get(0).equals(points.get(points.size() - 1))) {
+			points.add(points.get(0).copy());
 		}
 		return PGS_Construction.createHobbyCurve(points, tension);
 	}
@@ -814,11 +814,11 @@ public final class PGS_Morphology {
 		final PShape copy;
 		if (densify && !pointsShape) {
 			final Densifier d = new Densifier(fromPShape(shape));
-			d.setDistanceTolerance(1);
+			d.setDistanceTolerance(PGS_Conversion.BEZIER_SAMPLE_DISTANCE);
 			d.setValidate(false);
 			copy = toPShape(d.getResultGeometry());
 		} else {
-			copy = toPShape(fromPShape(shape));
+			copy = PGS_Conversion.copy(shape);
 		}
 
 		final UniformNoise noise = new UniformNoise((int) (noiseSeed % Integer.MAX_VALUE));
@@ -828,8 +828,14 @@ public final class PGS_Morphology {
 			copy.addChild(copy);
 		}
 
+		/*
+		 * TODO preserveEnds arg, that scales the noise offset towards 0 for vertices
+		 * near the end (so we don't large jump between end point and warped next
+		 * vertex).
+		 */
 		for (PShape child : copy.getChildren()) {
-			for (int i = 0; i < child.getVertexCount(); i++) {
+			int offset = 0; // child.isClosed() ? 0 : 1
+			for (int i = offset; i < child.getVertexCount() - offset; i++) {
 				final PVector coord = child.getVertex(i);
 				float dx = noise.uniformNoise(coord.x / scale, coord.y / scale + time) - 0.5f;
 				float dy = noise.uniformNoise(coord.x / scale + (101 + time), coord.y / scale + (101 + time)) - 0.5f;
@@ -875,6 +881,9 @@ public final class PGS_Morphology {
 			direction.mult(w);
 			vertex.add(direction);
 			vertices.add(vertex);
+		}
+		if (shape.isClosed()) {
+			vertices.add(vertices.get(0));
 		}
 		return PGS_Conversion.fromPVector(vertices);
 	}

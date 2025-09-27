@@ -70,6 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_Meshing.urquhartFaces()` no longer errors on triangulation inputs with no constraints.
 * `PGS_Tiling.triangleSubdivision()` subdivision is now deterministic across `maxDepth` for a given seed.
 * `PGS_Tiling.rectSubdivision()` subdivision is now deterministic across `maxDepth` for a given seed.
+* `PGS_Morphology.pinchWarp()` now preserves closed polygon inputs.
 
 ### Removed
 

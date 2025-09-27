@@ -1059,7 +1059,7 @@ public class PGS_Construction {
 	public static PShape createHobbyCurve(List<PVector> points, double tension, double endPointCurl) {
 		tension = Math.max(tension, 0.1); // prevent degeneracy
 		final boolean closed = points.get(0).equals(points.get(points.size() - 1));
-		double[][] vertices = PGS_Conversion.toArray(points);
+		double[][] vertices = PGS_Conversion.toArray(points.subList(0, points.size() - (closed ? 1 : 0)));
 		// param start/end curve
 		HobbyCurve curve = new HobbyCurve(vertices, tension, closed, endPointCurl, endPointCurl);
 
