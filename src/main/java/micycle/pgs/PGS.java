@@ -732,7 +732,7 @@ final class PGS {
 		}
 	}
 
-	private static boolean isEmptyShape(PShape s) {
+	static boolean isEmptyShape(PShape s) {
 		if (s == null) {
 			return true;
 		}

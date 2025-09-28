@@ -62,6 +62,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_PointSet.squareGrid()` now populates the grid with points upto and including `xMax` and `yMax` (inclusive).
 * Improved `PGS_Transformation.touchScale()` algorithm. It's now more performant and robust.
 * `PGS_Tiling.triangleSubdivision()` can now begin from both diagonal axes, not just the top-left to bottom-right diagonal.
+* `PGS_Processing.pointsOnExterior()` methods now return points on all elements of a shape, not just the perimeter of the first polygon.
+* `PGS_Processing.segmentsOnExterior()` now return segments on all elements of a shape, not just the perimeter of the first polygon.
 
 ### Fixed
 * `PGS_Morphology.rounding()` no longer gives invalid results.
