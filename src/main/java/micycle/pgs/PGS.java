@@ -605,17 +605,58 @@ final class PGS {
 	}
 
 	/**
-	 * Applies a given function to all lineal elements (LineString and LinearRing)
-	 * in the input PShape. The function processes each LineString or LinearRing and
-	 * returns a modified LineString. The method preserves the structure of the
-	 * input geometry, including exterior-hole relationships in polygons and
-	 * multi-geometries.
+	 * Apply a transformation to every lineal element in a PShape.
 	 *
-	 * @param shape    The input PShape containing lineal elements to process.
-	 * @param function A UnaryOperator that takes a LineString or LinearRing and
-	 *                 returns a modified LineString.
-	 * @return A new PShape with the processed lineal elements. Returns an empty
-	 *         PShape for unsupported geometry types.
+	 * <p>
+	 * This method traverses the geometry encoded by {@code shape} (via {@code
+	 * fromPShape}) and applies {@code function} to each lineal component: {@code
+	 * LineString} and {@code LinearRing}. The function is invoked with the original
+	 * line geometry and should return a replacement {@code LineString}, or {@code
+	 * null} to indicate that the element should be dropped.
+	 *
+	 * <p>
+	 * Behavioral rules:
+	 * <ul>
+	 * <li>For polygons the rings are obtained in shell-first order (exterior is the
+	 * first ring). If the function returns {@code null} for the exterior ring the
+	 * entire polygon is dropped (the method returns {@code null} for that polygon).
+	 * If the function returns {@code null} for an interior ring (a hole), that hole
+	 * is omitted from the result.</li>
+	 * <li>If the function returns a non-null {@code LineString} for a ring and that
+	 * LineString is not closed, it is automatically closed. In that case a message
+	 * is written to {@code System.err}.</li>
+	 * <li>If the function returns {@code null} for a simple {@code LineString},
+	 * that line is dropped.</li>
+	 * <li>For GeometryCollection / MultiPolygon / MultiLineString the method
+	 * processes each child and builds a GROUP {@code PShape} of the surviving
+	 * children. Children that become empty are omitted. If no children remain the
+	 * method returns {@code null}.</li>
+	 * <li>Unsupported geometry types (anything not handled above) are ignored and
+	 * cause the method to return {@code null} for that element.</li>
+	 * </ul>
+	 *
+	 * <p>
+	 * Notes and caveats:
+	 * <ul>
+	 * <li>The method closes rings automatically but does not otherwise validate
+	 * geometry (it does not enforce minimum vertex counts or full topology
+	 * validity). Callers that require additional validation should run JTS
+	 * validators on the result.</li>
+	 * <li>Callers must handle a possible {@code null} result: {@code null}
+	 * indicates that no geometry remains after processing (for example when an
+	 * exterior ring was removed or all members of a multi-geometry were
+	 * dropped).</li>
+	 *
+	 * @param shape    input PShape encoding geometries to transform (must be
+	 *                 convertible via {@code fromPShape})
+	 * @param function a UnaryOperator that receives each {@code LineString} (linear
+	 *                 rings are passed as {@code LineString}) and returns a
+	 *                 modified {@code LineString}, or {@code null} to indicate the
+	 *                 element should be dropped
+	 * @return a {@code PShape} representing the transformed geometry, or {@code
+	 *         null} when no geometry remains after processing. For multi/geometries
+	 *         a GROUP {@code PShape} is returned when one or more children survive;
+	 *         otherwise {@code null} is returned.
 	 * @since 2.1
 	 */
 	static PShape applyToLinealGeometries(PShape shape, UnaryOperator<LineString> function) {
@@ -623,44 +664,85 @@ final class PGS {
 		switch (g.getGeometryType()) {
 			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
 			case Geometry.TYPENAME_MULTIPOLYGON :
-			case Geometry.TYPENAME_MULTILINESTRING :
+			case Geometry.TYPENAME_MULTILINESTRING : {
 				PShape group = new PShape(GROUP);
 				for (int i = 0; i < g.getNumGeometries(); i++) {
-					group.addChild(applyToLinealGeometries(toPShape(g.getGeometryN(i)), function));
+					PShape child = applyToLinealGeometries(toPShape(g.getGeometryN(i)), function);
+					if (!isEmptyShape(child)) {
+						group.addChild(child);
+					}
+				}
+				// If nothing remains, return null to indicate "ignored"
+				if (isEmptyShape(group)) {
+					return null;
 				}
 				return group;
+			}
 			case Geometry.TYPENAME_LINEARRING :
-			case Geometry.TYPENAME_POLYGON :
-				// Preserve exterior-hole relations
+			case Geometry.TYPENAME_POLYGON : {
+				// Preserve exterior-hole relations; allow function to return null (skip)
 				LinearRing[] rings = new LinearRingIterator(g).getLinearRings();
-				LinearRing[] processedRings = new LinearRing[rings.length];
+				List<LinearRing> processed = new ArrayList<>(rings.length);
 				for (int i = 0; i < rings.length; i++) {
 					LinearRing ring = rings[i];
 					LineString out = function.apply(ring);
+
+					if (out == null) {
+						// If the exterior is removed, drop the whole polygon.
+						if (i == 0) {
+							return null;
+						} else {
+							// skip this hole
+							continue;
+						}
+					}
+					// Ensure closed; if not, close automatically.
 					if (out.isClosed()) {
-						processedRings[i] = GEOM_FACTORY.createLinearRing(out.getCoordinates());
+						processed.add(GEOM_FACTORY.createLinearRing(out.getCoordinates()));
 					} else {
 						System.err.println("Output LineString is not closed. Closing it automatically.");
 						Coordinate[] closedCoords = Arrays.copyOf(out.getCoordinates(), out.getNumPoints() + 1);
-						closedCoords[closedCoords.length - 1] = closedCoords[0]; // Close the ring
-						processedRings[i] = GEOM_FACTORY.createLinearRing(closedCoords);
+						closedCoords[closedCoords.length - 1] = closedCoords[0]; // close the ring
+						processed.add(GEOM_FACTORY.createLinearRing(closedCoords));
 					}
 				}
-				if (processedRings.length == 0) {
-					return new PShape();
+				if (processed.isEmpty()) {
+					return null;
 				}
+
+				LinearRing exterior = processed.get(0);
 				LinearRing[] holes = null;
-				if (processedRings.length > 1) {
-					holes = Arrays.copyOfRange(processedRings, 1, processedRings.length);
+				if (processed.size() > 1) {
+					holes = processed.subList(1, processed.size()).toArray(new LinearRing[0]);
 				}
-				return toPShape(GEOM_FACTORY.createPolygon(processedRings[0], holes));
-			case Geometry.TYPENAME_LINESTRING :
+				return toPShape(GEOM_FACTORY.createPolygon(exterior, holes));
+			}
+			case Geometry.TYPENAME_LINESTRING : {
 				LineString l = (LineString) g;
 				LineString out = function.apply(l);
+				if (out == null) {
+					return null;
+				}
 				return toPShape(out);
+			}
+
 			default :
-				return new PShape(); // Return empty (so element is invisible if not processed)
+				// Return null to indicate "ignored / not processed"
+				return null;
 		}
+	}
+
+	private static boolean isEmptyShape(PShape s) {
+		if (s == null) {
+			return true;
+		}
+		if (s.getChildCount() > 0) {
+			return false;
+		}
+		if (s.getVertexCount() > 0) {
+			return false;
+		}
+		return true;
 	}
 
 }
