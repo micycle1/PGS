@@ -1322,6 +1322,16 @@ public class PGS_Construction {
 	}
 
 	/**
+	 * Creates a geometric circle of radius r (.z) centered on (x,y).
+	 * 
+	 * @param c the PVector representing a circle
+	 * @since 2.1
+	 */
+	public static PShape createCircle(PVector c) {
+		return createCircle(c.x, c.y, c.z);
+	}
+
+	/**
 	 * Creates a circle of radius r centered on (x,y).
 	 * 
 	 * @since 2.0

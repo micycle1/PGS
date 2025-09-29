@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.vecmath.Point3d;
 
@@ -121,8 +122,15 @@ public final class PGS_Contour {
 	public static PShape medialAxis(PShape shape, double axialThreshold, double distanceThreshold, double areaThreshold) {
 		final Geometry g = fromPShape(shape);
 		final MedialAxis m = new MedialAxis(g);
-		return PGS_SegmentSet.dissolve(m.getPrunedEdges(axialThreshold, distanceThreshold, areaThreshold).stream()
-				.map(e -> new PEdge(e.head.position.x, e.head.position.y, e.tail.position.x, e.tail.position.y)).collect(Collectors.toList()));
+		var medialEdges = m.getPrunedEdges(axialThreshold, distanceThreshold, areaThreshold);
+		var medialSegments = medialEdges.stream().map(e -> {
+			var head = e.head.position;
+			var tail = e.tail.position;
+			if (head.equals2D(tail)) {
+				return null;
+			}
+			return new PEdge(head.x, head.y, tail.x, tail.y);
+		}).filter(Objects::nonNull).toList();
 		return PGS_SegmentSet.dissolve(medialSegments);
 	}
 

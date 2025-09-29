@@ -38,8 +38,8 @@ public class GaussianLineSmoothing {
 	 * of its neighbors, weighted by a gaussian kernel. For non-closed lines, the
 	 * initial and final points are preserved.
 	 *
-	 * @param input The input line
-	 * @param sigma The standard deviation of the gaussian kernel. The larger, the
+	 * @param line The input line
+	 * @param sigmaM The standard deviation of the gaussian kernel. The larger, the
 	 *              more smoothed.
 	 */
 	public static LineString get(LineString line, double sigmaM) {
