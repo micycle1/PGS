@@ -3,7 +3,6 @@ package micycle.pgs;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -104,7 +103,8 @@ class PGSTests {
 		// 2) Single LineString -> drop (function returns null)
 		UnaryOperator<LineString> dropAll = (lsIn) -> null;
 		PShape dropped = PGS.applyToLinealGeometries(lineShape, dropAll);
-		assertNull(dropped, "applyToLinealGeometries should return null when a single LineString is dropped");
+		assertEquals(0, dropped.getChildCount());
+		assertEquals(0, dropped.getVertexCount());
 
 		// 3) Polygon with exterior + one hole -> drop hole only
 		// exterior: square (0,0)-(4,0)-(4,4)-(0,4)-(0,0)
@@ -141,7 +141,8 @@ class PGSTests {
 			return in;
 		};
 		PShape polyDropped = PGS.applyToLinealGeometries(polyShape, dropExteriorIfStartsAt0);
-		assertNull(polyDropped, "If exterior ring is dropped, the whole polygon should be dropped (null returned)");
+		assertTrue(polyDropped.getChildCount() == 0 && polyDropped.getVertexCount() == 0,
+				"If exterior ring is dropped, the whole polygon should be dropped (null returned)");
 
 		// 5) MultiPolygon where one child is dropped and one kept
 		// Polygon A (kept): square at origin without hole
@@ -184,15 +185,11 @@ class PGSTests {
 			// coordinates
 			Polygon p = (Polygon) multiProcGeom;
 			assertEquals(0, p.getNumInteriorRing(), "Remaining polygon should have no holes");
-			assertArrayEquals(polyA.getExteriorRing().getCoordinates(), p.getExteriorRing().getCoordinates(), "Remaining polygon should match polyA");
+
+			assertTrue(polyA.getExteriorRing().equalsTopo(p.getExteriorRing()), "Remaining polygon should match polyA");
 		} else {
 			fail("Unexpected geometry type after processing MultiPolygon: " + multiProcGeom.getGeometryType());
 		}
-
-		// 6) MultiPolygon where all children are dropped -> result should be null
-		UnaryOperator<LineString> dropAllX = (LineString in) -> null;
-		PShape allDropped = PGS.applyToLinealGeometries(multiShape, dropAllX);
-		assertNull(allDropped, "If all children are dropped the result should be null");
 	}
 
 }

@@ -2,13 +2,9 @@ package micycle.pgs;
 
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
-import static processing.core.PConstants.GROUP;
-
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiFunction;
-
 import org.locationtech.jts.densify.Densifier;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
@@ -31,7 +27,6 @@ import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.simplify.VWSimplifier;
 
-import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.PGS_Contour.OffsetStyle;
 import micycle.pgs.commons.ChaikinCut;
 import micycle.pgs.commons.CornerRounding;
@@ -237,7 +232,6 @@ public final class PGS_Morphology {
 	 * 
 	 * @param shape  polygonal shape
 	 * @param buffer a positive number
-	 * @return
 	 * @since 1.3.0
 	 * @see #erosionDilation(PShape, double)
 	 */
@@ -335,39 +329,23 @@ public final class PGS_Morphology {
 	 * @since 2.0
 	 */
 	public static PShape simplifyDCE(PShape shape, DCETerminationCallback terminationCallback) {
-		Geometry g = fromPShape(shape);
-		switch (g.getGeometryType()) {
-			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
-			case Geometry.TYPENAME_MULTIPOLYGON :
-			case Geometry.TYPENAME_MULTILINESTRING :
-				PShape group = new PShape(GROUP);
-				for (int i = 0; i < g.getNumGeometries(); i++) {
-					group.addChild(simplifyDCE(toPShape(g.getGeometryN(i)), terminationCallback));
-				}
-				return group;
-			case Geometry.TYPENAME_LINEARRING :
-			case Geometry.TYPENAME_POLYGON :
-				// process each ring individually
-				LinearRing[] rings = new LinearRingIterator(g).getLinearRings();
-				LinearRing[] dceRings = new LinearRing[rings.length];
-				for (int i = 0; i < rings.length; i++) {
-					LinearRing ring = rings[i];
-					Coordinate[] dce = DiscreteCurveEvolution.process(ring, terminationCallback);
-					dceRings[i] = PGS.GEOM_FACTORY.createLinearRing(dce);
-				}
-				LinearRing[] holes = null;
-				if (dceRings.length > 1) {
-					holes = Arrays.copyOfRange(dceRings, 1, dceRings.length);
-				}
-				return toPShape(PGS.GEOM_FACTORY.createPolygon(dceRings[0], holes));
-			case Geometry.TYPENAME_LINESTRING :
-				LineString l = (LineString) g;
-				Coordinate[] dce = DiscreteCurveEvolution.process(l, terminationCallback);
-				return toPShape(PGS.GEOM_FACTORY.createLineString(dce));
-			default :
-				System.err.println(g.getGeometryType() + " are not supported for the simplifyDCE() method."); // pointal geoms
-				return new PShape(); // return empty (so element is invisible if not processed)
-		}
+		return PGS.applyToLinealGeometries(shape, ring -> {
+			var coords = DiscreteCurveEvolution.process(ring, terminationCallback);
+			return PGS.GEOM_FACTORY.createLineString(coords);
+		});
+	}
+
+	/**
+	 * Simplify the shape using DCE, removing vertices with relevance < r.
+	 * 
+	 * @param shape              the input shape
+	 * @param relevanceThreshold the relevance threshold; only vertices with
+	 *                           relevance >= the threshold will be kept
+	 * @return the simplified PShape
+	 * @since 2.1
+	 */
+	public static PShape simplifyDCE(PShape shape, final double relevanceThreshold) {
+		return simplifyDCE(shape, (currentVertex, relevance, verticesRemaining) -> relevance >= relevanceThreshold);
 	}
 
 	/**
@@ -387,11 +365,20 @@ public final class PGS_Morphology {
 	 * @since 1.4.0
 	 */
 	public static PShape simplifyHobby(PShape shape, double tension) {
-		var points = PGS_Conversion.toPVector(shape);
-		if (shape.isClosed() && !points.get(0).equals(points.get(points.size() - 1))) {
-			points.add(points.get(0).copy());
-		}
-		return PGS_Construction.createHobbyCurve(points, tension);
+		return PGS.applyToLinealGeometries(shape, ring -> {
+			var points = PGS_Conversion.toPVector(toPShape(ring));
+			if (ring.isClosed() && !points.get(0).equals(points.get(points.size() - 1))) {
+				points.add(points.get(0).copy());
+			}
+			var g = fromPShape(PGS_Construction.createHobbyCurve(points, tension));
+			if (g instanceof Polygon) {
+				g = ((Polygon) g).getExteriorRing();
+			}
+			if (g instanceof Lineal) {
+				return (LineString) g;
+			}
+			return null;
+		});
 	}
 
 	/**
@@ -466,44 +453,7 @@ public final class PGS_Morphology {
 	 * @see #smooth(PShape, double)
 	 */
 	public static PShape smoothGaussian(PShape shape, double sigma) {
-		Geometry g = fromPShape(shape);
-
-		switch (g.getGeometryType()) {
-			// NOTE see GeometryTransformer interface?
-			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
-			case Geometry.TYPENAME_MULTIPOLYGON :
-			case Geometry.TYPENAME_MULTILINESTRING :
-				PShape group = new PShape(GROUP);
-				for (int i = 0; i < g.getNumGeometries(); i++) {
-					group.addChild(smoothGaussian(toPShape(g.getGeometryN(i)), sigma));
-				}
-				return group;
-			case Geometry.TYPENAME_POLYGON :
-				LinearRingIterator lri = new LinearRingIterator(g);
-				LineString[] rings = lri.getLinearRings();
-				LinearRing[] ringSmoothed = new LinearRing[rings.length];
-				for (int i = 0; i < rings.length; i++) {
-					Coordinate[] coords = GaussianLineSmoothing.get(rings[i], Math.max(sigma, 1)).getCoordinates();
-					if (coords.length > 2) {
-						ringSmoothed[i] = PGS.GEOM_FACTORY.createLinearRing(coords);
-					} else {
-						ringSmoothed[i] = PGS.GEOM_FACTORY.createLinearRing();
-					}
-				}
-
-				LinearRing[] holes = null;
-				if (ringSmoothed.length > 1) {
-					holes = Arrays.copyOfRange(ringSmoothed, 1, ringSmoothed.length);
-				}
-				return toPShape(PGS.GEOM_FACTORY.createPolygon(ringSmoothed[0], holes));
-			case Geometry.TYPENAME_LINEARRING :
-			case Geometry.TYPENAME_LINESTRING :
-				LineString l = (LineString) g;
-				return toPShape(GaussianLineSmoothing.get(l, Math.max(sigma, 1)));
-			default :
-				System.err.println(g.getGeometryType() + " are not supported for the smoothGaussian() method."); // pointal geoms
-				return new PShape(); // return empty (so element is invisible if not processed)
-		}
+		return PGS.applyToLinealGeometries(shape, ring -> GaussianLineSmoothing.get(ring, sigma));
 	}
 
 	/**
@@ -533,45 +483,17 @@ public final class PGS_Morphology {
 	 * @since 1.4.0
 	 */
 	public static PShape smoothEllipticFourier(PShape shape, int descriptors) {
-		Geometry g = fromPShape(shape);
-		switch (g.getGeometryType()) {
-			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
-			case Geometry.TYPENAME_MULTIPOLYGON :
-			case Geometry.TYPENAME_MULTILINESTRING :
-				PShape group = new PShape(GROUP);
-				for (int i = 0; i < g.getNumGeometries(); i++) {
-					group.addChild(smoothEllipticFourier(toPShape(g.getGeometryN(i)), descriptors));
-				}
-				return group;
-			case Geometry.TYPENAME_POLYGON :
-				LinearRingIterator lri = new LinearRingIterator(g);
-				LinearRing[] rings = lri.getLinearRings();
-				LinearRing[] ringProcessed = new LinearRing[rings.length];
-				for (int i = 0; i < rings.length; i++) {
-					descriptors = Math.min(rings[i].getCoordinates().length / 2, descriptors); // max=#vertices/2
-					descriptors = Math.max(2, descriptors); // min=2
-					final EllipticFourierDesc efd = new EllipticFourierDesc(rings[i], descriptors);
-					Coordinate[] coords = efd.createPolygon();
-					ringProcessed[i] = PGS.GEOM_FACTORY.createLinearRing(coords);
-				}
-
-				LinearRing[] holes = null;
-				if (ringProcessed.length > 1) {
-					holes = Arrays.copyOfRange(ringProcessed, 1, ringProcessed.length);
-				}
-				return toPShape(PGS.GEOM_FACTORY.createPolygon(ringProcessed[0], holes));
-			case Geometry.TYPENAME_LINEARRING :
-				descriptors = Math.min(shape.getVertexCount() / 2, descriptors); // max=#vertices/2
-				descriptors = Math.max(2, descriptors); // min=2
-				LinearRing l = (LinearRing) g;
-				final EllipticFourierDesc efd = new EllipticFourierDesc(l, descriptors);
-				return toPShape(PGS.GEOM_FACTORY.createLinearRing(efd.createPolygon()));
-			case Geometry.TYPENAME_LINESTRING :
-			default :
-				System.err.println(g.getGeometryType() + " are not supported for the smoothEllipticFourier() method."); // pointal/string
-																														// geoms
-				return new PShape(); // return empty (so element is invisible if not processed)
-		}
+		return PGS.applyToLinealGeometries(shape, ring -> {
+			int descriptorz = Math.min(ring.getCoordinates().length / 2, descriptors); // max=#vertices/2
+			descriptorz = Math.max(2, descriptorz); // min=2
+			if (ring.isClosed()) {
+				final EllipticFourierDesc efd = new EllipticFourierDesc((LinearRing) ring, descriptorz);
+				Coordinate[] coords = efd.createPolygon();
+				return PGS.GEOM_FACTORY.createLinearRing(coords);
+			} else {
+				return null; // open linestrings not supported
+			}
+		});
 	}
 
 	/**
@@ -579,7 +501,7 @@ public final class PGS_Morphology {
 	 * refinement to reduce contraction.
 	 * 
 	 * @param shape                 A shape having lineal geometries (polygons or
-	 *                              linestrings). Can be a GROUP shape consiting of
+	 *                              linestrings). Can be a GROUP shape consisting of
 	 *                              these.
 	 * @param degree                The degree of the LR algorithm. Higher degrees
 	 *                              influence the placement of vertices and the
@@ -610,23 +532,38 @@ public final class PGS_Morphology {
 	}
 
 	/**
-	 * Modifies the corners of a specified shape by replacing each angular corner
-	 * with a smooth, circular arc.
-	 * 
-	 * @param shape  A polygonal PShape, or GROUP shape having polygonal children.
-	 * @param radius The radius of the circular arc used to round each corner. This
-	 *               determines how much a circle of the given radius "cuts into"
-	 *               the corner. The effective radius is bounded by the lengths of
-	 *               the edges forming the corner: If the radius is larger than half
-	 *               the length of either edge, it is clamped to the smaller of the
-	 *               two half-lengths to prevent overlapping or invalid geometry.
-	 * @return A new PShape object with corners rounded to the specified extent.
+	 * Rounds polygon corners by replacing each corner with a circular arc.
+	 *
+	 * <p>
+	 * This processes only the linear content of the input <code>PShape</code> - the
+	 * contour paths (closed contours for polygon exteriors and interior
+	 * contours/holes, and open polylines). Non‑linear or unsupported children are
+	 * ignored.
+	 * </p>
+	 * <p>
+	 * The <code>radius</code> is nominal; it is clamped so it cannot exceed what
+	 * adjacent edges can support (this prevents overlapping or invalid contours).
+	 * </p>
+	 *
+	 * @param shape  a polygonal <code>PShape</code> or a <code>GROUP</code>
+	 *               <code>PShape</code> containing polygonal children; holes
+	 *               (interior contours) are supported
+	 * @param radius nominal radius used to round corners; clamped by adjacent edge
+	 *               lengths
+	 * @return a non-null <code>PShape</code> with rounded corners; possibly an
+	 *         empty <code>GROUP</code> when nothing remains
 	 */
 	public static PShape round(PShape shape, double radius) {
-		return PGS_Processing.transform(shape, s -> {
-			var styling = PGS_Conversion.getShapeStylingData(shape);
-			var t = CornerRounding.roundCorners(s, radius, RoundingStyle.CIRCLE);
-			return styling.applyTo(t);
+		return PGS.applyToLinealGeometries(shape, ring -> {
+			var rounded = CornerRounding.roundCorners(toPShape(ring), radius, RoundingStyle.CIRCLE);
+			var g = fromPShape(rounded);
+			if (g instanceof Polygon) {
+				g = ((Polygon) g).getExteriorRing();
+			}
+			if (g instanceof Lineal) {
+				return (LineString) g;
+			}
+			return null; // pointal or other...
 		});
 	}
 
@@ -656,10 +593,17 @@ public final class PGS_Morphology {
 		ratio = Math.min(ratio, 1 - 1e-6);
 		ratio /= 2; // constrain to 0...0.5
 		float r = (float) ratio;
-		return PGS_Processing.transform(shape, s -> {
-			var styling = PGS_Conversion.getShapeStylingData(shape);
-			var cut = ChaikinCut.chaikin(shape, r, iterations);
-			return styling.applyTo(cut);
+
+		return PGS.applyToLinealGeometries(shape, ring -> {
+			var cut = ChaikinCut.chaikin(toPShape(ring), r, iterations);
+			var g = fromPShape(cut);
+			if (g instanceof Polygon) {
+				g = ((Polygon) g).getExteriorRing();
+			}
+			if (g instanceof Lineal) {
+				return (LineString) g;
+			}
+			return null; // pointal or other...
 		});
 	}
 
