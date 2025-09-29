@@ -17,6 +17,8 @@ void setup() {
 
   List<PVector> randomPoints = PGS_PointSet.poisson(30, 30, width - 30, height - 30, 15,1337);
   polygon = PGS_Hull.concaveHullBFS2(randomPoints, 0);
+  polygon = PGS_Morphology.erosionDilation(polygon, 1.5);
+  polygon = PGS_Morphology.simplify(polygon, 0.5);
 
   polygon.setFill(false);
   polygon.setStroke(color(1));

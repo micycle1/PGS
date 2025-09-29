@@ -74,6 +74,9 @@ PGS is hosted as an artifact for use in Maven or Gradle projects via [Jitpack](h
 A number of example Processing sketches are provided in [examples](https://github.com/micycle1/PGS/tree/master/examples).
 
 <p float="middle">
+  <a href="examples/organicSponge"><img src="resources/examples/organicSponge.png" alt="" width="24%"/></a>
+  <a href="examples/interlock"><img src="resources/examples/interlock.png" alt="" width="24%"/></a>
+  <a href="examples/warpedQuilt"><img src="resources/examples/warpedQuilt.png" alt="" width="24%"/></a>
   <a href="examples/partitionSmooth"><img src="resources/examples/partitionSmooth.png" alt="" width="24%"/></a>
   <a href="examples/textOffsetCurves"><img src="resources/examples/textOffsetCurves.png" alt="" width="24%"/></a>
   <a href="examples/ripplingTriangles"><img src="resources/examples/ripplingTriangles.png" alt="" width="24%"/></a>
@@ -271,7 +274,7 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
   <tr>
     <td valign="top"><img src="resources/morphology/smooth.gif"></td>
-    <td valign="top"><img src="resources/morphology/gaussianSmooth.gif"></td>
+    <td valign="top"><img src="resources/morphology/smoothGaussian.gif"></td>
     <td valign="top"><img src="resources/morphology/round.gif"></td>
     <td valign="top" ><img src="resources/morphology/round2.gif"></td>
   </tr>
