@@ -64,7 +64,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_Tiling.triangleSubdivision()` can now begin from both diagonal axes, not just the top-left to bottom-right diagonal.
 * `PGS_Processing.pointsOnExterior()` methods now return points on all elements of a shape, not just the perimeter of the first polygon.
 * `PGS_Processing.segmentsOnExterior()` now return segments on all elements of a shape, not just the perimeter of the first polygon.
-* These methods in `PGS_Morphology` now process any and all polygon/line elements in a shape: `chaikinCut()`, `smoothGaussian()`, `simplifyDCE()`, `simplifyHobby()`, `smoothEllipticFourier()`.
+* These methods in `PGS_Morphology` now process any and all polygon/line elements in a shape: `chaikinCut()`, `smoothGaussian()`, `simplifyDCE()`, `simplifyHobby()`, `smoothEllipticFourier()`, `round()`.
+* `dissolve()` to `PGS_Processing`. Dissolves the linear components of a shape into a set of unique maximal-length lines
 
 ### Fixed
 * `PGS_Morphology.rounding()` no longer gives invalid results.

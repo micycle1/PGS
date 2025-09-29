@@ -383,7 +383,7 @@ public final class PGS_Processing {
 				}
 
 				PShape segShape = PGS_Conversion.toPShape(segmentGeom);
-				segShape.setName(String.valueOf(lineStart));
+				segShape.setName(String.format("i=%s@%s", i, lineStart));
 				compGroup.addChild(segShape);
 			}
 
@@ -395,7 +395,7 @@ public final class PGS_Processing {
 		});
 
 		if (topGroup.getChildCount() == 1) {
-			return topGroup.getChild(1);
+			return topGroup.getChild(0);
 		}
 
 		return topGroup;
@@ -1323,6 +1323,29 @@ public final class PGS_Processing {
 			}
 		}
 		return toPShape(out); // better on smaller thresholds
+	}
+
+	/**
+	 * Dissolves the linear components of a shape (or group of shapes) into a set of
+	 * maximal-length lines in which each unique segment appears once.
+	 * <p>
+	 * Example uses: avoid double-drawing shared polygon edges; merge contiguous
+	 * segments for cleaner rendering/export; or extract non-redundant network edges
+	 * for topology or routing.
+	 * </p>
+	 * <p>
+	 * This method does not node the input lines. Crossing segments without a vertex
+	 * at the intersection remain crossing in the output.
+	 * </p>
+	 *
+	 * @param shape The {@code PShape} containing linear geometry.
+	 * @return A GROUP {@code PShape} whose children are the dissolved
+	 *         maximal-length lines.
+	 * @since 2.1
+	 */
+	public static PShape dissolve(PShape shape) {
+		var g = fromPShape(shape);
+		return toPShape(LineDissolver.dissolve(g));
 	}
 
 	/**
