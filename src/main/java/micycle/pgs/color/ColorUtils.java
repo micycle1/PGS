@@ -1,6 +1,6 @@
 package micycle.pgs.color;
 
-import com.scrtwpns.Mixbox;
+//import com.scrtwpns.Mixbox;
 
 import net.jafama.FastMath;
 
@@ -122,9 +122,9 @@ public class ColorUtils {
 	 * 
 	 * @return the new mixed color
 	 */
-	public static int pigmentMix(int colorA, int colorB, float t) {
-		return Mixbox.lerp(colorA, colorB, t);
-	}
+//	public static int pigmentMix(int colorA, int colorB, float t) {
+//		return Mixbox.lerp(colorA, colorB, t);
+//	}
 
 	/**
 	 * Produces a smooth hue-cycling rainbow.
