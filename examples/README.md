@@ -4,6 +4,10 @@ A collection of example Processing sketches using *Processing Geometry Suite*. T
 
 All examples are dynamic and/or interactive. Shown below are merely screenshots.
 
+## blobbies
+
+<img src="../resources/examples/blobbies.png" alt="" width="500"/>
+
 ## blowUp
 
 <img src="../resources/examples/blowUp.png" alt="" width="500"/>

@@ -77,6 +77,7 @@ A number of example Processing sketches are provided in [examples](https://githu
   <a href="examples/organicSponge"><img src="resources/examples/organicSponge.png" alt="" width="24%"/></a>
   <a href="examples/interlock"><img src="resources/examples/interlock.png" alt="" width="24%"/></a>
   <a href="examples/warpedQuilt"><img src="resources/examples/warpedQuilt.png" alt="" width="24%"/></a>
+  <a href="examples/blobbies"><img src="resources/examples/blobbies.png" alt="" width="24%"/></a>
   <a href="examples/partitionSmooth"><img src="resources/examples/partitionSmooth.png" alt="" width="24%"/></a>
   <a href="examples/textOffsetCurves"><img src="resources/examples/textOffsetCurves.png" alt="" width="24%"/></a>
   <a href="examples/ripplingTriangles"><img src="resources/examples/ripplingTriangles.png" alt="" width="24%"/></a>
