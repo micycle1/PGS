@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -63,14 +64,16 @@ import org.locationtech.jts.io.geojson.GeoJsonWriter;
 import org.locationtech.jts.util.GeometricShapeFactory;
 import org.scoutant.polyline.PolylineDecoder;
 
+import com.github.micycle1.betterbeziers.CubicBezier;
+
 import it.rambow.master.javautils.PolylineEncoder;
 import it.rambow.master.javautils.Track;
 import it.rambow.master.javautils.Trackpoint;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
-import micycle.betterbeziers.CubicBezier;
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
+import net.jafama.FastMath;
 import processing.core.PConstants;
 import processing.core.PMatrix;
 import processing.core.PShape;
@@ -900,24 +903,25 @@ public final class PGS_Conversion {
 	/**
 	 * Transforms a given PShape into a simple graph representation. In this
 	 * representation, the vertices of the graph correspond to the vertices of the
-	 * shape, and the edges of the graph correspond to the edges of the shape. This
-	 * transformation is specifically applicable to polygonal shapes where edges are
-	 * formed by adjacent vertices.
+	 * shape, and the edges of the graph correspond to the edges of the shape.
 	 * <p>
-	 * The edge weights in the graph are set to the length of the corresponding edge
-	 * in the shape.
+	 * The edge weights in the graph are set to the length (euclidean distance) of
+	 * the corresponding geometric edge in the shape.
 	 * 
-	 * @param shape the PShape to convert into a graph
+	 * @param shape the PShape to convert into a graph. LINES and polygonal shapes
+	 *              are accepted (and GROUP shapes thereof).
 	 * @return A SimpleGraph object that represents the structure of the input shape
 	 * @since 1.3.0
 	 * @see #toDualGraph(PShape)
 	 */
 	public static SimpleGraph<PVector, PEdge> toGraph(PShape shape) {
 		final SimpleGraph<PVector, PEdge> graph = new SimpleWeightedGraph<>(PEdge.class);
-		for (PShape face : getChildren(shape)) {
-			for (int i = 0; i < face.getVertexCount() - (face.isClosed() ? 0 : 1); i++) {
-				final PVector a = face.getVertex(i);
-				final PVector b = face.getVertex((i + 1) % face.getVertexCount());
+		for (PShape child : getChildren(shape)) {
+			final int stride = child.getKind() == PShape.LINES ? 2 : 1;
+			// Handle other child shapes (e.g., faces)
+			for (int i = 0; i < child.getVertexCount() - (child.isClosed() ? 0 : 1); i += stride) {
+				final PVector a = child.getVertex(i);
+				final PVector b = child.getVertex((i + 1) % child.getVertexCount());
 				if (a.equals(b)) {
 					continue;
 				}
@@ -943,27 +947,31 @@ public final class PGS_Conversion {
 	 * @since 1.4.0
 	 */
 	public static PShape fromGraph(SimpleGraph<PVector, PEdge> graph) {
-		return PGS.polygonizeEdges(graph.edgeSet());
+		return PGS.polygonizeNodedEdges(graph.edgeSet());
 	}
 
 	/**
-	 * Takes as input a graph and computes a layout for the graph vertices using a
-	 * Force-Directed placement algorithm (not vertex coordinates, if any exist).
-	 * Vertices are joined by their edges.
+	 * Computes a layout for the vertices of a graph using a Force-Directed
+	 * placement algorithm. The algorithm generates vertex coordinates based on the
+	 * graph's topology, preserving its structure (i.e., connectivity and
+	 * relationships between vertices and edges). Existing vertex coordinates, if
+	 * any, are ignored.
 	 * <p>
-	 * The output is a rather abstract representation of the input graph, and not a
-	 * geometric equivalent (unlike most other conversion methods in the class).
+	 * The output is an abstract representation of the input graph, not a geometric
+	 * equivalent (unlike most other conversion methods in this class). The layout
+	 * is bounded by the specified dimensions and anchored at (0, 0).
 	 *
-	 * @param <V>                 any vertex type
-	 * @param <E>                 any edge type
-	 * @param graph               the graph whose edges and vertices to lay out
-	 * @param normalizationFactor normalization factor for the optimal distance,
-	 *                            between 0 and 1.
-	 * @param boundsX             horizontal vertex bounds
-	 * @param boundsY             vertical vertex bounds
-	 * @return a GROUP PShape consisting of 2 children; child 0 is the linework
-	 *         (LINES) depicting edges and child 1 is the points (POINTS) depicting
-	 *         vertices. The bounds of the layout are anchored at (0, 0);
+	 * @param <V>                 the type of vertices in the graph
+	 * @param <E>                 the type of edges in the graph
+	 * @param graph               the graph whose vertices and edges are to be laid
+	 *                            out
+	 * @param normalizationFactor the normalization factor for the optimal distance
+	 *                            between vertices, clamped between 0.001 and 1
+	 * @param boundsX             the horizontal bounds for the layout
+	 * @param boundsY             the vertical bounds for the layout
+	 * @return a GROUP PShape containing two children: child 0 represents the edges
+	 *         as linework (LINES), and child 1 represents the vertices as points
+	 *         (POINTS)
 	 * @since 1.3.0
 	 */
 	public static <V, E> PShape fromGraph(SimpleGraph<V, E> graph, double normalizationFactor, double boundsX, double boundsY) {
@@ -1059,32 +1067,43 @@ public final class PGS_Conversion {
 	 */
 	static SimpleGraph<PShape, DefaultEdge> toDualGraph(Collection<PShape> meshFaces) {
 		final SimpleGraph<PShape, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
-		// map of which edge belong to each face; used to detect half-edges
-		final HashMap<PEdge, PShape> edgesMap = new HashMap<>(meshFaces.size() * 4);
+		final Map<PEdge, List<PShape>> edgeFacesMap = new HashMap<>();
 
+		// Phase 1: Collect edges and their associated faces
 		for (PShape face : meshFaces) {
-			graph.addVertex(face); // always add child so disconnected shapes are colored
+			graph.addVertex(face);
 			for (int i = 0; i < face.getVertexCount(); i++) {
-				final PVector a = face.getVertex(i);
-				final PVector b = face.getVertex((i + 1) % face.getVertexCount());
+				PVector a = face.getVertex(i);
+				PVector b = face.getVertex((i + 1) % face.getVertexCount());
 				if (a.equals(b)) {
 					continue;
 				}
-				final PEdge e = new PEdge(a, b);
-				final PShape neighbour = edgesMap.get(e);
 
-				if (neighbour != null) {
-					// edge seen before, so faces must be adjacent; create edge between faces
-					if (neighbour.equals(face)) { // probably bad input (3 edges the same)
-						System.err.println("toDualGraph(): Bad input — saw the same edge 3 times.");
-						continue; // continue to prevent self-loop in graph
-					}
-					graph.addEdge(neighbour, face);
-				} else {
-					edgesMap.put(e, face); // edge is new
-				}
+				PEdge edge = new PEdge(a, b);
+				edgeFacesMap.computeIfAbsent(edge, k -> new ArrayList<>()).add(face);
 			}
 		}
+
+		// Phase 2: Process edges in sorted order for graph iteration consistency
+		edgeFacesMap.entrySet().stream().sorted(Comparator.comparing(e -> e.getKey())) // Sort edges to ensure deterministic processing
+				.forEach(entry -> {
+					List<PShape> faces = entry.getValue();
+					if (faces.size() == 2) {
+						// If exactly two faces share this edge, connect them in the dual graph
+						PShape f1 = faces.get(0);
+						PShape f2 = faces.get(1);
+						if (!f1.equals(f2)) {
+							graph.addEdge(f1, f2); // Avoid self-loops
+						} else {
+							// Handle case where the same face is associated with the edge twice
+							System.err.println("toDualGraph(): Bad input — saw the same edge 3+ times for face: " + f1);
+						}
+					} else if (faces.size() > 2) {
+						// Handle edges shared by more than two faces
+						System.err.println("toDualGraph(): Bad input — edge shared by more than two faces: " + entry.getKey().toString());
+					}
+				});
+
 		return graph;
 	}
 
@@ -1227,7 +1246,7 @@ public final class PGS_Conversion {
 	 * Google <i>Encoded Polyline</i> format.
 	 * 
 	 * @param shape single (holeless) polygon or line
-	 * @return
+	 * @return String with the encoded polyline representing the shape
 	 * @since 1.3.0
 	 */
 	public static String toEncodedPolyline(PShape shape) {
@@ -1388,7 +1407,6 @@ public final class PGS_Conversion {
 	 * 
 	 * @param shell vertices of the shell of the polygon
 	 * @param holes (optional) list of holes
-	 * @return
 	 * @since 1.4.0
 	 */
 	public static PShape fromContours(List<PVector> shell, @Nullable List<List<PVector>> holes) {
@@ -1449,10 +1467,21 @@ public final class PGS_Conversion {
 	 * @see #fromArray(double[][], boolean)
 	 */
 	public static double[][] toArray(PShape shape, boolean keepClosed) {
-		List<PVector> points = toPVector(shape); // CLOSE
+		List<PVector> points = toPVector(shape); // unclosed
 		if (shape.isClosed() && keepClosed) {
 			points.add(points.get(0).copy()); // since toPVector returns unclosed view
 		}
+		return toArray(points);
+	}
+
+	/**
+	 * Converts a list of PVectors into an array of coordinates.
+	 * 
+	 * @param points
+	 * @return coordinate array in the form [[x1, y1], [x2, y2]]
+	 * @since 2.1
+	 */
+	public static double[][] toArray(List<PVector> points) {
 		double[][] out = new double[points.size()][2];
 		for (int i = 0; i < points.size(); i++) {
 			PVector point = points.get(i);
@@ -1486,14 +1515,18 @@ public final class PGS_Conversion {
 
 	/**
 	 * Flattens a collection of PShapes into a single GROUP PShape which has the
-	 * input shapes as its children.
+	 * input shapes as its children. If the collection contains only one shape, it
+	 * is returned directly as a non-GROUP shape.
 	 *
 	 * @since 1.2.0
 	 * @see #flatten(PShape...)
 	 */
 	public static PShape flatten(Collection<PShape> shapes) {
 		PShape group = new PShape(GROUP);
-		shapes.forEach(group::addChild);
+		shapes.stream().filter(Objects::nonNull).forEach(group::addChild);
+		if (group.getChildCount() == 1) {
+			return group.getChild(0);
+		}
 		return group;
 	}
 
@@ -1536,11 +1569,11 @@ public final class PGS_Conversion {
 		while (!parents.isEmpty()) {
 			final PShape parent = parents.pop(); // will always be a GROUP PShape
 			if (parent.getChildCount() > 0) { // avoid NPE on .getChildren()
-				for (PShape child : parent.getChildren()) {
-					if (child.getFamily() == GROUP) {
-						parents.add(child);
+				for (PShape candidate : parent.getChildren()) {
+					if (candidate.getFamily() == GROUP) {
+						parents.add(candidate);
 					} else {
-						children.add(child);
+						children.add(candidate);
 					}
 				}
 			}
@@ -1599,6 +1632,7 @@ public final class PGS_Conversion {
 	 *
 	 * @param shape
 	 * @return the input object (having now been mutated)
+	 * @see #setAllStrokeColor(PShape, int, double, int)
 	 * @see #setAllFillColor(PShape, int)
 	 */
 	public static PShape setAllStrokeColor(PShape shape, int color, double strokeWeight) {
@@ -1606,6 +1640,27 @@ public final class PGS_Conversion {
 			child.setStroke(true);
 			child.setStroke(color);
 			child.setStrokeWeight((float) strokeWeight);
+		});
+		return shape;
+	}
+
+	/**
+	 * Sets the stroke color and cap style for the PShape and all of its children
+	 * recursively.
+	 *
+	 * @param strokeCap either <code>SQUARE</code>, <code>PROJECT</code>, or
+	 *                  <code>ROUND</code>
+	 * @return the input object (having now been mutated)
+	 * @see #setAllStrokeColor(PShape, int, double)
+	 * @see #setAllFillColor(PShape, int)
+	 * @since 2.1
+	 */
+	public static PShape setAllStrokeColor(PShape shape, int color, double strokeWeight, int strokeCap) {
+		getChildren(shape).forEach(child -> {
+			child.setStroke(true);
+			child.setStroke(color);
+			child.setStrokeWeight((float) strokeWeight);
+			child.setStrokeCap(strokeCap);
 		});
 		return shape;
 	}
@@ -1707,21 +1762,40 @@ public final class PGS_Conversion {
 
 	/**
 	 * Rounds the x and y coordinates (to the closest int) of all vertices belonging
-	 * to the shape, <b>mutating</b> the shape. This can sometimes fix a visual
-	 * problem in Processing where narrow gaps can appear between otherwise flush
-	 * shapes.
+	 * to the shape. This can sometimes fix a visual problem in Processing where
+	 * narrow gaps can appear between otherwise flush shapes. If the shape is a
+	 * GROUP, the rounding is applied to all child shapes.
 	 *
-	 * @return the input object (having now been mutated)
+	 * @param shape the PShape to round vertex coordinates for.
+	 * @return a rounded copy of the input shape.
+	 * @see #roundVertexCoords(PShape, int)
 	 * @since 1.1.3
 	 */
 	public static PShape roundVertexCoords(PShape shape) {
-		getChildren(shape).forEach(c -> {
+		return roundVertexCoords(shape, 0);
+	}
+
+	/**
+	 * Rounds the x and y coordinates (to <code>n</code> decimal places) of all
+	 * vertices belonging to the shape. This can sometimes fix a visual problem in
+	 * Processing where narrow gaps can appear between otherwise flush shapes. If
+	 * the shape is a GROUP, the rounding is applied to all child shapes.
+	 *
+	 * @param shape the PShape to round vertex coordinates for.
+	 * @param n     The number of decimal places to which the coordinates should be
+	 *              rounded.
+	 * @return a rounded copy of the input shape.
+	 * @since 2.1
+	 */
+	public static PShape roundVertexCoords(PShape shape, int n) {
+		return PGS_Processing.transform(shape, s -> {
+			var c = copy(s);
 			for (int i = 0; i < c.getVertexCount(); i++) {
 				final PVector v = c.getVertex(i);
-				c.setVertex(i, Math.round(v.x), Math.round(v.y));
+				c.setVertex(i, round(v.x, n), round(v.y, n));
 			}
+			return c;
 		});
-		return shape;
 	}
 
 	/**
@@ -1735,6 +1809,7 @@ public final class PGS_Conversion {
 	public static PShape copy(PShape shape) {
 		final PShape copy = new PShape();
 		copy.setName(shape.getName());
+		final PShapeData style = new PShapeData(shape);
 
 		try {
 			Method method;
@@ -1769,17 +1844,18 @@ public final class PGS_Conversion {
 			e.printStackTrace();
 		}
 
-		return copy;
+		return style.applyTo(copy);
 	}
 
 	/**
 	 * Creates a PATH PShape representing a quadratic bezier curve, given by its
 	 * parameters.
-	 * 
-	 * @param start
-	 * @param controlPoint
-	 * @param end
-	 * @return
+	 *
+	 * @param start        starting point of the bezier curve
+	 * @param controlPoint control point of the curve
+	 * @param end          end point of the bezier curve
+	 * @return a PShape representing the quadratic bezier curve as a PATH, sampled
+	 *         every 2 units along its length
 	 * @since 1.4.0
 	 */
 	public static PShape fromQuadraticBezier(PVector start, PVector controlPoint, PVector end) {
@@ -1792,12 +1868,13 @@ public final class PGS_Conversion {
 	/**
 	 * Creates a PATH PShape representing a cubic bezier curve, given by its
 	 * parameters.
-	 * 
-	 * @param start
-	 * @param controlPoint1
-	 * @param controlPoint2
-	 * @param end
-	 * @return
+	 *
+	 * @param start         starting point of the bezier curve
+	 * @param controlPoint1 first control point of the curve
+	 * @param controlPoint2 second control point of the curve
+	 * @param end           end point of the bezier curve
+	 * @return a PShape representing the cubic bezier curve as a PATH, sampled every
+	 *         2 units along its length
 	 * @since 1.4.0
 	 */
 	public static PShape fromCubicBezier(PVector start, PVector controlPoint1, PVector controlPoint2, PVector end) {
@@ -1943,6 +2020,12 @@ public final class PGS_Conversion {
 		return reversed;
 	}
 
+	private static float round(float x, float n) {
+		float m = (float) FastMath.pow(10, n);
+
+		return FastMath.floor(m * x + 0.5f) / m;
+	}
+
 	/**
 	 * A utility class for storing and manipulating the visual properties of PShapes
 	 * from the Processing library. It encapsulates the stroke, fill, stroke color,
@@ -1973,8 +2056,10 @@ public final class PGS_Conversion {
 		public int fillColor, strokeColor;
 		public float strokeWeight;
 		public boolean fill, stroke;
+		private final PShape source;
 
 		PShapeData(PShape shape) {
+			source = shape;
 			try {
 				fillColor = fillColorF.getInt(shape);
 				fill = fillF.getBoolean(shape);
@@ -1990,9 +2075,16 @@ public final class PGS_Conversion {
 		 * Apply this shapedata to a given PShape.
 		 *
 		 * @param other
+		 * @return other (fluent interface)
 		 */
-		public void applyTo(PShape other) {
+		public PShape applyTo(PShape other) {
+			if (source.getFamily() == GROUP && other.getFamily() != GROUP) {
+				// opinionated -- don't apply group styling to non-group
+				return other;
+			}
+
 			if (other.getFamily() == GROUP) {
+				// ONLY IF child fill/stroke aren't defaults!?
 				getChildren(other).forEach(c -> applyTo(c));
 			}
 			other.setFill(fill);
@@ -2000,6 +2092,8 @@ public final class PGS_Conversion {
 			other.setStroke(stroke);
 			other.setStroke(strokeColor);
 			other.setStrokeWeight(strokeWeight);
+
+			return other;
 		}
 
 		@Override

@@ -4,6 +4,10 @@ A collection of example Processing sketches using *Processing Geometry Suite*. T
 
 All examples are dynamic and/or interactive. Shown below are merely screenshots.
 
+## blobbies
+
+<img src="../resources/examples/blobbies.png" alt="" width="500"/>
+
 ## blowUp
 
 <img src="../resources/examples/blowUp.png" alt="" width="500"/>
@@ -19,6 +23,10 @@ All examples are dynamic and/or interactive. Shown below are merely screenshots.
 ## dysonHatching
 
 <img src="../resources/examples/dysonHatching.png" alt="" width="500"/>
+
+## interlock
+
+<img src="../resources/examples/interlock.png" alt="" width="500"/>
 
 ## intersectionBoids
 
@@ -52,6 +60,10 @@ All examples are dynamic and/or interactive. Shown below are merely screenshots.
 
 <img src="../resources/examples/ripplingTriangles.png" alt="" width="500"/>
 
+## organicSponge
+
+<img src="../resources/examples/organicSponge.png" alt="" width="500"/>
+
 ## slice
 
 <img src="../resources/examples/slice.png" alt="" width="500"/>
@@ -79,3 +91,7 @@ All examples are dynamic and/or interactive. Shown below are merely screenshots.
 ## voronoiCutout
 
 <img src="../resources/examples/voronoiCutout.png" alt="" width="500"/>
+
+## warpedQuilt
+
+<img src="../resources/examples/warpedQuilt.png" alt="" width="500"/>

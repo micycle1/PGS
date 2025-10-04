@@ -3,6 +3,7 @@ package micycle.pgs;
 import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
@@ -26,6 +27,7 @@ import org.locationtech.jts.shape.fractal.SierpinskiCarpetBuilder;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
+import micycle.hobbycurves.HobbyCurve;
 import micycle.pgs.PGS_Contour.OffsetStyle;
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.BezierShapeGenerator;
@@ -134,20 +136,35 @@ public class PGS_Construction {
 		shapeFactory.setCentre(new Coordinate(centerX, centerY));
 		shapeFactory.setWidth(width * 2);
 		shapeFactory.setHeight(width * 2);
+		double ia = (Math.PI * (n - 2)) / n;
+		// flat edge facing down
+		shapeFactory.setRotation(ia / 2);
 
 		return toPShape(shapeFactory.createCircle());
 	}
 
 	/**
-	 * Creates a supercircle shape.
+	 * Generates a <b>supercircle</b> (also known as a superellipse or Lamé curve)
+	 * shape centered at the specified coordinates.
+	 * <p>
+	 * The supercircle is defined by the equation |x/a|<sup>n</sup> +
+	 * |y/a|<sup>n</sup> = 1, where the <code>power</code> (n) controls the shape's
+	 * roundness:
+	 * <ul>
+	 * <li><b>power &lt; 1</b>: produces star-like (concave) forms</li>
+	 * <li><b>power = 1</b>: produces a square (with rounded corners due to
+	 * sampling)</li>
+	 * <li><b>power &gt; 1</b>: increasingly resembles a circle as power
+	 * increases</li>
+	 * </ul>
 	 * 
-	 * @param centerX  centre point X
-	 * @param centerY  centre point Y
-	 * @param diameter
-	 * @param power    circularity of the super circle. Values less than 1 create
-	 *                 star-like shapes; power=1 is a square; values>1 are
-	 *                 increasingly circular.
-	 * @return
+	 * @param centerX  the x-coordinate of the supercircle center
+	 * @param centerY  the y-coordinate of the supercircle center
+	 * @param diameter the diameter of the supercircle (distance from side to side)
+	 * @param power    the exponent controlling the "circularity" (roundness or
+	 *                 squareness) of the shape; values &lt; 1 yield star-like
+	 *                 shapes, 1 is a square, values &gt; 1 become more circular
+	 * @return a {@link PShape} representing the generated supercircle
 	 */
 	public static PShape createSupercircle(double centerX, double centerY, double diameter, double power) {
 		GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
@@ -163,31 +180,34 @@ public class PGS_Construction {
 	}
 
 	/**
-	 * Creates a supershape PShape. The parameters feed into the superformula, which
-	 * is a simple 2D analytical expression allowing to draw a wide variety of
-	 * geometric and natural shapes (starfish, petals, snowflakes) by choosing
-	 * suitable values relevant to few parameters.
+	 * Generates a <b>supershape</b> using the superformula, centered at the
+	 * specified coordinates.
+	 * <p>
+	 * The superformula is a versatile 2D mathematical equation capable of
+	 * describing an enormous variety of shapes—ranging from rounded polygons and
+	 * starfish to petals and snowflakes—depending on parameter choices. See
+	 * <a href="https://en.wikipedia.org/wiki/Superformula">Superformula
+	 * (Wikipedia)</a> or <a href="http://paulbourke.net/geometry/supershape/">Paul
+	 * Bourke's page</a> for details.
+	 * <p>
+	 * Brief parameter effects:
 	 * <ul>
-	 * <li>As the n's are kept equal but reduced the form becomes increasingly
-	 * pinched.</li>
-	 * <li>If n1 is slightly larger than n2 and n3 then bloated forms result.</li>
-	 * <li>Polygonal shapes are achieved with very large values of n1 and large but
-	 * equal values for n2 and n3.</li>
-	 * <li>Asymmetric forms can be created by using different values for the
-	 * n's.</li>
-	 * <li>Smooth starfish shapes result from smaller values of n1 than the n2 and
-	 * n3.</li>
+	 * <li>Equal n-values pinch the form; reducing them increases pinching.</li>
+	 * <li>n₁ larger than n₂/n₃ produces bloated forms.</li>
+	 * <li>Very large n₁, n₂, and n₃ create polygonal shapes.</li>
+	 * <li>Unequal n-values yield asymmetric forms.</li>
+	 * <li>n₁ smaller than n₂/n₃ yields smooth starfish shapes.</li>
 	 * </ul>
-	 * 
-	 * @param centerX centre point X
-	 * @param centerY centre point Y
-	 * @param radius  maximum radius
-	 * @param m       specifies the rotational symmetry of the shape (3 = 3 sided; 4
-	 *                = 4 sided)
-	 * @param n1      supershape parameter 1
-	 * @param n2      supershape parameter 2
-	 * @param n3      supershape parameter 3
-	 * @return
+	 *
+	 * @param centerX the x-coordinate for the center of the supershape
+	 * @param centerY the y-coordinate for the center of the supershape
+	 * @param radius  maximum radius of the supershape (outermost point)
+	 * @param m       symmetry number (e.g. 3 for 3-pointed, 4 for 4-pointed shapes)
+	 * @param n1      superformula parameter controlling general shape (pinching,
+	 *                inflation)
+	 * @param n2      superformula parameter affecting shape symmetry
+	 * @param n3      superformula parameter affecting shape symmetry
+	 * @return a {@link PShape} instance representing the generated supershape
 	 */
 	public static PShape createSuperShape(double centerX, double centerY, double radius, double m, double n1, double n2, double n3) {
 		// http://paulbourke.net/geometry/supershape/
@@ -226,17 +246,27 @@ public class PGS_Construction {
 	}
 
 	/**
-	 * Creates an elliptical arc polygon (a slice of a circle). The polygon is
-	 * formed from the specified arc of an ellipse and the two radii connecting the
-	 * endpoints to the centre of the ellipse.
-	 * 
-	 * @param centerX     centre point X
-	 * @param centerY     centre point Y
-	 * @param width
-	 * @param height
-	 * @param orientation start angle/orientation in radians (where 0 is 12 o'clock)
-	 * @param angle       size of the arc angle in radians
-	 * @return
+	 * Creates an elliptical arc polygon—a filled "slice" of an ellipse defined by
+	 * the specified arc and the two radii connecting its endpoints to the ellipse
+	 * center.
+	 * <p>
+	 * The arc begins at the given orientation angle (measured from the 12 o'clock
+	 * position, in radians) and extends counterclockwise by the specified angular
+	 * size. If the arc angle is equal to or greater than 2&pi;, a full ellipse is
+	 * generated.
+	 * <p>
+	 * The resulting {@link PShape} is suitable for rendering a pie-slice or sector
+	 * from an ellipse or circle.
+	 *
+	 * @param centerX     the x-coordinate of the ellipse center
+	 * @param centerY     the y-coordinate of the ellipse center
+	 * @param width       the full width (diameter on the x-axis) of the ellipse
+	 * @param height      the full height (diameter on the y-axis) of the ellipse
+	 * @param orientation the starting angle (in radians), where 0 corresponds to
+	 *                    "12 o'clock" (upwards)
+	 * @param angle       the arc angle (in radians), defining the sweep of the arc;
+	 *                    if equal or greater than 2&pi;, a full ellipse is produced
+	 * @return a {@link PShape} representing the elliptical arc polygon
 	 */
 	public static PShape createArc(double centerX, double centerY, double width, double height, double orientation, double angle) {
 		if (angle == 0) {
@@ -357,18 +387,33 @@ public class PGS_Construction {
 	}
 
 	/**
-	 * Creates a "blob"-like shape.
+	 * Generates a "blobbie" shape—a deformable, organic, blobby closed curve
+	 * defined by four parameters.
 	 * <p>
-	 * In order for the shape to not self intersect a + b should be less than 1.
-	 * 
-	 * @param centerX  The x coordinate of the center
-	 * @param centerY  The y coordinate of the center
-	 * @param maxWidth
-	 * @param a        blob parameter. a + b should be less than 1
-	 * @param b        blob parameter.a + b should be less than 1
-	 * @param c        blob parameter
-	 * @param d        blob parameter
-	 * @return
+	 * The blobbie shape is based on functions involving cosine waves of different
+	 * frequencies, allowing for smooth, natural-looking deformations. Typical
+	 * results are lobed or petal-like closed shapes useful in generative graphics
+	 * or modeling organic phenomena.
+	 * <p>
+	 * To avoid self-intersections, the sum of the parameters <code>a</code> and
+	 * <code>b</code> should be less than 1. If self-intersection occurs, the result
+	 * will attempt to be geometrically fixed but may yield unexpected forms. See
+	 * <a href="http://paulbourke.net/geometry/blobbie/">Paul Bourke: Blobbie</a>
+	 * for background.
+	 *
+	 * <pre>{@code
+	 * r(theta) = (maxWidth/2) * [1 + a*cos(2θ + c) + b*cos(3θ + d)]
+	 * }</pre>
+	 *
+	 * @param centerX  the x-coordinate of the blobbie center
+	 * @param centerY  the y-coordinate of the blobbie center
+	 * @param maxWidth the maximum width (diameter) of the blobbie
+	 * @param a        2-lobed deformation parameter; together with b, controls the
+	 *                 main shape undulations (<b>a + b < 1</b> for simple forms)
+	 * @param b        3-lobed deformation parameter; see note above
+	 * @param c        phase offset for the 2-lobed term
+	 * @param d        phase offset for the 3-lobed term
+	 * @return a {@link PShape} representing the generated blobbie shape
 	 * @since 1.3.0
 	 */
 	public static PShape createBlobbie(double centerX, double centerY, double maxWidth, double a, double b, double c, double d) {
@@ -404,12 +449,22 @@ public class PGS_Construction {
 	}
 
 	/**
-	 * Creates a heart shape.
-	 * 
-	 * @param centerX The x coordinate of the center of the heart
-	 * @param centerY The y coordinate of the center of the heart
-	 * @param width   Maximum width of the widest part of the heart
-	 * @return
+	 * Creates a classic "heart" shape using a parametric curve, centered and scaled
+	 * as specified.
+	 * <p>
+	 * The curve is based on the well-known heart equations, producing a symmetric
+	 * heart that is widest at the center and comes to a point below.
+	 * <p>
+	 * The maximum width parameter controls the distance across the heart at its
+	 * widest part.
+	 * <p>
+	 * See <a href="https://mathworld.wolfram.com/HeartCurve.html">Heart Curve
+	 * (MathWorld)</a> for the mathematical reference.
+	 *
+	 * @param centerX the x-coordinate for the center of the heart shape
+	 * @param centerY the y-coordinate for the center of the heart shape
+	 * @param width   the maximum width (horizontal extent) of the heart
+	 * @return a {@link PShape} representing the generated heart curve
 	 * @since 1.1.0
 	 */
 	public static PShape createHeart(final double centerX, final double centerY, final double width) {
@@ -439,13 +494,26 @@ public class PGS_Construction {
 	}
 
 	/**
-	 * Creates a teardrop shape from a parametric curve.
-	 * 
-	 * @param centerX The x coordinate of the center of the teardrop
-	 * @param centerY The y coordinate of the center of the teardrop
-	 * @param height  height of the teardrop
-	 * @param m       order of the curve. Values of [2...5] give good results
-	 * @return
+	 * Creates a teardrop shape using a parametric polar curve, centered and scaled
+	 * as specified.
+	 * <p>
+	 * This method generates a classic teardrop or droplet outline, where the
+	 * parameter {@code m} controls the taper and sharpness of the pointed end.
+	 * Lower values for {@code m} (such as 2) create softer drops, while higher
+	 * values (up to 5) yield sharper, pointier ends.
+	 * <p>
+	 * The generated {@link PShape} is suitable for use in generative design,
+	 * infographics, and iconography.
+	 * <p>
+	 * See <a href="https://mathworld.wolfram.com/TeardropCurve.html">Teardrop Curve
+	 * (MathWorld)</a> for mathematical background.
+	 *
+	 * @param centerX the x-coordinate of the center of the teardrop shape
+	 * @param centerY the y-coordinate of the center of the teardrop shape
+	 * @param height  the full vertical height of the teardrop, from its base to tip
+	 * @param m       the order/tapering factor of the curve; recommended range is
+	 *                2–5 for visually pleasing shapes
+	 * @return a {@link PShape} representing the teardrop outline
 	 * @since 1.4.0
 	 */
 	public static PShape createTeardrop(final double centerX, final double centerY, double height, final double m) {
@@ -587,23 +655,23 @@ public class PGS_Construction {
 		// A Simple and Effective Geometric Representation for Irregular Porous
 		// Structure Modeling
 		List<PVector> points = PGS_PointSet.random(thickness, thickness / 2, width - thickness / 2, height - thickness / 2, generators, seed);
-		if (points.size() < 6) {
-			return new PShape();
-		}
-		PShape voro = PGS_Voronoi.innerVoronoi(points, 2);
+		PShape voro = PGS_Voronoi.innerVoronoi(points, new double[] { 0, 0, width, height }, 2);
 
-		List<PShape> blobs = PGS_Conversion.getChildren(PGS_Meshing.stochasticMerge(voro, classes, seed)).stream().map(c -> {
-			c = PGS_Morphology.buffer(c, -thickness / 2, OffsetStyle.MITER);
-			c = PGS_Morphology.smoothGaussian(c, smoothing);
-			return c;
-		}).collect(Collectors.toList());
+		var merged = PGS_Meshing.stochasticMerge(voro, classes, seed);
+		var blobs = PGS_Processing.transform(merged, blob -> {
+			blob = PGS_Morphology.buffer(blob, -thickness / 2, OffsetStyle.MITER);
+			if (smoothing != 0) {
+				blob = PGS_Morphology.smoothGaussian(blob, smoothing);
+			}
+			return blob;
+		});
 
 		/*
 		 * Although faster, can't use .simpleSubtract() here because holes (cell
 		 * islands) are *sometimes* nested.
 		 */
-		PShape s = PGS_ShapeBoolean.subtract(PGS.createRect(0, 0, width, height), PGS_Conversion.flatten(blobs));
-		s.setStroke(false);
+		PShape s = PGS_ShapeBoolean.subtract(PGS.createRect(0, 0, width, height), blobs);
+		PGS_Conversion.disableAllStroke(s);
 		return s;
 	}
 
@@ -719,35 +787,29 @@ public class PGS_Construction {
 	 * @return a stroked PATH PShape with SQUARE stroke cap and MITER joins
 	 * @since 1.3.0
 	 */
-	public static PShape createRectangularSpiral(float x, float y, float width, float height, float spacing) {
-		float xx = -width / 2;
-		float yy = -height / 2;
+	public static PShape createRectangularSpiral(double x, double y, double width, double height, double spacing) {
+		double xx = -width / 2.0;
+		double yy = -height / 2.0;
 		int count = 0;
 		// below is used to dictate spiral orientation & starting point
-//		if (count == 1) {
-//			xx *= -1;
-//		}
-//		if (count == 2) {
-//			xx *= -1;
-//			yy *= -1;
-//		}
-//		if (count == 3) {
-//			yy *= -1;
-//		}
-		final float offX = x + width / 2;
-		final float offY = y + height / 2;
+		// if (count == 1) { xx *= -1; }
+		// if (count == 2) { xx *= -1; yy *= -1; }
+		// if (count == 3) { yy *= -1; }
+		final double offX = x + width / 2.0;
+		final double offY = y + height / 2.0;
 		final PShape spiral = new PShape(PShape.PATH);
 		spiral.setFill(false);
 		spiral.setStroke(true);
-		spiral.setStrokeWeight(5);
-//		spiral.setStrokeWeight(spacing * 0.333f);
+		spiral.setStrokeWeight(5f);
+		// spiral.setStrokeWeight((float)(spacing * 0.333));
 		spiral.setStroke(Colors.WHITE);
 		spiral.setStrokeJoin(PConstants.MITER);
 		spiral.setStrokeCap(PConstants.SQUARE);
 		spiral.beginShape();
-		while (width > 0 && height > 0) {
+		while (width > 0.0 && height > 0.0) {
 			int dir = count % 4;
-			spiral.vertex(xx + offX, yy + offY);
+			// cast to float for Processing's vertex API
+			spiral.vertex((float) (xx + offX), (float) (yy + offY));
 			if (dir == 0) {
 				xx += width;
 				width -= spacing;
@@ -796,7 +858,7 @@ public class PGS_Construction {
 	 * @param cellWidth  visual/pixel width of each cell
 	 * @param cellHeight visual/pixel width of each cell
 	 * @param seed       random seed
-	 * @return a stroked PATH PShape
+	 * @return a mitered stroked PATH PShape
 	 * @see #createRandomSFCurve(int, int, double, double)
 	 * @since 1.4.0
 	 */
@@ -946,6 +1008,74 @@ public class PGS_Construction {
 	}
 
 	/**
+	 * Creates a Hobby Curve from the given list of control points using the
+	 * specified tension. This is a convenience overload that uses a default
+	 * endpoint curl of 0.5.
+	 * <p>
+	 * The first and last points may be equal; in that case the curve will be
+	 * treated as closed.
+	 *
+	 * @param points  the list of vertices to use as the basis for the Hobby Curve.
+	 *                Must be non-null and contain at least two points.
+	 * @param tension a parameter controlling the tightness of the curve. Higher
+	 *                values generally produce tighter curves. A suitable domain is
+	 *                approximately [0.666..., 3]. Values below 0.1 are clamped to
+	 *                0.1 to avoid degeneracy.
+	 * @return a PShape representing the resulting Hobby Curve composed of cubic
+	 *         Bezier segments.
+	 * @since 2.1
+	 */
+	public static PShape createHobbyCurve(List<PVector> points, double tension) {
+		return createHobbyCurve(points, tension, 0.5);
+	}
+
+	/**
+	 * Create a Hobby Curve from the given list of control points using the
+	 * specified tension and endpoint curl parameter.
+	 * <p>
+	 * The curve is constructed from cubic Bezier segments. If the first and last
+	 * points are equal the curve will be treated as closed (continuous), and the
+	 * endpoint curl parameter is effectively ignored for continuity.
+	 *
+	 * @param points       the list of vertices to use as the basis for the Hobby
+	 *                     Curve. Must be non-null and contain at least two points.
+	 * @param tension      a parameter controlling the tightness of the curve.
+	 *                     Higher values generally produce tighter curves. A
+	 *                     suitable domain is approximately [0.666..., 3]. Values
+	 *                     below 0.1 are clamped to 0.1 to avoid degeneracy.
+	 * @param endPointCurl a tuning parameter that controls the "curl" at the start
+	 *                     and end of the curve; typical default is 0.5. When the
+	 *                     curve is closed this value is ignored.
+	 * @return a PShape representing the resulting Hobby Curve composed of cubic
+	 *         Bezier segments.
+	 * @since 2.1
+	 */
+	public static PShape createHobbyCurve(List<PVector> points, double tension, double endPointCurl) {
+		tension = Math.max(tension, 0.1); // prevent degeneracy
+		final boolean closed = points.get(0).equals(points.get(points.size() - 1));
+		double[][] vertices = PGS_Conversion.toArray(points.subList(0, points.size() - (closed ? 1 : 0)));
+		// param start/end curve
+		HobbyCurve curve = new HobbyCurve(vertices, tension, closed, endPointCurl, endPointCurl);
+
+		double[][] beziers = curve.getBeziers();
+
+		List<PVector> curveVertices = Arrays.stream(beziers).parallel().flatMap(b -> {
+			// unpack the array into the 4 PVector points
+			int i = 0;
+			PVector p1 = new PVector((float) b[i++], (float) b[i++]);
+			PVector cp1 = new PVector((float) b[i++], (float) b[i++]);
+			PVector cp2 = new PVector((float) b[i++], (float) b[i++]);
+			PVector p2 = new PVector((float) b[i++], (float) b[i]);
+
+			PShape bezierShape = PGS_Conversion.fromCubicBezier(p1, cp1, cp2, p2);
+
+			return PGS_Conversion.toPVector(bezierShape).stream(); // to stream (for flattening)
+		}).toList();
+
+		return PGS_Conversion.fromPVector(curveVertices);
+	}
+
+	/**
 	 * Creates a Sierpiński Carpet shape, a type of plane fractal.
 	 * 
 	 * @param width  pixel width of the curve
@@ -1034,12 +1164,165 @@ public class PGS_Construction {
 	}
 
 	/**
+	 * Shortcut for creating a rectangle with uniformly rounded corners, using
+	 * {@link PConstants#CORNER} mode.
+	 * <p>
+	 * This convenience method creates a rectangle where all four corners have the
+	 * same radius {@code r}. The rectangle uses Processing's
+	 * {@link PConstants#CORNER} mode coordinates: {@code (a, b)} specify the
+	 * top-left corner, and {@code c} and {@code d} specify width and height,
+	 * respectively.
+	 *
+	 * @param a the x-coordinate of the top-left corner of the rectangle
+	 * @param b the y-coordinate of the top-left corner of the rectangle
+	 * @param c the width of the rectangle
+	 * @param d the height of the rectangle
+	 * @param r the uniform radius to be applied to all four corners (<code>0</code>
+	 *          gives a regular rectangle)
+	 * @return a {@link PShape} representing the rounded rectangle
+	 * @since 2.1
+	 */
+	public static PShape createRect(double a, double b, double c, double d, double r) {
+		return createRect(PConstants.CORNER, a, b, c, d, r);
+	}
+
+	/**
+	 * Creates a rectangle with specified corner radii, in any Processing-style
+	 * rectangle mode.
+	 * <p>
+	 * The meaning of the {@code a}, {@code b}, {@code c}, and {@code d} parameters
+	 * depends on the {@code rectMode}:
+	 * <ul>
+	 * <li>{@link PConstants#CORNER}: {@code (a, b)} is the top-left corner;
+	 * {@code c} is width, {@code d} is height</li>
+	 * <li>{@link PConstants#CORNERS}: {@code (a, b)} is the top-left corner;
+	 * {@code (c, d)} is the bottom-right corner</li>
+	 * <li>{@link PConstants#CENTER}: {@code (a, b)} is the rectangle center;
+	 * {@code c} is width, {@code d} is height</li>
+	 * <li>{@link PConstants#RADIUS}: {@code (a, b)} is the center; {@code c} is
+	 * half width, {@code d} is half height</li>
+	 * </ul>
+	 * Each corner radius parameter refers to a specific corner:
+	 * <ul>
+	 * <li>{@code tl} – top-left corner radius</li>
+	 * <li>{@code tr} – top-right corner radius</li>
+	 * <li>{@code br} – bottom-right corner radius</li>
+	 * <li>{@code bl} – bottom-left corner radius</li>
+	 * </ul>
+	 *
+	 * @param rectMode rectangle mode as in Processing; one of
+	 *                 {@link PConstants#CORNER}, {@link PConstants#CORNERS},
+	 *                 {@link PConstants#CENTER}, or {@link PConstants#RADIUS}
+	 * @param a        first coordinate: x (or center x, depending on mode)
+	 * @param b        second coordinate: y (or center y, depending on mode)
+	 * @param c        width, x2, or half-width (see mode above)
+	 * @param d        height, y2, or half-height (see mode above)
+	 * @param r        the uniform radius to be applied to all four corners
+	 * @return a {@link PShape} representing the rounded rectangle
+	 * @since 2.1
+	 */
+	public static PShape createRect(int rectMode, double a, double b, double c, double d, double r) {
+		return rect(rectMode, a, b, c, d, r, r, r, r);
+	}
+
+	static PShape rect(int rectMode, double a, double b, double c, double d, double tl, double tr, double br, double bl) {
+		double hradius, vradius;
+		switch (rectMode) {
+			case PConstants.CORNERS :
+				break;
+			case PConstants.CORNER :
+				c += a;
+				d += b;
+				break;
+			case PConstants.RADIUS :
+				hradius = c;
+				vradius = d;
+				c = a + hradius;
+				d = b + vradius;
+				a -= hradius;
+				b -= vradius;
+				break;
+			case PConstants.CENTER :
+				hradius = c / 2.0;
+				vradius = d / 2.0;
+				c = a + hradius;
+				d = b + vradius;
+				a -= hradius;
+				b -= vradius;
+				break;
+		}
+		if (a > c) {
+			double t = a;
+			a = c;
+			c = t;
+		}
+		if (b > d) {
+			double t = b;
+			b = d;
+			d = t;
+		}
+		double maxRounding = Math.min((c - a) / 2, (d - b) / 2);
+		tl = Math.min(tl, maxRounding);
+		tr = Math.min(tr, maxRounding);
+		br = Math.min(br, maxRounding);
+		bl = Math.min(bl, maxRounding);
+		return rectImpl((float) a, (float) b, (float) c, (float) d, (float) tl, (float) tr, (float) br, (float) bl);
+	}
+
+	private static PShape rectImpl(float x1, float y1, float x2, float y2, float tl, float tr, float br, float bl) {
+		PShape sh = new PShape(PShape.PATH);
+		sh.setFill(true);
+		sh.setFill(Colors.WHITE);
+		sh.beginShape();
+		// Top edge and top-right corner
+		if (tr != 0) {
+			sh.vertex(x2 - tr, y1);
+			sh.quadraticVertex(x2, y1, x2, y1 + tr);
+		} else {
+			sh.vertex(x2, y1);
+		}
+		// Right edge and bottom-right
+		if (br != 0) {
+			sh.vertex(x2, y2 - br);
+			sh.quadraticVertex(x2, y2, x2 - br, y2);
+		} else {
+			sh.vertex(x2, y2);
+		}
+		// Bottom edge and bottom-left
+		if (bl != 0) {
+			sh.vertex(x1 + bl, y2);
+			sh.quadraticVertex(x1, y2, x1, y2 - bl);
+		} else {
+			sh.vertex(x1, y2);
+		}
+		// Left edge and top-left
+		if (tl != 0) {
+			sh.vertex(x1, y1 + tl);
+			sh.quadraticVertex(x1, y1, x1 + tl, y1);
+		} else {
+			sh.vertex(x1, y1);
+		}
+		sh.endShape(PConstants.CLOSE);
+		return sh;
+	}
+
+	/**
 	 * Creates a polygon finely approximating a circle.
 	 * 
 	 * @since 2.0
 	 */
 	static Polygon createCircle(Coordinate c, double r) {
-		return createCircle(c.x, c.y, r, 0.5); // 0.5 still very generous
+		return createCircle(c.x, c.y, r, 0.5);
+	}
+
+	/**
+	 * Creates a geometric circle of radius r (.z) centered on (x,y).
+	 * 
+	 * @param c the PVector representing a circle
+	 * @since 2.1
+	 */
+	public static PShape createCircle(PVector c) {
+		return createCircle(c.x, c.y, c.z);
 	}
 
 	/**
@@ -1048,7 +1331,7 @@ public class PGS_Construction {
 	 * @since 2.0
 	 */
 	public static PShape createCircle(double x, double y, double r) {
-		return toPShape(createCirclePoly(x, y, r)); // 0.5 still very generous
+		return toPShape(createCirclePoly(x, y, r));
 	}
 
 	/**
@@ -1097,6 +1380,62 @@ public class PGS_Construction {
 		pts[nPts] = new Coordinate(pts[0]); // Close the circle
 
 		return PGS.GEOM_FACTORY.createPolygon(pts);
+	}
+
+	/**
+	 * Sample a circular arc from startAngle→endAngle (radians), producing a List of
+	 * PVectors so that no straight‐line chord deviates by more than maxDev pixels
+	 * from the true circle.
+	 *
+	 * @param cx         center x
+	 * @param cy         center y
+	 * @param r          radius (>0)
+	 * @param startAngle start angle in radians
+	 * @param endAngle   end angle in radians
+	 * @param maxDev     maximum sagitta error in pixels (>0)
+	 * @return List of PVectors, inclusive of both endpoints.
+	 * @since 2.1
+	 */
+	static List<PVector> arcPoints(double cx, double cy, double r, double startAngle, double endAngle, double maxDev) {
+		List<PVector> pts = new ArrayList<>();
+
+		// 1) Compute raw sweep and direction
+		double rawRange = endAngle - startAngle;
+		int dir = rawRange >= 0 ? +1 : -1;
+		double range = Math.abs(rawRange);
+
+		// 2) Cap at a full circle if the user overshoots
+		if (range > 2.0 * Math.PI) {
+			range = 2.0 * Math.PI;
+		}
+
+		// 3) Solve for maximum step so that sagitta s = R*(1–cos(dθ/2)) ≤ maxDev
+		// ⇒ dθ ≤ 2 * acos(1 – maxDev / R)
+		double cosArg = 1.0 - maxDev / r;
+		// clamp to avoid NaNs
+		cosArg = Math.max(-1.0, Math.min(1.0, cosArg));
+		double maxStep = 2.0 * Math.acos(cosArg);
+
+		// 4) If that step is wider than the entire arc, just use one segment
+		if (maxStep >= range) {
+			maxStep = range;
+		}
+
+		// 5) Determine how many segments are needed (at least 1)
+		int nSeg = Math.max(1, (int) Math.ceil(range / maxStep));
+
+		// 6) Compute the actual signed step
+		double step = dir * (range / nSeg);
+
+		// 7) Sample from i=0…nSeg (inclusive) so endpoints are exact
+		for (int i = 0; i <= nSeg; i++) {
+			double a = startAngle + i * step;
+			double px = cx + r * FastMath.cos(a);
+			double py = cy + r * FastMath.sin(a);
+			pts.add(new PVector((float) px, (float) py));
+		}
+
+		return pts;
 	}
 
 	/**

@@ -13,10 +13,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.jgrapht.alg.connectivity.ConnectivityInspector;
+import org.jgrapht.alg.interfaces.MatchingAlgorithm;
 import org.jgrapht.alg.interfaces.VertexColoringAlgorithm.Coloring;
+import org.jgrapht.alg.matching.blossom.v5.KolmogorovWeightedMatching;
+import org.jgrapht.alg.matching.blossom.v5.KolmogorovWeightedPerfectMatching;
+import org.jgrapht.alg.matching.blossom.v5.ObjectiveSense;
 import org.jgrapht.alg.spanning.GreedyMultiplicativeSpanner;
 import org.jgrapht.alg.util.NeighborCache;
 import org.jgrapht.graph.AbstractBaseGraph;
@@ -118,7 +122,7 @@ public class PGS_Meshing {
 				edges.add(t.getEdgeB().getBaseReference());
 				edges.add(t.getEdgeC().getBaseReference());
 				final IQuadEdge longestEdge = findLongestEdge(t).getBaseReference();
-				if (!preservePerimeter || (preservePerimeter && !longestEdge.isConstrainedRegionBorder())) {
+				if (!preservePerimeter || (preservePerimeter && !longestEdge.isConstraintRegionBorder())) {
 					uniqueLongestEdges.add(longestEdge);
 				}
 			}
@@ -129,7 +133,7 @@ public class PGS_Meshing {
 		final Collection<PEdge> meshEdges = new ArrayList<>(edges.size());
 		edges.forEach(edge -> meshEdges.add(new PEdge(edge.getA().x, edge.getA().y, edge.getB().x, edge.getB().y)));
 
-		PShape mesh = PGS.polygonizeEdges(meshEdges);
+		PShape mesh = PGS.polygonizeNodedEdges(meshEdges);
 
 		return removeHoles(mesh, triangulation);
 	}
@@ -182,7 +186,7 @@ public class PGS_Meshing {
 			final double[] midpoint = midpoint(edge);
 			final Vertex near = tree.query1nn(midpoint).value();
 			if (near != edge.getA() && near != edge.getB()) {
-				if (!preservePerimeter || (preservePerimeter && !edge.isConstrainedRegionBorder())) { // don't remove constraint borders (holes)
+				if (!preservePerimeter || (preservePerimeter && !edge.isConstraintRegionBorder())) { // don't remove constraint borders (holes)
 					nonGabrielEdges.add(edge); // base reference
 				}
 			}
@@ -192,7 +196,7 @@ public class PGS_Meshing {
 		final Collection<PEdge> meshEdges = new ArrayList<>(edges.size());
 		edges.forEach(edge -> meshEdges.add(new PEdge(edge.getA().x, edge.getA().y, edge.getB().x, edge.getB().y)));
 
-		PShape mesh = PGS.polygonizeEdges(meshEdges);
+		PShape mesh = PGS.polygonizeNodedEdges(meshEdges);
 		return removeHoles(mesh, triangulation);
 	}
 
@@ -210,7 +214,6 @@ public class PGS_Meshing {
 	 * @param preservePerimeter whether to retain/preserve edges on the perimeter
 	 *                          even if they should be removed according to the
 	 *                          relative neighbor condition
-	 * @return
 	 * @since 1.3.0
 	 */
 	public static PShape relativeNeighborFaces(final IIncrementalTin triangulation, final boolean preservePerimeter) {
@@ -227,14 +230,14 @@ public class PGS_Meshing {
 			double l = e.getLength();
 			cache.neighborsOf(e.getA()).forEach(n -> {
 				if (Math.max(n.getDistance(e.getA()), n.getDistance(e.getB())) < l) {
-					if (!preservePerimeter || (preservePerimeter && !e.isConstrainedRegionBorder())) {
+					if (!preservePerimeter || (preservePerimeter && !e.isConstraintRegionBorder())) {
 						edges.remove(e);
 					}
 				}
 			});
 			cache.neighborsOf(e.getB()).forEach(n -> {
 				if (Math.max(n.getDistance(e.getA()), n.getDistance(e.getB())) < l) {
-					if (!preservePerimeter || (preservePerimeter && !e.isConstrainedRegionBorder())) {
+					if (!preservePerimeter || (preservePerimeter && !e.isConstraintRegionBorder())) {
 						edges.remove(e);
 					}
 				}
@@ -243,7 +246,7 @@ public class PGS_Meshing {
 
 		List<PEdge> edgesOut = edges.stream().map(PGS_Triangulation::toPEdge).collect(Collectors.toList());
 
-		PShape mesh = PGS.polygonizeEdges(edgesOut);
+		PShape mesh = PGS.polygonizeNodedEdges(edgesOut);
 		return removeHoles(mesh, triangulation);
 	}
 
@@ -274,12 +277,12 @@ public class PGS_Meshing {
 			if (triangulation.getConstraints().isEmpty()) { // does not have constraints
 				spannerEdges.addAll(triangulation.getPerimeter().stream().map(PGS_Triangulation::toPEdge).collect(Collectors.toList()));
 			} else { // has constraints
-				spannerEdges.addAll(triangulation.getEdges().stream().filter(IQuadEdge::isConstrainedRegionBorder).map(PGS_Triangulation::toPEdge)
+				spannerEdges.addAll(triangulation.getEdges().stream().filter(IQuadEdge::isConstraintRegionBorder).map(PGS_Triangulation::toPEdge)
 						.collect(Collectors.toList()));
 			}
 		}
 
-		PShape mesh = PGS.polygonizeEdges(spannerEdges);
+		PShape mesh = PGS.polygonizeNodedEdges(spannerEdges);
 
 		return removeHoles(mesh, triangulation);
 	}
@@ -366,7 +369,9 @@ public class PGS_Meshing {
 
 		/*-
 		 * Now ideally "regularize" the mesh using techniques explored here:
+		 * Towards Fully Regular Quad Mesh Generation - 
 		 * https://acdl.mit.edu/ESP/Publications/AIAApaper2019-1988.pdf
+		 * A REGULARIZATION APPROACH FOR AUTOMATIC QUAD MESH GENERATION - 
 		 * https://acdl.mit.edu/ESP/Publications/IMR28.pdf
 		 */
 
@@ -391,6 +396,8 @@ public class PGS_Meshing {
 	 *                          triangles being included in the output).
 	 * @return a GROUP PShape, where each child shape is one quadrangle
 	 * @since 1.2.0
+	 * @see #matchingQuadrangulation(IIncrementalTin) matchingQuadrangulation() -- a
+	 *      similar approach, but faster
 	 */
 	public static PShape edgeCollapseQuadrangulation(final IIncrementalTin triangulation, final boolean preservePerimeter) {
 		/*-
@@ -433,12 +440,12 @@ public class PGS_Meshing {
 			 * triangles". -- ideal, but not implemented here...
 			 */
 			// NOTE could now apply Topological optimization, as given in paper.
-			if ((color < 2) || (preservePerimeter && (edge.isConstrainedRegionBorder() || perimeter.contains(edge)))) {
+			if ((color < 2) || (preservePerimeter && (edge.isConstraintRegionBorder() || perimeter.contains(edge)))) {
 				meshEdges.add(new PEdge(edge.getA().x, edge.getA().y, edge.getB().x, edge.getB().y));
 			}
 		});
 
-		PShape quads = PGS.polygonizeEdges(meshEdges);
+		PShape quads = PGS.polygonizeNodedEdges(meshEdges);
 		if (triangulation.getConstraints().size() < 2) { // assume constraint 1 is the boundary (not a hole)
 			return quads;
 		} else {
@@ -480,18 +487,81 @@ public class PGS_Meshing {
 		if (preservePerimeter) {
 			List<IQuadEdge> perimeter = triangulation.getPerimeter();
 			triangulation.edges().forEach(edge -> {
-				if (edge.isConstrainedRegionBorder() || (unconstrained && perimeter.contains(edge))) {
+				if (edge.isConstraintRegionBorder() || (unconstrained && perimeter.contains(edge))) {
 					edges.add(new PEdge(edge.getA().x, edge.getA().y, edge.getB().x, edge.getB().y));
 				}
 			});
 		}
 
-		final PShape quads = PGS.polygonizeEdges(edges);
+		final PShape quads = PGS.polygonizeNodedEdges(edges);
 		if (triangulation.getConstraints().size() < 2) { // assume constraint 1 is the boundary (not a hole)
 			return quads;
 		} else {
 			return removeHoles(quads, triangulation);
 		}
+	}
+
+	/**
+	 * Converts a triangulation into a quadrangulation, by pairing up ("matching")
+	 * triangles and merging them into quads. (This is the first step of the
+	 * <i>Blossom-Quad algorithm</i>.)
+	 * <p>
+	 * The method tries to maximise the quality of the quads of the output, meaning
+	 * it aims to create quadrilaterals that are as regular and well-shaped
+	 * (square-like) as possible.
+	 * <p>
+	 * Sometimes, it’s not possible to pair all triangles perfectly (such as when
+	 * there is not an even number of triangles). In those cases, the result will
+	 * include some leftover triangles along with the quads.
+	 * <p>
+	 * This method follows a similar principle to
+	 * {@link #edgeCollapseQuadrangulation(IIncrementalTin, boolean)
+	 * edgeCollapseQuadrangulation()}, but instead of using graph coloring to
+	 * identify triangle pairs, it uses the Kolmogorov algorithm to find pairings.
+	 *
+	 * @param triangulation The input mesh made of triangles. This is the starting
+	 *                      point for creating the quadrangulation.
+	 * @return A GROUP PShape made of quadrilaterals (and possibly some triangles if
+	 *         pairing wasn’t perfect).
+	 *
+	 * @since 2.1
+	 */
+	public static PShape matchingQuadrangulation(final IIncrementalTin triangulation) {
+		var g = PGS_Triangulation.toDualGraph(triangulation);
+		MatchingAlgorithm<SimpleTriangle, DefaultEdge> m;
+
+		/*
+		 * A perfect matching is not always possible, so fall back to regular matching.
+		 * When this happens not all edges can be collapsed, so the output will contain
+		 * some triangles alongside the quads.
+		 */
+		try {
+			m = new KolmogorovWeightedPerfectMatching<>(g, ObjectiveSense.MAXIMIZE);
+			m.getMatching();
+		} catch (Exception e2) {
+			m = new KolmogorovWeightedMatching<>(g, ObjectiveSense.MAXIMIZE);
+		}
+		var collapsedEdges = m.getMatching().getEdges();
+
+		Set<SimpleTriangle> seen = new HashSet<>(g.vertexSet());
+		var quads = collapsedEdges.stream().map(e -> {
+			var t1 = g.getEdgeSource(e);
+			var f1 = toPShape(t1);
+			var t2 = g.getEdgeTarget(e);
+			var f2 = toPShape(t2);
+
+			seen.remove(t1);
+			seen.remove(t2);
+			var quad = PGS_ShapeBoolean.union(f1, f2);
+			return quad;
+		}).collect(Collectors.toList()); // modifiable list
+
+		// include uncollapsed triangles (if any)
+		seen.forEach(t -> {
+			quads.add(toPShape(t));
+		});
+
+		return PGS_Conversion.flatten(quads);
 	}
 
 	/**
@@ -511,6 +581,9 @@ public class PGS_Meshing {
 	 */
 	private static PShape removeHoles(PShape faces, IIncrementalTin triangulation) {
 		List<IConstraint> holes = new ArrayList<>(triangulation.getConstraints()); // copy list
+		if (holes.size() <= 1) {
+			return faces;
+		}
 		holes = holes.subList(1, holes.size()); // slice off perimeter constraint (not a hole)
 
 		STRtree tree = new STRtree();
@@ -571,7 +644,7 @@ public class PGS_Meshing {
 	 */
 	public static PShape spiralQuadrangulation(List<PVector> points) {
 		SpiralQuadrangulation sq = new SpiralQuadrangulation(points);
-		return PGS.polygonizeEdges(sq.getQuadrangulationEdges());
+		return PGS.polygonizeNodedEdges(sq.getQuadrangulationEdges());
 	}
 
 	/**
@@ -731,10 +804,12 @@ public class PGS_Meshing {
 		displacementCutoff = Math.max(displacementCutoff, 1e-3);
 		PMesh m = new PMesh(mesh);
 
+		int iteration = 0;
+		int maxIterations = 10000;
 		double displacement;
 		do {
 			displacement = m.smoothTaubin(0.25, -0.251, preservePerimeter);
-		} while (displacement > displacementCutoff);
+		} while (displacement > displacementCutoff && iteration++ < maxIterations);
 		return m.getMesh();
 	}
 
@@ -773,8 +848,10 @@ public class PGS_Meshing {
 	 * <p>
 	 * This subdivision method is most effective on meshes whose faces are convex
 	 * and have a low vertex count (i.e., less than 6), where edge division points
-	 * correspond between adjacent faces. This method may fail on meshes with highly
-	 * concave faces because centroid-vertex visibility is not guaranteed.
+	 * correspond between adjacent faces.
+	 * <p>
+	 * <b>Note</b>: This method may fail on meshes with highly concave faces because
+	 * centroid-vertex visibility is not guaranteed.
 	 * 
 	 * @param mesh           The mesh containing faces to subdivide.
 	 * @param edgeSplitRatio The distance ratio [0...1] along each edge where the
@@ -817,18 +894,21 @@ public class PGS_Meshing {
 	 * edges comprising holes within faces.
 	 * 
 	 * @param mesh The conforming mesh shape to extract inner edges from.
-	 * @return A shape representing the dissolved linework of inner mesh edges.
+	 * @return A shape representing the linework of inner mesh edges.
 	 * @since 1.4.0
 	 */
 	public static PShape extractInnerEdges(PShape mesh) {
 		List<PEdge> edges = PGS_SegmentSet.fromPShape(mesh);
-		Map<PEdge, Integer> bag = new HashMap<>(edges.size());
-		edges.forEach(edge -> {
-			bag.merge(edge, 1, Integer::sum);
-		});
+		Set<PEdge> seenEdges = new HashSet<>(edges.size());
+		Set<PEdge> innerEdges = new HashSet<>();
 
-		List<PEdge> innerEdges = bag.entrySet().stream().filter(e -> e.getValue() > 1).map(e -> e.getKey()).collect(Collectors.toList());
-		return PGS_SegmentSet.dissolve(innerEdges);
+		for (PEdge edge : edges) {
+			if (!seenEdges.add(edge)) { // add() returns false if edge is already present
+				innerEdges.add(edge);
+			}
+		}
+
+		return PGS_SegmentSet.toPShape(new ArrayList<>(innerEdges));
 	}
 
 	/**
@@ -841,13 +921,64 @@ public class PGS_Meshing {
 	 * @since 2.0
 	 */
 	public static List<PVector> extractInnerVertices(PShape mesh) {
-		var allVertices = PGS_Conversion.toPVector(mesh);
-		var perimeterVertices = PGS_Conversion.toPVector(PGS_ShapeBoolean.unionMesh(mesh));
-		var allVerticesSet = new HashSet<>(allVertices);
-		var perimeterVerticesSet = new HashSet<>(perimeterVertices);
+		List<PVector> allVertices = PGS_Conversion.toPVector(mesh);
+		Set<PVector> perimeterVertices = new HashSet<>(PGS_Conversion.toPVector(PGS_ShapeBoolean.unionMesh(mesh)));
 
-		allVerticesSet.removeAll(perimeterVerticesSet);
-		return new ArrayList<>(allVerticesSet);
+		// Create a new list of only those vertices not in the perimeter.
+		return allVertices.stream().filter(vertex -> !perimeterVertices.contains(vertex)).collect(Collectors.toList());
+	}
+
+	/**
+	 * Extracts inner edges and vertices of a mesh. Faster than calling both
+	 * extractInnerVertices() and extractInnerEdges() in tandem.
+	 */
+	static Pair<List<PEdge>, List<PVector>> extractInnerEdgesAndVertices(PShape mesh) {
+		// 1) Get all (undirected) edges
+		List<PEdge> edges = PGS_SegmentSet.fromPShape(mesh);
+		int n = edges.size();
+
+		// 2) Classify edges:
+		// - 'single' holds edges seen exactly once so far
+		// - 'inner' holds edges seen ≥2 times
+		// Using a LinkedHashSet for 'inner' preserves insertion order (if you care)
+		Set<PEdge> single = new HashSet<>((int) (n / 0.75f) + 1);
+		Set<PEdge> inner = new HashSet<>((int) (n / 0.75f) + 1);
+
+		for (PEdge e : edges) {
+			if (single.contains(e)) {
+				// second time we see it → move to inner
+				single.remove(e);
+				inner.add(e);
+			} else if (!inner.contains(e)) {
+				// first time → keep in single
+				single.add(e);
+			}
+			// otherwise: already in 'inner', do nothing
+		}
+
+		// 3) Collect boundary vertices from the edges that remained 'single'
+		Set<PVector> boundary = new HashSet<>(single.size() * 2);
+		for (PEdge e : single) {
+			boundary.add(e.a);
+			boundary.add(e.b);
+		}
+
+		// 4) Finally, collect inner‐vertices from the 'inner' edges
+		// but only those not in 'boundary' and avoid duplicates
+		List<PVector> innerVerts = new ArrayList<>();
+		Set<PVector> seenVertices = new HashSet<>();
+		for (PEdge e : inner) {
+			PVector a = e.a, b = e.b;
+			if (!boundary.contains(a) && seenVertices.add(a)) {
+				innerVerts.add(a);
+			}
+			if (!boundary.contains(b) && seenVertices.add(b)) {
+				innerVerts.add(b);
+			}
+		}
+
+		// 5) Return!
+		return Pair.of(new ArrayList<>(inner), innerVerts);
 	}
 
 	/**
@@ -917,25 +1048,47 @@ public class PGS_Meshing {
 	}
 
 	/**
-	 * Merges the small faces within a mesh into their adjacent faces recursively,
-	 * ensuring that no faces smaller than a specified area remain. This process is
-	 * repeated until all faces are at least as large as the minimum area defined by
-	 * the areaThreshold parameter.
-	 * 
-	 * @param mesh          a PShape object representing the mesh to which the area
-	 *                      merge operation will be applied. It must be of type
-	 *                      GROUP. Meshes with holes are supported; holes will be
-	 *                      preserved.
-	 * @param areaThreshold the minimum area a face must have to avoid being merged.
-	 *                      This is used as a threshold to determine which small
-	 *                      faces should be merged into adjacent larger ones.
-	 * @return PShape object representing the mesh after the merge operation, where
-	 *         all faces have an area greater than or equal to the specified
-	 *         areaThreshold.
+	 * Merges all faces in the given mesh that are smaller than a specified area
+	 * threshold into their larger neighbors, and repeats this process until no face
+	 * remains below the threshold.
+	 * <p>
+	 * Holes in the original mesh are preserved; only small faces are absorbed into
+	 * adjacent larger faces.
+	 *
+	 * @param mesh          a PShape of type GROUP representing the input mesh. May
+	 *                      contain holes, which will be carried through.
+	 * @param areaThreshold the minimum allowed area for any face. Any face whose
+	 *                      area is strictly less than this value will be merged
+	 *                      into one of its adjacent faces.
+	 * @return a new PShape containing the merged mesh, with original styling
+	 *         applied, in which every face has area ≥ areaThreshold.
 	 * @since 1.4.0
 	 */
 	public static PShape areaMerge(PShape mesh, double areaThreshold) {
 		PShape merged = AreaMerge.areaMerge(mesh, areaThreshold);
+		return applyOriginalStyling(merged, mesh);
+	}
+
+	/**
+	 * Merges the <b>smallest faces</b> (by area) in the given mesh into their
+	 * adjacent neighbors until the mesh has no more than a specified number of
+	 * faces.
+	 * <p>
+	 * If the input mesh has more faces than {@code remainingFaces}, the smallest
+	 * faces are iteratively merged into their larger neighbors until the total face
+	 * count is ≤ {@code remainingFaces}. Holes in the mesh are preserved.
+	 *
+	 * @param mesh           a PShape of type GROUP representing the input mesh. May
+	 *                       contain holes, which will be carried through.
+	 * @param remainingFaces the target maximum number of faces. The algorithm will
+	 *                       merge the smallest faces until the mesh has at most
+	 *                       this many faces.
+	 * @return a new PShape containing the merged mesh, with original styling
+	 *         applied, in which the total number of faces is ≤ remainingFaces.
+	 * @since 2.1
+	 */
+	public static PShape areaMerge(PShape mesh, int remainingFaces) {
+		PShape merged = AreaMerge.areaMerge(mesh, remainingFaces);
 		return applyOriginalStyling(merged, mesh);
 	}
 
@@ -968,7 +1121,7 @@ public class PGS_Meshing {
 			}
 		}
 
-		return PGS.polygonizeEdges(splitEdges);
+		return PGS.polygonizeNodedEdges(splitEdges);
 	}
 
 	/**
@@ -1016,6 +1169,13 @@ public class PGS_Meshing {
 		double y = a.y + b.y + c.y;
 		y /= 3;
 		return new Vertex(x, y, 0);
+	}
+
+	private static PShape toPShape(SimpleTriangle t) {
+		PVector vertexA = new PVector((float) t.getVertexA().x, (float) t.getVertexA().y);
+		PVector vertexB = new PVector((float) t.getVertexB().x, (float) t.getVertexB().y);
+		PVector vertexC = new PVector((float) t.getVertexC().x, (float) t.getVertexC().y);
+		return PGS_Conversion.fromPVector(Arrays.asList(vertexA, vertexB, vertexC, vertexA));
 	}
 
 }

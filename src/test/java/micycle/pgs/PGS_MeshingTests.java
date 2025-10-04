@@ -22,6 +22,11 @@ public class PGS_MeshingTests {
 		assertTrue(PGS_Conversion.getChildren(mergedMesh).stream().allMatch(f -> PGS_ShapePredicates.area(f) >= areaThreshold));
 		assertTrue(faces.size() >= mergedMesh.getChildCount());
 		assertEquals(PGS_ShapePredicates.area(mesh), PGS_ShapePredicates.area(mergedMesh), 1e-6);
+		
+		System.out.println(mesh.getChildCount());
+		mergedMesh = PGS_Meshing.areaMerge(mesh, 20); // test remaining faces constructor
+		assertEquals(20, mergedMesh.getChildCount());
+		assertEquals(PGS_ShapePredicates.area(mesh), PGS_ShapePredicates.area(mergedMesh), 1e-6);
 	}
 
 }

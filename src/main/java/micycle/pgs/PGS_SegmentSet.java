@@ -11,9 +11,9 @@ import java.util.SplittableRandom;
 import java.util.stream.Collectors;
 
 import org.jgrapht.alg.interfaces.MatchingAlgorithm;
+import org.jgrapht.alg.matching.blossom.v5.KolmogorovWeightedMatching;
 import org.jgrapht.alg.matching.blossom.v5.KolmogorovWeightedPerfectMatching;
 import org.jgrapht.alg.matching.blossom.v5.ObjectiveSense;
-import org.jgrapht.graph.SimpleGraph;
 import org.locationtech.jts.algorithm.RobustLineIntersector;
 import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.dissolve.LineDissolver;
@@ -164,17 +164,6 @@ public class PGS_SegmentSet {
 	}
 
 	/**
-	 * Number of segments = #vertices/2
-	 * 
-	 * Let P be a set of n points, not all on the same line. Let k be the number of
-	 * points on the boundary of the convex hull of P. Any triangulation of P has 1)
-	 * 2n − 2 − k triangles, and 2) 3n − 3 − k edges
-	 * 
-	 * @param triangulation
-	 * @return
-	 */
-
-	/**
 	 * Generates non-intersecting segments via a <i>Perfect matching</i> algorithm
 	 * applied to the given triangulation.
 	 * <p>
@@ -190,15 +179,15 @@ public class PGS_SegmentSet {
 	 */
 	public static List<PEdge> graphMatchedSegments(IIncrementalTin triangulation) {
 		// explained here https://stackoverflow.com/a/72565245/
-		final SimpleGraph<PVector, PEdge> g = PGS_Triangulation.toGraph(triangulation);
+		final var g = PGS_Triangulation.toGraph(triangulation);
 		MatchingAlgorithm<PVector, PEdge> m;
 		try {
-			m = new KolmogorovWeightedPerfectMatching<>(g, KolmogorovWeightedPerfectMatching.DEFAULT_OPTIONS, ObjectiveSense.MAXIMIZE);
-			return new ArrayList<>(m.getMatching().getEdges());
-		} catch (IllegalArgumentException e) {
-			// catch exception if no perfect matching is possible
-			return new ArrayList<>();
+			m = new KolmogorovWeightedPerfectMatching<>(g, ObjectiveSense.MAXIMIZE);
+			m.getMatching();
+		} catch (Exception e2) {
+			m = new KolmogorovWeightedMatching<>(g, ObjectiveSense.MAXIMIZE);
 		}
+		return new ArrayList<>(m.getMatching().getEdges());
 	}
 
 	/**
@@ -393,6 +382,14 @@ public class PGS_SegmentSet {
 		return lines;
 	}
 
+	public static Map<PEdge, Integer> toBag(List<PEdge> edges) {
+		Map<PEdge, Integer> edgeBag = new HashMap<>(edges.size());
+		for (PEdge edge : edges) {
+			edgeBag.put(edge, edgeBag.getOrDefault(edge, 0) + 1);
+		}
+		return edgeBag;
+	}
+
 	/**
 	 * Dissolves the edges from a collection of {@link micycle.pgs.commons.PEdge
 	 * PEdges} into a set of maximal-length LineStrings in which each unique segment
@@ -414,6 +411,26 @@ public class PGS_SegmentSet {
 		}
 		Geometry dissolved = LineDissolver.dissolve(g);
 		return PGS_Conversion.toPShape(dissolved);
+	}
+
+	/**
+	 * Computes all intersection points between two collections of line segments.
+	 * <p>
+	 * Given two collections of edges, this method finds and returns all points
+	 * where a segment from the first collection intersects with a segment from the
+	 * second collection, including intersection endpoints if applicable.
+	 * </p>
+	 *
+	 * @param edgesA the first collection of line segments to compare
+	 * @param edgesB the second collection of line segments to compare
+	 * @return a list of {@link PVector} representing all intersection points found
+	 *         between the two collections of segments
+	 * @since 2.1
+	 */
+	public static List<PVector> intersections(Collection<PEdge> edgesA, Collection<PEdge> edgesB) {
+		var segsA = fromPEdges(edgesA);
+		var segsB = fromPEdges(edgesB);
+		return PGS_Processing.intersections(segsA, segsB);
 	}
 
 	/**
@@ -516,6 +533,41 @@ public class PGS_SegmentSet {
 			double angle = Math.abs(FastAtan2.atan2(s.b.y - s.a.y, s.b.x - s.a.x)) % (Math.PI / 2);
 			return (angle + angleDelta > Math.PI / 2 || angle - angleDelta < 0);
 		});
+		return filtered;
+	}
+
+	/**
+	 * Removes segments that are near others. More specifically, removes any segment
+	 * that lies closer than a given threshold to a previously retained segment.
+	 * <p>
+	 * This method uses a simple greedy, O(n²) algorithm: it iterates through the
+	 * input {@code segments} in order, keeps the first segment unconditionally, and
+	 * for each subsequent segment rejects it if its distance to any segment already
+	 * in the output list is less than {@code distance}.
+	 * </p>
+	 *
+	 * @param segments the list of segments to filter.
+	 * @param distance the minimum allowed distance between any two segments in the
+	 *                 returned list; must be non-negative.
+	 * @return a new {@link List} containing those segments from the input (in
+	 *         original order) such that each pair of segments in the returned list
+	 *         is at least {@code distance} apart.
+	 * @since 2.1
+	 */
+	public static List<PEdge> filterNear(List<PEdge> segments, double distance) {
+		List<PEdge> filtered = new ArrayList<>();
+		for (PEdge seg : segments) {
+			boolean tooClose = false;
+			for (PEdge kept : filtered) {
+				if (seg.distance(kept) < distance) {
+					tooClose = true;
+					break;
+				}
+			}
+			if (!tooClose) {
+				filtered.add(seg);
+			}
+		}
 		return filtered;
 	}
 

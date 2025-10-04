@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>micycle</groupId>
 	<artifactId>PGS</artifactId>
-	<version>2.0</version>
+	<version>2.1</version>
 	<name>Processing Geometry Suite</name>
 	<description>Geometric algorithms for Processing</description>
 
@@ -17,6 +17,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<fatJarName>PGS</fatJarName>
+		<maven-shade-plugin.version>3.6.1</maven-shade-plugin.version>
 	</properties>
 
 	<build>
@@ -29,7 +30,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
-				<version>3.3.0</version>
+				<version>3.3.1</version>
 				<executions>
 					<execution>
 						<id>attach-sources</id>
@@ -43,11 +44,11 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>3.11.2</version>
+				<version>3.12.0</version>
 				<configuration>
 					<failOnError>false</failOnError>
 					<subpackages>micycle.pgs</subpackages>
-					<excludePackageNames>micycle.pgs.color</excludePackageNames>
+					<excludePackageNames>micycle.pgs.color,micycle.pgs.commons</excludePackageNames>
 				</configuration>
 				<executions>
 					<execution>
@@ -60,7 +61,7 @@
 			</plugin>
 			<plugin> <!-- for test running -->
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>3.5.1</version>
+				<version>3.5.4</version>
 			</plugin>
 			<plugin>
 				<groupId>org.jacoco</groupId>
@@ -88,12 +89,12 @@
 		<profile>
 			<id>uber-jar</id>
 			<build>
-			<finalName>${fatJarName}</finalName>
+				<finalName>${fatJarName}</finalName>
 				<plugins>
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-shade-plugin</artifactId>
-						<version>3.5.0</version>
+						<version>${maven-shade-plugin.version}</version>
 						<configuration>
 							<createDependencyReducedPom>false</createDependencyReducedPom>
 							<minimizeJar>true</minimizeJar>
@@ -135,18 +136,20 @@
 		</profile>
 		<profile>
 			<id>local-processing</id>
+			<properties>
+				<maven.javadoc.skip>true</maven.javadoc.skip>
+			</properties>
 			<build>
 				<plugins>
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-shade-plugin</artifactId>
-						<version>3.5.0</version>
+						<version>${maven-shade-plugin.version}</version>
 						<configuration>
 							<createDependencyReducedPom>false</createDependencyReducedPom>
 							<minimizeJar>true</minimizeJar>
 							<finalName>PGS</finalName>
 							<outputDirectory>${processing.library.dir}</outputDirectory>
-							<maven.javadoc.skip>true</maven.javadoc.skip>
 							<filters>
 								<filter>
 									<artifact>*:*</artifact>
@@ -197,25 +200,30 @@
 				<enabled>true</enabled>
 			</snapshots>
 		</repository>
+		<repository>
+			<id>jogamp</id> <!-- for processing -->
+			<name>JogAmp</name>
+			<url>https://jogamp.org/deployment/maven</url>
+		</repository>
 	</repositories>
 
 	<dependencies>
 		<dependency>
-			<groupId>com.github.micycle1</groupId>
-			<artifactId>processing-core-4</artifactId>
-			<version>4.3.3</version>
+			<groupId>org.processing</groupId>
+			<artifactId>core</artifactId>
+			<version>4.4.7</version>
 			<scope>provided</scope> <!-- don't package into uber jar -->
 			<optional>true</optional> <!-- user artifact should override when provided -->
 		</dependency>
 		<dependency>
 			<groupId>org.locationtech.jts</groupId>
 			<artifactId>jts-core</artifactId>
-			<version>1.20.0</version>
+			<version>1.20.1-SNAPSHOT</version>
 		</dependency>
 		<dependency>
-			<groupId>com.github.twak</groupId>
+			<groupId>com.github.micycle1</groupId>
 			<artifactId>campskeleton</artifactId>
-			<version>8df5b241d5</version>
+			<version>spatial-index-845e720af6-1</version>
 		</dependency>
 		<dependency>
 			<groupId>org.jgrapht</groupId>
@@ -223,20 +231,21 @@
 			<version>1.5.2</version>
 		</dependency>
 		<dependency>
-			<groupId>org.tinfour</groupId>
-			<artifactId>TinfourCore</artifactId>
-			<version>2.1.7</version>
+			<groupId>com.github.gwlucastrig</groupId>
+			<artifactId>Tinfour</artifactId>
+			<version>44b8d26e15</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>JMedialAxis</artifactId>
 			<version>5207bec2f2</version>
 			<optional>true</optional> <!-- user artifact should override when provided -->
-		</dependency>
-		<dependency>
-			<groupId>org.dyn4j</groupId>
-			<artifactId>dyn4j</artifactId>
-			<version>[4.0,)</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.locationtech.jts</groupId>
+					<artifactId>jts-core</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.commons</groupId>
@@ -274,11 +283,12 @@
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>space-filling-curves</artifactId>
 			<version>1.0</version>
-		</dependency>
-		<dependency>
-			<groupId>com.github.micycle1</groupId>
-			<artifactId>kendzi-math</artifactId>
-			<version>99f9217e84</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.locationtech.jts</groupId>
+					<artifactId>jts-core</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>com.github.paudan</groupId>
@@ -289,6 +299,12 @@
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>TrapMap</artifactId>
 			<version>1.0</version>
+			<exclusions>
+				<exclusion>
+					<groupId>quil</groupId>
+					<artifactId>processing-core</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>it.unimi.dsi</groupId>
@@ -304,6 +320,12 @@
 			<groupId>com.github.openjump-gis</groupId>
 			<artifactId>topology-extension</artifactId>
 			<version>9c1d788f8d</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.locationtech.jts</groupId>
+					<artifactId>jts-core</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>com.github.scoutant</groupId>
@@ -323,17 +345,23 @@
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>BetterBeziers</artifactId>
-			<version>19567c7be4</version>
+			<version>1.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>Hobby-Curves</artifactId>
-			<version>1.0</version>
+			<version>1.1</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.whitegreen</groupId>
 			<artifactId>Dalsoo-Bin-Packing</artifactId>
 			<version>bde2a3ef09</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.locationtech.jts</groupId>
+					<artifactId>jts-core</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
@@ -341,10 +369,9 @@
 			<version>1.0</version>
 		</dependency>
 		<dependency>
-			<groupId>com.scrtwpns</groupId>
-			<artifactId>mixbox</artifactId>
-			<version>2.0.0</version>
-			<type>jar</type>
+			<groupId>com.github.micycle1</groupId>
+			<artifactId>GeoBlitz</artifactId>
+			<version>0.9</version>
 		</dependency>
 	</dependencies>
 

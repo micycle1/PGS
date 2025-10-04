@@ -1,9 +1,13 @@
 package micycle.pgs;
 
+import static micycle.pgs.PGS_Conversion.fromPShape;
+import static micycle.pgs.PGS_Conversion.toPShape;
+import static processing.core.PConstants.GROUP;
 import static processing.core.PConstants.LINES;
 import static processing.core.PConstants.ROUND;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -12,8 +16,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.jgrapht.graph.SimpleWeightedGraph;
+import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
@@ -31,6 +38,8 @@ import org.locationtech.jts.noding.SegmentString;
 import org.locationtech.jts.noding.snapround.SnapRoundingNoder;
 import org.locationtech.jts.operation.linemerge.LineMerger;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
+import org.tinspin.index.IndexConfig;
+import org.tinspin.index.kdtree.KDTree;
 
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.Nullable;
@@ -196,30 +205,25 @@ final class PGS {
 	}
 
 	/**
-	 * Requires a closed hole
-	 * 
-	 * @param points
-	 * @return
+	 * For Processing's y-axis down system, a negative area from the shoelace
+	 * formula in the function's logic will actually correspond to what is visually
+	 * counter-clockwise in Processing.
 	 */
-	static final boolean isClockwise(List<PVector> points) {
-		boolean closed = true;
-		if (points.get(0).equals(points.get(points.size() - 1))) {
-			closed = false;
-			points.add(points.get(0)); // mutate list
+	static boolean isClockwise(final List<PVector> points) {
+		if (points == null || points.size() < 3) {
+			throw new IllegalArgumentException("Polygon must have at least 3 points.");
 		}
+
 		double area = 0;
+		int n = points.size();
 
-		for (int i = 0; i < (points.size()); i++) {
-			int j = (i + 1) % points.size();
-			area += points.get(i).x * points.get(j).y;
-			area -= points.get(j).x * points.get(i).y;
+		for (int i = 0; i < n; i++) {
+			PVector p1 = points.get(i);
+			PVector p2 = points.get((i + 1) % n);
+			area += (p1.x * p2.y - p2.x * p1.y);
 		}
 
-		if (!closed) {
-			points.remove(points.size() - 1); // revert mutation
-		}
-
-		return (area < 0);
+		return area < 0; // negative area means clockwise (in standard y-up system)
 	}
 
 	/**
@@ -243,18 +247,52 @@ final class PGS {
 			}
 		});
 		Collections.shuffle(meshEdges);
-		return polygonizeEdges(meshEdges);
+		return polygonizeNodedEdges(meshEdges);
 	}
 
 	/**
-	 * Polygonizes a set of edges.
+	 * Given a (possibly non‐noded) set of PEdge’s, optionally nodes all
+	 * intersections, and polygonizes. Does NOT convert back into PEdge; it goes
+	 * straight from noded SegmentStrings → JTS LineStrings → Polygonizer → PShape.
+	 *
+	 * @param edges the input edges
+	 * @param node  if true, splits at all interior intersections
+	 * @return a GROUP PShape whose children are each polygon face
+	 */
+	static final PShape polygonizeEdges(Collection<PEdge> edges) {
+		List<NodedSegmentString> segStrs = new HashSet<>(edges).stream().map(e -> {
+			Coordinate c0 = coordFromPVector(e.a);
+			Coordinate c1 = coordFromPVector(e.b);
+			return new NodedSegmentString(new Coordinate[] { c0, c1 }, null);
+		}).toList();
+
+		Collection<SegmentString> noded = nodeSegmentStrings(segStrs);
+
+		Polygonizer polygonizer = new Polygonizer();
+		for (SegmentString ss : noded) {
+			var coords = ss.getCoordinates();
+			for (int i = 0; i < coords.length - 1; i++) {
+				Coordinate p0 = coords[i];
+				Coordinate p1 = coords[i + 1];
+				LineString ls = GEOM_FACTORY.createLineString(new Coordinate[] { p0, p1 });
+				polygonizer.add(ls);
+			}
+		}
+
+		@SuppressWarnings("unchecked")
+		Collection<Polygon> polys = polygonizer.getPolygons();
+		return PGS_Conversion.toPShape(polys);
+	}
+
+	/**
+	 * Polygonizes a set of pre-noded edges.
 	 * 
 	 * @param edges a collection of NODED (i.e. non intersecting / must only meet at
 	 *              their endpoints) edges. The collection can contain duplicates.
 	 * @return a GROUP PShape, where each child shape represents a polygon face
 	 *         formed by the given edges
 	 */
-	static final PShape polygonizeEdges(Collection<PEdge> edges) {
+	static final PShape polygonizeNodedEdges(Collection<PEdge> edges) {
 		return polygonizeEdgesRobust(edges);
 	}
 
@@ -271,7 +309,7 @@ final class PGS {
 	private static final PShape polygonizeEdgesRobust(Collection<PEdge> edges) {
 		final Set<PEdge> edgeSet = new HashSet<>(edges);
 		final Polygonizer polygonizer = new Polygonizer();
-		polygonizer.setCheckRingsValid(false);
+//		polygonizer.setCheckRingsValid(false);
 		edgeSet.forEach(ss -> {
 			/*
 			 * NOTE: If the same LineString is added more than once to the polygonizer, the
@@ -292,7 +330,7 @@ final class PGS {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	static final Collection<SegmentString> nodeSegmentStrings(Collection<SegmentString> segments) {
+	static final Collection<SegmentString> nodeSegmentStrings(Collection<? extends SegmentString> segments) {
 		/*
 		 * Other noder implementations do not node correctly (fail to detect
 		 * intersections) on many inputs; furthermore, using a very small tolerance
@@ -453,6 +491,17 @@ final class PGS {
 	}
 
 	/**
+	 * Creates a 2D KDTree populated with <code>points</code>.
+	 */
+	static KDTree<PVector> makeKdtree(Collection<PVector> points) {
+		KDTree<PVector> tree = KDTree.create(IndexConfig.create(2).setDefensiveKeyCopy(false));
+		points.forEach(p -> {
+			tree.insert(new double[] { p.x, p.y }, p);
+		});
+		return tree;
+	}
+
+	/**
 	 * Provides convenient iteration of the child geometries of a JTS MultiGeometry.
 	 * This iterator does not recurse all geometries (as does
 	 * {@link org.locationtech.jts.geom.GeometryCollectionIterator
@@ -555,6 +604,190 @@ final class PGS {
 				}
 			};
 		}
+	}
+
+	/**
+	 * Apply a transformation to every lineal element in a PShape, preserving
+	 * geometry structure and polygon/hole relationships, and return a non-null
+	 * result.
+	 *
+	 * <p>
+	 * The geometry encoded by {@code shape} (via {@code fromPShape}) is traversed,
+	 * and {@code function} is applied to each lineal component: {@code LineString}
+	 * and {@code LinearRing}. The function may return a replacement
+	 * {@code LineString}, or {@code null} to drop that element.
+	 *
+	 * <p>
+	 * Structure preservation:
+	 * <ul>
+	 * <li>GeometryCollection / MultiPolygon / MultiLineString:
+	 * <ul>
+	 * <li>Children are processed recursively; original grouping and order are
+	 * preserved.</li>
+	 * <li>Children for which the function yields {@code null} (or become empty) are
+	 * filtered out before assembling the result.</li>
+	 * <li>A GROUP {@code PShape} is always returned (it may be empty if nothing
+	 * survives).</li>
+	 * </ul>
+	 * </li>
+	 * <li>Polygon / LinearRing:
+	 * <ul>
+	 * <li>Rings are visited shell-first (exterior, then holes), preserving the
+	 * exterior–hole relations.</li>
+	 * <li>If the exterior becomes {@code null} or invalid, the entire polygon is
+	 * dropped.</li>
+	 * <li>Holes that become {@code null} or invalid are omitted; remaining holes
+	 * retain order.</li>
+	 * <li>Ring orientation is enforced: exterior is CW; holes are CCW.</li>
+	 * </ul>
+	 * </li>
+	 * </ul>
+	 *
+	 * <p>
+	 * Additional behavior:
+	 * <ul>
+	 * <li>Non-closed outputs are closed when possible (if at least two points
+	 * exist).</li>
+	 * <li>Rings must have at least 4 coordinates (including repeated first/last)
+	 * after closing; otherwise they are dropped.</li>
+	 * <li>LineString elements return the transformed line or are dropped if
+	 * {@code function} returns {@code null}.</li>
+	 * <li>Unsupported geometry types yield an empty {@code PShape}.</li>
+	 * <li>No full topology validation is performed; run JTS validators if
+	 * needed.</li>
+	 * </ul>
+	 *
+	 * <p>
+	 * Return contract:
+	 * <ul>
+	 * <li>This method never returns {@code null}. If no geometry survives, an empty
+	 * {@code PShape} is returned.</li>
+	 * </ul>
+	 *
+	 * @param shape    input PShape encoding geometries to transform (must be
+	 *                 convertible via {@code fromPShape})
+	 * @param function a UnaryOperator that receives each {@code LineString} (linear
+	 *                 rings are passed as {@code LineString}) and returns a
+	 *                 modified {@code LineString}, or {@code null} to drop the
+	 *                 element
+	 * @return a non-null {@code PShape} representing the transformed geometry; for
+	 *         multi/geometries a GROUP {@code PShape} is returned and may be empty
+	 *         when no children survive
+	 * @since 2.1
+	 */
+	static PShape applyToLinealGeometries(PShape shape, UnaryOperator<LineString> function) {
+		Geometry g = fromPShape(shape);
+		final var data = g.getUserData(); // probably styling
+		switch (g.getGeometryType()) {
+			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
+			case Geometry.TYPENAME_MULTIPOLYGON :
+			case Geometry.TYPENAME_MULTILINESTRING : {
+				PShape group = new PShape(GROUP);
+				for (int i = 0; i < g.getNumGeometries(); i++) {
+					PShape child = applyToLinealGeometries(toPShape(g.getGeometryN(i)), function);
+					if (!isEmptyShape(child)) {
+						group.addChild(child);
+					}
+				}
+				// Always return a group, possibly empty
+				return group;
+			}
+			case Geometry.TYPENAME_LINEARRING :
+			case Geometry.TYPENAME_POLYGON : {
+				// Preserve exterior-hole relations; allow function to return null (skip)
+				LinearRing[] rings = new LinearRingIterator(g).getLinearRings();
+				List<LinearRing> processed = new ArrayList<>(rings.length);
+				for (int i = 0; i < rings.length; i++) {
+					LinearRing ring = rings[i];
+					LineString out = function.apply(ring);
+					final boolean isHole = i > 0;
+
+					if (out == null) {
+						// If the exterior is removed, drop the whole polygon -> empty shape
+						if (!isHole) {
+							return new PShape();
+						} else {
+							// skip this hole
+							continue;
+						}
+					}
+
+					Coordinate[] coords = out.getCoordinates();
+
+					// Ensure closed; if not, close automatically when possible.
+					if (!out.isClosed()) {
+						if (coords.length >= 2) {
+							Coordinate[] closedCoords = Arrays.copyOf(coords, out.getNumPoints() + 1);
+							closedCoords[closedCoords.length - 1] = closedCoords[0]; // close the ring
+							coords = closedCoords;
+						} else {
+							// Too short to form a ring; skip this ring
+							if (!isHole) {
+								return new PShape();
+							} else {
+								continue;
+							}
+						}
+					}
+
+					// Need at least 4 coordinates for a valid closed ring (including repeated
+					// first)
+					if (coords.length >= 4) {
+						// as createPolygon() doesn't check ring orientation
+						final boolean ccw = Orientation.isCCWArea(coords);
+						if (isHole && !ccw) {
+							ArrayUtils.reverse(coords); // make hole CCW
+						} else if (!isHole && ccw) {
+							ArrayUtils.reverse(coords); // make exterior CW
+						}
+						processed.add(GEOM_FACTORY.createLinearRing(coords));
+					} else {
+						if (!isHole) {
+							return new PShape();
+						}
+						// skip hole otherwise
+					}
+				}
+
+				if (processed.isEmpty()) {
+					return new PShape();
+				}
+
+				LinearRing exterior = processed.get(0);
+				LinearRing[] holes = (processed.size() > 1) ? processed.subList(1, processed.size()).toArray(new LinearRing[0]) : null;
+
+				var polygon = GEOM_FACTORY.createPolygon(exterior, holes);
+				polygon.setUserData(data);
+				return toPShape(polygon);
+			}
+			case Geometry.TYPENAME_LINESTRING : {
+				LineString l = (LineString) g;
+				LineString out = function.apply(l);
+				if (out == null) {
+					return new PShape();
+				}
+				out.setUserData(data);
+				var line = toPShape(out);
+				line.setFill(false);
+				return line;
+			}
+			default :
+				// Return an empty PShape to indicate "ignored / not processed"
+				return new PShape();
+		}
+	}
+
+	static boolean isEmptyShape(PShape s) {
+		if (s == null) {
+			return true;
+		}
+		if (s.getChildCount() > 0) {
+			return false;
+		}
+		if (s.getVertexCount() > 0) {
+			return false;
+		}
+		return true;
 	}
 
 }

@@ -8,17 +8,31 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
-
+import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.PrecisionModel;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.locationtech.jts.geom.util.GeometryFixer;
+import org.locationtech.jts.geom.util.LinearComponentExtracter;
+import org.locationtech.jts.noding.NodedSegmentString;
+import org.locationtech.jts.noding.Noder;
+import org.locationtech.jts.noding.SegmentString;
+import org.locationtech.jts.noding.SegmentStringDissolver;
+import org.locationtech.jts.noding.SegmentStringUtil;
+import org.locationtech.jts.noding.snapround.SnapRoundingNoder;
+import org.locationtech.jts.operation.overlay.OverlayOp;
 import org.locationtech.jts.operation.overlayng.CoverageUnion;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
+import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
+import micycle.pgs.commons.FastOverlapRegions;
+import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -26,7 +40,7 @@ import processing.core.PVector;
 
 /**
  * Boolean set-operations for 2D shapes.
- * 
+ *
  * @author Michael Carleton
  *
  */
@@ -46,7 +60,7 @@ public final class PGS_ShapeBoolean {
 	 * intersecting parts of individual faces will be collapsed into a single area.
 	 * To preserve individual faces during intersection, use
 	 * {@link #intersectMesh(PShape, PShape) intersectMesh()}.
-	 * 
+	 *
 	 * @param a The first shape to be intersected.
 	 * @param b The second shape to intersect with the first.
 	 * @return A new shape representing the area of intersection between the two
@@ -76,7 +90,7 @@ public final class PGS_ShapeBoolean {
 	 * {@link #intersect(PShape, PShape) intersect(a, b)} method repeatedly for
 	 * every face of a mesh-like shape <code>a</code> against an area
 	 * <code>b</code>.
-	 * 
+	 *
 	 * @param mesh A mesh-like GROUP shape that will be intersected with the
 	 *             polygonal area.
 	 * @param area A polygonal shape with which the mesh will be intersected.
@@ -85,21 +99,33 @@ public final class PGS_ShapeBoolean {
 	 * @since 1.3.0
 	 */
 	public static PShape intersectMesh(final PShape mesh, final PShape area) {
-		final Geometry g = fromPShape(area);
-		final PreparedGeometry cache = PreparedGeometryFactory.prepare(g);
+		final Geometry areaGeometry = fromPShape(area);
+		final Envelope areaEnvelope = areaGeometry.getEnvelopeInternal();
+		final PreparedGeometry preparedArea = PreparedGeometryFactory.prepare(areaGeometry);
 
-		List<Geometry> faces = PGS_Conversion.getChildren(mesh).parallelStream().map(s -> {
-			final Geometry f = PGS_Conversion.fromPShape(s);
-			if (cache.containsProperly(f)) {
-				return f;
-			} else {
-				// preserve the fill etc of the PShape during intersection
-				Geometry boundaryIntersect = OverlayNG.overlay(f, g, OverlayNG.INTERSECTION);
-				boundaryIntersect.setUserData(f.getUserData());
-				return boundaryIntersect;
+		List<Geometry> intersections = PGS_Conversion.getChildren(mesh).parallelStream().map(child -> {
+			Geometry face = PGS_Conversion.fromPShape(child);
+			// Quick check: if the envelopes don’t even intersect, skip this face.
+			if (!areaEnvelope.intersects(face.getEnvelopeInternal())) {
+				return null;
 			}
-		}).collect(Collectors.toList());
-		return PGS_Conversion.toPShape(faces);
+			// Fast test: if the area completely contains the face then no need for overlay.
+			if (preparedArea.containsProperly(face)) {
+				return face;
+			}
+			// Otherwise, if the face intersects the area, compute the actual intersection.
+			if (preparedArea.intersects(face)) {
+				Geometry intersection = OverlayNG.overlay(face, areaGeometry, OverlayNG.INTERSECTION);
+				if (!intersection.isEmpty()) {
+					// Propagate any user data
+					intersection.setUserData(face.getUserData());
+					return intersection;
+				}
+			}
+			return null;
+		}).filter(Objects::nonNull).collect(Collectors.toList());
+
+		return PGS_Conversion.toPShape(intersections);
 	}
 
 	/**
@@ -148,15 +174,101 @@ public final class PGS_ShapeBoolean {
 	 * them into a new shape that encompasses the total area of all input shapes.
 	 * Overlapping areas among the shapes are included only once in the resulting
 	 * shape.
-	 * 
+	 *
 	 * @param shapes A variable number of PShape instances to be unified.
 	 * @return A new PShape object representing the union of the input shapes.
 	 * @see #union(PShape, PShape) For a union operation on two shapes.
 	 * @see #union(PShape...) For a union operation on a list of shapes.
 	 */
-
 	public static PShape union(PShape... shapes) {
 		return union(Arrays.asList(shapes));
+	}
+
+	/**
+	 * Unions the <b>linework</b> of two shapes, creating polygonal faces from their
+	 * intersecting lines. This method focuses on the linework (linear components)
+	 * of the input geometries rather than their areas. It differs from a standard
+	 * polygon union operation, as it processes the lines to find intersections and
+	 * generates new polygonal faces based on the resulting linework.
+	 * <p>
+	 * If {@code b} is {@code null}, only the linework from {@code a} is used.
+	 * </p>
+	 *
+	 * @param a The first input geometry as a {@link PShape}.
+	 * @param b b The second input geometry as a {@link PShape}, or {@code null} to
+	 *          use only {@code a}'s linework.
+	 * @return A new {@link PShape} representing the polygonal faces created by the
+	 *         union of the input geometries' linework. Returns {@code null} if the
+	 *         input geometries do not produce any valid polygonal faces.
+	 * @since 2.1
+	 */
+	public static PShape unionLines(PShape a, @Nullable PShape b) {
+		var aG = fromPShape(a);
+		var bG = b == null ? PGS.GEOM_FACTORY.createEmpty(2) : fromPShape(b);
+		var lA = LinearComponentExtracter.getGeometry(aG);
+		var lB = LinearComponentExtracter.getGeometry(bG);
+
+		Polygonizer polygonizer = new Polygonizer(false);
+		polygonizer.add(OverlayNG.overlay(lA, lB, OverlayOp.UNION, new PrecisionModel(-1e-3)));
+
+		return toPShape(polygonizer.getGeometry());
+	}
+
+	/**
+	 * Unions the linework of the given shapes (varargs form).
+	 * <p>
+	 * This is a convenience overload that forwards to
+	 * {@link #unionLines(Collection)}. Null entries in {@code shapes} are ignored
+	 * by the collection overload.
+	 * </p>
+	 *
+	 * @param shapes Zero or more {@link PShape} instances whose linework will be
+	 *               unioned. May be empty.
+	 * @return A new {@link PShape} representing polygonal faces created by the
+	 *         union of the provided shapes' linework, or {@code null} if no valid
+	 *         polygonal faces resulted.
+	 * @since 2.1
+	 */
+	public static PShape unionLines(PShape... shapes) {
+		return unionLines(Arrays.asList(shapes));
+	}
+
+	/**
+	 * Unions the linework of a collection of shapes, creating polygonal faces from
+	 * their intersecting lines.
+	 * <p>
+	 * This method focuses on the linework (linear components) of the input
+	 * geometries rather than their areas. It differs from a standard polygon union
+	 * operation, as it processes the lines to find intersections and generates new
+	 * polygonal faces based on the resulting linework.
+	 *
+	 * @param shapes A collection of {@link PShape} instances to union. May contain
+	 *               {@code null} elements which will be ignored. The collection
+	 *               itself should not be {@code null}.
+	 * @return A new {@link PShape} representing the polygonal faces created by the
+	 *         union of the provided shapes' linework, or {@code null} if no valid
+	 *         polygonal faces were produced.
+	 * @since 2.1
+	 */
+	@SuppressWarnings("unchecked")
+	public static PShape unionLines(Collection<PShape> shapes) {
+		var totalSegs = shapes.stream().map(s -> fromPShape(s)).filter(Objects::nonNull)
+				.flatMap(g -> ((List<SegmentString>) SegmentStringUtil.extractSegmentStrings(g)).stream()).toList();
+
+		SegmentStringDissolver d = new SegmentStringDissolver();
+		d.dissolve(totalSegs);
+		var dissolvedSegs = d.getDissolved();
+
+		Noder noder = new SnapRoundingNoder(new PrecisionModel(-5e-3));
+		noder.computeNodes(dissolvedSegs);
+		var nodedSegs = noder.getNodedSubstrings();
+
+		var segmentGeometry = SegmentStringUtil.toGeometry(nodedSegs, PGS.GEOM_FACTORY);
+
+		Polygonizer polygonizer = new Polygonizer();
+		polygonizer.add(segmentGeometry);
+		var polys = (List<Polygon>) polygonizer.getPolygons();
+		return toPShape(polys);
 	}
 
 	/**
@@ -255,11 +367,41 @@ public final class PGS_ShapeBoolean {
 	}
 
 	/**
+	 * Finds all regions covered by at least two input shapes.
+	 * <ul>
+	 * <li>If {@code merged} is true, each child in the output is a disjoint
+	 * component representing the union of all overlapping regions. No returned
+	 * children overlap each other (multi-way overlaps are merged).</li>
+	 * <li>If {@code merged} is false, each child is an individual pairwise overlap
+	 * region. These children may themselves overlap (e.g., areas with three or more
+	 * input overlaps will appear in multiple children).</li>
+	 * </ul>
+	 * Only regions covered by two or more inputs are included.
+	 *
+	 * Use {@code merged = true} for a clean, non-overlapping set of overlap regions
+	 * (as merged maximal patches). Use {@code merged = false} to examine or style
+	 * every individual pairwise overlap, noting that children may overlap.
+	 *
+	 * @param shapes input collection of {@code PShape} area shapes (e.g., polygons)
+	 * @param merged if true, merges all overlapping regions into a minimal set of
+	 *               disjoint (non-overlapping) children; if false, each child is a
+	 *               pairwise overlap region, and children may mutually overlap in
+	 *               areas covered by three or more inputs
+	 * @return a group {@code PShape} with each child representing a
+	 *         multiply-covered region
+	 * @since 2.1
+	 */
+	public static PShape overlapRegions(Collection<PShape> shapes, boolean merged) {
+		var worker = new FastOverlapRegions(fromPShape(PGS_Conversion.flatten(shapes)));
+		return toPShape(worker.get(merged));
+	}
+
+	/**
 	 * Subtracts one shape (b) from another shape (a) and returns the resulting
 	 * shape. This procedure is also known as "difference".
 	 * <p>
 	 * Subtract is the opposite of {@link #union(PShape, PShape) union()}.
-	 * 
+	 *
 	 * @param a The PShape from which the other PShape will be subtracted.
 	 * @param b The PShape that will be subtracted from the first PShape.
 	 * @return A new PShape representing the difference between the two input
@@ -282,7 +424,7 @@ public final class PGS_ShapeBoolean {
 	 * {@link #subtract(PShape, PShape) subtract()} but this method produces valid
 	 * results only if <b>all holes lie inside the shell</b> and holes are <b>not
 	 * nested</b>.
-	 * 
+	 *
 	 * @param shell polygonal shape
 	 * @param holes single polygon, or GROUP shape, whose children are holes that
 	 *              lie within the shell
@@ -348,7 +490,7 @@ public final class PGS_ShapeBoolean {
 	 * Calculates the symmetric difference between two shapes. The symmetric
 	 * difference is the set of regions that exist in either of the two shapes but
 	 * not in their intersection.
-	 * 
+	 *
 	 * @param a The first shape.
 	 * @param b The second shape.
 	 * @return A new shape representing the symmetric difference between the two
@@ -368,7 +510,7 @@ public final class PGS_ShapeBoolean {
 	 * The resulting shape corresponds to the portion of the rectangle not covered
 	 * by the input shape. The operation is essentially a subtraction of the input
 	 * shape from the rectangle.
-	 * 
+	 *
 	 * @param shape  The input shape for which the complement is to be determined.
 	 * @param width  The width of the rectangular boundary.
 	 * @param height The height of the rectangular boundary.
@@ -380,7 +522,9 @@ public final class PGS_ShapeBoolean {
 		shapeFactory.setNumPoints(4);
 		shapeFactory.setWidth(width);
 		shapeFactory.setHeight(height);
-		return toPShape(shapeFactory.createRectangle().difference(fromPShape(shape)));
+		// unioning difference shape helps robustness (when it comprises overlapping
+		// children)
+		return toPShape(shapeFactory.createRectangle().difference(fromPShape(shape).union()));
 	}
 
 }

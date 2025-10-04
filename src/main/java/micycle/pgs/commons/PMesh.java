@@ -372,7 +372,7 @@ public class PMesh {
 
 		final PVector originalVertex;
 		final PVector smoothedVertex;
-		boolean onBoundary;
+		boolean onBoundary = false;
 		List<PMeshVertex> neighbors;
 
 		public PMeshVertex(PVector v) {

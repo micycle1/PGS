@@ -142,50 +142,13 @@ public class ShapeInterpolation {
 	private static double calculateSumOfSquares(CoordinateList a, CoordinateList b, int offset, int n) {
 		double sumOfSquares = 0;
 		for (int i = 0; i < n; i++) {
-			sumOfSquares += distSq(a.get((offset + i) % n), b.get(i));
+			sumOfSquares += a.get((offset + i) % n).distanceSq(b.get(i));
 		}
 		return sumOfSquares;
 	}
 
-	@Deprecated
-	private static int findBestRotationSimple(CoordinateList a, CoordinateList b) {
-		final int n = a.size();
-		final int inc = (int) Math.max(1, Math.ceil(n / 1000d));
-		double min = Double.MAX_VALUE;
-		int bestOffset = 0;
-
-		for (int offset = 0; offset < n; offset += inc) {
-			double sumOfSquares = 0;
-
-			for (int i = 0; i < n; i++) {
-				sumOfSquares += distSq(a.get((offset + i) % n), b.get(i));
-				if (sumOfSquares > min) {
-					break;
-				}
-			}
-
-			if (sumOfSquares < min) {
-				min = sumOfSquares;
-				bestOffset = offset;
-				if (sumOfSquares == 0) {
-					return bestOffset; // return early when shapes are identical
-				}
-			}
-		}
-
-		return bestOffset;
-	}
-
 	private static Coordinate lerp(Coordinate from, Coordinate to, double t) {
 		return new Coordinate(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t);
-	}
-
-	private static final double distSq(final Coordinate a, final Coordinate b) {
-		// don't use Coordinate.distance() because it uses Math.hypot() (slower!)
-		// don't sqrt -- not needed
-		final double dx = a.x - b.x;
-		final double dy = a.y - b.y;
-		return (dx * dx + dy * dy);
 	}
 
 }

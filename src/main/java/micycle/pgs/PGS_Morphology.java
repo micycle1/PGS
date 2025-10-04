@@ -2,13 +2,9 @@ package micycle.pgs;
 
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
-import static processing.core.PConstants.GROUP;
-
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiFunction;
-
 import org.locationtech.jts.densify.Densifier;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
@@ -31,16 +27,15 @@ import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.simplify.VWSimplifier;
 
-import micycle.hobbycurves.HobbyCurve;
-import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.PGS_Contour.OffsetStyle;
-import micycle.pgs.color.Colors;
 import micycle.pgs.commons.ChaikinCut;
 import micycle.pgs.commons.CornerRounding;
+import micycle.pgs.commons.CornerRounding.RoundingStyle;
 import micycle.pgs.commons.DiscreteCurveEvolution;
 import micycle.pgs.commons.DiscreteCurveEvolution.DCETerminationCallback;
 import micycle.pgs.commons.EllipticFourierDesc;
 import micycle.pgs.commons.GaussianLineSmoothing;
+import micycle.pgs.commons.LaneRiesenfeldSmoothing;
 import micycle.pgs.commons.ShapeInterpolation;
 import micycle.uniformnoise.UniformNoise;
 import processing.core.PConstants;
@@ -64,35 +59,69 @@ public final class PGS_Morphology {
 	}
 
 	/**
-	 * Computes a rounded buffer area around the shape, having the given buffer
-	 * width.
-	 * 
-	 * @param shape
-	 * @param buffer extent/width of the buffer (which may be positive or negative)
-	 * @return a polygonal shape representing the buffer region (which may be empty)
+	 * Returns a rounded buffer region of the given shape at the specified distance.
+	 * <p>
+	 * The distance is in the same coordinate units as the shape: positive values
+	 * expand the shape, negative values contract it. The returned shape is a
+	 * polygonal PShape and may be empty. The input shape is not modified.
+	 *
+	 * @param shape  the source shape to buffer
+	 * @param buffer distance (extent/width) of the buffer; may be positive or
+	 *               negative
+	 * @return a polygonal PShape representing the buffer region (may be empty)
 	 * @see #buffer(PShape, double, OffsetStyle)
 	 */
 	public static PShape buffer(PShape shape, double buffer) {
-		final int segments = (int) Math.ceil(BufferParameters.DEFAULT_QUADRANT_SEGMENTS + Math.sqrt(buffer));
-		return toPShape(fromPShape(shape).buffer(buffer, segments));
+		return buffer(shape, buffer, OffsetStyle.ROUND);
 	}
 
 	/**
-	 * Computes a buffer area around the shape, having the given buffer width and
-	 * buffer style (either round, miter, bevel).
-	 * 
-	 * @param shape
-	 * @param buffer extent/width of the buffer (which may be positive or negative)
-	 * @return a polygonal shape representing the buffer region (which may be empty)
+	 * Returns a buffer region of the given shape using the specified join style.
+	 * <p>
+	 * The distance is in the same coordinate units as the shape: positive values
+	 * expand the shape, negative values contract it. The bufferStyle controls how
+	 * corners are joined (e.g. ROUND, MITER, BEVEL). The returned shape is a
+	 * polygonal PShape and may be empty. The input shape is not modified.
+	 *
+	 * @param shape       the source shape to buffer
+	 * @param buffer      distance (extent/width) of the buffer; may be positive or
+	 *                    negative
+	 * @param bufferStyle how to join offset segments (ROUND, MITER, BEVEL)
+	 * @return a polygonal PShape representing the buffer region (may be empty)
 	 * @see #buffer(PShape, double)
 	 * @since 1.3.0
 	 */
 	public static PShape buffer(PShape shape, double buffer, OffsetStyle bufferStyle) {
+		return buffer(shape, buffer, bufferStyle, CapStyle.ROUND);
+	}
+
+	/**
+	 * Returns a buffer region of the given shape using the specified join and cap
+	 * styles.
+	 * <p>
+	 * The distance is in the same coordinate units as the shape: positive values
+	 * expand the shape, negative values contract it. bufferStyle controls how
+	 * corners are joined; capStyle controls the end-cap style used for open
+	 * geometries. The input shape is not modified; the returned PShape preserves
+	 * the user data from the original geometry. The result is a polygonal PShape
+	 * and may be empty.
+	 *
+	 * @param shape       the source shape to buffer
+	 * @param buffer      distance (extent/width) of the buffer; may be positive or
+	 *                    negative
+	 * @param bufferStyle how to join offset segments (ROUND, MITER, BEVEL)
+	 * @param capStyle    how to draw end caps for open geometries (e.g. ROUND,
+	 *                    FLAT)
+	 * @return a polygonal PShape representing the buffer region (may be empty)
+	 * @since 2.1
+	 */
+	public static PShape buffer(PShape shape, double buffer, OffsetStyle bufferStyle, CapStyle capStyle) {
 		Geometry g = fromPShape(shape);
-		final int segments = (int) Math.ceil(BufferParameters.DEFAULT_QUADRANT_SEGMENTS + Math.sqrt(buffer));
-		BufferParameters bufParams = new BufferParameters(segments, BufferParameters.CAP_FLAT, bufferStyle.style, BufferParameters.DEFAULT_MITRE_LIMIT);
+		BufferParameters bufParams = createBufferParams(buffer, 0.5, bufferStyle, capStyle);
 		BufferOp b = new BufferOp(g, bufParams);
-		return toPShape(b.getResultGeometry(buffer));
+		var out = b.getResultGeometry(buffer);
+		out.setUserData(g.getUserData());
+		return toPShape(out);
 	}
 
 	/**
@@ -182,8 +211,10 @@ public final class PGS_Morphology {
 		buffer = Math.abs(buffer);
 
 		final int segments = (int) Math.ceil(BufferParameters.DEFAULT_QUADRANT_SEGMENTS + Math.sqrt(buffer));
-		Geometry g = BufferOp.bufferOp(fromPShape(shape), -buffer, segments);
+		var in = fromPShape(shape);
+		Geometry g = BufferOp.bufferOp(in, -buffer, segments);
 		g = BufferOp.bufferOp(g, +buffer, segments);
+		g.setUserData(in.getUserData());
 
 		try {
 			return toPShape(g);
@@ -201,7 +232,6 @@ public final class PGS_Morphology {
 	 * 
 	 * @param shape  polygonal shape
 	 * @param buffer a positive number
-	 * @return
 	 * @since 1.3.0
 	 * @see #erosionDilation(PShape, double)
 	 */
@@ -209,8 +239,11 @@ public final class PGS_Morphology {
 		buffer = Math.abs(buffer);
 
 		final int segments = (int) Math.ceil(BufferParameters.DEFAULT_QUADRANT_SEGMENTS + Math.sqrt(buffer));
-		Geometry g = BufferOp.bufferOp(fromPShape(shape), buffer, segments);
+		var in = fromPShape(shape);
+		Geometry g = BufferOp.bufferOp(in, buffer, segments);
 		g = BufferOp.bufferOp(g, -buffer, segments);
+		g.setUserData(in.getUserData());
+
 		try {
 			return toPShape(g);
 		} catch (Exception e) {
@@ -270,12 +303,12 @@ public final class PGS_Morphology {
 	 * Simplifies a shape via <i>Discrete Curve Evolution</i>.
 	 * <p>
 	 * This algorithm simplifies a shape by iteratively removing kinks from the
-	 * shape, starting with those having the least shape-relevance.
+	 * shape, <b>starting with those having the least shape-relevance</b>.
 	 * <p>
 	 * The simplification process terminates according to a user-specified
 	 * {@link DCETerminationCallback#shouldTerminate(Coordinate, double, int)
 	 * callback} that decides whether the DCE algorithm should terminate based on
-	 * the current kink (having a candidate vertex), using its coordinates,
+	 * the current kink (having a candidate vertex), using its: coordinate,
 	 * relevance score, and the number of vertices remaining in the simplified
 	 * geometry. Implementations can use this method to provide custom termination
 	 * logic which may depend on various factors, such as a threshold relevance
@@ -296,39 +329,23 @@ public final class PGS_Morphology {
 	 * @since 2.0
 	 */
 	public static PShape simplifyDCE(PShape shape, DCETerminationCallback terminationCallback) {
-		Geometry g = fromPShape(shape);
-		switch (g.getGeometryType()) {
-			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
-			case Geometry.TYPENAME_MULTIPOLYGON :
-			case Geometry.TYPENAME_MULTILINESTRING :
-				PShape group = new PShape(GROUP);
-				for (int i = 0; i < g.getNumGeometries(); i++) {
-					group.addChild(simplifyDCE(toPShape(g.getGeometryN(i)), terminationCallback));
-				}
-				return group;
-			case Geometry.TYPENAME_LINEARRING :
-			case Geometry.TYPENAME_POLYGON :
-				// process each ring individually
-				LinearRing[] rings = new LinearRingIterator(g).getLinearRings();
-				LinearRing[] dceRings = new LinearRing[rings.length];
-				for (int i = 0; i < rings.length; i++) {
-					LinearRing ring = rings[i];
-					Coordinate[] dce = DiscreteCurveEvolution.process(ring, terminationCallback);
-					dceRings[i] = PGS.GEOM_FACTORY.createLinearRing(dce);
-				}
-				LinearRing[] holes = null;
-				if (dceRings.length > 1) {
-					holes = Arrays.copyOfRange(dceRings, 1, dceRings.length);
-				}
-				return toPShape(PGS.GEOM_FACTORY.createPolygon(dceRings[0], holes));
-			case Geometry.TYPENAME_LINESTRING :
-				LineString l = (LineString) g;
-				Coordinate[] dce = DiscreteCurveEvolution.process(l, terminationCallback);
-				return toPShape(PGS.GEOM_FACTORY.createLineString(dce));
-			default :
-				System.err.println(g.getGeometryType() + " are not supported for the simplifyDCE() method."); // pointal geoms
-				return new PShape(); // return empty (so element is invisible if not processed)
-		}
+		return PGS.applyToLinealGeometries(shape, ring -> {
+			var coords = DiscreteCurveEvolution.process(ring, terminationCallback);
+			return PGS.GEOM_FACTORY.createLineString(coords);
+		});
+	}
+
+	/**
+	 * Simplify the shape using DCE, removing vertices with relevance < r.
+	 * 
+	 * @param shape              the input shape
+	 * @param relevanceThreshold the relevance threshold; only vertices with
+	 *                           relevance >= the threshold will be kept
+	 * @return the simplified PShape
+	 * @since 2.1
+	 */
+	public static PShape simplifyDCE(PShape shape, final double relevanceThreshold) {
+		return simplifyDCE(shape, (currentVertex, relevance, verticesRemaining) -> relevance >= relevanceThreshold);
 	}
 
 	/**
@@ -348,21 +365,20 @@ public final class PGS_Morphology {
 	 * @since 1.4.0
 	 */
 	public static PShape simplifyHobby(PShape shape, double tension) {
-		tension = Math.max(tension, 0.668); // prevent degeneracy
-		double[][] vertices = PGS_Conversion.toArray(shape, false);
-		HobbyCurve curve = new HobbyCurve(vertices, tension, shape.isClosed(), 0.5, 0.5);
-		List<PVector> points = new ArrayList<>();
-		for (double[] b : curve.getBeziers()) {
-			int i = 0;
-			PVector p1 = new PVector((float) b[i++], (float) b[i++]);
-			PVector cp1 = new PVector((float) b[i++], (float) b[i++]);
-			PVector cp2 = new PVector((float) b[i++], (float) b[i++]);
-			PVector p2 = new PVector((float) b[i++], (float) b[i]);
-			PShape bezier = PGS_Conversion.fromCubicBezier(p1, cp1, cp2, p2);
-			points.addAll(PGS_Conversion.toPVector(bezier));
-		}
-
-		return PGS_Conversion.fromPVector(points);
+		return PGS.applyToLinealGeometries(shape, ring -> {
+			var points = PGS_Conversion.toPVector(toPShape(ring));
+			if (ring.isClosed() && !points.get(0).equals(points.get(points.size() - 1))) {
+				points.add(points.get(0).copy());
+			}
+			var g = fromPShape(PGS_Construction.createHobbyCurve(points, tension));
+			if (g instanceof Polygon) {
+				g = ((Polygon) g).getExteriorRing();
+			}
+			if (g instanceof Lineal) {
+				return (LineString) g;
+			}
+			return null;
+		});
 	}
 
 	/**
@@ -437,43 +453,7 @@ public final class PGS_Morphology {
 	 * @see #smooth(PShape, double)
 	 */
 	public static PShape smoothGaussian(PShape shape, double sigma) {
-		Geometry g = fromPShape(shape);
-
-		switch (g.getGeometryType()) {
-			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
-			case Geometry.TYPENAME_MULTIPOLYGON :
-			case Geometry.TYPENAME_MULTILINESTRING :
-				PShape group = new PShape(GROUP);
-				for (int i = 0; i < g.getNumGeometries(); i++) {
-					group.addChild(smoothGaussian(toPShape(g.getGeometryN(i)), sigma));
-				}
-				return group;
-			case Geometry.TYPENAME_POLYGON :
-				LinearRingIterator lri = new LinearRingIterator(g);
-				LineString[] rings = lri.getLinearRings();
-				LinearRing[] ringSmoothed = new LinearRing[rings.length];
-				for (int i = 0; i < rings.length; i++) {
-					Coordinate[] coords = GaussianLineSmoothing.get(rings[i], Math.max(sigma, 1), 1).getCoordinates();
-					if (coords.length > 2) {
-						ringSmoothed[i] = PGS.GEOM_FACTORY.createLinearRing(coords);
-					} else {
-						ringSmoothed[i] = PGS.GEOM_FACTORY.createLinearRing();
-					}
-				}
-
-				LinearRing[] holes = null;
-				if (ringSmoothed.length > 1) {
-					holes = Arrays.copyOfRange(ringSmoothed, 1, ringSmoothed.length);
-				}
-				return toPShape(PGS.GEOM_FACTORY.createPolygon(ringSmoothed[0], holes));
-			case Geometry.TYPENAME_LINEARRING :
-			case Geometry.TYPENAME_LINESTRING :
-				LineString l = (LineString) g;
-				return toPShape(GaussianLineSmoothing.get(l, Math.max(sigma, 1), 1));
-			default :
-				System.err.println(g.getGeometryType() + " are not supported for the smoothGaussian() method."); // pointal geoms
-				return new PShape(); // return empty (so element is invisible if not processed)
-		}
+		return PGS.applyToLinealGeometries(shape, ring -> GaussianLineSmoothing.get(ring, sigma));
 	}
 
 	/**
@@ -503,62 +483,88 @@ public final class PGS_Morphology {
 	 * @since 1.4.0
 	 */
 	public static PShape smoothEllipticFourier(PShape shape, int descriptors) {
-		Geometry g = fromPShape(shape);
-		switch (g.getGeometryType()) {
-			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
-			case Geometry.TYPENAME_MULTIPOLYGON :
-			case Geometry.TYPENAME_MULTILINESTRING :
-				PShape group = new PShape(GROUP);
-				for (int i = 0; i < g.getNumGeometries(); i++) {
-					group.addChild(smoothEllipticFourier(toPShape(g.getGeometryN(i)), descriptors));
-				}
-				return group;
-			case Geometry.TYPENAME_POLYGON :
-				LinearRingIterator lri = new LinearRingIterator(g);
-				LinearRing[] rings = lri.getLinearRings();
-				LinearRing[] ringProcessed = new LinearRing[rings.length];
-				for (int i = 0; i < rings.length; i++) {
-					descriptors = Math.min(rings[i].getCoordinates().length / 2, descriptors); // max=#vertices/2
-					descriptors = Math.max(2, descriptors); // min=2
-					final EllipticFourierDesc efd = new EllipticFourierDesc(rings[i], descriptors);
-					Coordinate[] coords = efd.createPolygon();
-					ringProcessed[i] = PGS.GEOM_FACTORY.createLinearRing(coords);
-				}
-
-				LinearRing[] holes = null;
-				if (ringProcessed.length > 1) {
-					holes = Arrays.copyOfRange(ringProcessed, 1, ringProcessed.length);
-				}
-				return toPShape(PGS.GEOM_FACTORY.createPolygon(ringProcessed[0], holes));
-			case Geometry.TYPENAME_LINEARRING :
-				descriptors = Math.min(shape.getVertexCount() / 2, descriptors); // max=#vertices/2
-				descriptors = Math.max(2, descriptors); // min=2
-				LinearRing l = (LinearRing) g;
-				final EllipticFourierDesc efd = new EllipticFourierDesc(l, descriptors);
-				return toPShape(PGS.GEOM_FACTORY.createLinearRing(efd.createPolygon()));
-			case Geometry.TYPENAME_LINESTRING :
-			default :
-				System.err.println(g.getGeometryType() + " are not supported for the smoothEllipticFourier() method."); // pointal/string
-																														// geoms
-				return new PShape(); // return empty (so element is invisible if not processed)
-		}
+		return PGS.applyToLinealGeometries(shape, ring -> {
+			int descriptorz = Math.min(ring.getCoordinates().length / 2, descriptors); // max=#vertices/2
+			descriptorz = Math.max(2, descriptorz); // min=2
+			if (ring.isClosed()) {
+				final EllipticFourierDesc efd = new EllipticFourierDesc((LinearRing) ring, descriptorz);
+				Coordinate[] coords = efd.createPolygon();
+				return PGS.GEOM_FACTORY.createLinearRing(coords);
+			} else {
+				return null; // open linestrings not supported
+			}
+		});
 	}
 
 	/**
-	 * Modifies the corners of a specified shape by replacing each angular corner
-	 * with a smooth, circular arc. The radius of each arc is determined
-	 * proportionally to the shorter of the two lines forming the corner.
+	 * Smooths a shape using Lane-Riesenfeld curve subdivision with 4-point
+	 * refinement to reduce contraction.
 	 * 
-	 * @param shape  The original PShape object whose corners are to be rounded.
-	 * @param extent Specifies the degree of corner rounding, with a range from 0 to
-	 *               1. A value of 0 corresponds to no rounding, whereas a value of
-	 *               1 yields maximum rounding while still maintaining the validity
-	 *               of the shape. Values above 1 are accepted but may produce
-	 *               unpredictable results.
-	 * @return A new PShape object with corners rounded to the specified extent.
+	 * @param shape                 A shape having lineal geometries (polygons or
+	 *                              linestrings). Can be a GROUP shape consisting of
+	 *                              these.
+	 * @param degree                The degree of the LR algorithm. Higher degrees
+	 *                              influence the placement of vertices and the
+	 *                              overall shape of the curve, but only slightly
+	 *                              increase the number of vertices generated.
+	 *                              Increasing the degree also increases the
+	 *                              contraction of the curve toward its control
+	 *                              points. The degree does not directly control the
+	 *                              smoothness of the curve. A value of 3 or 4 is
+	 *                              usually sufficient for most applications.
+	 * @param subdivisions          The number of times the subdivision process is
+	 *                              applied. More subdivisions result in finer
+	 *                              refinement and visually smoother curves between
+	 *                              vertices. A value of 3 or 4 is usually
+	 *                              sufficient for most applications.
+	 * @param antiContractionFactor The weight parameter for the 4-point refinement.
+	 *                              Controls the interpolation strength. A value of
+	 *                              0 effectively disables the contraction
+	 *                              reduction. Generally suitable values are in
+	 *                              [0...0.1]. Larger values may create
+	 *                              self-intersecting geometry.
+	 * @return A Shape having same structure as the input, whose geometries are now
+	 *         smooth.
+	 * @since 2.1
 	 */
-	public static PShape round(PShape shape, double extent) {
-		return CornerRounding.round(shape, extent);
+	public static PShape smoothLaneRiesenfeld(PShape shape, int degree, int subdivisions, double antiContractionFactor) {
+		return PGS.applyToLinealGeometries(shape, lineal -> LaneRiesenfeldSmoothing.subdivide(lineal, degree, subdivisions, antiContractionFactor));
+	}
+
+	/**
+	 * Rounds polygon corners by replacing each corner with a circular arc.
+	 *
+	 * <p>
+	 * This processes only the linear content of the input <code>PShape</code> - the
+	 * contour paths (closed contours for polygon exteriors and interior
+	 * contours/holes, and open polylines). Non‑linear or unsupported children are
+	 * ignored.
+	 * </p>
+	 * <p>
+	 * The <code>radius</code> is nominal; it is clamped so it cannot exceed what
+	 * adjacent edges can support (this prevents overlapping or invalid contours).
+	 * </p>
+	 *
+	 * @param shape  a polygonal <code>PShape</code> or a <code>GROUP</code>
+	 *               <code>PShape</code> containing polygonal children; holes
+	 *               (interior contours) are supported
+	 * @param radius nominal radius used to round corners; clamped by adjacent edge
+	 *               lengths
+	 * @return a non-null <code>PShape</code> with rounded corners; possibly an
+	 *         empty <code>GROUP</code> when nothing remains
+	 */
+	public static PShape round(PShape shape, double radius) {
+		return PGS.applyToLinealGeometries(shape, ring -> {
+			var rounded = CornerRounding.roundCorners(toPShape(ring), radius, RoundingStyle.CIRCLE);
+			var g = fromPShape(rounded);
+			if (g instanceof Polygon) {
+				g = ((Polygon) g).getExteriorRing();
+			}
+			if (g instanceof Lineal) {
+				return (LineString) g;
+			}
+			return null; // pointal or other...
+		});
 	}
 
 	/**
@@ -586,10 +592,19 @@ public final class PGS_Morphology {
 		ratio = Math.max(ratio, 1e-6);
 		ratio = Math.min(ratio, 1 - 1e-6);
 		ratio /= 2; // constrain to 0...0.5
-		PShape cut = ChaikinCut.chaikin(shape, (float) ratio, iterations);
-		PGS_Conversion.setAllFillColor(cut, Colors.WHITE);
-		PGS_Conversion.setAllStrokeColor(cut, Colors.PINK, 3);
-		return cut;
+		float r = (float) ratio;
+
+		return PGS.applyToLinealGeometries(shape, ring -> {
+			var cut = ChaikinCut.chaikin(toPShape(ring), r, iterations);
+			var g = fromPShape(cut);
+			if (g instanceof Polygon) {
+				g = ((Polygon) g).getExteriorRing();
+			}
+			if (g instanceof Lineal) {
+				return (LineString) g;
+			}
+			return null; // pointal or other...
+		});
 	}
 
 	/**
@@ -743,11 +758,11 @@ public final class PGS_Morphology {
 		final PShape copy;
 		if (densify && !pointsShape) {
 			final Densifier d = new Densifier(fromPShape(shape));
-			d.setDistanceTolerance(1);
+			d.setDistanceTolerance(PGS_Conversion.BEZIER_SAMPLE_DISTANCE);
 			d.setValidate(false);
 			copy = toPShape(d.getResultGeometry());
 		} else {
-			copy = toPShape(fromPShape(shape));
+			copy = PGS_Conversion.copy(shape);
 		}
 
 		final UniformNoise noise = new UniformNoise((int) (noiseSeed % Integer.MAX_VALUE));
@@ -757,8 +772,14 @@ public final class PGS_Morphology {
 			copy.addChild(copy);
 		}
 
+		/*
+		 * TODO preserveEnds arg, that scales the noise offset towards 0 for vertices
+		 * near the end (so we don't large jump between end point and warped next
+		 * vertex).
+		 */
 		for (PShape child : copy.getChildren()) {
-			for (int i = 0; i < child.getVertexCount(); i++) {
+			int offset = 0; // child.isClosed() ? 0 : 1
+			for (int i = offset; i < child.getVertexCount() - offset; i++) {
 				final PVector coord = child.getVertex(i);
 				float dx = noise.uniformNoise(coord.x / scale, coord.y / scale + time) - 0.5f;
 				float dy = noise.uniformNoise(coord.x / scale + (101 + time), coord.y / scale + (101 + time)) - 0.5f;
@@ -804,6 +825,9 @@ public final class PGS_Morphology {
 			direction.mult(w);
 			vertex.add(direction);
 			vertices.add(vertex);
+		}
+		if (shape.isClosed()) {
+			vertices.add(vertices.get(0));
 		}
 		return PGS_Conversion.fromPVector(vertices);
 	}
@@ -889,6 +913,57 @@ public final class PGS_Morphology {
 	 */
 	public static PShape reducePrecision(PShape shape, double precision) {
 		return toPShape(GeometryPrecisionReducer.reduce(fromPShape(shape), new PrecisionModel(-Math.max(Math.abs(precision), 1e-10))));
+	}
+
+	/**
+	 * The end cap style to use. Cap style specifies the shape of the ends of
+	 * buffered unclosed lines; it has no effect in polygons.
+	 */
+	public enum CapStyle {
+
+		/**
+		 * The usual round end caps.
+		 */
+		ROUND(BufferParameters.CAP_ROUND),
+		/**
+		 * End caps are truncated flat at the line ends.
+		 */
+		FLAT(BufferParameters.CAP_FLAT),
+		/**
+		 * End caps are squared off at the buffer distance beyond the line ends.
+		 */
+		SQUARE(BufferParameters.CAP_SQUARE);
+
+		final int style;
+
+		private CapStyle(int style) {
+			this.style = style;
+		}
+	}
+
+	private static BufferParameters createBufferParams(double r, double delta, OffsetStyle bufferStyle, CapStyle capStyle) {
+		r = Math.abs(r);
+
+		// compute the number of points for the full circle
+		double ang = Math.acos(1.0 - delta / r);
+		// if delta/r > 2 or so acos will fail – clamp it
+		if (Double.isNaN(ang) || ang <= 0) {
+			// in this degenerate case just fall back to a small number
+			ang = Math.PI / 8.0;
+		}
+
+		// total points
+		double nPtsDbl = Math.PI / ang;
+		int nPts = (int) Math.ceil(nPtsDbl);
+
+		// segments per quadrant
+		int quadSeg = (int) Math.ceil(nPts / 4.0);
+
+		// enforce a sensible minimum
+		quadSeg = Math.max(quadSeg, BufferParameters.DEFAULT_QUADRANT_SEGMENTS);
+
+		// cap style affects linestrings only
+		return new BufferParameters(quadSeg, capStyle.style, bufferStyle.style, BufferParameters.DEFAULT_MITRE_LIMIT);
 	}
 
 }

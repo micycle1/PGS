@@ -1,39 +1,13 @@
-/*
- * Copyright (c) 2010-2020 William Bittle  http://www.dyn4j.org/
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without modification, are permitted
- * provided that the following conditions are met:
- *
- *   * Redistributions of source code must retain the above copyright notice, this list of conditions
- *     and the following disclaimer.
- *   * Redistributions in binary form must reproduce the above copyright notice, this list of conditions
- *     and the following disclaimer in the documentation and/or other materials provided with the
- *     distribution.
- *   * Neither the name of the copyright holder nor the names of its contributors may be used to endorse or
- *     promote products derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
- * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
- * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 package micycle.pgs.commons;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.dyn4j.Epsilon;
-import org.dyn4j.geometry.Geometry;
-import org.dyn4j.geometry.Segment;
-import org.dyn4j.geometry.Vector2;
+import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.LineSegment;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.PrecisionModel;
 
@@ -46,8 +20,8 @@ import org.locationtech.jts.geom.PrecisionModel;
  * achieve optimal decompositions, however this is not guaranteed.
  *
  * @author William Bittle
- * @version 3.1.10
- * @see <a href="http://mnbayazit.com/406/bayazit" target="_blank">Bayazit</a>
+ * @author Refactored for JTS by Michael Carleton
+ * @see <a href= "https://mpen.ca/406/bayazit">Mark Bayazits Algorithm </a>
  */
 public class PolygonDecomposition {
 
@@ -57,67 +31,39 @@ public class PolygonDecomposition {
 	}
 
 	public static List<Polygon> decompose(Polygon polygon) {
-		Vector2[] points = new Vector2[polygon.getCoordinates().length];
-		for (int i = 0; i < points.length; i++) {
-			points[i] = new Vector2(polygon.getCoordinates()[i].x, polygon.getCoordinates()[i].y);
+		// Use only the exterior ring; algorithm expects a simple polygon boundary.
+		Coordinate[] closed = polygon.getExteriorRing().getCoordinates(); // closed ring
+		boolean ccw = Orientation.isCCW(closed);
+
+		Coordinate[] open = openRing(closed); // remove duplicate closing coord
+		if (!ccw) {
+			reverse(open);
 		}
-		return decompose(points);
+		return decompose(open);
 	}
 
-	/**
-	 * Dyn4j entrypoint
-	 */
-	private static List<Polygon> decompose(Vector2... points) {
-		// check for null array
+	private static List<Polygon> decompose(Coordinate... points) {
 		if (points == null) {
 			throw new NullPointerException("Points are null.");
 		}
-		// get the number of points
 		int size = points.length;
-		// check the size
-		if (size < 4) {
-			throw new IllegalArgumentException("Points have invalid size (<4).");
+		if (size < 3) {
+			throw new IllegalArgumentException("Points have invalid size (<3 open vertices).");
 		}
 
-		// get the winding order
-		double winding = Geometry.getWinding(points);
-
-		// reverse the array if the points are in clockwise order
-		if (winding < 0.0) {
-			Geometry.reverseWinding(points);
-		}
-
-		// create a list for the points to go in
-		List<Vector2> polygon = new ArrayList<>();
-
-		// copy the points to the list
+		List<Coordinate> polygon = new ArrayList<>();
 		Collections.addAll(polygon, points);
 
-		// create a list for the polygons to live
 		List<Polygon> polygons = new ArrayList<>();
-
-		// decompose the polygon
 		decomposePolygon(polygon, polygons);
-
-		// return the result
 		return polygons;
 	}
 
-	/**
-	 * Internal recursive method to decompose the given polygon into convex
-	 * sub-polygons.
-	 *
-	 * @param polygon  the polygon to decompose
-	 * @param polygons the list to store the convex polygons resulting from the
-	 *                 decomposition
-	 */
-	private static void decomposePolygon(List<Vector2> polygon, List<Polygon> polygons) {
-		// get the size of the given polygon
-		int size = polygon.size();
+	private static void decomposePolygon(final List<Coordinate> polygon, final List<Polygon> polygons) {
+		final int size = polygon.size();
 
-		// initialize
-		Vector2 upperIntersection = new Vector2();
-		Vector2 lowerIntersection = new Vector2();
+		Coordinate upperIntersection = null;
+		Coordinate lowerIntersection = null;
 		double upperDistance = Double.MAX_VALUE;
 		double lowerDistance = Double.MAX_VALUE;
 		double closestDistance = Double.MAX_VALUE;
@@ -125,84 +71,56 @@ public class PolygonDecomposition {
 		int lowerIndex = 0;
 		int closestIndex = 0;
 
-		List<Vector2> lower = new ArrayList<>();
-		List<Vector2> upper = new ArrayList<>();
+		final List<Coordinate> lower = new ArrayList<>();
+		final List<Coordinate> upper = new ArrayList<>();
 
-		// loop over all the vertices
 		for (int i = 0; i < size; i++) {
-			// get the current vertex
-			Vector2 p = polygon.get(i);
+			final Coordinate p = polygon.get(i);
+			final Coordinate p0 = polygon.get(i - 1 < 0 ? size - 1 : i - 1);
+			final Coordinate p1 = polygon.get(i + 1 == size ? 0 : i + 1);
 
-			// get the adjacent vertices
-			Vector2 p0 = polygon.get(i - 1 < 0 ? size - 1 : i - 1);
-			Vector2 p1 = polygon.get(i + 1 == size ? 0 : i + 1);
-
-			// check if the vertex is a reflex vertex
 			if (isReflex(p0, p, p1)) {
-
-				// loop over the vertices to determine if both extended
-				// adjacent edges intersect one edge (in which case a
-				// steiner point will be added)
 				for (int j = 0; j < size; j++) {
-					Vector2 q = polygon.get(j);
+					final Coordinate q = polygon.get(j);
+					final Coordinate q0 = polygon.get(j - 1 < 0 ? size - 1 : j - 1);
+					final Coordinate q1 = polygon.get(j + 1 == size ? 0 : j + 1);
 
-					// get the adjacent vertices
-					Vector2 q0 = polygon.get(j - 1 < 0 ? size - 1 : j - 1);
-					Vector2 q1 = polygon.get(j + 1 == size ? 0 : j + 1);
-
-					// create a storage location for the intersection point
-					Vector2 s = new Vector2();
-
-					// extend the previous edge
-					// does the line p0->p go between the vertices q and q0
+					// extend the previous edge: infinite lines p0-p with q-q0
 					if (left(p0, p, q) && rightOn(p0, p, q0)) {
-						// get the intersection point
-						if (getIntersection(p0, p, q, q0, s)) {
-							// make sure the intersection point is to the right of
-							// the edge p1->p (this makes sure its inside the polygon)
-							if (right(p1, p, s)) {
-								// get the distance from p to the intersection point s
-								double dist = p.distanceSquared(s);
-								// only save the smallest
-								if (dist < lowerDistance) {
-									lowerDistance = dist;
-									lowerIntersection.set(s);
-									lowerIndex = j;
-								}
+						final Coordinate s = lineLineIntersection(p0, p, q, q0);
+						if (s != null && right(p1, p, s)) {
+							final double dist = p.distanceSq(s);
+							if (dist < lowerDistance) {
+								lowerDistance = dist;
+								lowerIntersection = s;
+								lowerIndex = j;
 							}
 						}
 					}
 
-					// extend the next edge
-					// does the line p1->p go between q and q1
+					// extend the next edge: infinite lines p1-p with q-q1
 					if (left(p1, p, q1) && rightOn(p1, p, q)) {
-						// get the intersection point
-						if (getIntersection(p1, p, q, q1, s)) {
-							// make sure the intersection point is to the left of
-							// the edge p0->p (this makes sure its inside the polygon)
-							if (left(p0, p, s)) {
-								// get the distance from p to the intersection point s
-								double dist = p.distanceSquared(s);
-								// only save the smallest
-								if (dist < upperDistance) {
-									upperDistance = dist;
-									upperIntersection.set(s);
-									upperIndex = j;
-								}
+						final Coordinate s = lineLineIntersection(p1, p, q, q1);
+						if (s != null && left(p0, p, s)) {
+							final double dist = p.distanceSq(s);
+							if (dist < upperDistance) {
+								upperDistance = dist;
+								upperIntersection = s;
+								upperIndex = j;
 							}
 						}
 					}
 				}
 
-				// if the lower index and upper index are equal then this means
-				// that the range of p only included an edge (both extended previous
-				// and next edges of p only intersected the same edge, therefore no
-				// point exists within that range to connect to)
 				if (lowerIndex == (upperIndex + 1) % size) {
-					// create a steiner point in the middle
-					Vector2 s = upperIntersection.sum(lowerIntersection).multiply(0.5);
+					// create a Steiner point
+					final Coordinate s = midpoint(upperIntersection, lowerIntersection);
+					// guard in case intersections weren’t found due to degeneracy
+					if (s == null) {
+						// fall back to skipping this reflex (should be rare)
+						return;
+					}
 
-					// partition the polygon
 					if (i < upperIndex) {
 						lower.addAll(polygon.subList(i, upperIndex + 1));
 						lower.add(s);
@@ -221,25 +139,18 @@ public class PolygonDecomposition {
 						upper.addAll(polygon.subList(lowerIndex, i + 1));
 					}
 				} else {
-					// otherwise we need to find the closest "visible" point to p
-
 					if (lowerIndex > upperIndex) {
 						upperIndex += size;
 					}
 
 					closestIndex = lowerIndex;
-					// find the closest visible point
 					for (int j = lowerIndex; j <= upperIndex; j++) {
-						int jmod = j % size;
-						Vector2 q = polygon.get(jmod);
-
-						if (q == p || q == p0 || q == p1) {
+						final int jmod = j % size;
+						final Coordinate q = polygon.get(jmod);
+						if (coordsEqual(q, p) || coordsEqual(q, p0) || coordsEqual(q, p1)) {
 							continue;
 						}
-
-						// check the distance first, since this is generally
-						// a much faster operation than checking if its visible
-						double dist = p.distanceSquared(q);
+						final double dist = p.distanceSq(q);
 						if (dist < closestDistance) {
 							if (isVisible(polygon, i, jmod)) {
 								closestDistance = dist;
@@ -248,7 +159,6 @@ public class PolygonDecomposition {
 						}
 					}
 
-					// once we find the closest partition the polygon
 					if (i < closestIndex) {
 						lower.addAll(polygon.subList(i, closestIndex + 1));
 						if (closestIndex != 0) {
@@ -264,7 +174,6 @@ public class PolygonDecomposition {
 					}
 				}
 
-				// decompose the smaller first
 				if (lower.size() < upper.size()) {
 					decomposePolygon(lower, polygons);
 					decomposePolygon(upper, polygons);
@@ -272,159 +181,61 @@ public class PolygonDecomposition {
 					decomposePolygon(upper, polygons);
 					decomposePolygon(lower, polygons);
 				}
-
-				// if the given polygon contains a reflex vertex, then return
 				return;
 			}
 		}
 
-		// if we get here, we know the given polygon has 0 reflex vertices
-		// and is therefore convex, add it to the list of convex polygons
+		// No reflex vertices => polygon is convex
 		if (polygon.size() < 3) {
 			return;
 		}
-		Vector2[] vertices = new Vector2[polygon.size()];
-		polygon.toArray(vertices);
-		Coordinate[] jtsCoords = new Coordinate[vertices.length + 1];
+		final Coordinate[] vertices = polygon.toArray(new Coordinate[0]);
+		final Coordinate[] jtsCoords = new Coordinate[vertices.length + 1];
 		for (int j = 0; j < vertices.length; j++) {
-			Coordinate coordinate = new Coordinate(vertices[j].x, vertices[j].y);
-			jtsCoords[j] = coordinate;
+			jtsCoords[j] = new Coordinate(vertices[j].x, vertices[j].y);
 		}
 		jtsCoords[vertices.length] = jtsCoords[0];
 		polygons.add(GEOM_FACTORY.createPolygon(jtsCoords));
 	}
 
-	/**
-	 * Returns true if the given vertex, b, is a reflex vertex.
-	 * <p>
-	 * A reflex vertex is a vertex who's interior angle is greater than 180 degrees.
-	 *
-	 * @param p0 the vertex to test
-	 * @param p  the previous vertex
-	 * @param p1 the next vertex
-	 * @return boolean
-	 */
-	private static boolean isReflex(Vector2 p0, Vector2 p, Vector2 p1) {
-		// if the point p is to the right of the line p0-p1 then
-		// the point is a reflex vertex
+	private static boolean isReflex(final Coordinate p0, final Coordinate p, final Coordinate p1) {
 		return right(p1, p0, p);
 	}
 
-	/**
-	 * Returns true if the given point p is to the left of the line created by a-b.
-	 *
-	 * @param a the first point of the line
-	 * @param b the second point of the line
-	 * @param p the point to test
-	 * @return boolean
-	 */
-	private static boolean left(Vector2 a, Vector2 b, Vector2 p) {
-		return Segment.getLocation(p, a, b) > 0;
+	private static boolean left(final Coordinate a, final Coordinate b, final Coordinate p) {
+		return Orientation.index(a, b, p) > 0;
 	}
 
-	/**
-	 * Returns true if the given point p is to the left or on the line created by
-	 * a-b.
-	 *
-	 * @param a the first point of the line
-	 * @param b the second point of the line
-	 * @param p the point to test
-	 * @return boolean
-	 */
-	private static boolean leftOn(Vector2 a, Vector2 b, Vector2 p) {
-		return Segment.getLocation(p, a, b) >= 0;
+	private static boolean leftOn(final Coordinate a, final Coordinate b, final Coordinate p) {
+		return Orientation.index(a, b, p) >= 0;
 	}
 
-	/**
-	 * Returns true if the given point p is to the right of the line created by a-b.
-	 *
-	 * @param a the first point of the line
-	 * @param b the second point of the line
-	 * @param p the point to test
-	 * @return boolean
-	 */
-	private static boolean right(Vector2 a, Vector2 b, Vector2 p) {
-		return Segment.getLocation(p, a, b) < 0;
+	private static boolean right(final Coordinate a, final Coordinate b, final Coordinate p) {
+		return Orientation.index(a, b, p) < 0;
 	}
 
-	/**
-	 * Returns true if the given point p is to the right or on the line created by
-	 * a-b.
-	 *
-	 * @param a the first point of the line
-	 * @param b the second point of the line
-	 * @param p the point to test
-	 * @return boolean
-	 */
-	private static boolean rightOn(Vector2 a, Vector2 b, Vector2 p) {
-		return Segment.getLocation(p, a, b) <= 0;
+	private static boolean rightOn(final Coordinate a, final Coordinate b, final Coordinate p) {
+		return Orientation.index(a, b, p) <= 0;
 	}
 
-	/**
-	 * Returns true if the given lines intersect and returns the intersection point
-	 * in the p parameter.
-	 *
-	 * @param a1 the first point of the first line
-	 * @param a2 the second point of the first line
-	 * @param b1 the first point of the second line
-	 * @param b2 the second point of the second line
-	 * @param p  the destination object for the intersection point
-	 * @return boolean
-	 */
-	private static boolean getIntersection(Vector2 a1, Vector2 a2, Vector2 b1, Vector2 b2, Vector2 p) {
-
-		// compute S1 and S2
-		Vector2 s1 = a1.difference(a2);
-		Vector2 s2 = b1.difference(b2);
-
-		// compute the cross product (the determinant if we used matrix solving
-		// techniques)
-		double det = s1.cross(s2);
-
-		// make sure the matrix isn't singular (the lines could be parallel)
-		if (Math.abs(det) <= Epsilon.E) {
-			// return false since there is no way that the segments could be intersecting
-			return false;
-		} else {
-			// pre-divide the determinant
-			det = 1.0 / det;
-
-			// compute t2
-			double t2 = det * (a1.cross(s1) - b1.cross(s1));
-
-			// compute the intersection point
-			// P = B1(1.0 - t2) + B2(t2)
-			p.x = b1.x * (1.0 - t2) + b2.x * t2;
-			p.y = b1.y * (1.0 - t2) + b2.y * t2;
-
-			// return that they intersect
-			return true;
-		}
+	private static Coordinate lineLineIntersection(final Coordinate a1, final Coordinate a2, final Coordinate b1, final Coordinate b2) {
+		final LineSegment la = new LineSegment(a1, a2);
+		final LineSegment lb = new LineSegment(b1, b2);
+		// lineIntersection returns the intersection of the supporting lines (not
+		// segments), or null if parallel/collinear
+		return la.lineIntersection(lb);
 	}
 
-	/**
-	 * Returns true if the vertex at index i can see the vertex at index j.
-	 *
-	 * @param polygon the current polygon
-	 * @param i       the ith vertex
-	 * @param j       the jth vertex
-	 * @return boolean
-	 * @since 3.1.10
-	 */
-	private static boolean isVisible(List<Vector2> polygon, int i, int j) {
-		int s = polygon.size();
-		Vector2 iv0, iv, iv1;
-		Vector2 jv0, jv, jv1;
+	private static boolean isVisible(final List<Coordinate> polygon, final int i, final int j) {
+		final int s = polygon.size();
+		final Coordinate iv0 = polygon.get(i == 0 ? s - 1 : i - 1);
+		final Coordinate iv = polygon.get(i);
+		final Coordinate iv1 = polygon.get(i + 1 == s ? 0 : i + 1);
 
-		iv0 = polygon.get(i == 0 ? s - 1 : i - 1);
-		iv = polygon.get(i);
-		iv1 = polygon.get(i + 1 == s ? 0 : i + 1);
+		final Coordinate jv0 = polygon.get(j == 0 ? s - 1 : j - 1);
+		final Coordinate jv = polygon.get(j);
+		final Coordinate jv1 = polygon.get(j + 1 == s ? 0 : j + 1);
 
-		jv0 = polygon.get(j == 0 ? s - 1 : j - 1);
-		jv = polygon.get(j);
-		jv1 = polygon.get(j + 1 == s ? 0 : j + 1);
-
-		// can i see j
 		if (isReflex(iv0, iv, iv1)) {
 			if (leftOn(iv, iv0, jv) && rightOn(iv, iv1, jv)) {
 				return false;
@@ -434,7 +245,6 @@ public class PolygonDecomposition {
 				return false;
 			}
 		}
-		// can j see i
 		if (isReflex(jv0, jv, jv1)) {
 			if (leftOn(jv, jv0, iv) && rightOn(jv, jv1, iv)) {
 				return false;
@@ -444,21 +254,51 @@ public class PolygonDecomposition {
 				return false;
 			}
 		}
-		// make sure the segment from i to j doesn't intersect any edges
+
+		final LineSegment segA = new LineSegment(iv, jv);
 		for (int k = 0; k < s; k++) {
-			int ki1 = k + 1 == s ? 0 : k + 1;
+			final int ki1 = k + 1 == s ? 0 : k + 1;
 			if (k == i || k == j || ki1 == i || ki1 == j) {
 				continue;
 			}
-			Vector2 k1 = polygon.get(k);
-			Vector2 k2 = polygon.get(ki1);
+			final Coordinate k1 = polygon.get(k);
+			final Coordinate k2 = polygon.get(ki1);
 
-			Vector2 in = Segment.getSegmentIntersection(iv, jv, k1, k2);
+			final LineSegment segB = new LineSegment(k1, k2);
+			final Coordinate in = segA.intersection(segB);
 			if (in != null) {
 				return false;
 			}
 		}
 
 		return true;
+	}
+
+	private static void reverse(final Coordinate[] pts) {
+		for (int i = 0, j = pts.length - 1; i < j; i++, j--) {
+			final Coordinate tmp = pts[i];
+			pts[i] = pts[j];
+			pts[j] = tmp;
+		}
+	}
+
+	private static Coordinate[] openRing(final Coordinate[] coords) {
+		if (coords.length >= 2 && coords[0].equals2D(coords[coords.length - 1])) {
+			final Coordinate[] open = new Coordinate[coords.length - 1];
+			System.arraycopy(coords, 0, open, 0, coords.length - 1);
+			return open;
+		}
+		return coords;
+	}
+
+	private static Coordinate midpoint(final Coordinate a, final Coordinate b) {
+		if (a == null || b == null) {
+			return null;
+		}
+		return new Coordinate((a.x + b.x) * 0.5, (a.y + b.y) * 0.5);
+	}
+
+	private static boolean coordsEqual(final Coordinate a, final Coordinate b) {
+		return a.equals2D(b);
 	}
 }

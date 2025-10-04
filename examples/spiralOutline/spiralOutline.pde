@@ -2,6 +2,8 @@ import processing.javafx.*;
 import micycle.pgs.*;
 import java.util.List;
 import micycle.uniformnoise.*;
+import micycle.pgs.PGS_Contour.OffsetStyle;
+import micycle.pgs.PGS_Morphology.CapStyle;
 
 PShape polygon;
 PShape triangles;
@@ -22,11 +24,11 @@ void draw() {
 
   PShape spiral = PGS_Construction.createLinearSpiral(width/2, height/2, 0.5+mouseX/200f, 250+mouseY/5f);
   spiral = PGS_Transformation.rotate(spiral, new PVector(width/2, height/2), frameCount/100f);
+  spiral = PGS_Processing.extractPerimeter(spiral, 0.005, 1);
   spiral.setFill(false);
   shape(spiral);
 
-  spiral = PGS_Morphology.simplify(spiral, .1);
-  spiral = PGS_Morphology.buffer(spiral, 20);
+  spiral = PGS_Morphology.buffer(spiral, 20, OffsetStyle.ROUND, CapStyle.ROUND);
 
   int perimeters = 30; // perimeter sections
   for (double i = 0; i < 1; i += 1f/perimeters) {

@@ -5,6 +5,79 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
+## **2.1** *(2025-xx-xx)*
+
+### Added
+* `smoothLaneRiesenfeld` to `PGS_Morphology`. Smooths a shape using Lane-Riesenfeld curve subdivision with 4-point refinement to reduce contraction.
+* New method signature for `PGS_Conversion.roundVertexCoords()` that accepts a number of decimal places.
+* `interiorAngles()` to `PGS_ShapePredicates`. Calculates all interior angles of a polygon.
+* `forEachShape()` and `forEachShapeWithIndex()`* to `PGS_Processing`. Applies a specified transformation function of a desired type `T` to each child of the given PShape, returning a list of  `T` (*additionally with child's index).
+* `maximumInscribedTriangle()` to `PGS_Optimisation`. Finds an approximate largest area triangle (of arbitrary orientation) contained within a polygon.
+* `closestPoint()` to `PGS_Optimisation`. Finds the closest point in a collection of points to a specified point.
+* `distanceTree()` to `PGS_Contour`. Generates a tree structure representing the shortest paths from a start point to all other vertices in a mesh.
+* `vertexCount()` to `PGS_ShapePredicates`. Returns the total number of vertices that make up a shape.
+* `matchingQuadrangulation()` to `PGS_Meshing`. Converts a triangulation into a quadrangulation, by pairing up triangles and merging them into high-quality quads.
+* `filterNear()` to `PGS_SegmentSet`. Removes segments that are near others.
+* `spiralSortFaces()` to `PGS_Optimisation`. Reorders the faces of a mesh into an anti-clockwise “spiral” (breadth-first rings) starting from a given face.
+* `centroidSortFaces()` to `PGS_Optimisation`. Reorders the faces of a mesh by the x and then y coordinates of their centroids.
+* `radialSortFaces()` to `PGS_Optimisation`. Sorts the faces of a mesh radially around a given centre.
+* `unionLines()` to `PGS_ShapeBoolean`. Unions the linework of two shapes, creating polygonal faces from their intersecting lines.
+* `closestVertex()` and `farthestVertex()` to `PGS_Optimisation`. Returns the closest/farthest vertex of a shape to a query point.
+* `farthestPoint()` to `PGS_Optimsation`. Finds the farthest point in the collection from a specified point.
+* `annularBricks()` to `PGS_Tiling`. Generates a geometric arrangement composed of annular-sector bricks arranged in concentric circular rings.
+* `overlapRegions()` to `PGS_ShapeBoolean`. Finds the regions where at least two shapes overlap.
+* `normalise()` to `PGS_Processing`. Normalises a shape by standardising its vertex ordering and orientation.
+* `boundingBox()` to `PGS_Hull`. Calculates the axis-aligned bounding box (replaces `envelope()` in `PGS_Optimisation`.)
+* `farthestPointVoronoi()` to `PGS_Voronoi`. Generates a farthest-point Voronoi diagram for a given set of sites and a bounding box.
+* `intersections()` to `PGS_SegmentSet`. Computes all intersection points between two collections of line segments.
+* `minimumWidthAnnulus()` to `PGS_Optimisation`. Computes the minimum-width annulus (ring) that encloses the vertices of a shape.
+* Overloads of `minimumBoundingCircle()` and `maximumInscribedCircle()` that accept a PVector to output the circle center and radius.
+* `createRect()` to  `PGS_Construction`. Creates a rectangle with uniformly rounded corners
+* New method signature for `PGS_Meshing.areaMerge()` that allows merging faces until the mesh contains exactly a user-specified number of faces.
+* `minimumInteriorAngle()` to `PGS_ShapePredicates`. Computes the minimum interior angle of a shape.
+* New method signature for `isolines()` having an intervals parameter that specifies the number of contour levels to generate.
+* New method signature for `straightSkeleton()` that accepts an integer to control the number of nearest neighboring edges considered during collision detection.
+* `contrastField()` to `PGS_Contour`. Generates vector contour lines representing a "contrast field" of a shape with respect to a given reference point.
+* `arcDivision` to `PGS_Tiling`. Creates a cellular partition of the plane using arcs formed by circles seeded along its boundary.
+* `sliceDivision` to `PGS_Tiling`. Divides the plane into randomly “sliced” polygonal regions.
+* New method signature for `pointsOnExterior()` having a starting point offset parameter that specifies the distance along the perimeter to start sampling points.
+* `centroidSplit()` to `PGS_Processing`. Splits the input shape into n wedge-shaped regions by connecting the centroid to points along the perimeter.
+* `createHobbyCurve()` to `PGS_Construction`. Creates a Hobby curve from a set of control points.
+* `pruneRandomRemoveN()` to `PGS_PointSet`. Randomly removes exactly N points from a list of points.
+* `pruneRandomToN()` to `PGS_PointSet`. Randomly prunes a list of points to exactly N points.
+* `convexMaximumInscribedCircle()` to `PGS_Optimisation`. Computes the largest inscribed circle of a convex polygon (faster and exact).
+
+### Changes
+* Optimised `PGS_CirclePacking.tangencyPack()`. It's now around 1.5-2x faster and has higher precision.
+* `PGS_Conversion.roundVertexCoords()` now returns a rounded copy of the input (rather than mutating the input).
+* Outputs from `PGS_Conversion.toDualGraph()` will now always iterate deterministically on inputs with the same geometry but having a different structure.
+* `PGS_Contour.straightSkeleton()` now always uses a more robust approach (which has been sped up considerably too).
+* Optimised `ColoringAlgorithm.RLF` (the speed increase grows with input size).
+* Improved `PGS_PointSet.findShortestTour()` TSP algorithm. It now uses a more effective heuristic that finds shorter tours in less time.
+* `PGS_Meshing.extractInnerEdges()` no longer dissolves edges in the output.
+* `PGS_Morphology.simplifyHobby()` is much faster, particularly on shapes with many vertices.
+* Optimised `PGS_Processing.maximumPerimeterSquare()`. It's about 2x faster.
+* Varying `sigma` in `PGS_smoothGaussian()` no longer causes "wobblyness" in the output.
+* New method signature for `PGS_Morphology.buffer()` that accepts a cap style parameter.
+* `PGS_PointSet.squareGrid()` now populates the grid with points upto and including `xMax` and `yMax` (inclusive).
+* Improved `PGS_Transformation.touchScale()` algorithm. It's now more performant and robust.
+* `PGS_Tiling.triangleSubdivision()` can now begin from both diagonal axes, not just the top-left to bottom-right diagonal.
+* `PGS_Processing.pointsOnExterior()` methods now return points on all elements of a shape, not just the perimeter of the first polygon.
+* `PGS_Processing.segmentsOnExterior()` now return segments on all elements of a shape, not just the perimeter of the first polygon.
+* These methods in `PGS_Morphology` now process any and all polygon/line elements in a shape: `chaikinCut()`, `smoothGaussian()`, `simplifyDCE()`, `simplifyHobby()`, `smoothEllipticFourier()`, `round()`.
+* `dissolve()` to `PGS_Processing`. Dissolves the linear components of a shape into a set of unique maximal-length lines
+
+### Fixed
+* `PGS_Morphology.rounding()` no longer gives invalid results.
+* `PGS_ShapePredicates.elongation()` now correctly measures shape elongation (previously inverted, now returns 1 for highly elongated shapes).
+* `PGS_Conversion.toGraph()` now processes `LINES` shapes correctly.
+* `PGS_Meshing.urquhartFaces()` no longer errors on triangulation inputs with no constraints.
+* `PGS_Tiling.triangleSubdivision()` subdivision is now deterministic across `maxDepth` for a given seed.
+* `PGS_Tiling.rectSubdivision()` subdivision is now deterministic across `maxDepth` for a given seed.
+* `PGS_Morphology.pinchWarp()` now preserves closed polygon inputs.
+
+### Removed
+
 ## **2.0** *(2025-01-11)*
 
 **NOTE: Beginning at v2.0, PGS is built with Java 17.**

@@ -7,17 +7,18 @@ import static processing.core.PConstants.GROUP;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.tuple.Triple;
 import org.locationtech.jts.algorithm.MinimumAreaRectangle;
 import org.locationtech.jts.algorithm.MinimumBoundingCircle;
 import org.locationtech.jts.algorithm.MinimumDiameter;
 import org.locationtech.jts.algorithm.construct.LargestEmptyCircle;
 import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
-import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Envelope;
@@ -30,18 +31,24 @@ import org.locationtech.jts.operation.distance.DistanceOp;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
+import com.github.micycle1.geoblitz.YStripesPointInAreaLocator;
+
 import almadina.rectpacking.RBPSolution;
 import almadina.rectpacking.Rect;
 import almadina.rectpacking.RectPacking.PackingHeuristic;
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.ClosestPointPair;
 import micycle.pgs.commons.FarthestPointPair;
+import micycle.pgs.commons.FastAtan2;
+import micycle.pgs.commons.FastConvexMaximumInscribedCircle;
 import micycle.pgs.commons.LargestEmptyCircles;
 import micycle.pgs.commons.MaximumInscribedAARectangle;
 import micycle.pgs.commons.MaximumInscribedRectangle;
+import micycle.pgs.commons.MaximumInscribedTriangle;
 import micycle.pgs.commons.MinimumBoundingEllipse;
 import micycle.pgs.commons.MinimumBoundingTriangle;
 import micycle.pgs.commons.Nullable;
+import micycle.pgs.commons.SpiralIterator;
 import micycle.pgs.commons.VisibilityPolygon;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -66,24 +73,100 @@ public final class PGS_Optimisation {
 	 * 
 	 * @param shape a rectangular shape that covers/bounds the input
 	 * @return polygonal shape having 4 coordinates
+	 * @deprecated since 2.1; use {@link micycle.pgs.PGS_Hull#boundingBox(PShape)
+	 *             boundingBox(PShape)} instead.
 	 */
+	@Deprecated
 	public static PShape envelope(PShape shape) {
 		return toPShape(fromPShape(shape).getEnvelope());
 	}
 
 	/**
-	 * The Maximum Inscribed Circle is determined by a point in the interior of the
-	 * area which has the farthest distance from the area boundary, along with a
-	 * boundary point at that distance.
-	 * 
-	 * @param shape
-	 * @param tolerance the distance tolerance for computing the centre point
-	 *                  (around 1)
+	 * Computes the maximum inscribed circle within a given shape.
+	 * <p>
+	 * The Maximum Inscribed Circle (MIC) is defined as the largest possible circle
+	 * that can be completely contained within the area of the input shape. It is
+	 * determined by locating a point inside the shape that has the greatest
+	 * distance from the shape's boundary (i.e., the center of the MIC), and
+	 * returning a circle centered at this point with a radius equal to that
+	 * distance.
+	 * </p>
+	 * <p>
+	 * This method automatically selects a reasonable tolerance value for computing
+	 * the center point of the MIC, balancing precision and computational
+	 * efficiency.
+	 * </p>
+	 *
+	 * @param shape the {@link PShape} representing the area within which to compute
+	 *              the MIC
+	 * @return a {@link PShape} instance representing the maximum inscribed circle
+	 * @since 2.1
+	 */
+	public static PShape maximumInscribedCircle(PShape shape) {
+		MaximumInscribedCircle mic = new MaximumInscribedCircle(fromPShape(shape));
+		final double r = mic.getRadiusLine().getLength();
+		Polygon circle = createCircle(PGS.coordFromPoint(mic.getCenter()), r);
+		return toPShape(circle);
+	}
+
+	/**
+	 * Computes the maximum inscribed circle within a given shape, using a specified
+	 * tolerance.
+	 * <p>
+	 * The Maximum Inscribed Circle (MIC) is the largest possible circle that can be
+	 * fully contained within the area of the input shape. The center of the MIC is
+	 * the point in the interior that is farthest from the shape's boundary, and the
+	 * radius is the distance from this center point to the closest boundary point.
+	 * </p>
+	 *
+	 * @param shape     the {@link PShape} representing the area within which to
+	 *                  compute the maximum inscribed circle; typically a simple
+	 *                  polygon or multipolygon
+	 * @param tolerance the distance tolerance or resolution for approximation; must
+	 *                  be non-negative. Lower values yield a more accurate result
+	 *                  but increase computation time (e.g., 0.5 or 1 is common).
+	 * @return a {@link PShape} representing the maximum inscribed circle within the
+	 *         input shape
+	 * @see #maximumInscribedCircle(PShape, double, PVector)
 	 */
 	public static PShape maximumInscribedCircle(PShape shape, double tolerance) {
 		MaximumInscribedCircle mic = new MaximumInscribedCircle(fromPShape(shape), tolerance);
 		final double r = mic.getRadiusLine().getLength();
 		Polygon circle = createCircle(PGS.coordFromPoint(mic.getCenter()), r);
+		return toPShape(circle);
+	}
+
+	/**
+	 * Computes the <b>maximum inscribed circle</b> (MIC) within a given shape,
+	 * using the specified accuracy, and optionally outputs the center and radius.
+	 * <p>
+	 * The maximum inscribed circle is the largest possible circle completely
+	 * contained within the input shape. If a non-null {@code result} vector is
+	 * provided, its <code>x</code> and <code>y</code> values will be set to the
+	 * coordinates of the circle's center, and <code>z</code> will be set to its
+	 * radius.
+	 * <p>
+	 * The returned {@link PShape} is a polygonal approximation of the inscribed
+	 * circle.
+	 *
+	 * @param shape     the {@link PShape} to analyze
+	 * @param tolerance the resolution (smaller values increase accuracy but reduce
+	 *                  performance)
+	 * @param result    if not {@code null}, will receive center (x, y) and radius
+	 *                  (z) of the MIC
+	 * @return a {@link PShape} representing the maximum inscribed circle within the
+	 *         input shape
+	 * @see #maximumInscribedCircle(PShape, double)
+	 * @since 2.1
+	 */
+	public static PShape maximumInscribedCircle(PShape shape, double tolerance, @Nullable PVector result) {
+		MaximumInscribedCircle mic = new MaximumInscribedCircle(fromPShape(shape), tolerance);
+		final double r = mic.getRadiusLine().getLength();
+		var c = mic.getCenter();
+		Polygon circle = createCircle(PGS.coordFromPoint(c), r);
+		if (result != null) {
+			result.set((float) c.getX(), (float) c.getY(), (float) r);
+		}
 		return toPShape(circle);
 	}
 
@@ -104,10 +187,27 @@ public final class PGS_Optimisation {
 	}
 
 	/**
+	 * Computes the exact largest inscribed circle for a convex polygonal shape.
+	 * <p>
+	 * This method is preferred and faster when the caller knows the shape is
+	 * convex; use it instead of {@link #maximumInscribedCircle(PShape)
+	 * maximumInscribedCircle()} for convex inputs.
+	 * 
+	 * @param shape a convex polygonal PShape (non-null)
+	 * @return a PVector (x, y, r) where x,y is the circle center and z (r) is the
+	 *         radius
+	 * @since 2.1
+	 */
+	public static PVector convexMaximumInscribedCircle(PShape shape) {
+		var c = FastConvexMaximumInscribedCircle.getCircle(fromPShape(shape));
+		return new PVector((float) c.x, (float) c.y, (float) c.z);
+	}
+
+	/**
 	 * Finds an approximate largest area rectangle (of arbitrary orientation)
 	 * contained within a polygon.
 	 * 
-	 * @param shape
+	 * @param shape a polygonal shape
 	 * @return a rectangle shape
 	 * @see #maximumInscribedAARectangle(PShape, boolean)
 	 *      maximumInscribedAARectangle() - the largest axis-aligned rectangle
@@ -116,6 +216,20 @@ public final class PGS_Optimisation {
 		Polygon polygon = (Polygon) fromPShape(shape);
 		MaximumInscribedRectangle mir = new MaximumInscribedRectangle(polygon);
 		return toPShape(mir.computeMIR());
+	}
+
+	/**
+	 * Finds an approximate largest area triangle (of arbitrary orientation)
+	 * contained within a polygon.
+	 * 
+	 * @param shape a polygonal shape
+	 * @return a triangular shape
+	 * @since 2.1
+	 */
+	public static PShape maximumInscribedTriangle(PShape shape) {
+		Polygon polygon = (Polygon) fromPShape(shape);
+		var mit = new MaximumInscribedTriangle(polygon);
+		return toPShape(mit.computeMIT());
 	}
 
 	/**
@@ -160,69 +274,179 @@ public final class PGS_Optimisation {
 	 * <p>
 	 * The method does not respect holes (for now...).
 	 * 
-	 * @param shape
+	 * @param shape     a polygonal shape
 	 * @param tolerance a value of 2-5 is usually suitable
 	 * @return shape representing the maximum square
 	 * @since 1.4.0
 	 */
 	public static PShape maximumPerimeterSquare(PShape shape, double tolerance) {
-		shape = PGS_Morphology.simplify(shape, tolerance / 2);
-		final Polygon p = (Polygon) PGS_Conversion.fromPShape(shape);
-		Geometry buffer = p.getExteriorRing().buffer(tolerance / 2, 4);
-		final Envelope e = buffer.getEnvelopeInternal();
-		buffer = DouglasPeuckerSimplifier.simplify(buffer, tolerance / 2);
-		final IndexedPointInAreaLocator pia = new IndexedPointInAreaLocator(buffer);
-		shape = PGS_Processing.densify(shape, Math.max(0.5, tolerance)); // min of 0.5
-		final List<PVector> points = PGS_Conversion.toPVector(shape);
+		shape = PGS_Morphology.simplify(shape, tolerance * 0.5);
+		Polygon p = (Polygon) PGS_Conversion.fromPShape(shape);
+		Geometry buffer = p.getExteriorRing().buffer(tolerance * 0.5, 4);
+		Envelope env = buffer.getEnvelopeInternal();
+		buffer = DouglasPeuckerSimplifier.simplify(buffer, tolerance * 0.5);
+		var index = new YStripesPointInAreaLocator((Polygon) buffer);
 
-		double maxDiagonal = 0;
-		PVector[] maxAreaVertices = new PVector[0];
-		for (final PVector a : points) {
-			for (final PVector b : points) {
-				double dist = PGS.distanceSq(a, b);
+		shape = PGS_Processing.densify(shape, Math.max(0.5, tolerance));
+		List<PVector> points = PGS_Conversion.toPVector(shape);
 
-				if (dist < maxDiagonal) {
-					continue;
-				}
-
-				final PVector m = PVector.add(a, b).div(2);
-				final PVector n = new PVector(b.y - a.y, a.x - b.x).div(2);
-				final PVector c = PVector.sub(m, n);
-
-				final PVector d = PVector.add(m, n);
-				// do envelope checks first -- slightly faster
-				if (within(c, e) && within(d, e)) {
-					if (pia.locate(new Coordinate(c.x, c.y)) != Location.EXTERIOR) {
-						if (pia.locate(new Coordinate(d.x, d.y)) != Location.EXTERIOR) {
-							maxDiagonal = dist;
-							maxAreaVertices = new PVector[] { a, c, b, d, a }; // closed vertices
-						}
-					}
-				}
+		// copy into primitive arrays & compute point‐set AABB
+		int n = points.size();
+		double[] xs = new double[n], ys = new double[n];
+		double ptsMinX = Double.POSITIVE_INFINITY, ptsMaxX = Double.NEGATIVE_INFINITY;
+		double ptsMinY = Double.POSITIVE_INFINITY, ptsMaxY = Double.NEGATIVE_INFINITY;
+		for (int i = 0; i < n; i++) {
+			PVector v = points.get(i);
+			xs[i] = v.x;
+			ys[i] = v.y;
+			if (v.x < ptsMinX) {
+				ptsMinX = v.x;
+			}
+			if (v.x > ptsMaxX) {
+				ptsMaxX = v.x;
+			}
+			if (v.y < ptsMinY) {
+				ptsMinY = v.y;
+			}
+			if (v.y > ptsMaxY) {
+				ptsMaxY = v.y;
 			}
 		}
 
-		PShape out = PGS_Conversion.fromPVector(maxAreaVertices);
+		// 4) Prepare for the double loop
+		double envMinX = env.getMinX(), envMaxX = env.getMaxX();
+		double envMinY = env.getMinY(), envMaxY = env.getMaxY();
+
+		double maxDiag = 0;
+		int bestI = -1, bestJ = -1;
+		double bestCx = 0, bestCy = 0, bestDx = 0, bestDy = 0;
+		Coordinate cCoord = new Coordinate(), dCoord = new Coordinate();
+
+		// 5) Search for the largest‐diagonal pair i,j
+		for (int i = 0; i < n; i++) {
+			double ax = xs[i], ay = ys[i];
+			// quick global prune: maximum possible sq‐dist from this A to any point
+			double dxA = Math.max(ax - ptsMinX, ptsMaxX - ax);
+			double dyA = Math.max(ay - ptsMinY, ptsMaxY - ay);
+			if ((dxA * dxA + dyA * dyA) <= maxDiag) {
+				continue;
+			}
+
+			for (int j = i + 1; j < n; j++) {
+				double bx = xs[j], by = ys[j];
+				double dx = bx - ax, dy = by - ay;
+				double dist = dx * dx + dy * dy;
+				if (dist <= maxDiag) {
+					continue;
+				}
+
+				// midpoint
+				double mx = (ax + bx) * 0.5, my = (ay + by) * 0.5;
+				// half‐perp vector
+				double nx = dy * 0.5, ny = -dx * 0.5;
+				// other two corners
+				double cx = mx - nx, cy = my - ny;
+				double dx2 = mx + nx, dy2 = my + ny;
+
+				// envelope quick‐rejection
+				if (cx < envMinX || cx > envMaxX || cy < envMinY || cy > envMaxY) {
+					continue;
+				}
+				if (dx2 < envMinX || dx2 > envMaxX || dy2 < envMinY || dy2 > envMaxY) {
+					continue;
+				}
+
+				// expensive point‐in‐area tests, reusing coords
+				cCoord.x = cx;
+				cCoord.y = cy;
+				if (index.locate(cCoord) == Location.EXTERIOR) {
+					continue;
+				}
+				dCoord.x = dx2;
+				dCoord.y = dy2;
+				if (index.locate(dCoord) == Location.EXTERIOR) {
+					continue;
+				}
+
+				// success: record as new best
+				maxDiag = dist;
+				bestI = i;
+				bestJ = j;
+				bestCx = cx;
+				bestCy = cy;
+				bestDx = dx2;
+				bestDy = dy2;
+			}
+		}
+
+		// 6) If we found none, return an empty shape
+		if (bestI < 0) {
+			return PGS_Conversion.fromPVector(new PVector[0]);
+		}
+
+		// 7) Build the closed‐square ring A→C→B→D→A
+		PVector A = new PVector((float) xs[bestI], (float) ys[bestI]);
+		PVector B = new PVector((float) xs[bestJ], (float) ys[bestJ]);
+		PVector C = new PVector((float) bestCx, (float) bestCy);
+		PVector D = new PVector((float) bestDx, (float) bestDy);
+		PVector[] ring = { A, C, B, D, A };
+
+		// 8) Convert back to PShape, style, and return
+		PShape out = PGS_Conversion.fromPVector(ring);
 		out.setStroke(true);
 		out.setStroke(micycle.pgs.color.Colors.PINK);
 		out.setStrokeWeight(4);
 		return out;
 	}
 
-	private static boolean within(PVector p, Envelope rect) {
-		return p.x >= rect.getMinX() && p.x <= rect.getMaxX() && p.y <= rect.getMaxY() && p.y >= rect.getMinY();
-	}
-
 	/**
-	 * Computes the Minimum Bounding Circle (MBC) for the points in a Geometry. The
-	 * MBC is the smallest circle which covers all the vertices of the input shape
-	 * (this is also known as the Smallest Enclosing Circle). This is equivalent to
-	 * computing the Maximum Diameter of the input vertex set.
+	 * Computes the <b>minimum bounding circle</b> (MBC) that encloses all vertices
+	 * of the provided shape.
+	 * <p>
+	 * The minimum bounding circle is the smallest circle that contains all vertices
+	 * of the input shape.
+	 *
+	 * @param shape the input {@link PShape}; all its vertices will be considered
+	 *              for the bounding circle computation
+	 * @return a {@link PShape} object representing the minimum bounding circle that
+	 *         encloses all vertices of the input shape
+	 * @see #minimumBoundingCircle(PShape, PVector)
 	 */
 	public static PShape minimumBoundingCircle(PShape shape) {
 		MinimumBoundingCircle mbc = new MinimumBoundingCircle(fromPShape(shape));
 		final double r = mbc.getRadius();
 		Polygon circle = createCircle(mbc.getCentre(), r);
+		return toPShape(circle);
+	}
+
+	/**
+	 * Computes the <b>minimum bounding circle</b> (MBC) for the given shape, and
+	 * optionally returns the center and radius.
+	 * <p>
+	 * The minimum bounding circle is the smallest circle that contains all vertices
+	 * of the input shape. If the provided {@code result} vector is non-null, its
+	 * {@code x} and {@code y} fields will be set to the coordinates of the circle's
+	 * center, and its {@code z} field will be set to the circle's radius.
+	 * <p>
+	 * This method returns a new {@link PShape} representing the computed circle.
+	 *
+	 * @param shape  the shape whose vertices will be used to compute the minimum
+	 *               bounding circle
+	 * @param result a {@link PVector}; if non-null, receives the center as (x, y)
+	 *               and radius as (z)
+	 * @return a {@link PShape} representing the minimum bounding circle enclosing
+	 *         all vertices of the input shape
+	 * @see #minimumBoundingCircle(PShape)
+	 * @since 2.1
+	 */
+	public static PShape minimumBoundingCircle(PShape shape, @Nullable PVector result) {
+		MinimumBoundingCircle mbc = new MinimumBoundingCircle(fromPShape(shape));
+		final double r = mbc.getRadius();
+		var c = mbc.getCentre();
+		Polygon circle = createCircle(c, r);
+		if (result != null) {
+			result.set((float) c.getX(), (float) c.getY(), (float) r);
+		}
 		return toPShape(circle);
 	}
 
@@ -266,7 +490,6 @@ public final class PGS_Optimisation {
 	 *                       correspond to a pixel distance). 0.001 to 0.01
 	 *                       recommended. Higher values are a looser (yet quicker)
 	 *                       fit.
-	 * @return
 	 */
 	public static PShape minimumBoundingEllipse(PShape shape, double errorTolerance) {
 		final Geometry hull = fromPShape(shape).convexHull();
@@ -297,7 +520,6 @@ public final class PGS_Optimisation {
 	 * Computes the minimum-area bounding triangle that encloses a shape.
 	 * 
 	 * @param shape
-	 * @return
 	 */
 	public static PShape minimumBoundingTriangle(PShape shape) {
 		MinimumBoundingTriangle mbt = new MinimumBoundingTriangle(fromPShape(shape));
@@ -313,11 +535,89 @@ public final class PGS_Optimisation {
 	 * can be moved through, with a single rotation.
 	 * 
 	 * @param shape
-	 * @return
 	 */
 	public static PShape minimumDiameter(PShape shape) {
 		LineString md = (LineString) MinimumDiameter.getMinimumDiameter(fromPShape(shape));
 		return toPShape(md);
+	}
+
+	/**
+	 * Computes the minimum-width annulus (the donut-like region between two
+	 * concentric circles with minimal width that encloses the vertices of the given
+	 * {@link PShape}).
+	 * <p>
+	 * The annulus is defined as the region between two concentric circles (with
+	 * computed center and radii), such that all vertices of the input shape lie
+	 * between the inner and outer circle, and the distance between these circles
+	 * (the "width" of the annulus) is minimized.
+	 * <p>
+	 * The algorithm considers only the <b>vertices of the input shape</b> (not the
+	 * filled area or edges) as points to be enclosed.
+	 *
+	 * @param shape the {@link PShape} whose <b>vertices</b> are to be enclosed by
+	 *              the minimum-width annulus; must be non-null and contain at least
+	 *              three points
+	 * @return a {@link PShape} representing the minimum-width annulus (as a ring
+	 *         shape)
+	 * @since 2.1
+	 */
+	public static PShape minimumWidthAnnulus(PShape shape) {
+		var points = PGS_Conversion.toPVector(shape);
+		var d = PGS_ShapePredicates.diameter(shape);
+		var convexHull = PGS_Conversion.toPVector(PGS_Hull.convexHull(points));
+		var tree = PGS.makeKdtree(points);
+
+		var bounds = new double[4];
+		PGS_Hull.boundingBox(shape, bounds); // write to bounds
+		bounds[0] -= d;
+		bounds[1] -= d;
+		bounds[2] += d;
+		bounds[3] += d;
+
+		var vd = PGS_Voronoi.innerVoronoi(points, bounds);
+		var fpvd = PGS_Voronoi.farthestPointVoronoi(points);
+
+		/*
+		 * NOTE here we find inner edges/vertices in a generic way without geometric
+		 * shortcuts given by VD/FPVD geometry (i.e. we know the circumcircle of each
+		 * FPVD vertex -- its circumradius gives us outerR immediately).
+		 */
+		var a = PGS_Meshing.extractInnerEdgesAndVertices(vd);
+		var b = PGS_Meshing.extractInnerEdgesAndVertices(fpvd);
+		var vdVertices = a.getRight();
+		var vdEdges = a.getLeft();
+		var fpvdVertices = b.getRight();
+		var fpvdEdges = b.getLeft();
+
+		var overlayVerices = PGS_SegmentSet.intersections(vdEdges, fpvdEdges);
+
+		/*
+		 * Candidate centers for the smallest-width annulus have 3 sources. For each
+		 * candidate we find the distance both to the closest and farthest vertex. The
+		 * difference between these distances is the annulus width; we select the
+		 * candidate having the smallest width.
+		 */
+		/*-
+		 * The 3 centerpoint sources are:
+		 * 		Vertices of the FPVD
+		 * 		Vertices of the VD
+		 * 		Vertices from the intersection between edges of VD and FPVD
+		 */
+		var candidates = new ArrayList<PVector>();
+		candidates.addAll(vdVertices);
+		candidates.addAll(fpvdVertices);
+		candidates.addAll(overlayVerices);
+
+		var result = candidates.parallelStream().map(v -> {
+			// farthest point must lie on convex hull
+			var far = PGS_Optimisation.farthestPoint(convexHull, v);
+			var close = tree.query1nn(new double[] { v.x, v.y });
+			double outerR = far.dist(v);
+			double innerR = close.dist();
+			return Triple.of(v, outerR, innerR);
+		}).min(Comparator.comparingDouble(t -> t.getMiddle() - t.getRight())).get();
+
+		return PGS_Construction.createRing(result.getLeft().x, result.getLeft().y, result.getMiddle(), result.getRight());
 	}
 
 	/**
@@ -561,19 +861,86 @@ public final class PGS_Optimisation {
 	}
 
 	/**
-	 * Returns the nearest point of the shape to the given point. If the shape is
-	 * has multiple children/geometries (a GROUP shape), the single closest point is
-	 * returned.
-	 * 
-	 * @param shape
-	 * @param point
-	 * @return
+	 * Returns the closest vertex of a shape to a query point. For GROUP shapes, any
+	 * child geometry's vertex may be returned.
+	 *
+	 * @param shape      the PShape to search for the closest vertex
+	 * @param queryPoint the query PVector
+	 * @return a new PVector at the position of the closest vertex (not a reference
+	 *         to existing shape data)
+	 * @since 2.1
+	 */
+	public static PVector closestVertex(PShape shape, PVector queryPoint) {
+		List<PVector> vertices = PGS_Conversion.toPVector(shape);
+		if (vertices.isEmpty()) {
+			return null;
+		}
+		float minDistSq = Float.POSITIVE_INFINITY;
+		PVector closest = null;
+		for (PVector v : vertices) {
+			float distSq = PVector.dist(v, queryPoint);
+			if (distSq < minDistSq) {
+				minDistSq = distSq;
+				closest = v;
+			}
+		}
+		return closest;
+	}
+
+	/**
+	 * Returns the nearest point along the edges of the given shape to the specified
+	 * query point.
+	 * <p>
+	 * This method computes the point on the perimeter (including all edges, not
+	 * only the vertices) of the given shape that is closest to the given
+	 * {@code point}. For composite shapes (such as GROUP shapes made of multiple
+	 * child geometries), the single closest point across all children is returned.
+	 * </p>
+	 * <p>
+	 * <strong>Note:</strong> The nearest location may be somewhere along an edge of
+	 * the shape, not necessarily at one of the original shape's vertices.
+	 * </p>
+	 *
+	 * @param shape the {@code PShape} to search for the closest boundary point.
+	 * @param point the {@code PVector} point to which the nearest point is sought.
+	 * @return a new {@code PVector} representing the exact coordinates of the
+	 *         closest point on the shape's boundary or edge (not a reference to the
+	 *         original coordinate).
 	 * @see #closestPoints(PShape, PVector)
 	 */
 	public static PVector closestPoint(PShape shape, PVector point) {
 		Geometry g = fromPShape(shape);
 		Coordinate coord = DistanceOp.nearestPoints(g, PGS.pointFromPVector(point))[0];
 		return new PVector((float) coord.x, (float) coord.y);
+	}
+
+	/**
+	 * Finds the closest point in the collection to a specified point.
+	 *
+	 * @param points the collection of points to search within
+	 * @param point  the point to find the closest neighbor for
+	 * @return the closest point from the collection to the specified point
+	 * @since 2.1
+	 */
+	public static PVector closestPoint(Collection<PVector> points, PVector point) {
+		if (points == null || points.isEmpty()) {
+			return null; // Handle empty or null collection
+		}
+
+		PVector closest = null;
+		float minDistanceSq = Float.MAX_VALUE;
+
+		for (PVector p : points) {
+			float dx = p.x - point.x;
+			float dy = p.y - point.y;
+			float distanceSq = dx * dx + dy * dy;
+			if (distanceSq < minDistanceSq) {
+				minDistanceSq = distanceSq;
+				closest = p;
+			}
+		}
+
+		return closest;
 	}
 
 	/**
@@ -610,6 +977,62 @@ public final class PGS_Optimisation {
 	public static List<PVector> closestPointPair(Collection<PVector> points) {
 		final ClosestPointPair closestPointPair = new ClosestPointPair(points);
 		return closestPointPair.execute();
+	}
+
+	/**
+	 * Returns the farthest vertex of a shape from a query point. For GROUP shapes,
+	 * any child geometry's vertex may be returned.
+	 *
+	 * @param shape      the PShape to search for the farthest vertex
+	 * @param queryPoint the query PVector
+	 * @return a new PVector at the position of the farthest vertex (not a reference
+	 *         to existing shape data)
+	 * @since 2.1
+	 */
+	public static PVector farthestVertex(PShape shape, PVector queryPoint) {
+		List<PVector> vertices = PGS_Conversion.toPVector(shape);
+		if (vertices.isEmpty()) {
+			return null;
+		}
+		float maxDistSq = Float.NEGATIVE_INFINITY;
+		PVector farthest = null;
+		for (PVector v : vertices) {
+			float distSq = PVector.dist(v, queryPoint);
+			if (distSq > maxDistSq) {
+				maxDistSq = distSq;
+				farthest = v;
+			}
+		}
+		return farthest;
+	}
+
+	/**
+	 * Finds the farthest point in the collection from a specified point.
+	 *
+	 * @param points the collection of points to search within
+	 * @param point  the point from which the farthest neighbor is sought
+	 * @return the farthest point from the collection to the specified point
+	 * @since 2.1
+	 */
+	public static PVector farthestPoint(Collection<PVector> points, PVector point) {
+		if (points == null || points.isEmpty()) {
+			return null; // Handle empty or null collection
+		}
+
+		PVector farthest = null;
+		float maxDistanceSq = Float.NEGATIVE_INFINITY;
+
+		for (PVector p : points) {
+			float dx = p.x - point.x;
+			float dy = p.y - point.y;
+			float distanceSq = dx * dx + dy * dy;
+			if (distanceSq > maxDistanceSq) {
+				maxDistanceSq = distanceSq;
+				farthest = p;
+			}
+		}
+
+		return farthest;
 	}
 
 	/**
@@ -655,6 +1078,130 @@ public final class PGS_Optimisation {
 
 		List<PVector> points = new ArrayList<>(map.keySet());
 		return PGS_Conversion.flatten(PGS_PointSet.hilbertSort(points).stream().map(map::get).collect(Collectors.toList()));
+	}
+
+	/**
+	 * Reorders the faces of a mesh into an anti-clockwise “spiral” (breadth-first
+	 * rings) starting from a given face, then returns a new, flattened PShape
+	 * containing exactly those faces in spiral order.
+	 * 
+	 * @param mesh      mesh-like GROUP PShape
+	 * @param startFace One of the child‐faces of {@code mesh}. This face will
+	 *                  appear first in the returned ordering; subsequent faces
+	 *                  follow in concentric breadth‐first “rings” around it, sorted
+	 *                  anti-clockwise.
+	 * @return A new, flattened PShape whose set of faces equals the children of
+	 *         {@code mesh}, but ordered in a spiral starting at
+	 *         {@code startingFace}.
+	 * @since 2.1
+	 */
+	public static PShape spiralSortFaces(PShape mesh, PShape startFace) {
+		var faces = SpiralIterator.spiral(startFace, PGS_Conversion.getChildren(mesh));
+		return PGS_Conversion.flatten(faces);
+	}
+
+	/**
+	 * Returns a new, flattened PShape containing the child faces of {@code mesh}
+	 * sorted by the x and then y coordinates of their centroids.
+	 * <p>
+	 * This is commonly used for ordering the faces of a mesh spatially in a
+	 * grid-like manner, first by increasing x-coordinate of the face centroids, and
+	 * breaking ties using y-coordinate.
+	 * </p>
+	 *
+	 * @param mesh a mesh-like GROUP {@link PShape} whose children (faces) will be
+	 *             sorted by centroid
+	 * @return a new, flattened {@code PShape} whose faces are sorted by the
+	 *         centroids’ x and y coordinates
+	 * @since 2.1
+	 */
+	public static PShape centroidSortFaces(PShape mesh) {
+		Map<PVector, PShape> map = new HashMap<>(mesh.getChildCount());
+
+		PGS_Conversion.getChildren(mesh).forEach(child -> {
+			PVector centroid = PGS_ShapePredicates.boundsCenter(child);
+			map.put(centroid, child);
+		});
+
+		List<PVector> centroids = new ArrayList<>(map.keySet());
+
+		centroids.sort((p1, p2) -> {
+			if (p1.x != p2.x) {
+				return Float.compare(p1.x, p2.x);
+			} else {
+				return Float.compare(p1.y, p2.y);
+			}
+		});
+
+		List<PShape> sortedShapes = centroids.stream().map(map::get).toList();
+		return PGS_Conversion.flatten(sortedShapes);
+	}
+
+	/**
+	 * Sorts the faces (children) of a mesh radially around a given centre, then
+	 * applies a circular rotation to the order based on the offset parameter.
+	 *
+	 * @param mesh   a PShape with polygonal children (the faces to order)
+	 * @param centre the point around which radial sorting is performed (usually the
+	 *               mesh centroid)
+	 * @param offset a fractional value in [0, 1) that specifies where the ordering
+	 *               starts around the centre, as a proportion of a full 360° turn:
+	 *               <ul>
+	 *               <li>offset = 0.0: face whose centroid points directly to the
+	 *               right (positive X direction) comes first</li>
+	 *               <li>offset = 0.25: ordering is rotated 90° counterclockwise;
+	 *               face pointing “up” (positive Y) comes first</li>
+	 *               <li>offset = 0.5: ordering is rotated 180°; face pointing to
+	 *               the left (-X) comes first</li>
+	 *               <li>offset = 0.75: ordering is rotated 270°; face pointing
+	 *               “down” (-Y) comes first</li>
+	 *               </ul>
+	 *               Intermediate values smoothly rotate the sequence; outside [0,1)
+	 *               values wrap around. In other words, this lets you “spin” the
+	 *               order of faces by a fraction of a circle.
+	 * @return a new PShape, with faces flattened into one shape, ordered so that
+	 *         face[0] begins at offset·360° from the right and continues clockwise
+	 */
+	public static PShape radialSortFaces(final PShape mesh, final PVector centre, final double offset) {
+		record FaceInfo(PShape face, double angle, double dist2) {
+		}
+		List<PShape> faces = PGS_Conversion.getChildren(mesh);
+		List<FaceInfo> infoList = new ArrayList<>(faces.size());
+
+		double TWO_PI = Math.PI * 2;
+		// force offset into [0,1)
+		double off = ((offset % 1) + 1) % 1;
+		double rot = off * TWO_PI; // convert to radians
+
+		for (PShape f : faces) {
+			// centroid of this face
+			PVector c = PGS_ShapePredicates.centroid(f);
+			double dx = c.x - centre.x;
+			double dy = c.y - centre.y;
+
+			// raw angle in [–π,+π]
+			double a = FastAtan2.atan2(dy, dx);
+			// remap to [0,2π)
+			if (a < 0) {
+				a += TWO_PI;
+			}
+
+			// now apply offset‐rotation and re‐wrap to [0,2π)
+			a = a - rot;
+			if (a < 0) {
+				a += TWO_PI;
+			}
+
+			double d2 = dx * dx + dy * dy;
+			infoList.add(new FaceInfo(f, a, d2));
+		}
+
+		// Sort by our shifted angle, then (optionally) by distance²
+		infoList.sort(Comparator.comparingDouble((FaceInfo fi) -> fi.angle).thenComparingDouble(fi -> fi.dist2));
+
+		List<PShape> sorted = infoList.stream().map(fi -> fi.face).toList();
+
+		return PGS_Conversion.flatten(sorted);
 	}
 
 	/**

@@ -1,10 +1,12 @@
 package micycle.pgs.commons;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.PriorityQueue;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
@@ -32,13 +34,85 @@ public class AreaMerge {
 	}
 
 	/**
+	 * Merges faces until the mesh contains exactly {@code targetFaceCount} faces.
+	 * Strategy: 1. put every face (wrapped in a FaceGroup) into a priority queue
+	 * ordered by area (smallest first); 2. repeatedly remove the smallest group,
+	 * merge it into its smallest neighbouring group, push the updated neighbour
+	 * back into the queue; 3. stop after the required number of merges has been
+	 * executed.
+	 *
+	 * @param mesh            input mesh
+	 * @param targetFaceCount exact number of faces desired (must be ≥ 1)
+	 * @return a new PShape containing exactly {@code targetFaceCount} faces
+	 */
+	public static PShape areaMerge(PShape mesh, int targetFaceCount) {
+		if (targetFaceCount < 1) {
+			throw new IllegalArgumentException("targetFaceCount must be ≥ 1");
+		}
+
+		List<PShape> faces = PGS_Conversion.getChildren(mesh);
+		int currentFaceCount = faces.size();
+		if (targetFaceCount >= currentFaceCount) { // nothing to do
+			return mesh;
+		}
+
+		// build face-groups and dual graph
+		SimpleGraph<PShape, DefaultEdge> dual = PGS_Conversion.toDualGraph(mesh);
+
+		Map<PShape, FaceGroup> face2Group = new HashMap<>(dual.vertexSet().size());
+		SimpleGraph<FaceGroup, DefaultEdge> groupsGraph = new SimpleGraph<>(DefaultEdge.class);
+
+		for (PShape f : dual.vertexSet()) {
+			FaceGroup g = new FaceGroup(f, PGS_ShapePredicates.area(f));
+			face2Group.put(f, g);
+			groupsGraph.addVertex(g);
+		}
+		dual.edgeSet().forEach(e -> {
+			groupsGraph.addEdge(face2Group.get(dual.getEdgeSource(e)), face2Group.get(dual.getEdgeTarget(e)));
+		});
+
+		// priority queue by area
+		PriorityQueue<FaceGroup> pq = new PriorityQueue<>(groupsGraph.vertexSet());
+
+		int facesLeft = currentFaceCount;
+		while (facesLeft > targetFaceCount && !pq.isEmpty()) {
+
+			// 1. smallest face/group
+			FaceGroup smallest = pq.poll();
+			if (!groupsGraph.containsVertex(smallest)) { // outdated entry
+				continue;
+			}
+
+			// 2. smallest neighbour
+			List<FaceGroup> neighbours = Graphs.neighborListOf(groupsGraph, smallest);
+			if (neighbours.isEmpty()) { // isolated – abort
+				break;
+			}
+			FaceGroup bestNeighbour = neighbours.stream().min(Comparator.comparingDouble(g -> g.area)).get();
+
+			// 3. update queue: remove neighbour (its key is about to change)
+			pq.remove(bestNeighbour);
+
+			// 4. merge topo + attributes
+			bestNeighbour.mergeWith(smallest);
+			mergeVertices(groupsGraph, bestNeighbour, smallest);
+
+			// 5. re-insert updated neighbour
+			pq.offer(bestNeighbour);
+
+			facesLeft--; // one face removed
+		}
+
+		return PGS_Conversion.flatten(groupsGraph.vertexSet().stream().map(g -> PGS_ShapeBoolean.unionMesh(g.faces.keySet())).collect(Collectors.toList()));
+	}
+
+	/**
 	 * Recursively merges smaller faces of a mesh into their adjacent faces. The
 	 * procedure continues until there are no resulting faces with an area smaller
 	 * than the specified threshold.
 	 * 
 	 * @param mesh
 	 * @param areaThreshold
-	 * @return
 	 */
 	public static PShape areaMerge(PShape mesh, double areaThreshold) {
 		SimpleGraph<PShape, DefaultEdge> graph = PGS_Conversion.toDualGraph(mesh);
@@ -83,18 +157,14 @@ public class AreaMerge {
 			smallestNeighbor.mergeWith(toMerge); // merge face groups
 			mergeVertices(groupsGraph, smallestNeighbor, toMerge); // update topology
 
+			// remove outdated entry if it exists
 			if (smallestNeighbor.area > areaThreshold) {
 				smallGroups.remove(smallestNeighbor);
 			}
 		}
 
-		final boolean hasHoles = PGS_ShapePredicates.holes(mesh) > 0;
 		return PGS_Conversion.flatten(groupsGraph.vertexSet().stream().map(g -> {
-			if (hasHoles) {
-				return PGS_ShapeBoolean.unionMesh(g.faces.keySet());
-			} else {
-				return PGS_ShapeBoolean.unionMeshWithoutHoles(g.faces.keySet());
-			}
+			return PGS_ShapeBoolean.unionMesh(g.faces.keySet());
 		}).collect(Collectors.toList()));
 	}
 

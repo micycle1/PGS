@@ -21,7 +21,7 @@ Library functionality is split over the following classes:
 * `PGS_Contour`
   * Methods that produce various contours from shapes: medial axes, straight skeletons, offset curves, etc.
 * `PGS_Conversion`
-  * Conversion between *Processing* PShapes and *JTS* Geometries (amongst other formats)
+  * Conversion between *Processing* PShapes and *JTS* Geometries (amongst other formats).
 * `PGS_Hull`
   * Convex and concave hulls of polygons and point sets.
 * `PGS_Meshing`
@@ -74,6 +74,10 @@ PGS is hosted as an artifact for use in Maven or Gradle projects via [Jitpack](h
 A number of example Processing sketches are provided in [examples](https://github.com/micycle1/PGS/tree/master/examples).
 
 <p float="middle">
+  <a href="examples/organicSponge"><img src="resources/examples/organicSponge.png" alt="" width="24%"/></a>
+  <a href="examples/interlock"><img src="resources/examples/interlock.png" alt="" width="24%"/></a>
+  <a href="examples/warpedQuilt"><img src="resources/examples/warpedQuilt.png" alt="" width="24%"/></a>
+  <a href="examples/blobbies"><img src="resources/examples/blobbies.png" alt="" width="24%"/></a>
   <a href="examples/partitionSmooth"><img src="resources/examples/partitionSmooth.png" alt="" width="24%"/></a>
   <a href="examples/textOffsetCurves"><img src="resources/examples/textOffsetCurves.png" alt="" width="24%"/></a>
   <a href="examples/ripplingTriangles"><img src="resources/examples/ripplingTriangles.png" alt="" width="24%"/></a>
@@ -111,6 +115,15 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/boolean/meshUnion.gif"></td>
     <td valign="top" width="25%"><img src="resources/boolean/intersectMesh.gif"></td>
     <td valign="top" width="25%"><img src="resources/boolean/subtractMesh.gif"></td>
+  </tr>
+
+  <tr>
+    <td align="center" valign="center"><b>Union Lines</td>
+    <td align="center" valign="center"><b>Overlap Regions</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/boolean/unionLines.gif"></td>
+    <td valign="top" width="25%"><img src="resources/boolean/overlapRegions.gif"></td>
   </tr>
 </table>
 
@@ -172,23 +185,15 @@ Much of the functionality (but by no means all) is demonstrated below:
 
 
 ### Metrics
-* Length/perimeter
-* Width & Height
-* Diameter
-* Circularity
-* Similarity
-* Sphericity
-* Elongation
-* Density
-* Holes
-* Maximum interior angle
-* Is simple?
-* Is convex?
-* Equal? (structural and topological equivalence)
-* Distance
-* Area
-* Centroid
-* Median
+
+| <!-- -->    | <!-- -->    | <!-- -->    |
+|-------------|-------------|-------------|
+| Length/perimeter | Similarity | Is simple? |
+| Width & Height | Sphericity | Is convex? |
+| Diameter | Elongation | Equal? (structural and topological equivalence) |
+| Circularity | Density | Distance |
+| Area | Holes | Centroid |
+| Interior angles | Maximum interior angle | Median |
 
 ## *Contour*
 
@@ -228,10 +233,14 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Distance Field</td>
     <td align="center" valign="center"><b>Center Line</td>
+    <td align="center" valign="center"><b>Distance Tree</td>
+    <td align="center" valign="center"><b>Contrast Field</td>
   </tr>
   <tr>
     <td valign="top"><img src="resources/contour/distanceField.png"></td>
     <td valign="top"><img src="resources/contour/centerLine.gif"></td>
+    <td valign="top"><img src="resources/contour/distanceTree.png"></td>
+    <td valign="top"><img src="resources/contour/contrastField.png"></td>
   </tr>
     </tr>
     <tr>
@@ -266,7 +275,7 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
   <tr>
     <td valign="top"><img src="resources/morphology/smooth.gif"></td>
-    <td valign="top"><img src="resources/morphology/gaussianSmooth.gif"></td>
+    <td valign="top"><img src="resources/morphology/smoothGaussian.gif"></td>
     <td valign="top"><img src="resources/morphology/round.gif"></td>
     <td valign="top" ><img src="resources/morphology/round2.gif"></td>
   </tr>
@@ -337,10 +346,12 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Convex Hull</td>
     <td align="center" valign="center"><b>Snap Hull</td>
+    <td align="center" valign="center"><b>Bounding Box</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/morphology/convexHull.png"></td>
     <td valign="top" width="25%"><img src="resources/morphology/snapHull.gif"></td>
+    <td valign="top" width="25%"><img src="resources/optimisation/envelope.png"></td>
   </tr>
   <tr>
     <td align="center" valign="center"></td>
@@ -437,11 +448,12 @@ Much of the functionality (but by no means all) is demonstrated below:
     <tr>
     <td align="center" valign="center"><b>Extract Holes</td>
     <td align="center" valign="center"><b>Nest</td>
-    
+    <td align="center" valign="center"><b>Centroid Split</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/geometry_processing/extractHoles.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/nest.gif"></td>
+    <td valign="top" width="25%"><img src="resources/geometry_processing/centroidSplit.gif"></td>
   </tr>
 </table>
 
@@ -487,10 +499,12 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Centroidal Relaxation</td>
     <td align="center" valign="center"><b>Multiplicatively Weighted Voronoi</td>
+    <td align="center" valign="center"><b>Farthest-Point Voronoi</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/voronoi/centroidal.gif"></td>
     <td valign="top" width="25%"><img src="resources/voronoi/mwvd.gif"></td>
+    <td valign="top" width="25%"><img src="resources/voronoi/fpvd.gif"></td>
   </tr>
 </table>
 
@@ -553,10 +567,12 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Extract Inner Vertices</td>
     <td align="center" valign="center"><b>Fix Breaks</td>
+    <td align="center" valign="center"><b>Matching Quadrangulation</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/meshing/extractInnerVertices.gif"></td>
     <td valign="top" width="25%"><img src="resources/geometry_processing/cleanCoverage.gif"></td>
+    <td valign="top" width="25%"><img src="resources/meshing/matchingQuadrangulation.png"></td>
   </tr>
 </table>
 
@@ -577,24 +593,25 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
-    <td align="center" valign="center" colspan="2"><b>Minimum Bounding Circle</td>
+    <td align="center" valign="center"><b>Maximum Inscribed Triangle</td>
+    <td align="center" valign="center"><b>Minimum Bounding Circle</td>
     <td align="center" valign="center" colspan="2"><b>Minimum Bounding Ellipse</td>
   </tr>
   <tr>
+    <td valign="top"><img src="resources/optimisation/mit.png"></td>
     <td valign="top"><img src="resources/optimisation/minimumBoundingCircle.png"></td>
-    <td valign="top"><img src="resources/optimisation/mbc2.png"></td>
     <td valign="top"><img src="resources/optimisation/mbe1.png"></td>
     <td valign="top" ><img src="resources/optimisation/mbe2.png"></td>
   </tr>
 
   <tr>
     <td align="center" valign="center"><b>Minimum Bounding Triangle</td>
-    <td align="center" valign="center"><b>Envelope</td>
+    <td align="center" valign="center"><b>Minimum-width Annulus</td>
     <td align="center" valign="center" colspan="2"><b>Problem of Apollonius</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/optimisation/mbt.png"></td>
-    <td valign="top" width="25%"><img src="resources/optimisation/envelope.png"></td>
+    <td valign="top" width="25%"><img src="resources/optimisation/minWidthAnnulus.png"></td>
     <td valign="top"><img src="resources/optimisation/apollonius1.gif"></td>
     <td valign="top"><img src="resources/optimisation/apollonius2.gif"></td>
   </tr>
@@ -613,13 +630,13 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
-    <td align="center" valign="center"><b>Closest Vertex</td>
     <td align="center" valign="center"><b>Circle Covering</td>
+    <td align="center" valign="center"><b>Closest Vertex</td>
     <td align="center" valign="center" colspan="2"><b>Visibility Polygon / Isovist</td>
   </tr>
   <tr>
-    <td valign="top" width="25%"><img src="resources/pgs/closestVertex.gif"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/circleCoverage.gif"></td>
+    <td valign="top" width="25%"><img src="resources/pgs/closestVertex.gif"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/visibility.gif"></td>
     <td valign="top" width="25%"><img src="resources/optimisation/visibility2.gif"></td>
   </tr>
@@ -637,9 +654,13 @@ Much of the functionality (but by no means all) is demonstrated below:
 
   <tr>
     <td align="center" valign="center"><b>Hilbert Sort Faces</td>
+    <td align="center" valign="center"><b>Spiral Sort Faces</td>
+    <td align="center" valign="center"><b>Centroid Sort Faces</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/optimisation/hilbertSortFaces.gif"></td>
+    <td valign="top" width="25%"><img src="resources/optimisation/spiralSort.gif"></td>
+    <td valign="top" width="25%"><img src="resources/optimisation/centroidSort.gif"></td>
   </tr>
   
 </table>
@@ -925,9 +946,19 @@ Much of the functionality (but by no means all) is demonstrated below:
   <tr>
     <td align="center" valign="center"><b>Penrose Tiling</td>
     <td align="center" valign="center"><b>Square-Triangle Tiling</td>
+    <td align="center" valign="center"><b>Annular Bricks</td>
+    <td align="center" valign="center"><b>Slice Division</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/tiling/penrose.png"></td>
     <td valign="top" width="25%"><img src="resources/tiling/stTiling.png"></td>
+    <td valign="top" width="25%"><img src="resources/tiling/annularBricks.png"></td>
+    <td valign="top" width="25%"><img src="resources/tiling/sliceDivision.png"></td>
+  </tr>
+  <tr>
+    <td align="center" valign="center"><b>Arc Division</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/tiling/arcDivision.png"></td>
   </tr>
 </table>

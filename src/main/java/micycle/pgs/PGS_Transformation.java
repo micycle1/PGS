@@ -10,9 +10,8 @@ import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.util.AffineTransformation;
-import org.locationtech.jts.operation.distance.IndexedFacetDistance;
-
 import micycle.pgs.commons.ProcrustesAlignment;
+import micycle.pgs.commons.TouchScale;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -221,59 +220,24 @@ public final class PGS_Transformation {
 	}
 
 	/**
-	 * Scales a shape (based on its centroid) so that it touches the boundary of
-	 * another shape. The scaling shape's centroid must lie outside the other shape.
 	 * 
-	 * @param shape     the shape to scale. its centroid should be outside container
-	 * @param boundary
-	 * @param tolerance >=0
+	 * Scales <code>shape</code> about its centroid until it first contacts the
+	 * linear boundary defined by <code>boundary</code>.
+	 * <p>
+	 * The centroid of <code>shape</code> is used as the scale center and is
+	 * expected to lie outside <code>boundary</code> for the "touch" semantics. The
+	 * <code>boundary</code> <code>PShape</code> is interpreted as linear elements
+	 * (exterior rings and holes are supported).
+	 * </p>
+	 * 
+	 * @param shape    the <code>PShape</code> to scale; its centroid should lie
+	 *                 outside <code>boundary</code>
+	 * @param boundary the <code>PShape</code> whose linear elements form the target
+	 *                 boundary (supports holes)
+	 * @return a new <code>PShape</code> representing the scaled <code>shape</code>
 	 */
-	public static PShape touchScale(PShape shape, PShape boundary, double tolerance) {
-		tolerance = Math.max(tolerance, 0.01);
-		final IndexedFacetDistance index = new IndexedFacetDistance(fromPShape(boundary));
-		Geometry scaleShape = fromPShape(shape);
-
-		final Coordinate centroid = scaleShape.getCentroid().getCoordinate();
-
-		double dist = Double.MAX_VALUE;
-		final int maxIter = 75;
-		int iter = 0;
-
-		while (dist > tolerance && iter < maxIter) {
-			Coordinate[] coords = index.nearestPoints(scaleShape);
-			dist = coords[0].distance(coords[1]);
-
-			/*
-			 * When dist == 0, the shape is either fully contained within the boundary or
-			 * partially covers it. We attempt to first shrink the shape so that no longer
-			 * covers the boundary. If dist remains zero after repeated shrinking we
-			 * conclude the shape is properly inside the boundary.
-			 */
-			if (dist == 0) {
-				int z = 0;
-				while (z++ < 7) {
-					AffineTransformation t = AffineTransformation.scaleInstance(0.5, 0.5, centroid.x, centroid.y);
-					scaleShape = t.transform(scaleShape);
-					dist = index.distance(scaleShape);
-					if (dist > 0) {
-						break;
-					}
-				}
-				if (dist == 0) {
-					/*
-					 * If dist still == 0, then shape's centroid lies on the perimeter of the
-					 * boundary.
-					 */
-					return toPShape(scaleShape);
-				}
-			}
-			double d1 = centroid.distance(coords[1]);
-			double d2 = centroid.distance(coords[0]);
-			AffineTransformation t = AffineTransformation.scaleInstance(d2 / d1, d2 / d1, centroid.x, centroid.y);
-			scaleShape = t.transform(scaleShape);
-			iter++;
-		}
-		return toPShape(scaleShape);
+	public static PShape touchScale(PShape shape, PShape boundary) {
+		return toPShape(TouchScale.scale(fromPShape(shape), fromPShape(boundary)));
 	}
 
 	/**
@@ -573,10 +537,8 @@ public final class PGS_Transformation {
 	}
 
 	/**
-	 * Flips the shape horizontally based on its centre point.
-	 * 
-	 * @param shape
-	 * @return
+	 * Flips the shape horizontally based on its centre point (mirror over the
+	 * x-axis passing through its centroid).
 	 */
 	public static PShape flipHorizontal(PShape shape) {
 		Geometry g = fromPShape(shape);
@@ -598,10 +560,8 @@ public final class PGS_Transformation {
 	}
 
 	/**
-	 * Flips the shape vertically based on its centre point.
-	 * 
-	 * @param shape
-	 * @return
+	 * Flips the shape vertically based on its centre point (mirror over the y-axis
+	 * passing through its centroid).
 	 */
 	public static PShape flipVertical(PShape shape) {
 		Geometry g = fromPShape(shape);

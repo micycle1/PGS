@@ -1,6 +1,7 @@
 package micycle.pgs;
 
 import static micycle.pgs.PGS_Conversion.fromPShape;
+import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
@@ -17,6 +18,7 @@ import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.Polygonal;
 import org.locationtech.jts.operation.overlay.snap.GeometrySnapper;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
+import org.locationtech.jts.operation.relateng.RelateNG;
 import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.Vertex;
 import org.tinfour.standard.IncrementalTin;
@@ -26,8 +28,10 @@ import org.tinfour.voronoi.BoundedVoronoiDiagram;
 import org.tinfour.voronoi.ThiessenPolygon;
 
 import micycle.pgs.color.Colors;
+import micycle.pgs.commons.FarthestPointVoronoi;
 import micycle.pgs.commons.MultiplicativelyWeightedVoronoi;
 import micycle.pgs.commons.Nullable;
+import micycle.pgs.commons.PEdge;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -141,15 +145,26 @@ public final class PGS_Voronoi {
 	 */
 	public static PShape innerVoronoi(final PShape shape, final boolean constrain, @Nullable final double[] bounds,
 			@Nullable final Collection<PVector> steinerPoints, final int relaxations) {
-		final Geometry g = fromPShape(shape);
-		BoundedVoronoiDiagram v = innerVoronoiRaw(shape, constrain, bounds, steinerPoints, relaxations);
+		BoundedVoronoiDiagram v = innerVoronoiRaw(shape, bounds, steinerPoints, relaxations);
 		List<Geometry> faces = new ArrayList<>();
 		if (v != null && v.getPolygons() != null) {
 			faces = v.getPolygons().stream().filter(p -> p.getEdges().size() > 1).map(PGS_Voronoi::toPolygon).collect(Collectors.toList());
 		}
-		if (constrain && g instanceof Polygonal) {
-			faces = faces.parallelStream().map(f -> OverlayNG.overlay(f, g, OverlayNG.INTERSECTION)).collect(Collectors.toList());
-			faces.removeIf(f -> f.getNumPoints() == 0); // (odd, artifacts of intersection?)
+		if (constrain) {
+			final Geometry g = fromPShape(shape);
+			if (g instanceof Polygonal) {
+				final var index = RelateNG.prepare(g);
+				faces = faces.parallelStream().map(f -> {
+					final var relation = index.evaluate(f);
+					if (relation.isContains()) {
+						return f;
+					} else if (relation.isDisjoint()) {
+						return g.getFactory().createEmpty(2);
+					}
+					return OverlayNG.overlay(f, g, OverlayNG.INTERSECTION);
+				}).collect(Collectors.toList());
+				faces.removeIf(f -> f.isEmpty() || f.getNumPoints() == 0);
+			}
 		}
 
 		PShape facesShape = PGS_Conversion.toPShape(faces);
@@ -183,9 +198,6 @@ public final class PGS_Voronoi {
 	 * 
 	 * @param shape         The shape to generate the inner Voronoi diagram for
 	 *                      (using its vertices for Voronoi sites).
-	 * @param constrain     A flag indicating whether or not to constrain the
-	 *                      resulting diagram to the original shape (if it is
-	 *                      polygonal).
 	 * @param bounds        an optional array of the form [minX, minY, maxX, maxY]
 	 *                      representing the bounds of the diagram. The boundary
 	 *                      must fully contain the shape (but needn't contain all
@@ -194,14 +206,13 @@ public final class PGS_Voronoi {
 	 *                      Steiner points to be used as additional sites in the
 	 *                      diagram.
 	 * @param relaxations   the number of times to relax the diagram. 0 or greater.
-	 * 
 	 * @return a GROUP PShape, where each child shape is a Voronoi cell. The
 	 *         <code>.name</code> value of each cell is set to the integer index of
 	 *         its vertex site.
 	 * @see #innerVoronoi(Collection)
 	 */
-	public static BoundedVoronoiDiagram innerVoronoiRaw(final PShape shape, final boolean constrain, @Nullable final double[] bounds,
-			@Nullable final Collection<PVector> steinerPoints, final int relaxations) {
+	public static BoundedVoronoiDiagram innerVoronoiRaw(final PShape shape, @Nullable final double[] bounds, @Nullable final Collection<PVector> steinerPoints,
+			final int relaxations) {
 		final Geometry g = fromPShape(shape);
 		final List<Vertex> vertices = new ArrayList<>();
 		final Coordinate[] coords = g.getCoordinates();
@@ -257,7 +268,7 @@ public final class PGS_Voronoi {
 					newSites.add(newSite);
 				}
 			}
-			if (maxDistDelta < 0.05) {
+			if (maxDistDelta < 1e-6) {
 				break; // sufficiently converged, exit relaxation early
 			}
 			v = new BoundedVoronoiDiagram(newSites, options);
@@ -347,8 +358,8 @@ public final class PGS_Voronoi {
 	 *      diagram generation process.
 	 */
 
-	public static BoundedVoronoiDiagram innerVoronoiRaw(Collection<PVector> points, double[] bounds, int relaxations) {
-		return innerVoronoiRaw(PGS_Conversion.toPointsPShape(points), false, bounds, null, relaxations);
+	public static BoundedVoronoiDiagram innerVoronoiRaw(Collection<PVector> points, @Nullable double[] bounds, int relaxations) {
+		return innerVoronoiRaw(PGS_Conversion.toPointsPShape(points), bounds, null, relaxations);
 	}
 
 	/**
@@ -533,7 +544,6 @@ public final class PGS_Voronoi {
 	 * @since 2.0
 	 */
 	public static PShape multiplicativelyWeightedVoronoi(Collection<PVector> sites, double[] bounds, boolean forceConforming) {
-
 		var faces = MultiplicativelyWeightedVoronoi.getMWVFromPVectors(sites.stream().toList(), bounds);
 		Geometry geoms = PGS.GEOM_FACTORY.createGeometryCollection(faces.toArray(new Geometry[] {}));
 		if (forceConforming) {
@@ -542,6 +552,80 @@ public final class PGS_Voronoi {
 		var s = PGS_Conversion.toPShape(geoms);
 //		s = PGS_Meshing.fixBreaks(s, 1e-4, 10); // faster than GeometrySnapper, less robust
 		return s;
+	}
+
+	/**
+	 * Generates the <b>farthest-point Voronoi diagram</b> (FPVD) for a set of
+	 * sites.
+	 * <p>
+	 * The farthest-point Voronoi diagram partitions the plane into regions such
+	 * that each region consists of all points for which a particular site is the
+	 * <b>farthest</b> among all provided sites (not the nearest). Only sites that
+	 * are convex hull vertices have regions in the FPVD.
+	 * <p>
+	 * The resulting diagram is not clipped to a bounding box and may extend well
+	 * beyond the convex hull of the input sites, but it is still represented by a
+	 * finite set of edges.
+	 *
+	 * @param sites a collection of {@link PVector} representing the sites; only
+	 *              convex hull vertices have regions
+	 * @return a {@link PShape} representing the farthest-point Voronoi diagram as a
+	 *         set of edges
+	 * @see #farthestPointVoronoi(Collection, double[])
+	 * @since 2.1
+	 */
+	public static PShape farthestPointVoronoi(Collection<PVector> sites) {
+		FarthestPointVoronoi fpvd = new FarthestPointVoronoi();
+		fpvd.setSites(sites.stream().map(s -> PGS.coordFromPVector(s)).toList());
+
+		var edges = fpvd.getDCEL().getEdges().stream().map(e -> {
+			var a = PGS.toPVector(e.origVertex);
+			var b = PGS.toPVector(e.destVertex);
+			return new PEdge(a, b);
+		}).toList();
+
+		return PGS_SegmentSet.toPShape(edges);
+	}
+
+	/**
+	 * Generates a <b>farthest-point Voronoi diagram</b> (FPVD) for a given set of
+	 * sites and a bounding box.
+	 * <p>
+	 * The <i>farthest-point Voronoi diagram</i> is a variant of the Voronoi diagram
+	 * in which the region for each site <code>p</code> consists of all points in
+	 * the plane for which <code>p</code> is the <b>farthest</b> site among all
+	 * sites. In contrast to a regular (nearest-point) Voronoi diagram, where each
+	 * region surrounds and contains its generating site, in the FPVD, regions do
+	 * <b>not</b> hug their site; instead, the generator of a region is {typically
+	 * distant and not even contained within} its region.
+	 * <p>
+	 * <b>Properties:</b>
+	 * <ul>
+	 * <li>Only sites that are vertices of the convex hull have non-empty regions in
+	 * the FPVD, since only those can be farthest from some location in the
+	 * plane.</li>
+	 * <li>A useful interpretation: all points in a given FPVD region share the same
+	 * farthest generator site. However, the generator site is not visually apparent
+	 * from the region itself, as it is not located within or even near the region.
+	 * </ul>
+	 * 
+	 * @param sites  A collection of {@link PVector}s representing sites; only the
+	 *               convex hull vertices will have corresponding regions in the
+	 *               output diagram.
+	 * @param bounds A double array of form <code>[minX, minY, maxX, maxY]</code>
+	 *               representing the axis-aligned bounding box for clipping the
+	 *               diagram.
+	 * @return A {@link PShape} representing the farthest-point Voronoi diagram.
+	 *         Each cell corresponds to the region for one convex hull vertex site.
+	 * @since 2.1
+	 */
+	public static PShape farthestPointVoronoi(Collection<PVector> sites, double[] bounds) {
+		FarthestPointVoronoi fpvd = new FarthestPointVoronoi();
+		Envelope e = new Envelope(bounds[0], bounds[2], bounds[1], bounds[3]); // x,x,y,y
+		fpvd.setClipEnvelope(e);
+		fpvd.setSites(sites.stream().map(s -> PGS.coordFromPVector(s)).toList());
+
+		return toPShape(fpvd.getDiagram());
 	}
 
 	static Polygon toPolygon(ThiessenPolygon polygon) {

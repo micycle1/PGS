@@ -5,7 +5,9 @@ import static micycle.pgs.PGS_Conversion.fromPShape;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.vecmath.Point3d;
 import javax.vecmath.Point4d;
@@ -15,7 +17,7 @@ import org.locationtech.jts.algorithm.MinimumBoundingCircle;
 import org.locationtech.jts.algorithm.MinimumDiameter;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
-import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
+import org.locationtech.jts.algorithm.locate.PointOnGeometryLocator;
 import org.locationtech.jts.algorithm.match.HausdorffSimilarityMeasure;
 import org.locationtech.jts.coverage.CoverageUnion;
 import org.locationtech.jts.coverage.CoverageValidator;
@@ -28,6 +30,8 @@ import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.util.PolygonExtracter;
 import org.locationtech.jts.operation.valid.IsValidOp;
+
+import com.github.micycle1.geoblitz.YStripesPointInAreaLocator;
 
 import micycle.pgs.commons.EllipticFourierDesc;
 import micycle.pgs.commons.GeometricMedian;
@@ -85,7 +89,7 @@ public final class PGS_ShapePredicates {
 	 * @return true if every point is contained within the shape
 	 */
 	public static boolean containsAllPoints(PShape shape, Collection<PVector> points) {
-		final IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(fromPShape(shape));
+		final PointOnGeometryLocator pointLocator = new YStripesPointInAreaLocator(fromPShape(shape));
 		for (PVector p : points) {
 			if (pointLocator.locate(new Coordinate(p.x, p.y)) == Location.EXTERIOR) {
 				return false;
@@ -107,7 +111,7 @@ public final class PGS_ShapePredicates {
 	 *         point at same index
 	 */
 	public static List<Boolean> containsPoints(PShape shape, Collection<PVector> points) {
-		final IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(fromPShape(shape));
+		final PointOnGeometryLocator pointLocator = new YStripesPointInAreaLocator(fromPShape(shape));
 		ArrayList<Boolean> bools = new ArrayList<>(points.size());
 		for (PVector p : points) {
 			bools.add(pointLocator.locate(new Coordinate(p.x, p.y)) != Location.EXTERIOR);
@@ -129,7 +133,7 @@ public final class PGS_ShapePredicates {
 	 * @return a filtered view of the input points
 	 */
 	public static List<PVector> findContainedPoints(PShape shape, Collection<PVector> points) {
-		final IndexedPointInAreaLocator pointLocator = new IndexedPointInAreaLocator(fromPShape(shape));
+		final PointOnGeometryLocator pointLocator = new YStripesPointInAreaLocator(fromPShape(shape));
 		List<PVector> contained = new ArrayList<>();
 		for (PVector p : points) {
 			if (pointLocator.locate(new Coordinate(p.x, p.y)) != Location.EXTERIOR) {
@@ -415,11 +419,14 @@ public final class PGS_ShapePredicates {
 	}
 
 	/**
-	 * Measures the elongation of a shape; the ratio of a shape's bounding box
-	 * length to its width.
+	 * Measures the elongation of a shape as the ratio of the difference between the
+	 * bounding box's length and width to the maximum dimension. A value of 1
+	 * indicates a highly elongated shape, while a value of 0 indicates a square or
+	 * nearly square shape.
 	 * 
 	 * @param shape
-	 * @return a value in [0, 1]
+	 * @return a value in the range [0, 1], where 1 represents high elongation and 0
+	 *         represents no elongation
 	 */
 	public static double elongation(final PShape shape) {
 		Geometry obb = MinimumDiameter.getMinimumRectangle(fromPShape(shape));
@@ -429,11 +436,9 @@ public final class PGS_ShapePredicates {
 		Coordinate c2 = rect.getCoordinates()[2];
 		double l = c0.distance(c1);
 		double w = c1.distance(c2);
-		if (l >= w) {
-			return w / l;
-		} else {
-			return l / w;
-		}
+		double max = Math.max(l, w);
+		double min = Math.min(l, w);
+		return 1 - (min / max);
 	}
 
 	/**
@@ -448,6 +453,18 @@ public final class PGS_ShapePredicates {
 		// also see 'A New Convexity Measure for Polygons'
 		Geometry g = fromPShape(shape);
 		return g.getArea() / g.convexHull().getArea();
+	}
+
+	/**
+	 * Returns the total number of vertices that make up a shape.
+	 * <p>
+	 * Unlike <code>PShape.getVertexCount()</code> this method properly returns the
+	 * number of vertices in GROUP and primitive shapes.
+	 * 
+	 * @since 2.1
+	 */
+	public static int vertexCount(PShape shape) {
+		return PGS_Conversion.getChildren(shape).stream().mapToInt(s -> s.getVertexCount()).sum();
 	}
 
 	/**
@@ -508,6 +525,79 @@ public final class PGS_ShapePredicates {
 			maxAngle = Math.max(maxAngle, Angle.interiorAngle(p0, p1, p2));
 		}
 		return maxAngle;
+	}
+
+	/**
+	 * Computes the minimum/interior angle of a polygon.
+	 *
+	 * @param shape simple polygonal shape
+	 * @return the smallest interior angle in the range [0, 2*PI]
+	 * @since 2.1
+	 */
+	public static double minimumInteriorAngle(PShape shape) {
+		// Extract coordinates from PShape
+		final Coordinate[] coordz = fromPShape(shape).getCoordinates();
+		final CoordinateList coords = new CoordinateList(coordz);
+		// Remove the closing duplicate (last == first)
+		coords.remove(coords.size() - 1);
+
+		// Ensure consistent winding (we want CW ordering for interior‐angle convention)
+		if (Orientation.isCCW(coordz)) {
+			Collections.reverse(coords);
+		}
+
+		// Initialize to the largest possible angle
+		double minAngle = 2 * Math.PI;
+
+		// Walk triples of consecutive vertices to compute interior angles
+		for (int i = 0; i < coords.size(); i++) {
+			Coordinate p0 = coords.get(i);
+			Coordinate p1 = coords.get((i + 1) % coords.size());
+			Coordinate p2 = coords.get((i + 2) % coords.size());
+			double angle = Angle.interiorAngle(p0, p1, p2);
+			minAngle = Math.min(minAngle, angle);
+		}
+
+		return minAngle;
+	}
+
+	/**
+	 * Calculates all interior angles of a polygon represented by a {@link PShape}.
+	 * The method calculates the interior angle at each vertex.
+	 * <p>
+	 * The vertices of the input {@code shape} are assumed to represent a simple
+	 * polygon.
+	 *
+	 * @param shape The {@link PShape} representing the polygon for which to
+	 *              calculate interior angles. It's expected to be a polygon shape.
+	 * @return A map where keys are {@link PVector} vertices of the polygon and
+	 *         values are their corresponding interior angles in radians as double
+	 *         values.
+	 * @since 2.1
+	 */
+	public static Map<PVector, Double> interiorAngles(PShape shape) {
+		Map<PVector, Double> anglesMap = new HashMap<>();
+
+		var vertices = PGS_Conversion.toPVector(shape); // unclosed
+		if (!PGS.isClockwise(vertices)) {
+			Collections.reverse(vertices);
+		}
+
+		int n = vertices.size();
+		for (int i = 0; i < n; i++) {
+			PVector currentVertex = vertices.get(i);
+			PVector previousVertex = vertices.get((i - 1 + n) % n); // Get previous vertex, wrapping around
+			PVector nextVertex = vertices.get((i + 1) % n); // Get next vertex, wrapping around
+
+			Coordinate p0 = new Coordinate(previousVertex.x, previousVertex.y);
+			Coordinate p1 = new Coordinate(currentVertex.x, currentVertex.y);
+			Coordinate p2 = new Coordinate(nextVertex.x, nextVertex.y);
+			double angleRadians = Angle.interiorAngle(p0, p1, p2); // CW
+			anglesMap.put(currentVertex, angleRadians);
+		}
+
+		return anglesMap;
+
 	}
 
 	/**

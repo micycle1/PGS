@@ -1,11 +1,12 @@
 package micycle.pgs.commons;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.LinkedList;
 import java.util.List;
 
-import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
+import org.locationtech.jts.algorithm.locate.PointOnGeometryLocator;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
@@ -14,6 +15,8 @@ import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygonal;
 import org.locationtech.jts.operation.distance.IndexedFacetDistance;
+
+import com.github.micycle1.geoblitz.YStripesPointInAreaLocator;
 
 /**
  * Adapts {@link org.locationtech.jts.algorithm.construct.LargestEmptyCircle
@@ -35,15 +38,14 @@ public class LargestEmptyCircles {
 	private final double tolerance;
 
 	private final GeometryFactory factory;
-	private IndexedPointInAreaLocator obstaclesPointLocator; // when obstacles are polygonal
-	private IndexedPointInAreaLocator boundsPointLocator;
+	private PointOnGeometryLocator obstaclesPointLocator; // when obstacles are polygonal
+	private PointOnGeometryLocator boundsPointLocator;
 	private IndexedFacetDistance obstacleDistance;
 	private IndexedFacetDistance boundaryDistance;
 	private Envelope gridEnv;
 	private Cell farthestCell;
 
-	// Priority queue of cells, ordered by decreasing distance from constraints
-	private LinkedList<Cell> cellQueue = new LinkedList<>();
+	private ArrayDeque<Cell> cellStack = new ArrayDeque<>();
 	private List<Cell> nextIterCells = new ArrayList<>();
 	private List<double[]> circles = new ArrayList<>();
 
@@ -79,16 +81,15 @@ public class LargestEmptyCircles {
 		this.tolerance = tolerance;
 
 		if (obstacles instanceof Polygonal && boundary != null) {
-			// used to exclude circle from lying within the obstacles
-			obstaclesPointLocator = new IndexedPointInAreaLocator(obstacles);
+			obstaclesPointLocator = new YStripesPointInAreaLocator(obstacles);
 		}
-		/*
-		 * If no boundary given, use convex hull of obstacles as boundary.
-		 */
 		if (boundary == null || boundary.isEmpty()) {
 			if (obstacles instanceof Polygonal) {
 				boundary = obstacles;
 			} else {
+				/*
+				 * If no boundary given, use convex hull of obstacles as boundary.
+				 */
 				boundary = obstacles.convexHull();
 			}
 		}
@@ -98,23 +99,22 @@ public class LargestEmptyCircles {
 		this.factory = obstacles.getFactory();
 
 		/*
-		 * Circle *radii* will always be bounded by the boundary (in the JTS
-		 * implementation, only circle center points must lie within the boundary).
+		 * Combine, in case the nearest obstacle is farther away than the nearest
+		 * boundary. (it's faster to make one call on a larger index than 2 separate
+		 * calls to each index).
 		 */
 		final Geometry distGeom = obstacles.getFactory().createGeometryCollection(new Geometry[] { obstacles, boundary });
 		obstacleDistance = new IndexedFacetDistance(distGeom);
-
+//	    obstacleDistance = new IndexedFacetDistance(obstacles);
 	}
 
 	private void initBoundary() {
 		gridEnv = boundary.getEnvelopeInternal();
-		// if bounds does not enclose an area cannot create a boundsPointLocator
 		if (boundary.getDimension() >= 2) {
-			boundsPointLocator = new IndexedPointInAreaLocator(boundary);
+			boundsPointLocator = new YStripesPointInAreaLocator(boundary);
 			boundaryDistance = new IndexedFacetDistance(boundary);
 		}
-
-		createInitialGrid(gridEnv, cellQueue);
+		createInitialGrid(gridEnv, cellStack);
 	}
 
 	/**
@@ -134,12 +134,11 @@ public class LargestEmptyCircles {
 			double boundaryDist = boundaryDistance.distance(p);
 			return -boundaryDist;
 		}
-		double dist = obstacleDistance.distance(p);
-
 		/*
 		 * If obstacles are polygonal, ensure circles do not lie within their interior.
 		 * Only applies when the given boundary is not null.
 		 */
+		double dist = obstacleDistance.distance(p);
 		if (obstaclesPointLocator != null && (obstaclesPointLocator.locate(c) == Location.INTERIOR)) {
 			dist = -dist;
 		}
@@ -152,12 +151,6 @@ public class LargestEmptyCircles {
 		return distanceToConstraints(pt);
 	}
 
-	/**
-	 * Computes the (next) N largest empty circles.
-	 * 
-	 * @param n number of circles
-	 * @return array of circles; each circle is represented as: [x,y,r]
-	 */
 	public double[][] findLECs(int n) {
 		double[][] lecs = new double[n][3];
 		for (int i = 0; i < n; i++) {
@@ -166,39 +159,45 @@ public class LargestEmptyCircles {
 		return lecs;
 	}
 
-	/**
-	 * Computes the next largest empty circle.
-	 * 
-	 * @return an array representing the circle: [x,y,r]
-	 */
 	public double[] findNextLEC() {
 
 		double farthestD;
 		if (gridEnv == null) { // first iteration
 			initBoundary();
-			// use the area centroid as the initial candidate center point
+			// pick best seed from initial grid instead of only centroid
 			farthestCell = createCentroidCell(obstacles);
 			farthestD = farthestCell.getDistance();
+			for (Cell c : cellStack) {
+				if (c.getDistance() > farthestD) {
+					farthestCell = c;
+					farthestD = c.getDistance();
+				}
+			}
 		} else {
+			// Update remaining candidates with the newly-placed circle
 			nextIterCells.forEach(c -> c.updateDistance(circles.get(circles.size() - 1)));
-			cellQueue = new LinkedList<>(nextIterCells);
+			cellStack = new ArrayDeque<>(nextIterCells);
 			nextIterCells.clear();
-			farthestD = Double.MIN_VALUE;
+
+			// Seed best for this iteration from what we already have
+			farthestD = Double.NEGATIVE_INFINITY;
+			for (Cell c : cellStack) {
+				if (c.getDistance() > farthestD) {
+					farthestCell = c;
+					farthestD = c.getDistance();
+				}
+			}
 		}
 
-		/*
-		 * Carry out the branch-and-bound search of the cell space.
-		 */
-		while (!cellQueue.isEmpty()) {
-			// pick the cell with greatest distance from the queue
-			Cell cell = cellQueue.removeLast();
+		// Branch-and-bound
+		while (!cellStack.isEmpty()) {
+			// LIFO pop for DFS-like behavior
+			Cell cell = cellStack.removeLast();
 
-			// update the center cell if the candidate is further from the constraints
 			if (cell.getDistance() > farthestD) {
 				farthestCell = cell;
 				farthestD = farthestCell.getDistance();
 			}
-
 			/*
 			 * If this cell may contain a better approximation to the center of the empty
 			 * circle, then refine it (partition into subcells which are added into the
@@ -222,7 +221,7 @@ public class LargestEmptyCircles {
 					 * Cell is inside the boundary. It may contain the center if the maximum
 					 * possible distance is greater than the current distance (up to tolerance).
 					 */
-					double potentialIncrease = cell.getMaxDistance() - farthestCell.getDistance();
+					double potentialIncrease = cell.getMaxDistance() - farthestD;
 					if (potentialIncrease > tolerance) {
 						enqueueChildren(cell);
 					} else {
@@ -231,7 +230,7 @@ public class LargestEmptyCircles {
 				}
 			}
 		}
-		// the farthest cell is the best approximation to the LEC center
+
 		final Cell lecCell = farthestCell;
 		final double r = lecCell.distance;
 		final double[] circle = new double[] { lecCell.getX(), lecCell.getY(), r };
@@ -240,23 +239,67 @@ public class LargestEmptyCircles {
 		return circle;
 	}
 
-	// split the cell into four sub-cells
 	private void enqueueChildren(final Cell cell) {
 		final double h2 = cell.getHSide() / 2;
+		final double parentDist = cell.getDistance();
+		final double farthestD = (farthestCell != null) ? farthestCell.getDistance() : Double.NEGATIVE_INFINITY;
 
-		cellQueue.add(createCell(cell.x - h2, cell.y - h2, h2));
-		cellQueue.add(createCell(cell.x + h2, cell.y - h2, h2));
-		cellQueue.add(createCell(cell.x - h2, cell.y + h2, h2));
-		cellQueue.add(createCell(cell.x + h2, cell.y + h2, h2));
+		// The max potential increase from parent's center to any point in a child cell
+		// is dist(parent_center, child_corner) = sqrt((h2)^2 + (h2)^2) = h2*sqrt(2)
+		// The max distance in a child cell is at its corner, which is h2*sqrt(2) from
+		// its center.
+		// So, an upper bound on a child's maxDist is parentDist + 2 * h2 * SQRT2
+		double maxChildPotential = parentDist + 2 * h2 * Math.sqrt(2);
+
+		if (maxChildPotential <= farthestD + tolerance) {
+			// Even the most optimistic estimate for any child of this cell
+			// won't beat the current best. So we don't need to subdivide.
+			// We might still need to keep this cell for the next iteration.
+			nextIterCells.add(cell);
+			return;
+		}
+
+		Cell c1 = createCellIfPromising(cell.x - h2, cell.y - h2, h2, farthestD);
+		Cell c2 = createCellIfPromising(cell.x + h2, cell.y - h2, h2, farthestD);
+		Cell c3 = createCellIfPromising(cell.x - h2, cell.y + h2, h2, farthestD);
+		Cell c4 = createCellIfPromising(cell.x + h2, cell.y + h2, h2, farthestD);
+
+		Cell[] kids = new Cell[] { c1, c2, c3, c4 };
+		Arrays.sort(kids, (a, b) -> {
+			if (a == null && b == null)
+				return 0;
+			if (a == null)
+				return -1; // nulls go first
+			if (b == null)
+				return 1;
+			return Double.compare(a.getMaxDistance(), b.getMaxDistance());
+		});
+
+		for (Cell k : kids) {
+			if (k != null) {
+				cellStack.addLast(k);
+			}
+		}
 	}
 
-	/**
-	 * Initializes the queue with a grid of cells covering the extent of the area.
-	 * 
-	 * @param env       the area extent to cover
-	 * @param cellQueue the queue to initialize
-	 */
-	private void createInitialGrid(Envelope env, Collection<Cell> cellQueue) {
+	// Helper method to create a cell only if it's worth investigating
+	private Cell createCellIfPromising(final double x, final double y, final double h, double farthestD) {
+		// We can't use the Lipschitz bound here because we don't know the parent's
+		// distance,
+		// but we can check the cell after creation before adding it.
+		// The main pruning is the check in enqueueChildren. This is a secondary check.
+		Cell c = createCell(x, y, h);
+		if (c.getMaxDistance() > farthestD + tolerance) {
+			return c;
+		}
+		// If not promising, but might be useful for the next LEC search, add it there.
+		if (!c.isFullyOutside()) {
+			nextIterCells.add(c);
+		}
+		return null;
+	}
+
+	private void createInitialGrid(Envelope env, Collection<Cell> target) {
 		double minX = env.getMinX();
 		double maxX = env.getMaxX();
 		double minY = env.getMinY();
@@ -266,10 +309,9 @@ public class LargestEmptyCircles {
 		double cellSize = Math.min(width, height);
 		double hSize = cellSize / 2.0;
 
-		// compute initial grid of cells to cover area
 		for (double x = minX; x < maxX; x += cellSize) {
 			for (double y = minY; y < maxY; y += cellSize) {
-				cellQueue.add(createCell(x + hSize, y + hSize, hSize));
+				target.add(createCell(x + hSize, y + hSize, hSize));
 			}
 		}
 	}
@@ -280,19 +322,11 @@ public class LargestEmptyCircles {
 		return c;
 	}
 
-	// create a cell centered on area centroid
 	private Cell createCentroidCell(Geometry geom) {
 		Point p = geom.getCentroid();
 		return new Cell(p.getX(), p.getY(), 0, distanceToConstraints(p));
 	}
 
-	/**
-	 * A square grid cell centered on a given point with a given side half-length,
-	 * and having a given distance from the center point to the constraints. The
-	 * maximum possible distance from any point in the cell to the constraints can
-	 * be computed. This is used as the ordering and upper-bound function in the
-	 * branch-and-bound algorithm.
-	 */
 	private static class Cell implements Comparable<Cell> {
 
 		private static final double SQRT2 = 1.4142135623730951;
@@ -304,64 +338,59 @@ public class LargestEmptyCircles {
 		private double maxDist;
 
 		Cell(double x, double y, double hSide, double distanceToConstraints) {
-			this.x = x; // cell center x
-			this.y = y; // cell center y
-			this.hSide = hSide; // half the cell size
-
-			// the distance from cell center to constraints
+			this.x = x;
+			this.y = y;
+			this.hSide = hSide;
 			distance = distanceToConstraints;
-
-			/*
-			 * The maximum possible distance to the constraints for points in this cell is
-			 * the center distance plus the radius (half the diagonal length).
-			 */
 			this.maxDist = distance + hSide * SQRT2;
 		}
 
+		// CHANGED: sqrt-free early-rejection for circle; only take sqrt if it might
+		// improve
 		public void updateDistance(double[] c) {
-			double deltaX = x - c[0];
-			double deltaY = y - c[1];
-			// for now d is circle-cell-center dist
-			double d = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-			double r = c[2];
+			final double dx = x - c[0];
+			final double dy = y - c[1];
+			final double dsq = dx * dx + dy * dy;
+			final double r = c[2];
 
-			if (d < r) {
-				d = -(r - d); // negative (inside the circle)
-			} else {
-				// d is distance from cell center to circle boundary
-				d -= r;
-			}
-
-			if (d < distance) {
-				distance = d;
-				maxDist = distance + hSide * SQRT2;
+			double D = distance;
+			double t = D + r; // improvement only possible if sqrt(dsq) < D + r
+			if (t > 0) {
+				double tsq = t * t;
+				if (dsq < tsq) {
+					double d = Math.sqrt(dsq) - r; // signed (negative when inside)
+					if (d < D) {
+						distance = d;
+						maxDist = distance + hSide * SQRT2;
+					}
+				}
 			}
 		}
 
-		/**
-		 * Updates the distance of this cell based on circle constraints. Distance
-		 * between circle boundary is used.
-		 */
+		// CHANGED: sqrt-free early-rejection loop over all circles
 		public void updateDistance(List<double[]> circles) {
-			double minCircleDist = Double.MAX_VALUE;
+			double D = distance;
 			for (double[] c : circles) {
-				double deltaX = x - c[0];
-				double deltaY = y - c[1];
-				// for now d is circle-cell-center dist
-				double d = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-				double r = c[2];
-
-				if (d < r) {
-					d = -(r - d); // negative (inside the circle)
-				} else {
-					// d is distance from cell center to circle boundary
-					d -= r;
+				final double r = c[2];
+				double t = D + r;
+				if (t <= 0) {
+					// No circle can improve when D <= -r for this circle
+					continue;
 				}
-				minCircleDist = Math.min(minCircleDist, d);
-			}
+				final double dx = x - c[0];
+				final double dy = y - c[1];
+				final double dsq = dx * dx + dy * dy;
+				final double tsq = t * t;
 
-			if (minCircleDist < distance) {
-				distance = minCircleDist;
+				if (dsq < tsq) {
+					double d = Math.sqrt(dsq) - r; // signed (negative when inside)
+					if (d < D) {
+						D = d;
+					}
+				}
+			}
+			if (D < distance) {
+				distance = D;
 				maxDist = distance + hSide * SQRT2;
 			}
 		}
@@ -394,9 +423,6 @@ public class LargestEmptyCircles {
 			return y;
 		}
 
-		/**
-		 * A cell is greater if its maximum distance is larger.
-		 */
 		@Override
 		public int compareTo(Cell o) {
 			return (int) (o.maxDist - this.maxDist);

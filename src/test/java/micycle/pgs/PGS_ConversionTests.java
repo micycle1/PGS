@@ -17,6 +17,7 @@ import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.PrecisionModel;
 
+import micycle.pgs.PGS_Conversion.PShapeData;
 import micycle.pgs.color.ColorUtils;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -352,14 +353,14 @@ class PGS_ConversionTests {
 
 	@Test
 	void testVertexRounding() {
-		final PShape shape = new PShape(PShape.GEOMETRY);
+		PShape shape = new PShape(PShape.GEOMETRY);
 		shape.beginShape();
 		shape.vertex(12.4985f, -97.234f);
 		shape.vertex(10, -10);
 		shape.vertex(999.99f, 0.0001f);
 		shape.endShape(PConstants.CLOSE); // close affects rendering only -- does not append another vertex
 
-		PGS_Conversion.roundVertexCoords(shape);
+		shape = PGS_Conversion.roundVertexCoords(shape);
 
 		assertEquals(12, shape.getVertex(0).x);
 		assertEquals(-97, shape.getVertex(0).y);
@@ -367,6 +368,25 @@ class PGS_ConversionTests {
 		assertEquals(-10, shape.getVertex(1).y);
 		assertEquals(1000, shape.getVertex(2).x);
 		assertEquals(0, shape.getVertex(2).y);
+	}
+	
+	@Test
+	void testVertexRounding1DP() {
+		PShape shape = new PShape(PShape.GEOMETRY);
+		shape.beginShape();
+		shape.vertex(12.4985f, -97.234f);
+		shape.vertex(10, -10);
+		shape.vertex(999.34f, 0.049f);
+		shape.endShape(PConstants.CLOSE);
+		
+		shape = PGS_Conversion.roundVertexCoords(shape, 1);
+		
+		assertEquals(12.5, shape.getVertex(0).x, 1e-5);
+		assertEquals(-97.2, shape.getVertex(0).y, 1e-5);
+		assertEquals(10, shape.getVertex(1).x, 1e-5);
+		assertEquals(-10, shape.getVertex(1).y, 1e-5);
+		assertEquals(999.3, shape.getVertex(2).x, 2e-5);
+		assertEquals(0, shape.getVertex(2).y, 1e-5);
 	}
 
 	@Test
@@ -398,13 +418,22 @@ class PGS_ConversionTests {
 		PShape a = PGS_Construction.createSierpinskiCurve(0, 0, 10, 3);
 		PShape b = PGS_Construction.createHeart(0, 0, 10);
 		PShape group = PGS_Conversion.flatten(a, b);
+		PGS_Conversion.setAllFillColor(group, 1337);
+		PShapeData d = new PShapeData(group.getChild(0));
+		assertEquals(1337, d.fillColor);
 		
 		PShape copy = PGS_Conversion.copy(group);
 
+		// test geom structure preserved
 		assertTrue(PGS_ShapePredicates.equalsNorm(group, copy));
 		
 		copy.getChild(0).setVertex(0, -999,-999); // shouldn't change group
 		assertFalse(PGS_ShapePredicates.equalsNorm(group, copy));
+		
+		// test styling preserved
+		d = new PShapeData(copy.getChild(0));
+		
+		assertEquals(1337, d.fillColor);
 	}
 
 	@Test

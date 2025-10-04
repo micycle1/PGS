@@ -65,7 +65,7 @@ public class IncrementalTinDual {
 	 */
 	private void createDualEdges() {
 		tin.getEdgeIterator().forEachRemaining(e -> { // iterates base edges only
-			if (hasConstraints && !e.isConstrainedRegionInterior()) {
+			if (hasConstraints && !e.isConstraintRegionInterior()) {
 				// TODO keep unconstrained edges, but mark as unconstrained?
 				return;
 			}
@@ -101,7 +101,7 @@ public class IncrementalTinDual {
 			final HashSet<Vertex> seenHubs = new HashSet<>();
 
 			edgeDuals.keySet().forEach(edge -> {
-				if (hasConstraints && !edge.isConstrainedRegionInterior()) {
+				if (hasConstraints && !edge.isConstraintRegionInterior()) {
 					return;
 				}
 

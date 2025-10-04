@@ -18,11 +18,8 @@ import org.apache.commons.math3.ml.distance.EuclideanDistance;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.commons.math3.util.Pair;
-import org.jgrapht.alg.interfaces.HamiltonianCycleAlgorithm;
 import org.jgrapht.alg.interfaces.SpanningTreeAlgorithm;
 import org.jgrapht.alg.spanning.PrimMinimumSpanningTree;
-import org.jgrapht.alg.tour.FarthestInsertionHeuristicTSP;
-import org.jgrapht.alg.tour.TwoOptHeuristicTSP;
 import org.jgrapht.graph.SimpleGraph;
 import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.Vertex;
@@ -33,6 +30,7 @@ import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
 import micycle.pgs.commons.GeometricMedian;
+import micycle.pgs.commons.GreedyTSP;
 import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.PoissonDistributionJRUS;
 import micycle.pgs.commons.ThomasPointProcess;
@@ -43,9 +41,27 @@ import processing.core.PVector;
  * Generation of random sets of 2D points having a variety of different
  * distributions and constraints (and associated functions).
  * 
+ * <p>
+ * <strong>Note on Floating-Point Values and Collisions:</strong>
+ * </p>
+ * <p>
+ * When generating many random points, collisions in coordinate values are
+ * expected due to the limited precision of floating-point numbers. For example:
+ * <ul>
+ * <li>A {@code float} has ~24 bits of precision (23 explicit mantissa bits + 1
+ * implicit leading bit), which allows for ~16.8 million unique values in the
+ * range [0, 1).</li>
+ * <li>When generating a large number of points (e.g., 100,000), the probability
+ * of collisions follows the birthday paradox formula: <code>n² / (2m)</code>,
+ * where <code>n</code> is the number of samples and <code>m</code> is the
+ * number of possible unique values.</li>
+ * <li>For 100,000 points, this results in ~300 expected collisions in the
+ * x-coordinate, even when using a high-quality random number generator.</li>
+ * </ul>
+ * </p>
+ * 
  * @author Michael Carleton
  * @since 1.2.0
- *
  */
 public final class PGS_PointSet {
 
@@ -120,6 +136,132 @@ public final class PGS_PointSet {
 		// Collect vertices within the distance tolerance
 		return vertexDistanceMap.object2DoubleEntrySet().stream().filter(entry -> entry.getDoubleValue() <= toleranceSquared)
 				.map(entry -> new PVector((float) entry.getKey().getX(), (float) entry.getKey().getY())).toList();
+	}
+
+	/**
+	 * Remove exactly removeCount points chosen uniformly at random. The returned
+	 * list contains the remaining points in the original iteration order.
+	 *
+	 * @param points      collection of PVector points
+	 * @param removeCount number of points to remove (must be >= 0)
+	 * @return new List<PVector> containing the remaining points
+	 * @since 2.1
+	 */
+	public static List<PVector> pruneRandomRemoveN(Collection<PVector> points, int removeCount) {
+		return pruneRandomRemoveN(points, removeCount, System.nanoTime());
+	}
+
+	/**
+	 * Remove exactly removeCount points chosen uniformly at random, using the
+	 * provided seed.
+	 *
+	 * @param points      collection of PVector points
+	 * @param removeCount number of points to remove (must be >= 0)
+	 * @param seed        RNG seed for reproducibility
+	 * @return new List<PVector> containing the remaining points
+	 * @since 2.1
+	 */
+	public static List<PVector> pruneRandomRemoveN(Collection<PVector> points, int removeCount, long seed) {
+		if (removeCount < 0) {
+			throw new IllegalArgumentException("removeCount must be non-negative");
+		}
+		List<PVector> list = new ArrayList<>(points);
+		final int size = list.size();
+		if (removeCount <= 0) {
+			return new ArrayList<>(list);
+		}
+		if (removeCount >= size) {
+			return new ArrayList<>(); // everything removed
+		}
+
+		// sample removeCount distinct indices using partial Fisher-Yates
+		int[] indices = new int[size];
+		for (int i = 0; i < size; i++) {
+			indices[i] = i;
+		}
+		RandomGenerator r = new XoRoShiRo128PlusRandomGenerator(seed);
+		for (int i = 0; i < removeCount; i++) {
+			int j = i + r.nextInt(size - i);
+			int tmp = indices[i];
+			indices[i] = indices[j];
+			indices[j] = tmp;
+		}
+
+		boolean[] remove = new boolean[size];
+		for (int k = 0; k < removeCount; k++) {
+			remove[indices[k]] = true;
+		}
+
+		List<PVector> out = new ArrayList<>(size - removeCount);
+		for (int i = 0; i < size; i++) {
+			if (!remove[i]) {
+				out.add(list.get(i));
+			}
+		}
+		return out;
+	}
+
+	/**
+	 * Keep exactly keepCount points chosen uniformly at random. The returned list
+	 * contains the kept points in the original iteration order.
+	 *
+	 * @param points    collection of PVector points
+	 * @param keepCount number of points to keep (must be >= 0)
+	 * @return new List<PVector> containing the kept points
+	 * @since 2.1
+	 */
+	public static List<PVector> pruneRandomToN(Collection<PVector> points, int keepCount) {
+		return pruneRandomToN(points, keepCount, System.nanoTime());
+	}
+
+	/**
+	 * Keep exactly keepCount points chosen uniformly at random, using the provided
+	 * seed.
+	 *
+	 * @param points    collection of PVector points
+	 * @param keepCount number of points to keep (must be >= 0)
+	 * @param seed      RNG seed for reproducibility
+	 * @return new List<PVector> containing the kept points
+	 * @since 2.1
+	 */
+	public static List<PVector> pruneRandomToN(Collection<PVector> points, int keepCount, long seed) {
+		if (keepCount < 0) {
+			throw new IllegalArgumentException("keepCount must be non-negative");
+		}
+		List<PVector> list = new ArrayList<>(points);
+		final int size = list.size();
+		if (keepCount <= 0) {
+			return new ArrayList<>();
+		}
+		if (keepCount >= size) {
+			return new ArrayList<>(list);
+		}
+
+		// sample keepCount distinct indices using partial Fisher-Yates
+		int[] indices = new int[size];
+		for (int i = 0; i < size; i++) {
+			indices[i] = i;
+		}
+		RandomGenerator r = new XoRoShiRo128PlusRandomGenerator(seed);
+		for (int i = 0; i < keepCount; i++) {
+			int j = i + r.nextInt(size - i);
+			int tmp = indices[i];
+			indices[i] = indices[j];
+			indices[j] = tmp;
+		}
+
+		boolean[] keep = new boolean[size];
+		for (int k = 0; k < keepCount; k++) {
+			keep[indices[k]] = true;
+		}
+
+		List<PVector> out = new ArrayList<>(keepCount);
+		for (int i = 0; i < size; i++) {
+			if (keep[i]) {
+				out.add(list.get(i));
+			}
+		}
+		return out;
 	}
 
 	/**
@@ -239,8 +381,8 @@ public final class PGS_PointSet {
 		final SplittableRandom random = new SplittableRandom(seed);
 		final List<PVector> points = new ArrayList<>(n);
 		for (int i = 0; i < n; i++) {
-			final float x = (float) (xMin + (xMax - xMin) * random.nextDouble());
-			final float y = (float) (yMin + (yMax - yMin) * random.nextDouble());
+			final float x = (float) random.nextDouble(xMin, xMax);
+			final float y = (float) random.nextDouble(yMin, yMax);
 			points.add(new PVector(x, y));
 		}
 		return points;
@@ -297,9 +439,8 @@ public final class PGS_PointSet {
 	 * 
 	 * @param xMin x-coordinate of boundary minimum
 	 * @param yMin y-coordinate of boundary minimum
-	 * @param xMax x-coordinate of boundary maximum
-	 * @param yMax y-coordinate of boundary maximum
-	 * @return
+	 * @param xMax x-coordinate of boundary maximum (inclusive)
+	 * @param yMax y-coordinate of boundary maximum (inclusive)
 	 */
 	public static List<PVector> squareGrid(final double xMin, final double yMin, final double xMax, final double yMax, final double pointDistance) {
 		final double width = xMax - xMin;
@@ -307,8 +448,8 @@ public final class PGS_PointSet {
 
 		final List<PVector> points = new ArrayList<>();
 
-		for (double x = 0; x < width; x += pointDistance) {
-			for (double y = 0; y < height; y += pointDistance) {
+		for (double x = 0; x <= width; x += pointDistance) {
+			for (double y = 0; y <= height; y += pointDistance) {
 				points.add(new PVector((float) (x + xMin), (float) (y + yMin)));
 			}
 		}
@@ -956,16 +1097,12 @@ public final class PGS_PointSet {
 
 	/**
 	 * Computes an <i>approximate</i> Traveling Salesman path for the set of points
-	 * provided. Utilises a heuristic based TSP solver, starting with the farthest
-	 * insertion method followed by 2-opt heuristic improvements for tour
-	 * optimization.
-	 * <p>
-	 * Note: The algorithm's runtime grows rapidly as the number of points
-	 * increases. Large datasets (>1000) may result in long computation times and
-	 * should be used with caution.
+	 * provided. Utilises a heuristic based TSP solver, followed by 2-opt heuristic
+	 * improvements for further tour optimisation.
 	 * <p>
 	 * Note {@link PGS_Hull#concaveHullBFS(List, double) concaveHullBFS()} produces
-	 * a similar result (somewhat longer tours) but is <b>much</b> more performant.
+	 * a similar result (somewhat longer tours, i.e. 10%) but is <b>much</b> more
+	 * performant.
 	 * 
 	 * @param points the list of points for which to compute the approximate
 	 *               shortest tour
@@ -975,14 +1112,8 @@ public final class PGS_PointSet {
 	 * @since 2.0
 	 */
 	public static PShape findShortestTour(List<PVector> points) {
-		HamiltonianCycleAlgorithm<PVector, PEdge> tsp = new FarthestInsertionHeuristicTSP<>();
-		TwoOptHeuristicTSP<PVector, PEdge> tspImprover = new TwoOptHeuristicTSP<>();
-
-		var graph = PGS.makeCompleteGraph(points);
-		var tour = tsp.getTour(graph);
-		tour = tspImprover.improveTour(tour);
-
-		return PGS_Conversion.fromPVector(tour.getVertexList());
+		var tour = new GreedyTSP<>(points, (a, b) -> a.dist(b));
+		return PGS_Conversion.fromPVector(tour.getTour());
 	}
 
 	/**

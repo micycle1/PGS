@@ -43,6 +43,8 @@ import processing.core.PShape;
  * @since 1.2.0
  */
 public final class PGS_Coloring {
+	
+	public static long SEED = 1337;
 
 	private PGS_Coloring() {
 	}
@@ -256,16 +258,16 @@ public final class PGS_Coloring {
 				break;
 			case RLF_BRUTE_FORCE_4COLOR :
 				int iterations = 0;
-				long seed = 1337;
+				long seed = SEED; // init as default
 				do {
 					coloring = new RLFColoring<>(graph, seed).getColoring();
-					seed = ThreadLocalRandom.current().nextLong();
+					seed = ThreadLocalRandom.current().nextLong(); // randomise seed
 					iterations++;
 				} while (coloring.getNumberColors() > 4 && iterations < 250);
 				break;
 			case RLF :
 			default :
-				coloring = new RLFColoring<>(graph, 1337).getColoring(); // NOTE fixed seed of 1337
+				coloring = new RLFColoring<>(graph, SEED).getColoring(); // NOTE fixed seed of 1337
 		}
 		return coloring;
 	}
