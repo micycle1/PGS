@@ -778,7 +778,7 @@ public final class PGS_Processing {
 			out.addChild(toPShape(GEOM_FACTORY.createMultiPolygon(derivedPolygons)));
 		});
 
-		return out.getChildCount() == 1 ? out.getChild(1) : out;
+		return out.getChildCount() == 1 ? out.getChild(0) : out;
 	}
 
 	/**

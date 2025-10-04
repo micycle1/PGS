@@ -787,35 +787,29 @@ public class PGS_Construction {
 	 * @return a stroked PATH PShape with SQUARE stroke cap and MITER joins
 	 * @since 1.3.0
 	 */
-	public static PShape createRectangularSpiral(float x, float y, float width, float height, float spacing) {
-		float xx = -width / 2;
-		float yy = -height / 2;
+	public static PShape createRectangularSpiral(double x, double y, double width, double height, double spacing) {
+		double xx = -width / 2.0;
+		double yy = -height / 2.0;
 		int count = 0;
 		// below is used to dictate spiral orientation & starting point
-//		if (count == 1) {
-//			xx *= -1;
-//		}
-//		if (count == 2) {
-//			xx *= -1;
-//			yy *= -1;
-//		}
-//		if (count == 3) {
-//			yy *= -1;
-//		}
-		final float offX = x + width / 2;
-		final float offY = y + height / 2;
+		// if (count == 1) { xx *= -1; }
+		// if (count == 2) { xx *= -1; yy *= -1; }
+		// if (count == 3) { yy *= -1; }
+		final double offX = x + width / 2.0;
+		final double offY = y + height / 2.0;
 		final PShape spiral = new PShape(PShape.PATH);
 		spiral.setFill(false);
 		spiral.setStroke(true);
-		spiral.setStrokeWeight(5);
-//		spiral.setStrokeWeight(spacing * 0.333f);
+		spiral.setStrokeWeight(5f);
+		// spiral.setStrokeWeight((float)(spacing * 0.333));
 		spiral.setStroke(Colors.WHITE);
 		spiral.setStrokeJoin(PConstants.MITER);
 		spiral.setStrokeCap(PConstants.SQUARE);
 		spiral.beginShape();
-		while (width > 0 && height > 0) {
+		while (width > 0.0 && height > 0.0) {
 			int dir = count % 4;
-			spiral.vertex(xx + offX, yy + offY);
+			// cast to float for Processing's vertex API
+			spiral.vertex((float) (xx + offX), (float) (yy + offY));
 			if (dir == 0) {
 				xx += width;
 				width -= spacing;

@@ -374,7 +374,7 @@
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>GeoBlitz</artifactId>
-			<version>c8dbe31b77</version>
+			<version>0.9</version>
 		</dependency>
 	</dependencies>
 
