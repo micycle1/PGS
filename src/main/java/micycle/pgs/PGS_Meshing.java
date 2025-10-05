@@ -1,6 +1,7 @@
 package micycle.pgs;
 
 import static micycle.pgs.PGS_Conversion.fromPShape;
+import static micycle.pgs.PGS_Conversion.toPShape;
 import static micycle.pgs.PGS_Conversion.getChildren;
 
 import java.util.ArrayList;
@@ -36,6 +37,7 @@ import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.index.strtree.STRtree;
 import org.locationtech.jts.noding.SegmentString;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
+import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.tinfour.common.IConstraint;
 import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.IQuadEdge;
@@ -45,6 +47,7 @@ import org.tinfour.utils.TriangleCollector;
 import org.tinspin.index.PointMap;
 import org.tinspin.index.kdtree.KDTree;
 
+import com.github.micycle1.geoblitz.EndpointSnapper;
 import com.vividsolutions.jcs.conflate.coverage.CoverageCleaner;
 import com.vividsolutions.jcs.conflate.coverage.CoverageCleaner.Parameters;
 import com.vividsolutions.jump.feature.FeatureCollection;
@@ -546,9 +549,9 @@ public class PGS_Meshing {
 		Set<SimpleTriangle> seen = new HashSet<>(g.vertexSet());
 		var quads = collapsedEdges.stream().map(e -> {
 			var t1 = g.getEdgeSource(e);
-			var f1 = toPShape(t1);
+			var f1 = triToPShape(t1);
 			var t2 = g.getEdgeTarget(e);
-			var f2 = toPShape(t2);
+			var f2 = triToPShape(t2);
 
 			seen.remove(t1);
 			seen.remove(t2);
@@ -558,7 +561,7 @@ public class PGS_Meshing {
 
 		// include uncollapsed triangles (if any)
 		seen.forEach(t -> {
-			quads.add(toPShape(t));
+			quads.add(triToPShape(t));
 		});
 
 		return PGS_Conversion.flatten(quads);
@@ -982,21 +985,93 @@ public class PGS_Meshing {
 	}
 
 	/**
+	 * Repairs broken faces in near-coverage linework using endpoint-only snapping,
+	 * then polygonises the result.
+	 * <p>
+	 * Targets face-level defects in a line arrangement that is intended to form a
+	 * valid coverage but doesn’t quite join exactly (e.g., near-misses, tiny
+	 * endpoint gaps, unclosed rings). It performs endpoint-only snapping within
+	 * {@code tolerance} and then polygonises the result.
+	 * </p>
+	 * <ul>
+	 * <li>Performs Endpoint-only snapping (not general vertex snapping):
+	 * <ul>
+	 * <li>Only line endpoints move; interior vertices are not adjusted, and polygon
+	 * vertices are never moved.</li>
+	 * <li>Endpoints (and polygon vertices) within {@code tolerance} form transitive
+	 * clusters.</li>
+	 * <li>If a cluster contains any polygon vertex, endpoints snap to that vertex
+	 * (polygons act as fixed anchors).</li>
+	 * <li>If a cluster contains only endpoints, they snap mutually to the cluster
+	 * mean, closing gaps where no valid nodes exist yet.</li>
+	 * <li>Closed LineStrings are treated as polygons and ignored for snapping.</li>
+	 * </ul>
+	 * </li>
+	 * <li>Polygonisation:
+	 * <ul>
+	 * <li>Builds faces from the snapped linework and returns a flattened shape
+	 * containing faces, cut edges, and dangles.</li>
+	 * </ul>
+	 * </li>
+	 * </ul>
+	 * <p>
+	 * Outcome: This focuses on repairing faces from near-coverage linework. As a
+	 * side effect, it often yields a valid or more valid coverage, but it is not a
+	 * general cleaner for inter-face gaps/overlaps.
+	 * </p>
+	 * <p>
+	 * For cleaning breaks between faces (gaps, overlaps, slivers, misaligned shared
+	 * edges) in an existing coverage, use {@link #fixBreaks(PShape, double, double)
+	 * fixBreaks()}.
+	 * </p>
+	 *
+	 * @param coverage  input coverage as a {@link PShape}; may include polygons and
+	 *                  broken boundary lines
+	 * @param tolerance maximum distance within which endpoints may be
+	 *                  clustered/snapped
+	 * @return a flattened {@link PShape} containing polygonal faces, and any
+	 *         remaining linework
+	 * @see #fixBreaks(PShape, double, double)
+	 * @since 2.2
+	 */
+	@SuppressWarnings("unchecked")
+	public static PShape fixBrokenFaces(PShape coverage, double tolerance) {
+		var g = fromPShape(coverage);
+		EndpointSnapper snapper = new EndpointSnapper(tolerance);
+		var fixed = snapper.snapEndpoints(g, true);
+
+		Polygonizer p = new Polygonizer(false);
+		p.add(fixed);
+		var polys = toPShape(p.getPolygons());
+		var cuts = toPShape(p.getCutEdges());
+		var dangles = toPShape(p.getDangles());
+
+		return PGS_Conversion.flatten(polys, cuts, dangles);
+	}
+
+	/**
 	 * Removes gaps and overlaps from meshes/polygon collections that are intended
 	 * to satisfy the following conditions:
 	 * <ul>
-	 * <li>Vector-clean - edges between neighbouring polygons must either be
+	 * <li>Vector-clean — edges between neighbouring polygons must either be
 	 * identical or intersect only at endpoints.</li>
-	 * <li>Non-overlapping - No two polygons may overlap. Equivalently, polygons
-	 * must be interior-disjoint.</li>
+	 * <li>Non-overlapping — no two polygons may overlap (polygons are
+	 * interior-disjoint).</li>
 	 * </ul>
 	 * <p>
-	 * It may not always be possible to perfectly clean the input.
+	 * Note: This operates on breaks <b>between</b> faces (inter-polygon gaps,
+	 * overlaps, slivers, and misaligned shared edges), not on “broken” faces / line
+	 * arrangements with unclosed lines or endpoint gaps. For repairing broken faces
+	 * via endpoint-only snapping, see {@link #fixBrokenFaces(PShape, double)
+	 * fixBrokenFaces()}.
+	 * </p>
 	 * <p>
-	 * While this method is intended to be used to fix malformed coverages, it also
-	 * can be used to snap collections of disparate polygons together.
-	 * 
-	 * @param coverage          a GROUP shape, consisting of the polygonal faces to
+	 * It may not always be possible to perfectly clean the input. While this method
+	 * is intended for malformed coverages, it can also snap collections of
+	 * disparate polygons together.
+	 * </p>
+	 *
+	 * @param coverage          a GROUP shape consisting of the polygonal faces to
 	 *                          clean
 	 * @param distanceTolerance the distance below which segments and vertices are
 	 *                          considered to match
@@ -1005,6 +1080,7 @@ public class PGS_Meshing {
 	 * @return GROUP shape whose child polygons satisfy a (hopefully) valid coverage
 	 * @since 1.3.0
 	 * @see #findBreaks(PShape)
+	 * @see #fixBrokenFaces(PShape, double)
 	 */
 	public static PShape fixBreaks(PShape coverage, double distanceTolerance, double angleTolerance) {
 		final List<Geometry> geometries = PGS_Conversion.getChildren(coverage).stream().map(PGS_Conversion::fromPShape).collect(Collectors.toList());
@@ -1171,7 +1247,7 @@ public class PGS_Meshing {
 		return new Vertex(x, y, 0);
 	}
 
-	private static PShape toPShape(SimpleTriangle t) {
+	private static PShape triToPShape(SimpleTriangle t) {
 		PVector vertexA = new PVector((float) t.getVertexA().x, (float) t.getVertexA().y);
 		PVector vertexB = new PVector((float) t.getVertexB().x, (float) t.getVertexB().y);
 		PVector vertexC = new PVector((float) t.getVertexC().x, (float) t.getVertexC().y);
