@@ -2,7 +2,15 @@
 
 # Processing Geometry Suite
 
+**⚠️ IMPORTANT NOTICE: This is a re-distribution of the original PGS library to Maven Central**
+
+This repository contains a re-distribution of the original [Processing Geometry Suite (PGS)](https://github.com/micycle1/PGS) library, made available on Maven Central under the `org.datasyslab` group ID for easier integration into Maven and Gradle projects.
+
 *Processing Geometry Suite* is a software project that provides easy access to 2D geometric algorithms in the form of a [Processing](https://processing.org/) library. Over time it has grown to include an incredibly comprehensive range of algorithms.
+
+**Original Repository**: [https://github.com/micycle1/PGS](https://github.com/micycle1/PGS)  
+**Original Author**: Michael Carleton (micycle1)  
+**Re-distribution**: Jia Yu (jiayu@apache.org)
 
 The focus of the library is on visualisation rather than providing underlying data structures. To this end all methods in the library are static and most of them take in and return [`PShapes`](https://processing.org/reference/PShape.html) or [`PVectors`](https://processing.org/reference/PVector.html).
 
@@ -65,7 +73,19 @@ PGS is available on Processing's contribution manager as "Geometry Suite for Pro
 <details><summary>Maven/Gradle</summary>
 <p>
 
-PGS is hosted as an artifact for use in Maven or Gradle projects via [Jitpack](https://jitpack.io/#micycle1/PGS) — follow the instructions there (very easy). 
+PGS is available via multiple sources:
+
+**Maven Central (Recommended)**:
+```xml
+<dependency>
+    <groupId>org.datasyslab</groupId>
+    <artifactId>PGS</artifactId>
+    <version>2.1</version>
+</dependency>
+```
+
+**Jitpack (Original)**:
+PGS is also hosted as an artifact for use in Maven or Gradle projects via [Jitpack](https://jitpack.io/#micycle1/PGS) — follow the instructions there (very easy). 
 </p>
 </details>
 
