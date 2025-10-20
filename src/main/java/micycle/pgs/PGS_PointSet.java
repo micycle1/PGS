@@ -1153,11 +1153,12 @@ public final class PGS_PointSet {
 	 *         with a random weight assigned to its z-coordinate
 	 * @since 2.0
 	 */
-	public static List<PVector> applyRandomWeights(List<PVector> points, double minWeight, double maxWeight, long seed) {
+	public static List<PVector> applyRandomWeights(List<PVector> points, final double minWeight, final double maxWeight, final long seed) {
 		final SplittableRandom random = new SplittableRandom(seed);
 		return points.stream().map(p -> {
 			p = p.copy();
-			p.z = (float) random.nextDouble(minWeight, maxWeight);
+			var w = minWeight == maxWeight ? minWeight : random.nextDouble(minWeight, maxWeight);
+			p.z = (float) w;
 			return p;
 		}).collect(Collectors.toList());
 	}

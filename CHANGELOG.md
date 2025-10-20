@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 * `fixBrokenFaces()` to `PGS_Meshing`. Repairs broken faces in near-coverage linework using endpoint-only snapping, then polygonises the result.
 
+### Fixed
+`PGS_Optimisation.closestPoint()` now returns the nearest location on the shape's boundary for queries inside a polygonal shape (previously returned the query point itself).
+
 ## **2.1** *(2025-10-04)*
 
 ### Added

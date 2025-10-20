@@ -1365,7 +1365,7 @@ public class PGS_Construction {
 		int nPts = (int) Math.ceil(2 * Math.PI / Math.acos(1 - maxDeviation / r));
 		nPts = Math.max(nPts, 21); // min of 21 points for tiny circles
 		final int circumference = (int) (Math.PI * r * 2);
-		if (nPts > circumference * 2) {
+		if (nPts > circumference * 2 && circumference > 0) {
 			// AT MOST 1 point every half pixel
 			nPts = circumference * 2;
 		}

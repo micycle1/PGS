@@ -875,10 +875,10 @@ public final class PGS_Optimisation {
 		if (vertices.isEmpty()) {
 			return null;
 		}
-		float minDistSq = Float.POSITIVE_INFINITY;
+		double minDistSq = Double.POSITIVE_INFINITY;
 		PVector closest = null;
-		for (PVector v : vertices) {
-			float distSq = PVector.dist(v, queryPoint);
+		for (PVector v : vertices) {			
+			double distSq = PGS.distanceSq(v, queryPoint);
 			if (distSq < minDistSq) {
 				minDistSq = distSq;
 				closest = v;
@@ -910,7 +910,7 @@ public final class PGS_Optimisation {
 	 */
 	public static PVector closestPoint(PShape shape, PVector point) {
 		Geometry g = fromPShape(shape);
-		Coordinate coord = DistanceOp.nearestPoints(g, PGS.pointFromPVector(point))[0];
+		Coordinate coord = DistanceOp.nearestPoints(g.getBoundary(), PGS.pointFromPVector(point))[0];
 		return new PVector((float) coord.x, (float) coord.y);
 	}
 
@@ -956,9 +956,9 @@ public final class PGS_Optimisation {
 	 */
 	public static List<PVector> closestPoints(PShape shape, PVector point) {
 		Geometry g = fromPShape(shape);
-		ArrayList<PVector> points = new ArrayList<>();
+		List<PVector> points = new ArrayList<>();
 		for (int i = 0; i < g.getNumGeometries(); i++) {
-			final Coordinate coord = DistanceOp.nearestPoints(g.getGeometryN(i), PGS.pointFromPVector(point))[0];
+			final Coordinate coord = DistanceOp.nearestPoints(g.getGeometryN(i).getBoundary(), PGS.pointFromPVector(point))[0];
 			points.add(PGS.toPVector(coord));
 		}
 		return points;
