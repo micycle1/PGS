@@ -27,6 +27,7 @@ import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.Polygonal;
 import org.locationtech.jts.operation.distance.DistanceOp;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.util.GeometricShapeFactory;
@@ -877,7 +878,7 @@ public final class PGS_Optimisation {
 		}
 		double minDistSq = Double.POSITIVE_INFINITY;
 		PVector closest = null;
-		for (PVector v : vertices) {			
+		for (PVector v : vertices) {
 			double distSq = PGS.distanceSq(v, queryPoint);
 			if (distSq < minDistSq) {
 				minDistSq = distSq;
@@ -1272,22 +1273,30 @@ public final class PGS_Optimisation {
 	}
 
 	/**
-	 * Computes a visibility polygon / isovist, the area visible from a given point
-	 * in a space, considering occlusions caused by obstacles. In this case,
-	 * obstacles comprise the line segments of input shape.
+	 * Computes the visibility polygon (isovist): the region visible from a given
+	 * viewpoint, with occlusions caused by the edges of the supplied shape.
 	 * 
-	 * @param obstacles shape representing obstacles, which may have any manner of
-	 *                  polygon and line geometries.
-	 * @param viewPoint view point from which to compute visibility. If the input if
-	 *                  polygonal, the viewpoint may lie outside the polygon.
-	 * @return a polygonal shape representing the visibility polygon.
+	 * @param obstacles a PShape whose edges serve as occluding obstacles; may
+	 *                  contain polygons and/or lines.
+	 * @param viewPoint the viewpoint from which visibility is computed. If the
+	 *                  input if polygonal, the viewpoint may lie outside the
+	 *                  polygon.
+	 * @return a polygon representing the visible region from {@code viewPoint}
 	 * @since 1.4.0
 	 * @see #visibilityPolygon(PShape, Collection)
 	 */
 	public static PShape visibilityPolygon(PShape obstacles, PVector viewPoint) {
+		var g = fromPShape(obstacles);
+		var p = PGS.pointFromPVector(viewPoint);
+
 		VisibilityPolygon vp = new VisibilityPolygon();
-		vp.addGeometry(fromPShape(obstacles));
-		return toPShape(vp.getIsovist(PGS.coordFromPVector(viewPoint), true));
+		vp.addGeometry(g);
+
+		/*
+		 * Skip adding envelope only when viewpoint is in a polygon.
+		 */
+		var isovist = vp.getIsovist(p.getCoordinate(), (g instanceof Polygonal) ? !g.contains(p) : true);
+		return toPShape(isovist);
 	}
 
 	/**
