@@ -888,32 +888,28 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Finds the polygonal faces formed by a set of intersecting line segments.
-	 * 
-	 * @param lineSegmentVertices a list of PVectors where each pair (couplet) of
-	 *                            PVectors represent the start and end point of one
-	 *                            line segment
-	 * @return a GROUP PShape where each child shape is a face / enclosed area
-	 *         formed between intersecting lines
-	 * @since 1.1.2
+	 * Finds polygonal faces from the given shape's linework.
+	 * <p>
+	 * This method extracts linework from the supplied PShape (including existing
+	 * polygon edges and standalone line primitives), nodes intersections, and
+	 * polygonizes the resulting segment network. Only closed polygonal faces
+	 * (enclosed areas) are returned. Open edges, dangling line segments
+	 * ("dangles"), and isolated lines that do not form a closed ring are ignored
+	 * and dropped — the result contains faces only.
+	 *
+	 * The returned PShape is a GROUP whose children are PShapes representing each
+	 * detected face.
+	 *
+	 * @param shape a PShape whose linework (edges) will be used to find polygonal
+	 *              faces; can include existing polygons or line primitives
+	 * @return a GROUP PShape containing only the polygonal faces discovered from
+	 *         the input linework; dangles and non-enclosed edges are not included
+	 * @since 2.2
 	 */
-	public static PShape polygonizeLines(List<PVector> lineSegmentVertices) {
-		// TODO constructor for LINES PShape
-		if (lineSegmentVertices.size() % 2 != 0) {
-			System.err.println("The input to polygonizeLines() contained an odd number of vertices. The method expects successive pairs of vertices.");
-			return new PShape();
-		}
-
-		final List<SegmentString> segmentStrings = new ArrayList<>(lineSegmentVertices.size() / 2);
-		for (int i = 0; i < lineSegmentVertices.size(); i += 2) {
-			final PVector v1 = lineSegmentVertices.get(i);
-			final PVector v2 = lineSegmentVertices.get(i + 1);
-			if (!v1.equals(v2)) {
-				segmentStrings.add(new NodedSegmentString(new Coordinate[] { PGS.coordFromPVector(v1), PGS.coordFromPVector(v2) }, null));
-			}
-		}
-
-		return PGS.polygonizeSegments(segmentStrings, true);
+	public static PShape polygonize(PShape shape) {
+		var g = fromPShape(shape);
+		var segs = SegmentStringUtil.extractNodedSegmentStrings(g);
+		return PGS.polygonizeSegments(segs, true);
 	}
 
 	/**

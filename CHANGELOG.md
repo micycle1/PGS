@@ -9,9 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 * `fixBrokenFaces()` to `PGS_Meshing`. Repairs broken faces in near-coverage linework using endpoint-only snapping, then polygonises the result.
+* `polygonize()` to `PGS_Processing`. Finds polygonal faces from the given shape's linework.
+
+### Changes
 
 ### Fixed
-`PGS_Optimisation.closestPoint()` now returns the nearest location on the shape's boundary for queries inside a polygonal shape (previously returned the query point itself).
+`PGS_Optimisation.closestPoint()` now returns the nearest location on the shape's **boundary** for queries inside a polygonal shape (previously returned the query point itself).
+
+### Removed
+`polygonizeLines()` from `PGS_Processing`, in favour of `polygonize(PShape)`.
 
 ## **2.1** *(2025-10-04)*
 

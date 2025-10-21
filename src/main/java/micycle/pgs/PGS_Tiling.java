@@ -396,16 +396,17 @@ public final class PGS_Tiling {
 	public static PShape islamicTiling(final double width, final double height, final double w, final double h) {
 		// adapted from https://openprocessing.org/sketch/320133
 		final double[] vector = { -w, 0, w, -h, w, 0, -w, h };
-		final ArrayList<PVector> segments = new ArrayList<>();
+		var s = PGS.prepareLinesPShape(null, null, null);
 		for (int x = 0; x < width; x += w * 2) {
 			for (int y = 0; y < height; y += h * 2) {
 				for (int i = 0; i <= vector.length; i++) {
-					segments.add(new PVector((float) (vector[i % vector.length] + x + w), (float) (vector[(i + 6) % vector.length] + y + h)));
-					segments.add(new PVector((float) (vector[(i + 1) % vector.length] + x + w), (float) (vector[(i + 1 + 6) % vector.length] + y + h)));
+					s.vertex((float) (vector[i % vector.length] + x + w), (float) (vector[(i + 6) % vector.length] + y + h));
+					s.vertex((float) (vector[(i + 1) % vector.length] + x + w), (float) (vector[(i + 1 + 6) % vector.length] + y + h));
 				}
 			}
 		}
-		return PGS_Processing.polygonizeLines(segments);
+		s.endShape();
+		return PGS_Processing.polygonize(s);
 	}
 
 	/**
