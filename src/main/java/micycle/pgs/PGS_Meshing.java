@@ -1,42 +1,36 @@
 package micycle.pgs;
 
 import static micycle.pgs.PGS_Conversion.fromPShape;
-import static micycle.pgs.PGS_Conversion.toPShape;
 import static micycle.pgs.PGS_Conversion.getChildren;
+import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.jgrapht.alg.connectivity.ConnectivityInspector;
 import org.jgrapht.alg.interfaces.MatchingAlgorithm;
-import org.jgrapht.alg.interfaces.VertexColoringAlgorithm.Coloring;
 import org.jgrapht.alg.matching.blossom.v5.KolmogorovWeightedMatching;
 import org.jgrapht.alg.matching.blossom.v5.KolmogorovWeightedPerfectMatching;
 import org.jgrapht.alg.matching.blossom.v5.ObjectiveSense;
-import org.jgrapht.alg.spanning.GreedyMultiplicativeSpanner;
 import org.jgrapht.alg.util.NeighborCache;
-import org.jgrapht.graph.AbstractBaseGraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
-import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.coverage.CoverageSimplifier;
 import org.locationtech.jts.coverage.CoverageValidator;
 import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.Polygon;
-import org.locationtech.jts.index.strtree.STRtree;
 import org.locationtech.jts.noding.SegmentString;
-import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.tinfour.common.IConstraint;
 import org.tinfour.common.IIncrementalTin;
@@ -44,8 +38,6 @@ import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
 import org.tinfour.utils.TriangleCollector;
-import org.tinspin.index.PointMap;
-import org.tinspin.index.kdtree.KDTree;
 
 import com.github.micycle1.geoblitz.EndpointSnapper;
 import com.vividsolutions.jcs.conflate.coverage.CoverageCleaner;
@@ -59,10 +51,10 @@ import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
 import micycle.pgs.PGS_Conversion.PShapeData;
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.AreaMerge;
+import micycle.pgs.commons.EdgePrunedFaces;
 import micycle.pgs.commons.IncrementalTinDual;
 import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.PMesh;
-import micycle.pgs.commons.RLFColoring;
 import micycle.pgs.commons.SpiralQuadrangulation;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -113,32 +105,7 @@ public class PGS_Meshing {
 	 * @see #gabrielFaces(IIncrementalTin, boolean)
 	 */
 	public static PShape urquhartFaces(final IIncrementalTin triangulation, final boolean preservePerimeter) {
-		final HashSet<IQuadEdge> edges = PGS.makeHashSet(triangulation.getMaximumEdgeAllocationIndex());
-		final HashSet<IQuadEdge> uniqueLongestEdges = PGS.makeHashSet(triangulation.getMaximumEdgeAllocationIndex());
-
-		final boolean notConstrained = triangulation.getConstraints().isEmpty();
-
-		TriangleCollector.visitSimpleTriangles(triangulation, t -> {
-			final IConstraint constraint = t.getContainingRegion();
-			if (notConstrained || (constraint != null && constraint.definesConstrainedRegion())) {
-				edges.add(t.getEdgeA().getBaseReference());
-				edges.add(t.getEdgeB().getBaseReference());
-				edges.add(t.getEdgeC().getBaseReference());
-				final IQuadEdge longestEdge = findLongestEdge(t).getBaseReference();
-				if (!preservePerimeter || (preservePerimeter && !longestEdge.isConstraintRegionBorder())) {
-					uniqueLongestEdges.add(longestEdge);
-				}
-			}
-		});
-
-		edges.removeAll(uniqueLongestEdges);
-
-		final Collection<PEdge> meshEdges = new ArrayList<>(edges.size());
-		edges.forEach(edge -> meshEdges.add(new PEdge(edge.getA().x, edge.getA().y, edge.getB().x, edge.getB().y)));
-
-		PShape mesh = PGS.polygonizeNodedEdges(meshEdges);
-
-		return removeHoles(mesh, triangulation);
+		return EdgePrunedFaces.urquhartFaces(triangulation, preservePerimeter);
 	}
 
 	/**
@@ -165,42 +132,7 @@ public class PGS_Meshing {
 	 * @see #urquhartFaces(IIncrementalTin, boolean)
 	 */
 	public static PShape gabrielFaces(final IIncrementalTin triangulation, final boolean preservePerimeter) {
-		final HashSet<IQuadEdge> edges = new HashSet<>();
-		final HashSet<Vertex> vertices = new HashSet<>();
-
-		final boolean notConstrained = triangulation.getConstraints().isEmpty();
-		TriangleCollector.visitSimpleTriangles(triangulation, t -> {
-			final IConstraint constraint = t.getContainingRegion();
-			if (notConstrained || (constraint != null && constraint.definesConstrainedRegion())) {
-				edges.add(t.getEdgeA().getBaseReference()); // add edge to set
-				edges.add(t.getEdgeB().getBaseReference()); // add edge to set
-				edges.add(t.getEdgeC().getBaseReference()); // add edge to set
-				vertices.add(t.getVertexA());
-				vertices.add(t.getVertexB());
-				vertices.add(t.getVertexC());
-			}
-		});
-
-		final PointMap<Vertex> tree = KDTree.create(2);
-		vertices.forEach(v -> tree.insert(new double[] { v.x, v.y }, v));
-
-		final HashSet<IQuadEdge> nonGabrielEdges = new HashSet<>(); // base references to edges that should be removed
-		edges.forEach(edge -> {
-			final double[] midpoint = midpoint(edge);
-			final Vertex near = tree.query1nn(midpoint).value();
-			if (near != edge.getA() && near != edge.getB()) {
-				if (!preservePerimeter || (preservePerimeter && !edge.isConstraintRegionBorder())) { // don't remove constraint borders (holes)
-					nonGabrielEdges.add(edge); // base reference
-				}
-			}
-		});
-		edges.removeAll(nonGabrielEdges);
-
-		final Collection<PEdge> meshEdges = new ArrayList<>(edges.size());
-		edges.forEach(edge -> meshEdges.add(new PEdge(edge.getA().x, edge.getA().y, edge.getB().x, edge.getB().y)));
-
-		PShape mesh = PGS.polygonizeNodedEdges(meshEdges);
-		return removeHoles(mesh, triangulation);
+		return EdgePrunedFaces.gabrielFaces(triangulation, preservePerimeter);
 	}
 
 	/**
@@ -220,37 +152,7 @@ public class PGS_Meshing {
 	 * @since 1.3.0
 	 */
 	public static PShape relativeNeighborFaces(final IIncrementalTin triangulation, final boolean preservePerimeter) {
-		SimpleGraph<Vertex, IQuadEdge> graph = PGS_Triangulation.toTinfourGraph(triangulation);
-		NeighborCache<Vertex, IQuadEdge> cache = new NeighborCache<>(graph);
-
-		Set<IQuadEdge> edges = new HashSet<>(graph.edgeSet());
-
-		/*
-		 * If any vertex is nearer to both vertices of an edge, than the length of the
-		 * edge, this edge does not belong in the RNG.
-		 */
-		graph.edgeSet().forEach(e -> {
-			double l = e.getLength();
-			cache.neighborsOf(e.getA()).forEach(n -> {
-				if (Math.max(n.getDistance(e.getA()), n.getDistance(e.getB())) < l) {
-					if (!preservePerimeter || (preservePerimeter && !e.isConstraintRegionBorder())) {
-						edges.remove(e);
-					}
-				}
-			});
-			cache.neighborsOf(e.getB()).forEach(n -> {
-				if (Math.max(n.getDistance(e.getA()), n.getDistance(e.getB())) < l) {
-					if (!preservePerimeter || (preservePerimeter && !e.isConstraintRegionBorder())) {
-						edges.remove(e);
-					}
-				}
-			});
-		});
-
-		List<PEdge> edgesOut = edges.stream().map(PGS_Triangulation::toPEdge).collect(Collectors.toList());
-
-		PShape mesh = PGS.polygonizeNodedEdges(edgesOut);
-		return removeHoles(mesh, triangulation);
+		return EdgePrunedFaces.relativeNeighborFaces(triangulation, preservePerimeter);
 	}
 
 	/**
@@ -268,26 +170,7 @@ public class PGS_Meshing {
 	 * @since 1.3.0
 	 */
 	public static PShape spannerFaces(final IIncrementalTin triangulation, int k, final boolean preservePerimeter) {
-		SimpleGraph<PVector, PEdge> graph = PGS_Triangulation.toGraph(triangulation);
-		if (graph.edgeSet().isEmpty()) {
-			return new PShape();
-		}
-
-		k = Math.max(2, k); // min(2) since k=1 returns triangulation
-		GreedyMultiplicativeSpanner<PVector, PEdge> spanner = new GreedyMultiplicativeSpanner<>(graph, k);
-		List<PEdge> spannerEdges = spanner.getSpanner().stream().collect(Collectors.toList());
-		if (preservePerimeter) {
-			if (triangulation.getConstraints().isEmpty()) { // does not have constraints
-				spannerEdges.addAll(triangulation.getPerimeter().stream().map(PGS_Triangulation::toPEdge).collect(Collectors.toList()));
-			} else { // has constraints
-				spannerEdges.addAll(triangulation.getEdges().stream().filter(IQuadEdge::isConstraintRegionBorder).map(PGS_Triangulation::toPEdge)
-						.collect(Collectors.toList()));
-			}
-		}
-
-		PShape mesh = PGS.polygonizeNodedEdges(spannerEdges);
-
-		return removeHoles(mesh, triangulation);
+		return EdgePrunedFaces.spannerFaces(triangulation, k, preservePerimeter);
 	}
 
 	/**
@@ -403,57 +286,7 @@ public class PGS_Meshing {
 	 *      similar approach, but faster
 	 */
 	public static PShape edgeCollapseQuadrangulation(final IIncrementalTin triangulation, final boolean preservePerimeter) {
-		/*-
-		 * From 'Fast unstructured quadrilateral mesh generation'.
-		 * A better coloring approach is given in 'Face coloring in unstructured CFD codes'.
-		 * 
-		 * First partition the edges of the triangular mesh into three groups such that
-		 * no triangle has two edges of the same color (find groups by reducing to a
-		 * graph-coloring).
-		 * Then obtain an all-quadrilateral mesh by removing all edges of *one* 
-		 * particular color.
-		 */
-		final boolean unconstrained = triangulation.getConstraints().isEmpty();
-		final AbstractBaseGraph<IQuadEdge, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
-		TriangleCollector.visitSimpleTriangles(triangulation, t -> {
-			final IConstraint constraint = t.getContainingRegion();
-			if (unconstrained || (constraint != null && constraint.definesConstrainedRegion())) {
-				graph.addVertex(t.getEdgeA().getBaseReference());
-				graph.addVertex(t.getEdgeB().getBaseReference());
-				graph.addVertex(t.getEdgeC().getBaseReference());
-
-				graph.addEdge(t.getEdgeA().getBaseReference(), t.getEdgeB().getBaseReference());
-				graph.addEdge(t.getEdgeA().getBaseReference(), t.getEdgeC().getBaseReference());
-				graph.addEdge(t.getEdgeB().getBaseReference(), t.getEdgeC().getBaseReference());
-			}
-		});
-
-		Coloring<IQuadEdge> coloring = new RLFColoring<>(graph, 1337).getColoring();
-
-		final HashSet<IQuadEdge> perimeter = new HashSet<>(triangulation.getPerimeter());
-		if (!unconstrained) {
-			perimeter.clear(); // clear, the perimeter of constrained tin is unaffected by the constraint
-		}
-
-		final Collection<PEdge> meshEdges = new ArrayList<>();
-		coloring.getColors().forEach((edge, color) -> {
-			/*
-			 * "We can remove the edges of any one of the colors, however a convenient
-			 * choice is the one that leaves the fewest number of unmerged boundary
-			 * triangles". -- ideal, but not implemented here...
-			 */
-			// NOTE could now apply Topological optimization, as given in paper.
-			if ((color < 2) || (preservePerimeter && (edge.isConstraintRegionBorder() || perimeter.contains(edge)))) {
-				meshEdges.add(new PEdge(edge.getA().x, edge.getA().y, edge.getB().x, edge.getB().y));
-			}
-		});
-
-		PShape quads = PGS.polygonizeNodedEdges(meshEdges);
-		if (triangulation.getConstraints().size() < 2) { // assume constraint 1 is the boundary (not a hole)
-			return quads;
-		} else {
-			return removeHoles(quads, triangulation);
-		}
+		return EdgePrunedFaces.edgeCollapseQuadrangulation(triangulation, preservePerimeter);
 	}
 
 	/**
@@ -474,33 +307,70 @@ public class PGS_Meshing {
 	 * @return a GROUP PShape, where each child shape is one quadrangle
 	 * @since 1.2.0
 	 */
-	public static PShape centroidQuadrangulation(final IIncrementalTin triangulation, final boolean preservePerimeter) {
-		final boolean unconstrained = triangulation.getConstraints().isEmpty();
-		final HashSet<PEdge> edges = new HashSet<>();
-		TriangleCollector.visitSimpleTriangles(triangulation, t -> {
-			final IConstraint constraint = t.getContainingRegion();
-			if (unconstrained || (constraint != null && constraint.definesConstrainedRegion())) {
-				Vertex centroid = centroid(t);
-				edges.add(new PEdge(centroid.getX(), centroid.getY(), t.getVertexA().x, t.getVertexA().y));
-				edges.add(new PEdge(centroid.getX(), centroid.getY(), t.getVertexB().x, t.getVertexB().y));
-				edges.add(new PEdge(centroid.getX(), centroid.getY(), t.getVertexC().x, t.getVertexC().y));
+	public static PShape centroidQuadrangulation(final IIncrementalTin tin, final boolean preservePerimeter) {
+		final boolean unconstrained = tin.getConstraints().isEmpty();
+		final var gf = PGS.GEOM_FACTORY;
+
+		// Collect accepted triangles: centroids + base-edge adjacency
+		final List<double[]> centroids = new ArrayList<>();
+		final Map<IQuadEdge, int[]> edgeAdj = new IdentityHashMap<>();
+
+		TriangleCollector.visitSimpleTriangles(tin, t -> {
+			final IConstraint c = t.getContainingRegion();
+			if (!(unconstrained || (c != null && c.definesConstrainedRegion()))) {
+				return;
 			}
+
+			final int tid = centroids.size();
+			centroids.add(new double[] { (t.getVertexA().x + t.getVertexB().x + t.getVertexC().x) / 3.0,
+					(t.getVertexA().y + t.getVertexB().y + t.getVertexC().y) / 3.0 });
+
+			addAdj(edgeAdj, t.getEdgeA().getBaseReference(), tid);
+			addAdj(edgeAdj, t.getEdgeB().getBaseReference(), tid);
+			addAdj(edgeAdj, t.getEdgeC().getBaseReference(), tid);
 		});
 
-		if (preservePerimeter) {
-			List<IQuadEdge> perimeter = triangulation.getPerimeter();
-			triangulation.edges().forEach(edge -> {
-				if (edge.isConstraintRegionBorder() || (unconstrained && perimeter.contains(edge))) {
-					edges.add(new PEdge(edge.getA().x, edge.getA().y, edge.getB().x, edge.getB().y));
-				}
-			});
+		if (centroids.isEmpty()) {
+			return new PShape();
 		}
 
-		final PShape quads = PGS.polygonizeNodedEdges(edges);
-		if (triangulation.getConstraints().size() < 2) { // assume constraint 1 is the boundary (not a hole)
-			return quads;
+		final List<PShape> out = new ArrayList<>();
+		for (Map.Entry<IQuadEdge, int[]> en : edgeAdj.entrySet()) {
+			final IQuadEdge e = en.getKey();
+			final int[] inc = en.getValue();
+			final Vertex A = e.getA(), B = e.getB();
+
+			if (inc[0] >= 0 && inc[1] >= 0) {
+				// Interior edge -> quad [A, c0, B, c1, A]
+				final double[] c0 = centroids.get(inc[0]);
+				final double[] c1 = centroids.get(inc[1]);
+				final Coordinate[] ring = new Coordinate[] { new Coordinate(A.x, A.y), new Coordinate(c0[0], c0[1]), new Coordinate(B.x, B.y),
+						new Coordinate(c1[0], c1[1]), new Coordinate(A.x, A.y) };
+				out.add(PGS_Conversion.toPShape(gf.createPolygon(ring)));
+			} else if (preservePerimeter) {
+				// Boundary edge -> triangle [A, c, B, A]
+				final int tid = inc[0] >= 0 ? inc[0] : inc[1];
+				final double[] c = centroids.get(tid);
+				final Coordinate[] tri = new Coordinate[] { new Coordinate(A.x, A.y), new Coordinate(c[0], c[1]), new Coordinate(B.x, B.y),
+						new Coordinate(A.x, A.y) };
+				out.add(PGS_Conversion.toPShape(gf.createPolygon(tri)));
+			}
+		}
+
+		final PShape quads = PGS_Conversion.flatten(out);
+		return quads;
+	}
+
+	private static void addAdj(Map<IQuadEdge, int[]> adj, IQuadEdge base, int tid) {
+		int[] a = adj.get(base);
+		if (a == null) {
+			a = new int[] { -1, -1 };
+			adj.put(base, a);
+		}
+		if (a[0] < 0) {
+			a[0] = tid;
 		} else {
-			return removeHoles(quads, triangulation);
+			a[1] = tid;
 		}
 	}
 
@@ -565,76 +435,6 @@ public class PGS_Meshing {
 		});
 
 		return PGS_Conversion.flatten(quads);
-	}
-
-	/**
-	 * Removes (what should be) holes from a polygonized quadrangulation.
-	 * <p>
-	 * When the polygonizer is applied to the collapsed triangles of a
-	 * triangulation, it cannot determine which collapsed regions represent holes in
-	 * the quadrangulation and will consequently fill them in. The subroutine below
-	 * restores holes/topology, detecting which polygonized face(s) are original
-	 * holes. Note the geometry of the original hole/constraint and its associated
-	 * polygonized face are different, since quads are polygonized, not triangles
-	 * (hence an overlap metric is used to match candidates).
-	 * 
-	 * @param faces         faces of the quadrangulation
-	 * @param triangulation
-	 * @return
-	 */
-	private static PShape removeHoles(PShape faces, IIncrementalTin triangulation) {
-		List<IConstraint> holes = new ArrayList<>(triangulation.getConstraints()); // copy list
-		if (holes.size() <= 1) {
-			return faces;
-		}
-		holes = holes.subList(1, holes.size()); // slice off perimeter constraint (not a hole)
-
-		STRtree tree = new STRtree();
-		holes.stream().map(constraint -> constraint.getVertices()).iterator().forEachRemaining(vertices -> {
-			CoordinateList coords = new CoordinateList(); // coords of constraint
-			vertices.forEach(v -> coords.add(new Coordinate(v.x, v.y)));
-			coords.closeRing();
-
-			if (!Orientation.isCCWArea(coords.toCoordinateArray())) { // triangulation holes are CW
-				Polygon polygon = PGS.GEOM_FACTORY.createPolygon(coords.toCoordinateArray());
-				tree.insert(polygon.getEnvelopeInternal(), polygon);
-			}
-		});
-
-		List<PShape> nonHoles = PGS_Conversion.getChildren(faces).parallelStream().filter(quad -> {
-			/*
-			 * If quad overlaps with a hole detect whether it *is* that hole via Hausdorff
-			 * Similarity.
-			 */
-			final Geometry g = PGS_Conversion.fromPShape(quad);
-
-			@SuppressWarnings("unchecked")
-			List<Polygon> matches = tree.query(g.getEnvelopeInternal());
-
-			for (Polygon m : matches) {
-				try {
-					// PGS_ShapePredicates.overlap() inlined here
-					Geometry overlap = OverlayNG.overlay(m, g, OverlayNG.INTERSECTION);
-					double a1 = g.getArea();
-					double a2 = m.getArea();
-					double total = a1 + a2;
-					double aOverlap = overlap.getArea();
-					double w1 = a1 / total;
-					double w2 = a2 / total;
-
-					double similarity = w1 * (aOverlap / a1) + w2 * (aOverlap / a2);
-					if (similarity > 0.2) { // magic constant, unsure what the best value is
-						return false; // is hole; keep=false
-					}
-				} catch (Exception e) { // catch occasional noded error
-					continue;
-				}
-
-			}
-			return true; // is not hole; keep=true
-		}).collect(Collectors.toList());
-
-		return PGS_Conversion.flatten(nonHoles);
 	}
 
 	/**
@@ -1209,42 +1009,6 @@ public class PGS_Meshing {
 			data.applyTo(newMesh.getChild(i));
 		}
 		return newMesh;
-	}
-
-	/**
-	 * Calculate the longest edge of a given triangle.
-	 */
-	private static IQuadEdge findLongestEdge(final SimpleTriangle t) {
-		if (t.getEdgeA().getLength() > t.getEdgeB().getLength()) {
-			if (t.getEdgeC().getLength() > t.getEdgeA().getLength()) {
-				return t.getEdgeC();
-			} else {
-				return t.getEdgeA();
-			}
-		} else {
-			if (t.getEdgeC().getLength() > t.getEdgeB().getLength()) {
-				return t.getEdgeC();
-			} else {
-				return t.getEdgeB();
-			}
-		}
-	}
-
-	private static double[] midpoint(final IQuadEdge edge) {
-		final Vertex a = edge.getA();
-		final Vertex b = edge.getB();
-		return new double[] { (a.x + b.x) / 2d, (a.y + b.y) / 2d };
-	}
-
-	private static Vertex centroid(final SimpleTriangle t) {
-		final Vertex a = t.getVertexA();
-		final Vertex b = t.getVertexB();
-		final Vertex c = t.getVertexC();
-		double x = a.x + b.x + c.x;
-		x /= 3;
-		double y = a.y + b.y + c.y;
-		y /= 3;
-		return new Vertex(x, y, 0);
 	}
 
 	private static PShape triToPShape(SimpleTriangle t) {
