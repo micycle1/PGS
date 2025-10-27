@@ -254,7 +254,7 @@ public final class PGS_Coloring {
 				coloring = new ColorRefinementAlgorithm<>(graph).getColoring();
 				break;
 			case GENETIC :
-				coloring = new GeneticColoring<>(graph).getColoring();
+				coloring = new GeneticColoring<>(graph, SEED).getColoring();
 				break;
 			case RLF_BRUTE_FORCE_4COLOR :
 				int iterations = 0;

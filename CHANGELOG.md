@@ -12,13 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `polygonize()` to `PGS_Processing`. Finds polygonal faces from the given shape's linework.
 
 ### Changes
-These methods in `PGS_Meshing` are more performant and robust: `urquhartFaces()`, `gabrielFaces()`, `spannerFaces()`, `relativeNeighborFaces()`, `edgeCollapseQuadrangulation()`, `centroidQuadrangulation()`.
+* These methods in `PGS_Meshing` are more performant and robust: `urquhartFaces()`, `gabrielFaces()`, `spannerFaces()`, `relativeNeighborFaces()`, `edgeCollapseQuadrangulation()`, `centroidQuadrangulation()`.
 
 ### Fixed
-`PGS_Optimisation.closestPoint()` now returns the nearest location on the shape's **boundary** for queries inside a polygonal shape (previously returned the query point itself).
+* `PGS_Optimisation.closestPoint()` now returns the nearest location on the shape's **boundary** for queries inside a polygonal shape (previously returned the query point itself).
+* `GENETIC` mesh-coloring algorithm now always works (and has been improved too).
 
 ### Removed
-`polygonizeLines()` from `PGS_Processing`, in favour of `polygonize(PShape)`.
+* `polygonizeLines()` from `PGS_Processing`, in favour of `polygonize(PShape)`.
 
 ## **2.1** *(2025-10-04)*
 
