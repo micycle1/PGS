@@ -912,7 +912,13 @@ public final class PGS_Morphology {
 	 * @since 1.3.0
 	 */
 	public static PShape reducePrecision(PShape shape, double precision) {
-		return toPShape(GeometryPrecisionReducer.reduce(fromPShape(shape), new PrecisionModel(-Math.max(Math.abs(precision), 1e-10))));
+		var pm = new PrecisionModel(-Math.max(Math.abs(precision), 1e-10));
+		if (shape.getFamily() == PShape.GROUP) {
+			// pointwise preserves polygon faces (doesn't merge)
+			return toPShape(GeometryPrecisionReducer.reducePointwise(fromPShape(shape), pm));
+		} else {
+			return toPShape(GeometryPrecisionReducer.reduce(fromPShape(shape), pm));
+		}
 	}
 
 	/**

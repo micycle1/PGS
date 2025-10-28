@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 * `PGS_Optimisation.closestPoint()` now returns the nearest location on the shape's **boundary** for queries inside a polygonal shape (previously returned the query point itself).
 * `GENETIC` mesh-coloring algorithm now always works (and has been improved too).
+* `PGS_Morphology.reducePrecision()` now supports GROUP shapes without collapsing them.
 
 ### Removed
 * `polygonizeLines()` from `PGS_Processing`, in favour of `polygonize(PShape)`.
