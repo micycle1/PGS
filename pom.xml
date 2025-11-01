@@ -223,7 +223,7 @@
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>campskeleton</artifactId>
-			<version>spatial-index-845e720af6-1</version>
+			<version>0.0.1</version>
 		</dependency>
 		<dependency>
 			<groupId>org.jgrapht</groupId>
