@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.tuple.Triple;
 import org.locationtech.jts.algorithm.MinimumAreaRectangle;
 import org.locationtech.jts.algorithm.MinimumBoundingCircle;
+import org.locationtech.jts.algorithm.MinimumBoundingTriangle;
 import org.locationtech.jts.algorithm.MinimumDiameter;
 import org.locationtech.jts.algorithm.construct.LargestEmptyCircle;
 import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
@@ -47,7 +48,6 @@ import micycle.pgs.commons.MaximumInscribedAARectangle;
 import micycle.pgs.commons.MaximumInscribedRectangle;
 import micycle.pgs.commons.MaximumInscribedTriangle;
 import micycle.pgs.commons.MinimumBoundingEllipse;
-import micycle.pgs.commons.MinimumBoundingTriangle;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.SpiralIterator;
 import micycle.pgs.commons.VisibilityPolygon;
@@ -523,7 +523,7 @@ public final class PGS_Optimisation {
 	 * @param shape
 	 */
 	public static PShape minimumBoundingTriangle(PShape shape) {
-		MinimumBoundingTriangle mbt = new MinimumBoundingTriangle(fromPShape(shape));
+		var mbt = new MinimumBoundingTriangle(fromPShape(shape));
 		return toPShape(mbt.getTriangle());
 	}
 
