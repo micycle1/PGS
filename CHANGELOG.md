@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 * `fixBrokenFaces()` to `PGS_Meshing`. Repairs broken faces in near-coverage linework using endpoint-only snapping, then polygonises the result.
 * `polygonize()` to `PGS_Processing`. Finds polygonal faces from the given shape's linework.
+* `softCells()` to `PGS_Tiling`. Generates a softened (curved) version of a tiling using the SoftCells edge-bending algorithm.
 
 ### Changes
 * These methods in `PGS_Meshing` are more performant and robust: `urquhartFaces()`, `gabrielFaces()`, `spannerFaces()`, `relativeNeighborFaces()`, `edgeCollapseQuadrangulation()`, `centroidQuadrangulation()`.

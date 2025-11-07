@@ -21,6 +21,8 @@ import micycle.pgs.commons.HatchTiling;
 import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.PenroseTiling;
 import micycle.pgs.commons.RectangularSubdivision;
+import micycle.pgs.commons.SoftCells;
+import micycle.pgs.commons.SoftCells.TangentMode;
 import micycle.pgs.commons.SquareTriangleTiling;
 import micycle.pgs.commons.TriangleSubdivision;
 import processing.core.PConstants;
@@ -515,6 +517,58 @@ public final class PGS_Tiling {
 		}
 
 		return PGS_Conversion.flatten(bricks);
+	}
+
+	/**
+	 * Generates a softened (curved) version of a tiling using the <i>SoftCells</i>
+	 * edge-bending algorithm.
+	 *
+	 * <p>
+	 * The input mesh straight edges are softened into smooth, Bezier-like curves
+	 * according to the supplied parameters. The resulting shape preserves the mesh
+	 * topology (combinatorial adjacency) while altering the geometry to produce the
+	 * characteristic "soft cell" appearance.
+	 * </p>
+	 *
+	 * <p>
+	 * The implementation samples random directions once per vertex (not per edge)
+	 * when a stochastic tangent mode is selected. The {@code seed} only influences
+	 * the following TangentMode values:
+	 * </p>
+	 * <ul>
+	 * <li>{@code RANDOM} - a random unit direction (one angle) is chosen once per
+	 * vertex;</li>
+	 * <li>{@code RANDOM_DIAGONAL} - one of the two diagonal directions (diag1 or
+	 * diag2) is chosen once per vertex;</li>
+	 * <li>{@code RANDOM_60DEG} - one of three 60° directions is selected once per
+	 * vertex.</li>
+	 * </ul>
+	 * 
+	 * @param mesh  the input PShape representing the base tiling to be softened;
+	 *              must not be null. The input is not modified — a new PShape is
+	 *              returned.
+	 * @param ratio a floating-point control for the amount of softening/edge
+	 *              bending. Typical usage treats this as a normalised factor
+	 *              (commonly in the [0,1] range) where smaller values produce
+	 *              subtler curvature and larger values produce stronger softening
+	 *              (values much larger than may lead to face self-intersection).
+	 * @param mode  the TangentMode that selects how half-tangents / edge directions
+	 *              are chosen and aligned during the edge-bending process; see
+	 *              <code>TangentMode</code> for available modes and behaviour.
+	 * @param seed  random seed used to initialise the RNG. The seed only affects
+	 *              the stochastic tangent modes listed above; using the same seed
+	 *              with the same input mesh and parameters yields deterministic,
+	 *              repeatable output.
+	 * @return a new PShape containing the softened tessellation (curved/soft cells)
+	 *         corresponding to the input mesh and parameters.
+	 * @since 2.2
+	 */
+	public static PShape softCells(PShape mesh, double ratio, TangentMode mode, long seed) {
+		SoftCells sc = new SoftCells(seed);
+		mesh = PGS_Optimisation.hilbertSortFaces(mesh);
+		var cells = sc.generate(mesh, mode, (float) ratio);
+		cells = PGS_Conversion.setAllStrokeColor(cells, Colors.PINK, 2);
+		return cells;
 	}
 
 	/**

@@ -957,8 +957,10 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
   <tr>
     <td align="center" valign="center"><b>Arc Division</td>
+    <td align="center" valign="center"><b>Soft Cells</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/tiling/arcDivision.png"></td>
+    <td valign="top" width="25%"><img src="resources/tiling/softCells.gif"></td>
   </tr>
 </table>
