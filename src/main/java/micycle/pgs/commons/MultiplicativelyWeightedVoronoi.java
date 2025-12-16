@@ -253,7 +253,9 @@ public class MultiplicativelyWeightedVoronoi {
 	}
 
 	/**
-	 * Vanilla implementation. Handles equal-weighted pairs.
+	 * Builds an MWVD cell per site by intersecting its dominance constraints
+	 * against other sites, but accelerates the O(n²) all-pairs process using an
+	 * adaptive KNN expansion on a KD-tree. Handles equal-weighted pairs.
 	 */
 	private static List<Geometry> getMWVD(List<Coordinate> sites, Envelope extent) {
 		final PointMap<Point> tree = KDTree.create(2);
@@ -261,45 +263,86 @@ public class MultiplicativelyWeightedVoronoi {
 			Point p = geometryFactory.createPoint(s);
 			p.setUserData(s.z);
 			tree.insert(new double[] { p.getX(), p.getY() }, p);
-
 		});
 
-		Geometry extentGeometry = geometryFactory.toGeometry(extent);
+		final Geometry extentGeometry = geometryFactory.toGeometry(extent);
 
-		/*
-		 * NOTE optimisation. Look at first 30 (or N/3, if larger, but up to 60)
-		 * neighbors only, since subsequent neighbors usually have negligible effect.
-		 * This makes producing MWVD for hundreds of points a lot more feasible.
-		 */
-		final int n = Math.min(Math.max(sites.size() / 3, Math.min(sites.size(), 30)), 60);
+		// Start small, expand as needed
+		final int kStart = Math.min(16, Math.max(2, sites.size()));
+		final int kMax = sites.size(); // correctness backstop
 
-		List<Geometry> polygons = sites.stream().map(site -> {
-			var query = tree.queryKnn(new double[] { site.x, site.y }, n);
-			var me = query.next().value(); // first query is always the site itself
-			Double w = (Double) me.getUserData();
-			Geometry dominance = extentGeometry; // dominance area begins with whole plane
+		// Heuristic: if the furthest neighbor we considered is much farther than the
+		// current cell size,
+		// then remaining (even farther) points are unlikely to affect it.
+		final double stopFactor = 4.0;
+
+		return sites.parallelStream().map(site -> {
+			Geometry dominance = extentGeometry;
+
+			int k = Math.min(kStart, kMax);
+			int processed = 0;
 
 			List<PointEntryKnn<Point>> neighbors = new ArrayList<>();
-			query.forEachRemaining(item -> {
-				neighbors.add(item);
-			});
 
-			/*
-			 * The dominance region of a site is formed by taking the boolean AND
-			 * (intersection) of all the Apollonius circles it forms with every other site.
-			 */
-			for (var otherSite : neighbors) {
-				Coordinate other = otherSite.value().getCoordinate();
-				Double wOther = (Double) otherSite.value().getUserData();
-				Geometry localDominanceCircle = apolloniusCircle(site, other, w, wOther, extentGeometry);
-				dominance = dominance.intersection(localDominanceCircle);
+			while (true) {
+				neighbors.clear();
+
+				var query = tree.queryKnn(new double[] { site.x, site.y }, k);
+				var me = query.next().value(); // first query is always the site itself
+				Double w = (Double) me.getUserData();
+
+				query.forEachRemaining(neighbors::add);
+
+				// Process only newly-added neighbors (when k expands)
+				for (int i = processed; i < neighbors.size(); i++) {
+					var otherSite = neighbors.get(i);
+					Coordinate other = otherSite.value().getCoordinate();
+					Double wOther = (Double) otherSite.value().getUserData();
+
+					Geometry constraint = apolloniusCircle(site, other, w, wOther, extentGeometry);
+
+					if (!dominance.getEnvelopeInternal().intersects(constraint.getEnvelopeInternal())) {
+						return null;
+					}
+
+					// More robust overlay than Geometry#intersection for tricky cases
+					dominance = OverlayNG.overlay(dominance, constraint, OverlayNG.INTERSECTION);
+
+					if (dominance.isEmpty()) {
+						return null;
+					}
+				}
+				processed = neighbors.size();
+
+				if (k >= kMax || dominance.isEmpty()) {
+					break;
+				}
+
+				// Stopping heuristic based on current cell size vs. furthest considered
+				// neighbor distance
+				MinimumBoundingCircle mbc = new MinimumBoundingCircle(dominance);
+				double cellR = mbc.getRadius();
+
+				// If the cell has collapsed to tiny, we’re done
+				if (cellR <= 1e-12) {
+					break;
+				}
+
+				// KNN is returned sorted by distance, so last neighbor is the furthest in this
+				// batch
+				Coordinate furthest = neighbors.get(neighbors.size() - 1).value().getCoordinate();
+				double furthestDist = site.distance(furthest);
+
+				if (furthestDist > stopFactor * cellR) {
+					break;
+				}
+
+				// Expand search
+				k = Math.min(kMax, k * 2);
 			}
 
-			return dominance != null && !dominance.isEmpty() ? dominance : null;
-		}).filter(dominance -> dominance != null) // Filter out empty geoms
-				.toList();
-
-		return polygons;
+			return !dominance.isEmpty() ? dominance : null;
+		}).filter(g -> g != null && !g.isEmpty()).toList();
 	}
 
 	private static Geometry apolloniusCircle(Coordinate s1, Coordinate s2, double w1, double w2, Geometry extentG) {
