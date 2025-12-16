@@ -80,7 +80,7 @@ import micycle.balaban.Point;
 import micycle.balaban.Segment;
 import micycle.pgs.color.ColorUtils;
 import micycle.pgs.color.Colors;
-import micycle.pgs.commons.PolygonDecomposition;
+import micycle.pgs.commons.KeilSnoeyinkConvexPartitioner;
 import micycle.pgs.commons.SeededRandomPointsInGridBuilder;
 import micycle.pgs.commons.ShapeRandomPointSampler;
 import micycle.trapmap.TrapMap;
@@ -1097,21 +1097,35 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Partitions shape(s) into convex (simple) polygons.
+	 * Partitions the provided shape into convex, simple polygonal pieces.
+	 * <p>
+	 * This implementation uses the optimal Keil &amp; Snoeyink dynamic-programming
+	 * approach, which minimises the number of added diagonals and thus the number
+	 * of convex pieces.
+	 * <p>
+	 * The input may be a single polygon PShape or a GROUP PShape containing
+	 * multiple polygon children. Each polygon child is partitioned independently;
+	 * the method returns a GROUP PShape whose children are the convex pieces. If
+	 * the partition produces exactly one child, that single child PShape is
+	 * returned (rather than a GROUP).
+	 * <p>
+	 * Polygons with interior holes are supported — holes are bridged to produce
+	 * simple polygons prior to partitioning.
 	 * 
-	 * @param shape the shape to partition. can be a single polygon or a GROUP of
-	 *              polygons
-	 * @return a GROUP PShape, where each child shape is some convex partition of
-	 *         the original shape
+	 * @param shape a non-null PShape representing a polygon or a GROUP of polygons
+	 * @return a GROUP PShape whose children are convex, simple polygon partitions
+	 *         of the input; if only one partition piece results, that child PShape
+	 *         is returned directly
+	 * @implNote Implementation changed in v2.2 from Bayazit algorithm to Keil &
+	 *           Snoeyink (optimal).
 	 */
 	public static PShape convexPartition(PShape shape) {
-		// algorithm described in https://mpen.ca/406/bayazit
 		final Geometry g = fromPShape(shape);
 
 		final PShape polyPartitions = new PShape(PConstants.GROUP);
 		@SuppressWarnings("unchecked")
 		final List<Polygon> polygons = PolygonExtracter.getPolygons(g);
-		polygons.forEach(p -> polyPartitions.addChild(toPShape(PolygonDecomposition.decompose(p))));
+		polygons.forEach(p -> polyPartitions.addChild(toPShape(KeilSnoeyinkConvexPartitioner.convexPartition(p))));
 
 		if (polyPartitions.getChildCount() == 1) {
 			return polyPartitions.getChild(0);

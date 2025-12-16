@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changes
 * These methods in `PGS_Meshing` are more performant and robust: `urquhartFaces()`, `gabrielFaces()`, `spannerFaces()`, `relativeNeighborFaces()`, `edgeCollapseQuadrangulation()`, `centroidQuadrangulation()`.
+* Reimplemented `PGS_Processing.convexPartition()` using the optimal Keil & Snoeyink partitioning algorithm.
 
 ### Fixed
 * `PGS_Optimisation.closestPoint()` now returns the nearest location on the shape's **boundary** for queries inside a polygonal shape (previously returned the query point itself).
