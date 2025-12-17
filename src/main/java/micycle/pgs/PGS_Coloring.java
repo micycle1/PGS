@@ -114,6 +114,8 @@ public final class PGS_Coloring {
 		 * number of already-colored neighbors. Ties are broken by larger static degree,
 		 * then by the shuffled index. Each selected vertex is colored using first-fit
 		 * (smallest feasible color).
+		 * 
+		 * @since 2.2
 		 */
 		DBLAC,
 	}
