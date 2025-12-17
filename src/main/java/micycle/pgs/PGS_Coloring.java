@@ -16,6 +16,7 @@ import org.jgrapht.graph.DefaultEdge;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import micycle.pgs.color.ColorUtils;
 import micycle.pgs.color.Colors;
+import micycle.pgs.commons.DBLACColoring;
 import micycle.pgs.commons.GeneticColoring;
 import micycle.pgs.commons.RLFColoring;
 import processing.core.PShape;
@@ -43,7 +44,7 @@ import processing.core.PShape;
  * @since 1.2.0
  */
 public final class PGS_Coloring {
-	
+
 	public static long SEED = 1337;
 
 	private PGS_Coloring() {
@@ -86,7 +87,7 @@ public final class PGS_Coloring {
 		 */
 		COARSE,
 		/**
-		 * Recursive largest-first coloring (recommended).
+		 * Recursive largest-first coloring.
 		 */
 		RLF,
 		/**
@@ -101,7 +102,20 @@ public final class PGS_Coloring {
 		 * specifically targets a chromaticity of 4 (falls back to 5 if no solution is
 		 * found).
 		 */
-		GENETIC
+		GENETIC,
+		/**
+		 * Degree-Based Largest Adjacency Count coloring.
+		 * 
+		 * <p>
+		 * Fast with good chromaticity (recommended).
+		 *
+		 * <p>
+		 * Repeatedly selects an uncolored vertex that maximizes <code>LAC(v)</code> =
+		 * number of already-colored neighbors. Ties are broken by larger static degree,
+		 * then by the shuffled index. Each selected vertex is colored using first-fit
+		 * (smallest feasible color).
+		 */
+		DBLAC,
 	}
 
 	/**
@@ -146,8 +160,8 @@ public final class PGS_Coloring {
 	public static PShape colorMesh(PShape shape, ColoringAlgorithm coloringAlgorithm, int[] colorPalette) {
 		final Coloring<PShape> coloring = findColoring(shape, coloringAlgorithm);
 		if (coloring.getNumberColors() > colorPalette.length) {
-			System.err.format("WARNING: Number of mesh colors (%s) exceeds those provided in palette (%s)%s", coloring.getNumberColors(),
-					colorPalette.length, System.lineSeparator());
+			System.err.format("WARNING: Number of mesh colors (%s) exceeds those provided in palette (%s)%s", coloring.getNumberColors(), colorPalette.length,
+					System.lineSeparator());
 		}
 		coloring.getColors().forEach((face, color) -> {
 			int c = colorPalette[color % colorPalette.length]; // NOTE use modulo to avoid OOB exception
@@ -255,6 +269,9 @@ public final class PGS_Coloring {
 				break;
 			case GENETIC :
 				coloring = new GeneticColoring<>(graph, SEED).getColoring();
+				break;
+			case DBLAC :
+				coloring = new DBLACColoring<>(graph, SEED).getColoring();
 				break;
 			case RLF_BRUTE_FORCE_4COLOR :
 				int iterations = 0;
