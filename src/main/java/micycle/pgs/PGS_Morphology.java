@@ -191,7 +191,7 @@ public final class PGS_Morphology {
 
 		bufferDistances[0] = bufferCallback.apply(coords[0], 0.0);
 
-		VariableBuffer variableBuffer = new VariableBuffer(inputGeometry, bufferDistances);
+		var variableBuffer = new VariableBuffer(inputGeometry, bufferDistances);
 		return toPShape(variableBuffer.getResult());
 	}
 
@@ -450,10 +450,27 @@ public final class PGS_Morphology {
 	 * @param sigma The standard deviation of the gaussian kernel. Larger values
 	 *              provide more smoothing.
 	 * @return smoothed copy of the shape
+	 * @see #smoothGaussianNormalised(PShape, double)
 	 * @see #smooth(PShape, double)
 	 */
 	public static PShape smoothGaussian(PShape shape, double sigma) {
 		return PGS.applyToLinealGeometries(shape, ring -> GaussianLineSmoothing.get(ring, sigma));
+	}
+
+	/**
+	 * Applies Gaussian smoothing to each lineal geometry in a {@link PShape} using
+	 * a normalised amount in [0..1], intended to be scale-invariant across children
+	 * of different sizes. {@code amount=0} leaves geometry unchanged;
+	 * {@code amount=1} collapses (per geometry) using the extreme-sigma fallback.
+	 *
+	 * @param shape  input shape
+	 * @param amount normalised smoothing amount in [0..1]
+	 * @return new shape with smoothed lineal components
+	 * @see #smoothGaussian(PShape, double)
+	 * @since 2.2
+	 */
+	public static PShape smoothGaussianNormalised(PShape shape, double amount) {
+		return PGS.applyToLinealGeometries(shape, ring -> GaussianLineSmoothing.getNormalised(ring, amount));
 	}
 
 	/**

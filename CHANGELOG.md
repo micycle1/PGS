@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `polygonize()` to `PGS_Processing`. Finds polygonal faces from the given shape's linework.
 * `softCells()` to `PGS_Tiling`. Generates a softened (curved) version of a tiling using the SoftCells edge-bending algorithm.
 * A new mesh-coloring algorithm: `DBLAC`, it's even better than RLF!
+* `smoothGaussianNormalised()` to `PGS_Processing`. Applies normalised Gaussian smoothing to all geometries in a shape, intended to be more consistent across child shapes of different sizes.
 
 ### Changes
 * These methods in `PGS_Meshing` are more performant and robust: `urquhartFaces()`, `gabrielFaces()`, `spannerFaces()`, `relativeNeighborFaces()`, `edgeCollapseQuadrangulation()`, `centroidQuadrangulation()`.
