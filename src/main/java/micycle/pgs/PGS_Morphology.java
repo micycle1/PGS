@@ -5,13 +5,16 @@ import static micycle.pgs.PGS_Conversion.toPShape;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiFunction;
+import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
 import org.locationtech.jts.densify.Densifier;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Lineal;
 import org.locationtech.jts.geom.LinearRing;
+import org.locationtech.jts.geom.MultiPolygon;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.Polygonal;
@@ -193,6 +196,37 @@ public final class PGS_Morphology {
 
 		var variableBuffer = new VariableBuffer(inputGeometry, bufferDistances);
 		return toPShape(variableBuffer.getResult());
+	}
+
+	/**
+	 * Erodes (a negative buffer) a shape by a normalised amount (scaled to shape
+	 * size).
+	 * <p>
+	 * {@code amount} is dimensionless: {@code amount == 1} corresponds to a full
+	 * erosion (approximately to the maximum inscribed radius), often collapsing
+	 * polygons to empty. {@code shape} may be a {@code GROUP}; each polygonal
+	 * element is processed independently. The sign of {@code amount} is ignored
+	 * (always erodes).
+	 *
+	 * @param shape  the source shape (polygonal or {@code GROUP})
+	 * @param amount normalised erosion amount (dimensionless)
+	 * @return a polygonal {@code PShape} of the eroded geometry (may be empty)
+	 * @since 2.2
+	 */
+	public static PShape normalisedErosion(PShape shape, double amount) {
+		double amt = -Math.abs(amount); // force erosion
+		var polys = PGS.extractPolygons(fromPShape(shape));
+		var buffered = polys.parallelStream().map(p -> {
+			var mic = new MaximumInscribedCircle(p, 0.5);
+			var r = mic.getRadiusLine().getLength() * (1 + 1e-3);
+			var buffer = amt * r;
+			var bufParams = createBufferParams(buffer, 0.5, OffsetStyle.ROUND, CapStyle.ROUND);
+			BufferOp b = new BufferOp(p, bufParams);
+			var out = b.getResultGeometry(buffer);
+			return out;
+		}).toList();
+
+		return toPShape(buffered);
 	}
 
 	/**
