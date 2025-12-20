@@ -39,8 +39,7 @@ public final class KeilSnoeyinkConvexPartitioner {
 	 *
 	 * <p>
 	 * This is the public entry point for the Keil &amp; Snoeyink
-	 * dynamic-programming partition (the implementation corresponds to the
-	 * ConvexPartition_OPT strategy). Holes in the input polygon are bridged to
+	 * dynamic-programming partition. Holes in the input polygon are bridged to
 	 * produce simple polygons prior to the DP on each simple polygon.
 	 * </p>
 	 *
@@ -53,6 +52,10 @@ public final class KeilSnoeyinkConvexPartitioner {
 		Objects.requireNonNull(input, "input");
 		if (input.isEmpty()) {
 			return List.of();
+		}
+
+		if (!input.isValid()) {
+			throw new IllegalArgumentException("Input Polygon is not geometrically valid.");
 		}
 
 		GeometryFactory gf = input.getFactory();
@@ -76,7 +79,7 @@ public final class KeilSnoeyinkConvexPartitioner {
 				continue;
 			}
 
-			List<List<Coordinate>> parts = convexPartitionOptSimple(pts);
+			List<List<Coordinate>> parts = convexPartitionSimple(pts);
 			for (List<Coordinate> part : parts) {
 				List<Coordinate> p = cleanupOpenRing(part);
 				p = removeConsecutiveDuplicates(p);
@@ -90,7 +93,7 @@ public final class KeilSnoeyinkConvexPartitioner {
 		return out;
 	}
 
-	private static List<List<Coordinate>> convexPartitionOptSimple(List<Coordinate> ptsCCW) {
+	private static List<List<Coordinate>> convexPartitionSimple(List<Coordinate> ptsCCW) {
 		final int n = ptsCCW.size();
 		if (n < 3) {
 			throw new IllegalArgumentException("Polygon has < 3 vertices");
@@ -280,7 +283,7 @@ public final class KeilSnoeyinkConvexPartitioner {
 		}
 
 		if (!ok) {
-			throw new IllegalStateException("ConvexPartition_OPT failed to recover a solution.");
+			throw new IllegalStateException("convexPartition failed to recover a solution.");
 		}
 
 		// Recover actual polygons (second pass).
@@ -655,8 +658,9 @@ public final class KeilSnoeyinkConvexPartitioner {
 					}
 
 					if (pointFound) {
-						double d1 = dist2(holePoint, candidate);
-						double d2 = dist2(holePoint, bestPolyPoint);
+
+						double d1 = holePoint.distanceSq(candidate);
+						double d2 = holePoint.distanceSq(bestPolyPoint);
 						if (d2 < d1) {
 							continue;
 						}
@@ -719,11 +723,6 @@ public final class KeilSnoeyinkConvexPartitioner {
 			out.add(List.copyOf(ph.pts));
 		}
 		return out;
-	}
-
-	private static double dist2(Coordinate a, Coordinate b) {
-		double dx = b.x - a.x, dy = b.y - a.y;
-		return dx * dx + dy * dy;
 	}
 
 	/**

@@ -29,16 +29,16 @@ class PGS_ProcessingGroupShapeTests {
 		a.beginShape();
 		a.vertex(0, 0);
 		a.vertex(10, 0);
-		a.vertex(0, 10);
 		a.vertex(10, 10);
+		a.vertex(0, 10);
 		a.endShape(PConstants.CLOSE);
 
 		final PShape b = new PShape(PShape.GEOMETRY);
 		b.beginShape();
 		b.vertex(70, 70);
 		b.vertex(710, 70);
-		b.vertex(70, 710);
 		b.vertex(710, 710);
+		b.vertex(70, 710);
 		b.endShape(PConstants.CLOSE);
 
 		GROUP_SHAPE = new PShape(PConstants.GROUP);
