@@ -40,7 +40,7 @@ import micycle.spacefillingcurves.SierpinskiFourSteps;
 import micycle.spacefillingcurves.SierpinskiTenSteps;
 import micycle.spacefillingcurves.SierpinskiThreeSteps;
 import micycle.spacefillingcurves.SpaceFillingCurve;
-import micycle.srpg.SRPolygonGenerator;
+import com.github.micycle1.srpg.SRPolygonGenerator;
 import net.jafama.FastMath;
 import processing.core.PConstants;
 import processing.core.PShape;

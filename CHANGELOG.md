@@ -17,12 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changes
 * These methods in `PGS_Meshing` are more performant and robust: `urquhartFaces()`, `gabrielFaces()`, `spannerFaces()`, `relativeNeighborFaces()`, `edgeCollapseQuadrangulation()`, `centroidQuadrangulation()`.
-* Reimplemented `PGS_Processing.convexPartition()` using the optimal Keil & Snoeyink partitioning algorithm.
+* Reimplemented `PGS_Processing.convexPartition()` using the optimal *Keil & Snoeyink* partitioning algorithm.
 
 ### Fixed
 * `PGS_Optimisation.closestPoint()` now returns the nearest location on the shape's **boundary** for queries inside a polygonal shape (previously returned the query point itself).
 * `GENETIC` mesh-coloring algorithm now always works (and has been improved too).
 * `PGS_Morphology.reducePrecision()` now supports GROUP shapes without collapsing them.
+* `PGS_Construction.createSuperRandomPolygon()` no longer produces holes when `holes` is set to `false`.
 
 ### Removed
 * `polygonizeLines()` from `PGS_Processing`, in favour of `polygonize(PShape)`.
