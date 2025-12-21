@@ -835,7 +835,7 @@ public final class PGS_Conversion {
 	 */
 	public static final PShape toPointsPShape(Collection<PVector> points) {
 		PShape shape = new PShape();
-		shape.setFamily(PShape.GEOMETRY);
+		shape.setFamily(PShape.PATH);
 		shape.setStrokeCap(PConstants.ROUND);
 		shape.setStroke(true);
 		shape.setStroke(micycle.pgs.color.Colors.PINK);

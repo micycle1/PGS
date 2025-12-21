@@ -123,6 +123,20 @@ public enum Palette {
 		return intValue[positiveIndex % length];
 	}
 
+	/**
+	 * Gets the color at the given index from the palette rotated by
+	 * {@code rotation}, modulo-ready (supports negative index and/or rotation).
+	 *
+	 * Equivalent to: {@code rotate(intValue(), rotation)[index]} but without
+	 * copying.
+	 */
+	public int get(int index, int rotation) {
+		int len = intValue.length;
+		int idx = Math.floorMod(index, len);
+		int rot = Math.floorMod(rotation, len);
+		return intValue[(idx + rot) % len];
+	}
+
 	public static Palette getPalette(int id) {
 		return Palette.values()[id % Palette.values().length];
 	}
