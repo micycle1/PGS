@@ -397,7 +397,7 @@ public final class PGS_Transformation {
 			Coordinate[] hole_coord = geom.getInteriorRingN(j).getCoordinates();
 			Coordinate[] hole_coord_ = new Coordinate[hole_coord.length];
 			for (int i = 0; i < hole_coord.length; i++) {
-				hole_coord_[i] = new Coordinate(center.x + scaleY * (hole_coord[i].x - center.x), center.y + scaleY * (hole_coord[i].y - center.y));
+				hole_coord_[i] = new Coordinate(center.x + scaleX * (hole_coord[i].x - center.x), center.y + scaleY * (hole_coord[i].y - center.y));
 			}
 			holes[j] = geom.getFactory().createLinearRing(hole_coord_);
 		}

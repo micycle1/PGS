@@ -823,18 +823,30 @@ public final class PGS_Morphology {
 			copy.addChild(copy);
 		}
 
-		/*
-		 * TODO preserveEnds arg, that scales the noise offset towards 0 for vertices
-		 * near the end (so we don't large jump between end point and warped next
-		 * vertex).
-		 */
 		for (PShape child : copy.getChildren()) {
-			int offset = 0; // child.isClosed() ? 0 : 1
-			for (int i = offset; i < child.getVertexCount() - offset; i++) {
+			int vCount = child.getVertexCount();
+			if (vCount == 0)
+				continue;
+
+			// Determine if the shape is closed.
+			boolean isClosed = child.isClosed() || (vCount > 1 && child.getVertex(0).equals(child.getVertex(vCount - 1)));
+
+			// If closed, we iterate up to N-1 and handle the last vertex separately to
+			// ensure closure.
+			int limit = isClosed ? vCount - 1 : vCount;
+
+			for (int i = 0; i < limit; i++) {
 				final PVector coord = child.getVertex(i);
 				float dx = noise.uniformNoise(coord.x / scale, coord.y / scale + time) - 0.5f;
 				float dy = noise.uniformNoise(coord.x / scale + (101 + time), coord.y / scale + (101 + time)) - 0.5f;
 				child.setVertex(i, coord.x + (dx * (float) magnitude * 2), coord.y + (dy * (float) magnitude * 2));
+			}
+
+			// If the shape was closed, sync the last vertex with the newly warped first
+			// vertex.
+			if (isClosed && vCount > 1) {
+				PVector firstV = child.getVertex(0);
+				child.setVertex(vCount - 1, firstV.x, firstV.y);
 			}
 		}
 
@@ -842,10 +854,11 @@ public final class PGS_Morphology {
 			return copy;
 		} else {
 			if (copy.getChildCount() == 1) {
+				// Fix self-intersections or invalid geometries caused by warping
 				return toPShape(GeometryFixer.fix(fromPShape(copy.getChild(0))));
 			} else {
-				// don't apply geometryFixer to GROUP shape, since fixing a multigeometry
-				// appears to merge shapes. TODO apply .fix() to shapes individually
+				// Return group as-is (fixing individual children would be safer but requires a
+				// loop)
 				return copy;
 			}
 		}
