@@ -5,7 +5,7 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
-## **2.2** *(2025-xx-xx)*
+## **2.2** *(2026-xx-xx)*
 
 ### Added
 * `fixBrokenFaces()` to `PGS_Meshing`. Repairs broken faces in near-coverage linework using endpoint-only snapping, then polygonises the result.
@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * A new mesh-coloring algorithm: `DBLAC`, it's even better than RLF!
 * `smoothGaussianNormalised()` to `PGS_Processing`. Applies normalised Gaussian smoothing to all geometries in a shape, intended to be more consistent across child shapes of different sizes.
 * `normalisedErosion()` to `PGS_Morphology`. Erodes a shape by a normalised amount (scaled to shape size).
+* `refine()` to `PGS_Triangulation`. Refines an existing triangulation using Ruppert's Delaunay refinement algorithm.
 
 ### Changes
 * These methods in `PGS_Meshing` are more performant and robust: `urquhartFaces()`, `gabrielFaces()`, `spannerFaces()`, `relativeNeighborFaces()`, `edgeCollapseQuadrangulation()`, `centroidQuadrangulation()`.

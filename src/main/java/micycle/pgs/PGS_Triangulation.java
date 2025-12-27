@@ -30,6 +30,7 @@ import org.tinfour.common.PolygonConstraint;
 import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
 import org.tinfour.edge.QuadEdge;
+import org.tinfour.refinement.RuppertRefiner;
 import org.tinfour.standard.IncrementalTin;
 import org.tinfour.utils.HilbertSort;
 import org.tinfour.utils.TriangleCollector;
@@ -412,6 +413,52 @@ public final class PGS_Triangulation {
 		}
 
 		return tin;
+	}
+
+	/**
+	 * Refines an existing triangulation using Ruppert's Delaunay refinement
+	 * algorithm.
+	 * <p>
+	 * Refinement inserts additional Steiner points in order to improve triangle
+	 * quality, primarily by eliminating "skinny" triangles whose minimum internal
+	 * angle is below {@code minAngleDeg}. The provided {@link IIncrementalTin} is
+	 * modified in place.
+	 * <p>
+	 * Typical values for {@code minAngleDeg} are in the range 20–33 degrees. Larger
+	 * values produce more regular triangles but may significantly increase the
+	 * number of inserted points (and runtime). Extremely large values may not be
+	 * achievable for constrained triangulations.
+	 *
+	 * @param triangulation the triangulation to refine (modified in place); must
+	 *                      not be {@code null}
+	 * @param minAngleDeg   the minimum allowed triangle angle, in degrees
+	 * @since 2.2
+	 */
+	public static void refine(IIncrementalTin triangulation, double minAngleDeg) {
+		RuppertRefiner refiner = new RuppertRefiner(triangulation, minAngleDeg);
+		refiner.refine();
+	}
+
+	/**
+	 * Refines an existing triangulation using Ruppert's Delaunay refinement
+	 * algorithm, while also enforcing a minimum triangle area threshold.
+	 * <p>
+	 * Refinement inserts additional Steiner points to improve triangle quality by
+	 * removing triangles with angles below {@code minAngleDeg}. The
+	 * {@code minTriangleArea} parameter acts as a stop condition to avoid
+	 * over-refining very small triangles. The provided {@link IIncrementalTin} is
+	 * modified in place.
+	 *
+	 * @param triangulation   the triangulation to refine (modified in place); must
+	 *                        not be {@code null}
+	 * @param minAngleDeg     the minimum allowed triangle angle, in degrees
+	 * @param minTriangleArea triangles with area less than or equal to this value
+	 *                        will not be further refined
+	 * @since 2.2
+	 */
+	public static void refine(IIncrementalTin triangulation, double minAngleDeg, double minTriangleArea) {
+		RuppertRefiner refiner = new RuppertRefiner(triangulation, minAngleDeg, minTriangleArea);
+		refiner.refine();
 	}
 
 	/**

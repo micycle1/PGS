@@ -216,7 +216,7 @@
 		<dependency>
 			<groupId>org.processing</groupId>
 			<artifactId>core</artifactId>
-			<version>4.4.7</version>
+			<version>4.5.0</version>
 			<scope>provided</scope> <!-- don't package into uber jar -->
 			<optional>true</optional> <!-- user artifact should override when provided -->
 		</dependency>
@@ -236,9 +236,9 @@
 			<version>1.5.2</version>
 		</dependency>
 		<dependency>
-			<groupId>com.github.gwlucastrig</groupId>
+			<groupId>com.github.micycle1</groupId>
 			<artifactId>Tinfour</artifactId>
-			<version>44b8d26e15</version>
+			<version>8357a9ba6c</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
