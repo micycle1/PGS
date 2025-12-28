@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 * `polygonizeLines()` from `PGS_Processing`, in favour of `polygonize(PShape)`.
+* `unionMeshWithoutHoles()` from `PGS_ShapeBoolean`. Previously deprecated in favour of the more general `unionMesh()`.
 
 ## **2.1** *(2025-10-04)*
 

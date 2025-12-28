@@ -314,58 +314,6 @@ public final class PGS_ShapeBoolean {
 	}
 
 	/**
-	 * Unifies a collection of mesh shapes without handling holes, providing a more
-	 * faster approach than {@link #unionMesh(PShape)} if the input is known to have
-	 * no holes.
-	 * <p>
-	 * This method calculates the set of unique edges belonging to the mesh, which
-	 * is equivalent to the boundary, assuming a mesh without holes. It then
-	 * determines a sequential/winding order for the vertices of the boundary.
-	 * <p>
-	 * Note: This method does not account for meshes with holes.
-	 *
-	 * @param mesh A collection of shapes representing a mesh.
-	 * @return A new PShape representing the union of the mesh shapes.
-	 * @deprecated This method is deprecated due to the lack of support for meshes
-	 *             with holes.
-	 */
-	@Deprecated
-	public static PShape unionMeshWithoutHoles(final Collection<PShape> mesh) {
-		Map<PEdge, Integer> edges = new HashMap<>();
-
-		final List<PEdge> allEdges;
-
-		/*
-		 * Compute set of unique edges belonging to the mesh (this set is equivalent to
-		 * the boundary, assuming a holeless mesh).
-		 */
-		for (PShape child : mesh) {
-			for (int i = 0; i < child.getVertexCount(); i++) {
-				final PVector a = child.getVertex(i);
-				final PVector b = child.getVertex((i + 1) % child.getVertexCount());
-				if (!a.equals(b)) {
-					PEdge edge = new PEdge(a, b);
-					edges.merge(edge, 1, Integer::sum);
-				}
-			}
-		}
-
-		allEdges = edges.entrySet().stream().filter(e -> e.getValue() == 1).map(e -> e.getKey()).collect(Collectors.toList());
-
-		/*
-		 * Now find a sequential/winding order for the vertices of the boundary. The
-		 * vertices output fromEdges() is not closed, so close it afterwards (assumes
-		 * the input to unionMesh() was indeed closed and valid).
-		 */
-		final List<PVector> orderedVertices = PGS.fromEdges(allEdges);
-		if (!orderedVertices.get(0).equals(orderedVertices.get(orderedVertices.size() - 1))) {
-			orderedVertices.add(orderedVertices.get(0)); // close vertex list for fromPVector()
-		}
-
-		return PGS_Conversion.fromPVector(orderedVertices);
-	}
-
-	/**
 	 * Finds all regions covered by at least two input shapes.
 	 * <ul>
 	 * <li>If {@code merged} is true, each child in the output is a disjoint
