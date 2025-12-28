@@ -14,7 +14,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import javax.vecmath.Point3d;
 
@@ -70,16 +69,22 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Methods for producing different kinds of shape contours. *
+ * Methods for producing interior contour structures from shapes.
+ *
  * <p>
- * Contours produced by this class are always computed within the interior of
- * shapes. Contour lines and features (such as isolines, medial axes, and
- * fields) are extracted as vector linework following the topology or scalar
- * properties of the enclosed shape area, rather than operations that modify the
- * shape boundary.
+ * The algorithms in this class extract <em>derived linework</em>—such as
+ * medial/chordal axes, straight skeletons, isolines, and field-derived
+ * curves—computed from within the interior of a polygonal {@link PShape}. These
+ * results describe the shape’s internal topology or scalar fields (e.g.,
+ * distance-to-boundary), rather than directly editing the original boundary.
+ *
+ * <p>
+ * <b>Note:</b> Outputs are typically vector linework (polylines) and may be
+ * returned as GROUP {@code PShape}s. Depending on geometry complexity, some
+ * methods may produce branching networks, multiple disjoint components, or
+ * degenerate segments.
  *
  * @author Michael Carleton
- *
  */
 public final class PGS_Contour {
 
@@ -150,7 +155,6 @@ public final class PGS_Contour {
 	 *         segment (possibly >2 vertices)
 	 * @since 1.3.0
 	 */
-	@SuppressWarnings("unchecked")
 	public static PShape chordalAxis(PShape shape) {
 		/*-
 		 * See 'Rectification of the Chordal Axis Transform and a New Criterion for

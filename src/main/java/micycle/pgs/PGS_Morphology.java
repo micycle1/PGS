@@ -47,10 +47,15 @@ import processing.core.PVector;
 import uk.osgb.algorithm.minkowski_sum.MinkowskiSum;
 
 /**
- * Methods that affect the geometry or topology of shapes.
- * 
- * @author Michael Carleton
+ * Morphological editing operations for {@link PShape} polygons.
  *
+ * <p>
+ * This class hosts algorithms that <em>reshape</em> geometry, typically by
+ * offsetting, simplifying, smoothing, warping, or deforming outlines; often
+ * changing vertex count and sometimes changing topology (splitting/merging
+ * parts, creating/removing holes).
+ *
+ * @author Michael Carleton
  */
 public final class PGS_Morphology {
 

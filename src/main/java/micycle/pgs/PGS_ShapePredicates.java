@@ -41,10 +41,19 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Various shape metrics, predicates and descriptors.
- * 
- * @author Michael Carleton
+ * Shape analysis utilities: metrics, predicates, and descriptive measurements
+ * for {@link PShape}s.
  *
+ * <p>
+ * This class provides read-only queries over geometry, including spatial
+ * relationships (containment, intersection, distance), scalar measurements
+ * (area, perimeter/length, diameter, width/height), and higher-level
+ * descriptors (circularity, elongation, convexity, similarity). It also
+ * includes validity and equality predicates commonly used to sanity-check
+ * shapes before downstream operations such as booleans, buffering, meshing, or
+ * tiling.
+ *
+ * @author Michael Carleton
  */
 public final class PGS_ShapePredicates {
 

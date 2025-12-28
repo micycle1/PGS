@@ -37,13 +37,21 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Voronoi Diagrams of shapes and point sets. Supports polygonal constraining
- * and relaxation to generate centroidal Voronoi.
- * 
- * @author Michael Carleton
+ * Voronoi diagram utilities for 2D point sets and {@link PShape} polygons.
  *
+ * <p>
+ * This class generates several variants of Voronoi diagrams, including:
+ * standard (unweighted) diagrams, additively/multiplicatively weighted
+ * diagrams, farthest-point Voronoi, and polygon-constrained (“inner”) Voronoi.
+ *
+ * <h2>Centroidal Voronoi (relaxation)</h2>
+ * <p>
+ * Several {@code innerVoronoi(...)} overloads support Lloyd-style relaxation by
+ * repeatedly rebuilding the diagram and moving sites toward cell centroids,
+ * producing centroidal Voronoi tessellations (CVTs) inside a boundary polygon.
+ *
+ * @author Michael Carleton
  */
-@SuppressWarnings("squid:S3776")
 public final class PGS_Voronoi {
 
 	private PGS_Voronoi() {

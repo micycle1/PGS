@@ -54,7 +54,6 @@ import org.locationtech.jts.geom.util.LineStringExtracter;
 import org.locationtech.jts.geom.util.PolygonExtracter;
 import org.locationtech.jts.linearref.LengthIndexedLine;
 import org.locationtech.jts.noding.MCIndexSegmentSetMutualIntersector;
-import org.locationtech.jts.noding.NodedSegmentString;
 import org.locationtech.jts.noding.Noder;
 import org.locationtech.jts.noding.SegmentIntersectionDetector;
 import org.locationtech.jts.noding.SegmentIntersector;
@@ -89,10 +88,17 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Methods that process shape geometry: partitioning, slicing, cleaning, etc.
+ * Shape-processing utilities for {@link PShape} geometry.
+ *
+ * <p>
+ * This class groups “workflow” operations that <em>operate on</em> shapes
+ * rather than primarily <em>reshaping</em> them: sampling and traversal,
+ * validation/repair, cleaning and filtering, intersection helpers, and
+ * partitioning/slicing/splitting into multiple parts. Methods often return
+ * derived shapes (or shape collections) suitable for downstream steps such as
+ * meshing, tiling, coloring, or boolean operations.
  * 
  * @author Michael Carleton
- *
  */
 public final class PGS_Processing {
 

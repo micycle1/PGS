@@ -21,6 +21,8 @@ import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Location;
+import org.locationtech.jts.geom.MultiPolygon;
+import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.Polygonal;
 import org.locationtech.jts.triangulate.polygon.PolygonTriangulator;
 import org.tinfour.common.IConstraint;
@@ -44,10 +46,32 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Delaunay and earcut triangulation of shapes and point sets.
- * 
- * @author Michael Carleton
+ * Triangulation utilities for 2D {@link PShape} polygons and point sets.
  *
+ * <p>
+ * This class provides:
+ * <ul>
+ * <li><b>Delaunay triangulation</b> of point sets (and optional polygonal
+ * constraints),</li>
+ * <li><b>Refinement</b> of an existing Delaunay TIN (adding Steiner points to
+ * improve triangle quality),</li>
+ * <li><b>Earcut triangulation</b> for fast polygon-to-triangles
+ * conversion,</li>
+ * <li>and helpers to convert triangulations to {@link PShape}, JTS
+ * {@link Geometry}, or graphs.</li>
+ * </ul>
+ *
+ * <h2>Delaunay vs. Earcut (when to use which)</h2>
+ * <ul>
+ * <li><b>Earcut</b> triangulates a polygon (including holes) into triangles
+ * that exactly cover the polygon interior. It does not attempt to optimise
+ * triangle quality.</li>
+ * <li><b>Delaunay</b> triangulates a set of points to maximise the minimum
+ * angle (in the unconstrained case), producing generally “well-shaped”
+ * triangles. When used with a boundary shape, results are typically
+ * clipped/filtered to the shape and may be optionally refined.</li>
+ *
+ * @author Michael Carleton
  */
 public final class PGS_Triangulation {
 
@@ -579,6 +603,43 @@ public final class PGS_Triangulation {
 		PGS_Conversion.setAllStrokeColor(out, Colors.PINK, 2);
 
 		return out;
+	}
+
+	/**
+	 * Converts a triangulated mesh object to a JTS MultiPolygon where each triangle
+	 * is represented as a separate Polygon.
+	 *
+	 * @param triangulation the IIncrementalTin object to convert
+	 * @param gf            geometry factory to use
+	 * @return a MultiPolygon containing one Polygon per triangle
+	 * @since 2.2
+	 */
+	static MultiPolygon toGeometry(final IIncrementalTin triangulation) {
+		final List<Polygon> triangles = new ArrayList<>();
+
+		final Consumer<Vertex[]> triangleVertexConsumer = t -> {
+			// triangle ring must be closed: p0, p1, p2, p0
+			final Coordinate c0 = new Coordinate(t[0].x, t[0].y);
+			final Coordinate c1 = new Coordinate(t[1].x, t[1].y);
+			final Coordinate c2 = new Coordinate(t[2].x, t[2].y);
+
+			final Coordinate[] coords = new Coordinate[] { c0, c1, c2, c0 };
+
+			final Polygon poly = PGS.GEOM_FACTORY.createPolygon(coords);
+
+			// Skip degenerate triangles (zero area / invalid)
+			if (!poly.isEmpty() && poly.isValid() && poly.getArea() > 0) {
+				triangles.add(poly);
+			}
+		};
+
+		if (!triangulation.getConstraints().isEmpty()) {
+			TriangleCollector.visitTrianglesConstrained(triangulation, triangleVertexConsumer);
+		} else {
+			TriangleCollector.visitTriangles(triangulation, triangleVertexConsumer);
+		}
+
+		return PGS.GEOM_FACTORY.createMultiPolygon(triangles.toArray(new Polygon[0]));
 	}
 
 	/**

@@ -61,14 +61,28 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Mesh generation (excluding triangulation) and processing.
+ * Mesh generation and mesh processing utilities (excluding triangulation).
+ *
  * <p>
- * Many of the methods within this class process an existing Delaunay
- * triangulation; you may first generate such a triangulation from a shape using
- * the
- * {@link PGS_Triangulation#delaunayTriangulationMesh(PShape, Collection, boolean, int, boolean)
- * delaunayTriangulationMesh()} method.
- * 
+ * This class contains algorithms that operate on mesh-like representations
+ * derived from shapes (most commonly a Delaunay triangulation), producing
+ * alternative adjacency structures (graphs/faces), quad meshes, and cleaned or
+ * simplified meshes. In contrast to polygon-focused operations, these methods
+ * work with <em>connectivity</em> (vertices/edges/faces) as a first-class
+ * concern.
+ *
+ * <p>
+ * Many methods expect an {@link IIncrementalTin} (a Delaunay TIN) or a
+ * {@link PShape} that encodes a mesh (often a GROUP of faces/edges). A typical
+ * workflow is:
+ * <ol>
+ * <li>Generate a triangulation via {@link PGS_Triangulation}.</li>
+ * <li>Derive or transform connectivity (Gabriel / RNG / Urquhart / spanners /
+ * duals).</li>
+ * <li>Optionally quadrangulate, smooth, simplify, subdivide, or repair the
+ * mesh.</li>
+ * </ol>
+ *
  * @author Michael Carleton
  * @since 1.2.0
  */

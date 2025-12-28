@@ -16,15 +16,17 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Various geometric and affine transformations for PShapes that affect vertex
- * coordinates.
- * <p>
- * Notably, these transformation methods affect the vertex coordinates of
- * PShapes, unlike Processing's transform methods that affect the affine matrix
- * of shapes only (and thereby leave vertex coordinates in-tact).
- * 
- * @author Michael Carleton
+ * Geometric (mostly affine) transformations for {@link PShape}s that explicitly
+ * modify vertex coordinates.
  *
+ * <p>
+ * These methods <em>bake</em> transforms into the geometry: vertices are
+ * rewritten in-place (conceptually), and the returned {@code PShape} contains
+ * the transformed coordinates. This differs from Processing’s
+ * {@code translate()/rotate()/scale()} which modify a {@code PShape}'s internal
+ * vertex transform matrix without necessarily changing stored vertex positions.
+ *
+ * @author Michael Carleton
  */
 public final class PGS_Transformation {
 
