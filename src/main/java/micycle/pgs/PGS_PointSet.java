@@ -1099,10 +1099,6 @@ public final class PGS_PointSet {
 	 * Computes an <i>approximate</i> Traveling Salesman path for the set of points
 	 * provided. Utilises a heuristic based TSP solver, followed by 2-opt heuristic
 	 * improvements for further tour optimisation.
-	 * <p>
-	 * Note {@link PGS_Hull#concaveHullBFS(List, double) concaveHullBFS()} produces
-	 * a similar result (somewhat longer tours, i.e. 10%) but is <b>much</b> more
-	 * performant.
 	 * 
 	 * @param points the list of points for which to compute the approximate
 	 *               shortest tour

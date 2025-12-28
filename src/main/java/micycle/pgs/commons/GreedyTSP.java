@@ -1,302 +1,523 @@
 package micycle.pgs.commons;
 
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.List;
 import java.util.function.ToDoubleBiFunction;
-import java.util.stream.Collectors;
 
 /**
- * A high-performance implementation of the Traveling Salesman Problem (TSP)
- * using a greedy construction heuristic followed by 2-opt local search
- * improvement.
- *
- * <h2>Algorithm Overview</h2>
+ * Heuristic Traveling Salesman Problem (TSP) tour builder for a complete,
+ * weighted graph.
  * <p>
- * This implementation uses a two-phase approach:
+ * Given a list of vertices and a distance function, this class computes a fast,
+ * high-quality <em>approximate</em> Hamiltonian cycle (tour) that visits every
+ * vertex exactly once and returns to the start. The solution is not guaranteed
+ * to be optimal.
  * </p>
- * <ol>
- * <li><strong>Greedy Construction:</strong> Builds an initial tour by
- * repeatedly selecting the shortest available edge that doesn't violate TSP
- * constraints (no cycles except the final one, maximum degree 2 per
- * vertex)</li>
- * <li><strong>2-opt Improvement:</strong> Iteratively improves the tour by
- * swapping edges until no further improvement is possible</li>
- * </ol>
  *
- * @param <V> the type of vertices in the graph. Can be any type for which
- *            distances can be computed.
+ * <h2>Input / Graph Model</h2>
+ * <ul>
+ * <li>The input is treated as a complete graph over the provided vertices.</li>
+ * <li>Distances are assumed to be symmetric. This implementation precomputes a
+ * symmetric distance table by evaluating {@code distFunc} only for
+ * {@code i < j} and mirroring the result. If {@code distFunc} is asymmetric,
+ * the effective distance used will be {@code d(i,j)=d(j,i)=distFunc(i,j)} for
+ * {@code i<j} (i.e., it will be implicitly symmetrized by the evaluation
+ * order).</li>
+ * <li>{@code distFunc} should be deterministic, side-effect free, and should
+ * not return NaN. Returning NaN or extreme values may lead to poor tours or
+ * undefined behavior.</li>
+ * </ul>
  *
+ * <h2>Output</h2>
+ * <ul>
+ * <li>{@link #getTour()} returns a <strong>closed</strong> tour: a
+ * {@code List<V>} of length {@code n+1} where the first vertex is repeated at
+ * the end.</li>
+ * <li>The returned tour is anchored to vertex index {@code 0} (the first input
+ * vertex) as the start/end point.</li>
+ * </ul>
+ *
+ * <h2>Determinism and Thread Safety</h2>
+ * <ul>
+ * <li>For a fixed vertex order and deterministic {@code distFunc}, the produced
+ * tour is deterministic.</li>
+ * <li>Instances are effectively immutable after construction. Concurrent calls
+ * to {@link #getTour()} are safe provided {@code distFunc} itself is
+ * thread-safe and has no side effects.</li>
+ * </ul>
+ *
+ * @param <V> vertex type
  * @author Michael Carleton
  */
-public class GreedyTSP<V> {
+public final class GreedyTSP<V> {
 
-	private final List<V> vertices;
+	// Tuning knobs (good defaults)
+	private static final int CANDIDATES_K = 24; // 16..40 common; higher => better, slower
+	private static final int RESTARTS_SMALL_N = 8; // more restarts => better, slower
+	private static final int RESTARTS_LARGE_N = 4;
+	private static final double EPS = 1e-12;
+
+	private final Object[] verts;
 	private final ToDoubleBiFunction<V, V> distFunc;
-	private final double[][] allDist;
+
+	private final int n;
+	private final double[] dist; // flat n*n
+	private final int[] rowBase;
+
+	// Candidate lists: cand[i*k + t] = t-th nearest neighbor of i (sorted by
+	// distance)
+	private final int k;
+	private final int[] cand;
 
 	public GreedyTSP(List<V> vertices, ToDoubleBiFunction<V, V> distFunc) {
 		if (vertices == null || vertices.isEmpty()) {
 			throw new IllegalArgumentException("Vertex list must not be null or empty");
 		}
-		this.vertices = List.copyOf(vertices);
+		this.verts = vertices.toArray();
 		this.distFunc = distFunc;
-		this.allDist = initDistanceTable();
+		this.n = verts.length;
+
+		this.rowBase = new int[n];
+		for (int i = 0; i < n; i++)
+			rowBase[i] = i * n;
+
+		this.dist = new double[n * n];
+		initDistanceTable();
+
+		this.k = Math.min(CANDIDATES_K, Math.max(0, n - 1));
+		this.cand = (k == 0) ? new int[0] : buildCandidateLists(k);
 	}
 
-	/**
-	 * Build the full symmetric distance matrix.
-	 */
-	private double[][] initDistanceTable() {
-		int n = vertices.size();
-		double[][] d = new double[n][n];
+	@SuppressWarnings("unchecked")
+	private void initDistanceTable() {
 		for (int i = 0; i < n; i++) {
-			d[i][i] = 0;
+			final int ri = rowBase[i];
+			dist[ri + i] = 0.0;
+			final V vi = (V) verts[i];
 			for (int j = i + 1; j < n; j++) {
-				double dij = distFunc.applyAsDouble(vertices.get(i), vertices.get(j));
-				d[i][j] = dij;
-				d[j][i] = dij;
+				final double dij = distFunc.applyAsDouble(vi, (V) verts[j]);
+				dist[ri + j] = dij;
+				dist[rowBase[j] + i] = dij;
 			}
 		}
-		return d;
 	}
 
 	/**
-	 * Runs greedy construction heuristic, then improves with 2-opt, and returns a
-	 * CLOSED tour (first vertex repeated at end).
+	 * Returns a CLOSED tour (first vertex repeated at end).
 	 */
+	@SuppressWarnings("unchecked")
 	public List<V> getTour() {
-		int n = vertices.size();
 		if (n == 1) {
-			return List.of(vertices.get(0), vertices.get(0));
+			final V a = (V) verts[0];
+			return List.of(a, a);
 		}
 		if (n == 2) {
-			V a = vertices.get(0), b = vertices.get(1);
+			final V a = (V) verts[0];
+			final V b = (V) verts[1];
 			return List.of(a, b, a);
 		}
 
-		// 1) Build tour using greedy edge selection
-		int[] tour = buildGreedyTour();
+		final int restarts = (n <= 2000) ? RESTARTS_SMALL_N : RESTARTS_LARGE_N;
 
-		// 2) Improve with 2-opt
-		improve(tour);
+		final int[] bestNext = new int[n];
+		double bestLen = Double.POSITIVE_INFINITY;
 
-		// 3) Map back to V
-		return Arrays.stream(tour).mapToObj(vertices::get).collect(Collectors.toList());
-	}
+		// Working buffers reused across restarts (minimize allocations)
+		final int[] next = new int[n];
+		final int[] prev = new int[n];
+		final int[] order = new int[n];
 
-	/**
-	 * Edge record for efficient immutable edge representation.
-	 */
-	private record Edge(int u, int v, double weight) implements Comparable<Edge> {
-		@Override
-		public int compareTo(Edge other) {
-			return Double.compare(this.weight, other.weight);
+		final int[] visitedStamp = new int[n];
+		int stamp = 1;
+
+		final byte[] dlb2 = new byte[n];
+		final byte[] dlbR = new byte[n];
+
+		// Deterministic seed set (keeps runs reproducible)
+		final int[] seeds = makeSeeds(restarts);
+
+		for (int r = 0; r < seeds.length; r++) {
+			if (++stamp == 0) { // extremely unlikely, but keep safe
+				Arrays.fill(visitedStamp, 0);
+				stamp = 1;
+			}
+
+			buildNearestNeighborTour(seeds[r], order, next, prev, visitedStamp, stamp);
+			localSearch(next, prev, dlb2, dlbR);
+
+			final double len = tourLength(next);
+			if (len < bestLen) {
+				bestLen = len;
+				System.arraycopy(next, 0, bestNext, 0, n);
+			}
 		}
-	}
 
-	/**
-	 * Build tour using greedy edge selection with optimizations.
-	 */
-	private int[] buildGreedyTour() {
-		int n = vertices.size();
-
-		// Pre-allocate exact capacity
-		int edgeCount = n * (n - 1) / 2;
-		Edge[] edges = new Edge[edgeCount];
-		int idx = 0;
-
-		// Create edges array directly (avoid List overhead)
+		// Materialize as CLOSED tour starting from vertex 0
+		final ArrayList<V> out = new ArrayList<>(n + 1);
+		int cur = 0;
 		for (int i = 0; i < n; i++) {
-			for (int j = i + 1; j < n; j++) {
-				edges[idx++] = new Edge(i, j, allDist[i][j]);
-			}
+			out.add((V) verts[cur]);
+			cur = bestNext[cur];
 		}
-		Arrays.sort(edges);
-
-		// Use byte array for degrees (max degree is 2)
-		byte[] degree = new byte[n];
-		UnionFind uf = new UnionFind(n);
-
-		// Pre-allocate adjacency lists with exact capacity (2)
-		int[][] adj = new int[n][2];
-		for (int i = 0; i < n; i++) {
-			adj[i][0] = adj[i][1] = -1;
-		}
-
-		int edgesAdded = 0;
-		for (Edge e : edges) {
-			// Fast degree check
-			// Fast cycle check (skip for last edge)
-			if (degree[e.u] == 2 || degree[e.v] == 2 || (edgesAdded < n - 1 && uf.connected(e.u, e.v))) {
-				continue;
-			}
-
-			// Add edge to adjacency (no list needed, max 2 neighbors)
-			adj[e.u][degree[e.u]] = e.v;
-			adj[e.v][degree[e.v]] = e.u;
-			degree[e.u]++;
-			degree[e.v]++;
-			uf.union(e.u, e.v);
-
-			if (++edgesAdded == n) {
-				break;
-			}
-		}
-
-		// Convert adjacency representation to tour array
-		return buildTourFromAdjacency(adj);
+		out.add((V) verts[0]);
+		return out;
 	}
 
-	/**
-	 * Convert adjacency array representation to tour array. Optimized to avoid list
-	 * operations.
-	 */
-	private int[] buildTourFromAdjacency(int[][] adj) {
-		int n = vertices.size();
-		int[] tour = new int[n + 1];
+	private int[] makeSeeds(int restarts) {
+		final int[] seeds = new int[Math.min(restarts, n)];
 
-		// Use bitset for visited tracking (more cache-friendly)
-		BitSet visited = new BitSet(n);
+		// Always include 0
+		seeds[0] = 0;
+		int count = 1;
+		if (count == seeds.length)
+			return seeds;
 
-		tour[0] = 0;
-		visited.set(0);
-		int current = 0;
-		int prev = -1;
+		// Add farthest-from-0 (often a good diversification)
+		int far = 1;
+		double farD = dist[rowBase[0] + 1];
+		for (int i = 2; i < n; i++) {
+			final double d = dist[rowBase[0] + i];
+			if (d > farD) {
+				farD = d;
+				far = i;
+			}
+		}
+		seeds[count++] = far;
+		if (count == seeds.length)
+			return seeds;
 
-		// Follow the path (each vertex has exactly 2 neighbors)
+		// Add farthest-from-far
+		int far2 = 0;
+		double far2D = dist[rowBase[far] + 0];
 		for (int i = 1; i < n; i++) {
-			int next = adj[current][0];
-			if (next == prev || visited.get(next)) {
-				next = adj[current][1];
+			final double d = dist[rowBase[far] + i];
+			if (d > far2D) {
+				far2D = d;
+				far2 = i;
 			}
-			tour[i] = next;
-			visited.set(next);
-			prev = current;
-			current = next;
 		}
+		seeds[count++] = far2;
+		if (count == seeds.length)
+			return seeds;
 
-		tour[n] = 0; // close the tour
-		return tour;
+		// Fill remaining deterministically (hash-like spread)
+		for (int i = count; i < seeds.length; i++) {
+			final long x = (i * 0x9E3779B97F4A7C15L);
+			seeds[i] = (int) Long.remainderUnsigned(x, n);
+		}
+		return seeds;
 	}
 
 	/**
-	 * Optimized Union-Find with path compression and union by rank.
+	 * Builds an NN tour; uses candidate list first, falls back to full scan if
+	 * needed.
 	 */
-	private static class UnionFind {
-		private final int[] parent;
-		private final byte[] rank; // rank never exceeds log(n)
+	private void buildNearestNeighborTour(int seed, int[] order, int[] next, int[] prev, int[] visitedStamp, int stamp) {
 
-		UnionFind(int n) {
-			parent = new int[n];
-			rank = new byte[n];
-			for (int i = 0; i < n; i++) {
-				parent[i] = i;
-			}
-		}
+		order[0] = seed;
+		visitedStamp[seed] = stamp;
 
-		int find(int x) {
-			int root = x;
-			// Find root
-			while (parent[root] != root) {
-				root = parent[root];
-			}
-			// Path compression
-			while (x != root) {
-				int next = parent[x];
-				parent[x] = root;
-				x = next;
-			}
-			return root;
-		}
+		int cur = seed;
+		for (int pos = 1; pos < n; pos++) {
+			int best = -1;
+			double bestD = Double.POSITIVE_INFINITY;
 
-		boolean connected(int x, int y) {
-			return find(x) == find(y);
-		}
-
-		void union(int x, int y) {
-			int px = find(x);
-			int py = find(y);
-			if (px == py) {
-				return;
+			// Fast attempt: search among k nearest candidates
+			if (k != 0) {
+				final int base = cur * k;
+				final int rc = rowBase[cur];
+				for (int t = 0; t < k; t++) {
+					final int candNode = cand[base + t];
+					if (visitedStamp[candNode] == stamp)
+						continue;
+					final double d = dist[rc + candNode];
+					best = candNode;
+					bestD = d;
+					break; // candidates are sorted by distance
+				}
 			}
 
-			// Union by rank
-			if (rank[px] < rank[py]) {
-				parent[px] = py;
-			} else if (rank[px] > rank[py]) {
-				parent[py] = px;
-			} else {
-				parent[py] = px;
-				rank[px]++;
-			}
-		}
-	}
-
-	/**
-	 * Improve tour with 2-opt. Optimized with early termination and better cache
-	 * patterns.
-	 */
-	private void improve(int[] tour) {
-		int N = tour.length - 1;
-		double minImprovement = 1e-9;
-		int stallCount = 0;
-		int maxStalls = 3; // stop after 3 rounds with tiny improvements
-
-		while (true) {
-			double bestDelta = 0;
-			int bestI = -1, bestJ = -1;
-
-			// Cache-friendly iteration pattern
-			for (int i = 0; i < N - 2; i++) {
-				int ci = tour[i], ci1 = tour[i + 1];
-				double currentEdge = allDist[ci][ci1];
-
-				// Start j from i+2 to avoid adjacent edges
-				for (int j = i + 2; j < N; j++) {
-					int cj = tour[j], cj1 = tour[j + 1];
-
-					// Quick calculation with early exit
-					double newEdges = allDist[ci][cj] + allDist[ci1][cj1];
-					double oldEdges = currentEdge + allDist[cj][cj1];
-					double delta = newEdges - oldEdges;
-
-					if (delta < bestDelta) {
-						bestDelta = delta;
-						bestI = i;
-						bestJ = j;
+			// Fallback: exact NN (full scan)
+			if (best < 0) {
+				final int rc = rowBase[cur];
+				for (int j = 0; j < n; j++) {
+					if (visitedStamp[j] == stamp)
+						continue;
+					final double d = dist[rc + j];
+					if (d < bestD) {
+						bestD = d;
+						best = j;
 					}
 				}
 			}
 
-			if (bestDelta < -minImprovement) {
-				// Apply the improvement
-				reverse(tour, bestI + 1, bestJ);
-				stallCount = 0;
-			} else if (bestDelta < 0) {
-				// Very small improvement
-				reverse(tour, bestI + 1, bestJ);
-				if (++stallCount >= maxStalls) {
-					break;
+			order[pos] = best;
+			visitedStamp[best] = stamp;
+			cur = best;
+		}
+
+		// Convert order[] into next/prev cycle
+		for (int i = 0; i < n - 1; i++) {
+			final int a = order[i];
+			final int b = order[i + 1];
+			next[a] = b;
+			prev[b] = a;
+		}
+		final int first = order[0];
+		final int last = order[n - 1];
+		next[last] = first;
+		prev[first] = last;
+	}
+
+	private void localSearch(int[] next, int[] prev, byte[] dlb2, byte[] dlbR) {
+		Arrays.fill(dlb2, (byte) 0);
+		Arrays.fill(dlbR, (byte) 0);
+
+		boolean improved;
+		do {
+			improved = false;
+
+			// 2-opt phase
+			boolean changed2;
+			do {
+				changed2 = false;
+				for (int a = 0; a < n; a++) {
+					if (dlb2[a] != 0)
+						continue;
+					if (tryTwoOptAt(a, next, prev, dlb2)) {
+						changed2 = true;
+						improved = true;
+					} else {
+						dlb2[a] = 1;
+					}
 				}
-			} else {
-				// No improvement found
-				break;
+			} while (changed2);
+
+			// Relocation phase (Or-opt-1)
+			boolean changedR;
+			do {
+				changedR = false;
+				for (int x = 0; x < n; x++) {
+					if (dlbR[x] != 0)
+						continue;
+					if (tryRelocateAt(x, next, prev, dlbR)) {
+						changedR = true;
+						improved = true;
+					} else {
+						dlbR[x] = 1;
+					}
+				}
+			} while (changedR);
+
+			// After relocation, allow 2-opt bits to re-activate a bit
+			if (improved) {
+				Arrays.fill(dlb2, (byte) 0);
+			}
+		} while (improved);
+	}
+
+	private boolean tryTwoOptAt(int a, int[] next, int[] prev, byte[] dlb) {
+		final int b = next[a];
+		final int ra = rowBase[a];
+		final int rb = rowBase[b];
+
+		final double dab = dist[ra + b];
+
+		// Search c among candidate neighbors of a (sorted nearest-first)
+		if (k == 0)
+			return false;
+		final int base = a * k;
+
+		for (int t = 0; t < k; t++) {
+			final int c = cand[base + t];
+			if (c == a || c == b)
+				continue;
+
+			final int d = next[c];
+
+			// avoid adjacent/degenerate swaps
+			if (d == a || d == b || c == prev[a] || c == b || d == a)
+				continue;
+			if (c == a || c == b || d == a || d == b)
+				continue;
+
+			final double delta = (dist[ra + c] + dist[rb + d]) - (dab + dist[rowBase[c] + d]);
+			if (delta < -EPS) {
+				twoOptSwap(a, b, c, d, next, prev);
+				clearDlbAround(dlb, a, b, c, d, next, prev);
+				return true;
 			}
 		}
+		return false;
 	}
 
 	/**
-	 * Optimized in-place reverse using XOR swap for primitives.
+	 * 2-opt: remove (a,b) and (c,d), add (a,c) and (b,d) reversing segment [b..c].
 	 */
-	private void reverse(int[] tour, int from, int to) {
-		while (from < to) {
-			// XOR swap (avoids temp variable)
-			tour[from] ^= tour[to];
-			tour[to] ^= tour[from];
-			tour[from] ^= tour[to];
-			from++;
-			to--;
+	private static void twoOptSwap(int a, int b, int c, int d, int[] next, int[] prev) {
+		// Reverse pointers along the path from b to c following next[]
+		int x = b;
+		while (true) {
+			final int nx = next[x];
+			final int px = prev[x];
+			next[x] = px;
+			prev[x] = nx;
+			if (x == c)
+				break;
+			x = nx;
 		}
+
+		// Reconnect endpoints
+		next[a] = c;
+		prev[c] = a;
+
+		next[b] = d;
+		prev[d] = b;
+	}
+
+	/**
+	 * Or-opt-1: remove node x and insert it after a (between a and b=next[a]).
+	 */
+	private boolean tryRelocateAt(int x, int[] next, int[] prev, byte[] dlb) {
+		final int p = prev[x];
+		final int q = next[x];
+
+		// If x is the only node? not possible here, but keep structure safe
+		if (p == x || q == x)
+			return false;
+
+		final int rx = rowBase[x];
+		final int rp = rowBase[p];
+
+		final double dpx = dist[rp + x];
+		final double dxq = dist[rx + q];
+		final double dpq = dist[rp + q];
+
+		if (k == 0)
+			return false;
+		final int base = x * k;
+
+		for (int t = 0; t < k; t++) {
+			final int a = cand[base + t];
+			if (a == x || a == p)
+				continue;
+
+			final int b = next[a];
+			if (b == x || b == q)
+				continue; // would reinsert into same place / adjacent issues
+
+			// delta = (p,q) + (a,x) + (x,b) - (p,x) - (x,q) - (a,b)
+			final double delta = dpq + dist[rowBase[a] + x] + dist[rx + b] - dpx - dxq - dist[rowBase[a] + b];
+
+			if (delta < -EPS) {
+				// remove x
+				next[p] = q;
+				prev[q] = p;
+
+				// insert x after a
+				next[a] = x;
+				prev[x] = a;
+				next[x] = b;
+				prev[b] = x;
+
+				clearDlbAround(dlb, x, p, q, a, next, prev);
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static void clearDlbAround(byte[] dlb, int a, int b, int c, int d, int[] next, int[] prev) {
+		// Clear a few affected nodes + their immediate neighbors (cheap and effective)
+		clear(dlb, a);
+		clear(dlb, b);
+		clear(dlb, c);
+		clear(dlb, d);
+		clear(dlb, next[a]);
+		clear(dlb, prev[a]);
+		clear(dlb, next[b]);
+		clear(dlb, prev[b]);
+		clear(dlb, next[c]);
+		clear(dlb, prev[c]);
+		clear(dlb, next[d]);
+		clear(dlb, prev[d]);
+	}
+
+	private static void clear(byte[] dlb, int i) {
+		if (i >= 0 && i < dlb.length)
+			dlb[i] = 0;
+	}
+
+	private double tourLength(int[] next) {
+		double sum = 0.0;
+		int cur = 0;
+		for (int i = 0; i < n; i++) {
+			final int nx = next[cur];
+			sum += dist[rowBase[cur] + nx];
+			cur = nx;
+		}
+		return sum;
+	}
+
+	/**
+	 * Build k-nearest candidate lists for each node (sorted nearest-first).
+	 */
+	private int[] buildCandidateLists(int k) {
+		final int[] out = new int[n * k];
+		final int[] bestIdx = new int[k];
+		final double[] bestD = new double[k];
+
+		for (int i = 0; i < n; i++) {
+			Arrays.fill(bestIdx, -1);
+			Arrays.fill(bestD, Double.POSITIVE_INFINITY);
+
+			int maxPos = 0;
+			double maxVal = Double.POSITIVE_INFINITY;
+
+			final int ri = rowBase[i];
+			for (int j = 0; j < n; j++) {
+				if (j == i)
+					continue;
+				final double d = dist[ri + j];
+				if (d < maxVal) {
+					bestD[maxPos] = d;
+					bestIdx[maxPos] = j;
+
+					// recompute current worst
+					maxPos = 0;
+					maxVal = bestD[0];
+					for (int t = 1; t < k; t++) {
+						final double v = bestD[t];
+						if (v > maxVal) {
+							maxVal = v;
+							maxPos = t;
+						}
+					}
+				}
+			}
+
+			// sort bestIdx by bestD (small k => insertion sort is fine)
+			for (int a = 1; a < k; a++) {
+				final double kd = bestD[a];
+				final int ki = bestIdx[a];
+				int b = a - 1;
+				while (b >= 0 && bestD[b] > kd) {
+					bestD[b + 1] = bestD[b];
+					bestIdx[b + 1] = bestIdx[b];
+					b--;
+				}
+				bestD[b + 1] = kd;
+				bestIdx[b + 1] = ki;
+			}
+
+			final int base = i * k;
+			for (int t = 0; t < k; t++) {
+				out[base + t] = bestIdx[t];
+			}
+		}
+
+		return out;
 	}
 }
