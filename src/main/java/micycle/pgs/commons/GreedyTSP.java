@@ -79,8 +79,9 @@ public final class GreedyTSP<V> {
 		this.n = verts.length;
 
 		this.rowBase = new int[n];
-		for (int i = 0; i < n; i++)
+		for (int i = 0; i < n; i++) {
 			rowBase[i] = i * n;
+		}
 
 		this.dist = new double[n * n];
 		initDistanceTable();
@@ -137,13 +138,13 @@ public final class GreedyTSP<V> {
 		// Deterministic seed set (keeps runs reproducible)
 		final int[] seeds = makeSeeds(restarts);
 
-		for (int r = 0; r < seeds.length; r++) {
+		for (int seed : seeds) {
 			if (++stamp == 0) { // extremely unlikely, but keep safe
 				Arrays.fill(visitedStamp, 0);
 				stamp = 1;
 			}
 
-			buildNearestNeighborTour(seeds[r], order, next, prev, visitedStamp, stamp);
+			buildNearestNeighborTour(seed, order, next, prev, visitedStamp, stamp);
 			localSearch(next, prev, dlb2, dlbR);
 
 			final double len = tourLength(next);
@@ -170,8 +171,9 @@ public final class GreedyTSP<V> {
 		// Always include 0
 		seeds[0] = 0;
 		int count = 1;
-		if (count == seeds.length)
+		if (count == seeds.length) {
 			return seeds;
+		}
 
 		// Add farthest-from-0 (often a good diversification)
 		int far = 1;
@@ -184,8 +186,9 @@ public final class GreedyTSP<V> {
 			}
 		}
 		seeds[count++] = far;
-		if (count == seeds.length)
+		if (count == seeds.length) {
 			return seeds;
+		}
 
 		// Add farthest-from-far
 		int far2 = 0;
@@ -198,8 +201,9 @@ public final class GreedyTSP<V> {
 			}
 		}
 		seeds[count++] = far2;
-		if (count == seeds.length)
+		if (count == seeds.length) {
 			return seeds;
+		}
 
 		// Fill remaining deterministically (hash-like spread)
 		for (int i = count; i < seeds.length; i++) {
@@ -229,8 +233,9 @@ public final class GreedyTSP<V> {
 				final int rc = rowBase[cur];
 				for (int t = 0; t < k; t++) {
 					final int candNode = cand[base + t];
-					if (visitedStamp[candNode] == stamp)
+					if (visitedStamp[candNode] == stamp) {
 						continue;
+					}
 					final double d = dist[rc + candNode];
 					best = candNode;
 					bestD = d;
@@ -242,8 +247,9 @@ public final class GreedyTSP<V> {
 			if (best < 0) {
 				final int rc = rowBase[cur];
 				for (int j = 0; j < n; j++) {
-					if (visitedStamp[j] == stamp)
+					if (visitedStamp[j] == stamp) {
 						continue;
+					}
 					final double d = dist[rc + j];
 					if (d < bestD) {
 						bestD = d;
@@ -283,8 +289,9 @@ public final class GreedyTSP<V> {
 			do {
 				changed2 = false;
 				for (int a = 0; a < n; a++) {
-					if (dlb2[a] != 0)
+					if (dlb2[a] != 0) {
 						continue;
+					}
 					if (tryTwoOptAt(a, next, prev, dlb2)) {
 						changed2 = true;
 						improved = true;
@@ -299,8 +306,9 @@ public final class GreedyTSP<V> {
 			do {
 				changedR = false;
 				for (int x = 0; x < n; x++) {
-					if (dlbR[x] != 0)
+					if (dlbR[x] != 0) {
 						continue;
+					}
 					if (tryRelocateAt(x, next, prev, dlbR)) {
 						changedR = true;
 						improved = true;
@@ -325,22 +333,22 @@ public final class GreedyTSP<V> {
 		final double dab = dist[ra + b];
 
 		// Search c among candidate neighbors of a (sorted nearest-first)
-		if (k == 0)
+		if (k == 0) {
 			return false;
+		}
 		final int base = a * k;
 
 		for (int t = 0; t < k; t++) {
 			final int c = cand[base + t];
-			if (c == a || c == b)
+			if (c == a || c == b) {
 				continue;
+			}
 
 			final int d = next[c];
-
-			// avoid adjacent/degenerate swaps
-			if (d == a || d == b || c == prev[a] || c == b || d == a)
-				continue;
-			if (c == a || c == b || d == a || d == b)
-				continue;
+			if (d == a || d == b)
+			 {
+				continue; // edges share an endpoint -> invalid 2-opt
+			}
 
 			final double delta = (dist[ra + c] + dist[rb + d]) - (dab + dist[rowBase[c] + d]);
 			if (delta < -EPS) {
@@ -363,8 +371,9 @@ public final class GreedyTSP<V> {
 			final int px = prev[x];
 			next[x] = px;
 			prev[x] = nx;
-			if (x == c)
+			if (x == c) {
 				break;
+			}
 			x = nx;
 		}
 
@@ -384,8 +393,9 @@ public final class GreedyTSP<V> {
 		final int q = next[x];
 
 		// If x is the only node? not possible here, but keep structure safe
-		if (p == x || q == x)
+		if (p == x || q == x) {
 			return false;
+		}
 
 		final int rx = rowBase[x];
 		final int rp = rowBase[p];
@@ -394,18 +404,22 @@ public final class GreedyTSP<V> {
 		final double dxq = dist[rx + q];
 		final double dpq = dist[rp + q];
 
-		if (k == 0)
+		if (k == 0) {
 			return false;
+		}
 		final int base = x * k;
 
 		for (int t = 0; t < k; t++) {
 			final int a = cand[base + t];
-			if (a == x || a == p)
+			if (a == x || a == p) {
 				continue;
+			}
 
 			final int b = next[a];
 			if (b == x || b == q)
+			 {
 				continue; // would reinsert into same place / adjacent issues
+			}
 
 			// delta = (p,q) + (a,x) + (x,b) - (p,x) - (x,q) - (a,b)
 			final double delta = dpq + dist[rowBase[a] + x] + dist[rx + b] - dpx - dxq - dist[rowBase[a] + b];
@@ -446,8 +460,9 @@ public final class GreedyTSP<V> {
 	}
 
 	private static void clear(byte[] dlb, int i) {
-		if (i >= 0 && i < dlb.length)
+		if (i >= 0 && i < dlb.length) {
 			dlb[i] = 0;
+		}
 	}
 
 	private double tourLength(int[] next) {
@@ -478,8 +493,9 @@ public final class GreedyTSP<V> {
 
 			final int ri = rowBase[i];
 			for (int j = 0; j < n; j++) {
-				if (j == i)
+				if (j == i) {
 					continue;
+				}
 				final double d = dist[ri + j];
 				if (d < maxVal) {
 					bestD[maxPos] = d;
