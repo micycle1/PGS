@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `smoothGaussianNormalised()` to `PGS_Processing`. Applies normalised Gaussian smoothing to all geometries in a shape, intended to be more consistent across child shapes of different sizes.
 * `normalisedErosion()` to `PGS_Morphology`. Erodes a shape by a normalised amount (scaled to shape size).
 * `refine()` to `PGS_Triangulation`. Refines an existing triangulation using Ruppert's Delaunay refinement algorithm.
+* `arapDeform()` to `PGS_Morphology`. Applies As-Rigid-As-Possible (ARAP) shape deformation using point handles.
 
 ### Changes
 * These methods in `PGS_Meshing` are more performant and robust: `urquhartFaces()`, `gabrielFaces()`, `spannerFaces()`, `relativeNeighborFaces()`, `edgeCollapseQuadrangulation()`, `centroidQuadrangulation()`.
@@ -26,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `GENETIC` mesh-coloring algorithm now always works (and has been improved too).
 * `PGS_Morphology.reducePrecision()` now supports GROUP shapes without collapsing them.
 * `PGS_Construction.createSuperRandomPolygon()` no longer produces holes when `holes` is set to `false`.
+* `PGS_Contour.chordalAxis()` can no longer return polygonal output.
 
 ### Removed
 * `polygonizeLines()` from `PGS_Processing`, in favour of `polygonize(PShape)`.

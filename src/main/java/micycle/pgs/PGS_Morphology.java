@@ -3,6 +3,7 @@ package micycle.pgs;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiFunction;
 import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
@@ -29,6 +30,8 @@ import org.locationtech.jts.shape.CubicBezierCurve;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.simplify.VWSimplifier;
+
+import com.gihub.micycle1.malleo.Malleo;
 
 import micycle.pgs.PGS_Contour.OffsetStyle;
 import micycle.pgs.commons.ChaikinCut;
@@ -965,6 +968,58 @@ public final class PGS_Morphology {
 			System.err.println("interpolate() accepts holeless single polygons only (for now).");
 			return from;
 		}
+	}
+
+	/**
+	 * As-rigid-as-possible (ARAP) 2D deformation of a polygon {@link PShape} using
+	 * point handles.
+	 * <h2>Handle semantics</h2>
+	 * <ul>
+	 * <li>{@code handles} are points in the <em>rest</em> (original) shape's
+	 * coordinate space.</li>
+	 * <li>{@code handleTargets} are the desired positions for those same handles in
+	 * the <em>deformed</em> shape.</li>
+	 * <li>Both lists must have the same size and matching order (i.e., index
+	 * {@code i} in {@code handles} maps to index {@code i} in
+	 * {@code handleTargets}).</li>
+	 * <li>ARAP typically requires at least 2 handles for a stable solve.</li>
+	 * </ul>
+	 *
+	 * <h2>Performance notes</h2>
+	 * <p>
+	 * This method rebuilds and refines a triangulation on every call. For
+	 * interactive dragging (re-solving every frame), prefer using {@link Malleo}
+	 * directly: build the triangulation and call
+	 * {@link Malleo#prepareHandles(List)} once, then repeatedly call
+	 * {@link Malleo#solve(Malleo.CompiledHandles, List)} with updated targets.
+	 *
+	 * <h2>Output</h2>
+	 * <p>
+	 * Returns the deformed polygon boundary. The result may self-intersect
+	 * depending on handle motion and mesh quality.
+	 *
+	 * @param shape         the rest shape to deform (expected to be a single
+	 *                      polygon {@code PShape})
+	 * @param handles       handle locations in rest-space
+	 * @param handleTargets target locations for each handle, in the same order as
+	 *                      {@code handles}
+	 * @return a new {@code PShape} representing the deformed shape
+	 * @since 2.2
+	 */
+	public static PShape arapDeform(PShape shape, List<PVector> handles, List<PVector> handleTargets) {
+		var t = PGS_Triangulation.delaunayTriangulationMesh(shape);
+		PGS_Triangulation.refine(t, 15, 50); // refine
+		var g = PGS_Triangulation.toGeometry(t);
+
+		Malleo m = new Malleo(g);
+		var mHandles = Arrays.asList(PGS.toCoords(handles));
+		var mTargets = Arrays.asList(PGS.toCoords(handleTargets));
+
+		var compiledHandles = m.prepareHandles(mHandles);
+
+		var deformed = m.solve(compiledHandles, mTargets);
+
+		return toPShape(deformed);
 	}
 
 	/**
