@@ -369,8 +369,7 @@ public final class PGS_Morphology {
 	 */
 	public static PShape simplifyDCE(PShape shape, DCETerminationCallback terminationCallback) {
 		return PGS.applyToLinealGeometries(shape, ring -> {
-			var coords = DiscreteCurveEvolution.process(ring, terminationCallback);
-			return PGS.GEOM_FACTORY.createLineString(coords);
+			return DiscreteCurveEvolution.process(ring, terminationCallback);
 		});
 	}
 

@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.TreeSet;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
+import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import net.jafama.FastMath;
 
@@ -96,11 +97,12 @@ public class DiscreteCurveEvolution {
 	 *         potentially reduced number of vertices that maintains the perceptual
 	 *         appearance of the original curve.
 	 */
-	public static Coordinate[] process(LineString lineString, DCETerminationCallback terminationCallback) {
+	public static LineString process(LineString lineString, DCETerminationCallback terminationCallback) {
 		final boolean closed = lineString.isClosed();
+		final GeometryFactory gf = lineString.getFactory();
 		Coordinate[] coords = lineString.getCoordinates();
 		if (coords.length == 0) {
-			return coords;
+			return lineString;
 		}
 		if (closed && coords.length > 2) {
 			Coordinate[] newCoords = new Coordinate[coords.length - 1];
@@ -138,7 +140,8 @@ public class DiscreteCurveEvolution {
 			throw new IllegalStateException(
 					String.format("%d Kink objects were lost during the conversion from the kinks list to the kinkRelevanceTree set.", lostKinks));
 		}
-		while (kinkRelevanceTree.size() > 2) {
+		final int minVertices = closed ? 3 : 2;
+		while (kinkRelevanceTree.size() > minVertices) {
 			Kink candidate = kinkRelevanceTree.pollFirst();
 			if (terminationCallback.shouldTerminate(candidate.c, candidate.relevance, kinkRelevanceTree.size() + 1)) {
 				kinkRelevanceTree.add(candidate); // reinsert polled element
@@ -160,11 +163,12 @@ public class DiscreteCurveEvolution {
 		do {
 			output.add(current.c);
 		} while ((current = current.next) != first && current != null);
+
 		if (closed) {
 			output.closeRing();
+			return gf.createLinearRing(output.toCoordinateArray());
 		}
-
-		return output.toCoordinateArray();
+		return gf.createLineString(output.toCoordinateArray());
 	}
 
 	private static List<Kink> createKinksWithIds(Coordinate[] coords) {

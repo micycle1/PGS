@@ -222,26 +222,50 @@ public final class PGS_Conversion {
 					}
 				}
 				break;
-			// TODO treat closed linestrings as unfilled & unclosed paths?
-			case Geometry.TYPENAME_LINEARRING : // LinearRings are closed by definition
-			case Geometry.TYPENAME_LINESTRING : // LineStrings may be open
-				final LineString l = (LineString) g;
-				final boolean closed = l.isClosed();
+			case Geometry.TYPENAME_LINEARRING : {
+				// LinearRings are closed by definition
+				// always treat as areal filled polygons
+				final LineString ring = (LineString) g;
 				shape.setFamily(PShape.PATH);
+
+				// Ensure it's treated like a polygon (filled)
+				shape.setFill(true);
+
 				shape.beginShape();
-				Coordinate[] coords = l.getCoordinates();
-				for (int i = 0; i < coords.length - (closed ? 1 : 0); i++) {
+				Coordinate[] coords = ring.getCoordinates();
+				// Skip the closing coordinate (same as first)
+				for (int i = 0; i < coords.length - 1; i++) {
 					shape.vertex((float) coords[i].x, (float) coords[i].y);
 				}
-				if (closed) { // closed vertex was skipped, so close the path
-					shape.endShape(PConstants.CLOSE);
+				shape.endShape(PConstants.CLOSE);
+				break;
+			}
+
+			case Geometry.TYPENAME_LINESTRING : {
+				// LineStrings may be open or closed.
+				// always treat as linear path (no fill)
+				final LineString l = (LineString) g;
+				final boolean closed = l.isClosed();
+
+				shape.setFamily(PShape.PATH);
+				shape.setFill(false); // IMPORTANT: never fill LineStrings (even if closed)
+
+				shape.beginShape();
+				final Coordinate[] coords = l.getCoordinates();
+
+				// If closed, skip the duplicated closing vertex
+				final int n = coords.length - (closed ? 1 : 0);
+				for (int i = 0; i < n; i++) {
+					shape.vertex((float) coords[i].x, (float) coords[i].y);
+				}
+
+				if (closed) {
+					shape.endShape(PConstants.CLOSE); // close the path, still unfilled
 				} else {
-					// shape is more akin to an unconnected line: keep as PATH shape, but don't fill
-					// visually
 					shape.endShape();
-					shape.setFill(false);
 				}
 				break;
+			}
 			case Geometry.TYPENAME_POLYGON :
 				final Polygon polygon = (Polygon) g;
 				shape.setFamily(PShape.PATH);
@@ -251,7 +275,7 @@ public final class PGS_Conversion {
 				 * Outer and inner loops are iterated up to length-1 to skip the point that
 				 * closes the JTS shape (same as the first point).
 				 */
-				coords = polygon.getExteriorRing().getCoordinates();
+				Coordinate[] coords = polygon.getExteriorRing().getCoordinates();
 				for (int i = 0; i < coords.length - 1; i++) {
 					final Coordinate coord = coords[i];
 					shape.vertex((float) coord.x, (float) coord.y);
@@ -1282,7 +1306,18 @@ public final class PGS_Conversion {
 			coords.add(new Coordinate(x, y));
 		});
 
-		return toPShape(GEOM_FACTORY.createLineString(coords.toCoordinateArray()));
+		Coordinate[] coordArray = coords.toCoordinateArray();
+		boolean isClosed = coordArray.length > 1 && coordArray[0].equals2D(coordArray[coordArray.length - 1]);
+
+		/*
+		 * Inherently ambiguous (did the closed polyline represent an areal or lineal
+		 * geometry?), but treat closed polyline as areal (linearring).
+		 */
+		if (isClosed && coordArray.length >= 4) {
+			return toPShape(GEOM_FACTORY.createLinearRing(coordArray));
+		} else {
+			return toPShape(GEOM_FACTORY.createLineString(coordArray));
+		}
 	}
 
 	/**
