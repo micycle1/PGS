@@ -11,11 +11,9 @@ import org.locationtech.jts.densify.Densifier;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Lineal;
 import org.locationtech.jts.geom.LinearRing;
-import org.locationtech.jts.geom.MultiPolygon;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.Polygonal;
@@ -35,6 +33,8 @@ import com.gihub.micycle1.malleo.Malleo;
 
 import micycle.pgs.PGS_Contour.OffsetStyle;
 import micycle.pgs.commons.ChaikinCut;
+import micycle.pgs.commons.ContourRegularization;
+import micycle.pgs.commons.ContourRegularization.Parameters;
 import micycle.pgs.commons.CornerRounding;
 import micycle.pgs.commons.CornerRounding.RoundingStyle;
 import micycle.pgs.commons.DiscreteCurveEvolution;
@@ -1042,6 +1042,56 @@ public final class PGS_Morphology {
 		} else {
 			return toPShape(GeometryPrecisionReducer.reduce(fromPShape(shape), pm));
 		}
+	}
+
+	/**
+	 * Regularises (straightens) the contour of a lineal {@link PShape} by snapping
+	 * edges toward a small set of principal directions and simplifying the result.
+	 * The prinicipal direction is derived from the shape's longest edge.
+	 *
+	 * @param shape     a lineal {@code PShape} to regularise (or a group containing
+	 *                  lineal children)
+	 * @param maxOffset maximum allowed offset. Used to constrain how far the
+	 *                  regularised contour may deviate from the input; must be
+	 *                  &gt;= 0
+	 * @return a new {@code PShape} whose linework has been regularised
+	 * @see #regularise(PShape, double, double)
+	 * @since 2.2
+	 */
+	public static PShape regularise(PShape shape, double maxOffset) {
+		var params = Parameters.builder().maximumOffset(maxOffset);
+		return PGS.applyToLinealGeometries(shape, l -> {
+			return ContourRegularization.regularize(l, params.build());
+		});
+	}
+
+	/**
+	 * Regularises (straightens) the contour of a lineal {@link PShape} by snapping
+	 * edges toward principal directions and simplifying the result.
+	 * <p>
+	 * This overload lets you provide an explicit <em>principal axis
+	 * orientation</em> (in degrees). Edges are snapped to be parallel to that axis
+	 * or to its orthogonal (axis + 90°), subject to the {@code maxOffset}
+	 * constraint.
+	 *
+	 * @param shape           a lineal {@code PShape} to regularize (or a group
+	 *                        containing lineal children)
+	 * @param maxOffset       maximum allowed offset used to constrain how far the
+	 *                        regularised contour may deviate from the input; must
+	 *                        be &gt;= 0
+	 * @param axisOrientation principal axis direction, in degrees, expected in the
+	 *                        range {@code [0,180)} (values outside this range are
+	 *                        normalised)
+	 * @return a new {@code PShape} whose linework has been regularised
+	 * @see #regularise(PShape, double)
+	 * @since 2.2
+	 */
+	public static PShape regularise(PShape shape, double maxOffset, double axisOrientation) {
+		var d = new ContourRegularization.UserDefinedDirections(5, axisOrientation);
+		var params = Parameters.builder().maximumOffset(maxOffset).directions(d);
+		return PGS.applyToLinealGeometries(shape, l -> {
+			return ContourRegularization.regularize(l, params.build());
+		});
 	}
 
 	/**

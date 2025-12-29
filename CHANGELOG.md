@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `normalisedErosion()` to `PGS_Morphology`. Erodes a shape by a normalised amount (scaled to shape size).
 * `refine()` to `PGS_Triangulation`. Refines an existing triangulation using Ruppert's Delaunay refinement algorithm.
 * `arapDeform()` to `PGS_Morphology`. Applies As-Rigid-As-Possible (ARAP) shape deformation using point handles.
+* `regularise()` to `PGS_Morphology`. Straightens the contour of a shape by snapping edges toward a small set of principal directions.
 
 ### Changes
 * These methods in `PGS_Meshing` are more performant and robust: `urquhartFaces()`, `gabrielFaces()`, `spannerFaces()`, `relativeNeighborFaces()`, `edgeCollapseQuadrangulation()`, `centroidQuadrangulation()`.
