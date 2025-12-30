@@ -2032,12 +2032,12 @@ public final class PGS_Conversion {
 	/**
 	 * A utility class for storing and manipulating the visual properties of PShapes
 	 * from the Processing library. It encapsulates the stroke, fill, stroke color,
-	 * stroke weight, and fill color attributes by directly accessing and modifying
-	 * the corresponding fields of a given PShape using reflection.
+	 * stroke weight, fill color and name attributes by directly accessing and
+	 * modifying the corresponding fields of a given PShape using reflection.
 	 */
 	public static class PShapeData {
 
-		private static Field fillColorF, fillF, strokeColorF, strokeWeightF, strokeF;
+		private static Field fillColorF, fillF, strokeColorF, strokeWeightF, strokeF, nameF;
 
 		static {
 			try {
@@ -2051,6 +2051,8 @@ public final class PGS_Conversion {
 				strokeWeightF.setAccessible(true);
 				strokeF = PShape.class.getDeclaredField("stroke");
 				strokeF.setAccessible(true);
+				nameF = PShape.class.getDeclaredField("name");
+				nameF.setAccessible(true);
 			} catch (NoSuchFieldException | SecurityException e) {
 				e.printStackTrace();
 			}
@@ -2059,6 +2061,7 @@ public final class PGS_Conversion {
 		public int fillColor, strokeColor;
 		public float strokeWeight;
 		public boolean fill, stroke;
+		public String name;
 		private final PShape source;
 
 		PShapeData(PShape shape) {
@@ -2069,6 +2072,7 @@ public final class PGS_Conversion {
 				stroke = strokeF.getBoolean(shape);
 				strokeColor = strokeColorF.getInt(shape);
 				strokeWeight = strokeWeightF.getFloat(shape);
+				name = (String) nameF.get(shape);
 			} catch (IllegalArgumentException | IllegalAccessException e) {
 				e.printStackTrace();
 			}
@@ -2095,6 +2099,7 @@ public final class PGS_Conversion {
 			other.setStroke(stroke);
 			other.setStroke(strokeColor);
 			other.setStrokeWeight(strokeWeight);
+			other.setName(name);
 
 			return other;
 		}

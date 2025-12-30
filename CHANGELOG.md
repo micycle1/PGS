@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Reimplemented `PGS_Processing.convexPartition()` using the optimal *Keil & Snoeyink* partitioning algorithm.
 * Reimplemented `PGS_PointSet.findShortestTour()` TSP algorithm. Much faster (~50x) on larger inputs.
 * `PGS_Meshing.fixBreaks()` now uses a JTS implementation under the hood. The method's prior `angleTolerance` arg has been removed as it's no longer necessary.
+* A PShape's original name is now included in the `PRESERVE_STYLE` routines.
 
 ### Fixed
 * `PGS_Optimisation.closestPoint()` now returns the nearest location on the shape's **boundary** for queries inside a polygonal shape (previously returned the query point itself).

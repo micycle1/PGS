@@ -42,6 +42,9 @@ public final class PGS_Transformation {
 	 */
 	public static PShape scale(PShape shape, double scale) {
 		Geometry g = fromPShape(shape);
+		if (g.isEmpty()) {
+			return shape;
+		}
 		Coordinate c = g.getCentroid().getCoordinate();
 		AffineTransformation t = AffineTransformation.scaleInstance(scale, scale, c.x, c.y);
 		return toPShape(t.transform(g));
@@ -56,6 +59,9 @@ public final class PGS_Transformation {
 	 */
 	public static PShape scale(PShape shape, double scaleX, double scaleY) {
 		Geometry g = fromPShape(shape);
+		if (g.isEmpty()) {
+			return shape;
+		}
 		Point c = g.getCentroid();
 		AffineTransformation t = AffineTransformation.scaleInstance(scaleX, scaleY, c.getX(), c.getY());
 		return toPShape(t.transform(g));
@@ -108,6 +114,9 @@ public final class PGS_Transformation {
 	 */
 	public static PShape scaleArea(PShape shape, double scale) {
 		Geometry geometry = fromPShape(shape);
+		if (geometry.isEmpty()) {
+			return shape;
+		}
 		double scalingFactor = Math.sqrt(scale);
 		Coordinate c = geometry.getCentroid().getCoordinate();
 		AffineTransformation t = AffineTransformation.scaleInstance(scalingFactor, scalingFactor, c.x, c.y);
@@ -124,6 +133,9 @@ public final class PGS_Transformation {
 	 */
 	public static PShape scaleAreaTo(PShape shape, double targetArea) {
 		Geometry geometry = fromPShape(shape);
+		if (geometry.isEmpty()) {
+			return shape;
+		}
 		double area = geometry.getArea();
 		double scalingFactor = Math.sqrt(targetArea / area);
 		Coordinate c = geometry.getCentroid().getCoordinate();
@@ -144,6 +156,9 @@ public final class PGS_Transformation {
 		targetWidth = Math.max(targetWidth, 0.001);
 		targetHeight = Math.max(targetHeight, 0.001);
 		Geometry geometry = fromPShape(shape);
+		if (geometry.isEmpty()) {
+			return shape;
+		}
 		Envelope e = geometry.getEnvelopeInternal();
 		Point c = geometry.getCentroid();
 
@@ -167,11 +182,16 @@ public final class PGS_Transformation {
 		targetWidth = Math.max(targetWidth, 1e-5);
 
 		Geometry geometry = fromPShape(shape);
+		if (geometry.isEmpty()) {
+			return shape;
+		}
 		Envelope e = geometry.getEnvelopeInternal();
 		Point c = geometry.getCentroid();
 
 		AffineTransformation t = AffineTransformation.scaleInstance(targetWidth / e.getWidth(), targetWidth / e.getWidth(), c.getX(), c.getY());
-		return toPShape(t.transform(geometry));
+		var result = t.transform(geometry);
+		result.setUserData(geometry.getUserData()); // preserve shape style (if any)
+		return toPShape(result);
 	}
 
 	/**
@@ -190,11 +210,16 @@ public final class PGS_Transformation {
 		targetHeight = Math.max(targetHeight, 1e-5);
 
 		Geometry geometry = fromPShape(shape);
+		if (geometry.isEmpty()) {
+			return shape;
+		}
 		Envelope e = geometry.getEnvelopeInternal();
 		Point c = geometry.getCentroid();
 
 		AffineTransformation t = AffineTransformation.scaleInstance(targetHeight / e.getHeight(), targetHeight / e.getHeight(), c.getX(), c.getY());
-		return toPShape(t.transform(geometry));
+		var result = t.transform(geometry);
+		result.setUserData(geometry.getUserData()); // preserve shape style (if any)
+		return toPShape(result);
 	}
 
 	/**
@@ -292,7 +317,7 @@ public final class PGS_Transformation {
 	 */
 	public static PShape translateCentroidTo(PShape shape, double x, double y) {
 		Geometry g = fromPShape(shape);
-		if (g.getNumPoints() == 0) {
+		if (g.isEmpty()) {
 			return shape;
 		}
 		Point c = g.getCentroid();
@@ -319,7 +344,7 @@ public final class PGS_Transformation {
 	 */
 	public static PShape translateEnvelopeTo(PShape shape, double x, double y) {
 		Geometry g = fromPShape(shape);
-		if (g.getNumPoints() == 0) {
+		if (g.isEmpty()) {
 			return shape;
 		}
 		Point c = g.getEnvelope().getCentroid();
@@ -533,6 +558,9 @@ public final class PGS_Transformation {
 	 */
 	public static PShape rotateAroundCenter(PShape shape, double angle) {
 		Geometry g = fromPShape(shape);
+		if (g.isEmpty()) {
+			return shape;
+		}
 		Point center = g.getCentroid();
 		AffineTransformation t = AffineTransformation.rotationInstance(angle, center.getX(), center.getY());
 		return toPShape(t.transform(g));
@@ -544,6 +572,9 @@ public final class PGS_Transformation {
 	 */
 	public static PShape flipHorizontal(PShape shape) {
 		Geometry g = fromPShape(shape);
+		if (g.isEmpty()) {
+			return shape;
+		}
 		Point c = g.getCentroid();
 		AffineTransformation t = AffineTransformation.reflectionInstance(-1, c.getY(), 1, c.getY());
 		return toPShape(t.transform(g));
@@ -567,6 +598,9 @@ public final class PGS_Transformation {
 	 */
 	public static PShape flipVertical(PShape shape) {
 		Geometry g = fromPShape(shape);
+		if (g.isEmpty()) {
+			return shape;
+		}
 		Point c = g.getCentroid();
 		AffineTransformation t = AffineTransformation.reflectionInstance(c.getX(), -1, c.getX(), 1);
 		return toPShape(t.transform(g));

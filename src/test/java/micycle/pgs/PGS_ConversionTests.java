@@ -530,11 +530,13 @@ class PGS_ConversionTests {
 		shape.setFill(col);
 		shape.setStrokeWeight(11.11f);
 		shape.setStroke(col);
+		shape.setName("test");
 
 		PShape processed = toPShape(fromPShape(shape));
 		assertEquals(col, PGS.getPShapeFillColor(processed));
 		assertEquals(col, PGS.getPShapeStrokeColor(processed));
 		assertEquals(11.11f, PGS.getPShapeStrokeWeight(processed));
+		assertEquals("test", processed.getName());
 
 		final PShape path = new PShape(PShape.PATH);
 		path.beginShape();
