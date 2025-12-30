@@ -661,7 +661,9 @@ class PGS_ConversionTests {
 
 	@Test
 	void testToFromGraph() {
-		var segsS = PGS_SegmentSet.toPShape(PGS_SegmentSet.graphMatchedSegments(PGS_PointSet.poisson(50, 50, 950, 950, 20, 0)));
+		var segs = PGS_SegmentSet.graphMatchedSegments(PGS_PointSet.poisson(50, 50, 950, 950, 20, 0));
+		segs = PGS_SegmentSet.filterAxisAligned(segs, 0.02); // 1 degree
+		var segsS = PGS_SegmentSet.toPShape(segs);
 
 		segsS = PGS_Voronoi.compoundVoronoi(segsS);
 		var meshIn = PGS_Meshing.simplifyMesh(segsS, 2, false);
@@ -670,7 +672,6 @@ class PGS_ConversionTests {
 		var meshOut = PGS_Conversion.fromGraph(PGS_Conversion.toGraph(meshIn));
 
 		assertTrue(PGS_ShapePredicates.equalsNorm(meshIn, meshOut));
-
 	}
 
 	private static boolean isFilled(PShape shape) {

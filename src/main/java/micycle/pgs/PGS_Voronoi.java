@@ -10,29 +10,32 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.locationtech.jts.coverage.CoverageUnion;
 import org.locationtech.jts.densify.Densifier;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.Polygonal;
+import org.locationtech.jts.geom.TopologyException;
+import org.locationtech.jts.geom.util.GeometryFixer;
 import org.locationtech.jts.operation.overlay.snap.GeometrySnapper;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.locationtech.jts.operation.relateng.RelateNG;
 import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.Vertex;
-import org.tinfour.standard.IncrementalTin;
 import org.tinfour.utils.HilbertSort;
 import org.tinfour.voronoi.BoundedVoronoiBuildOptions;
 import org.tinfour.voronoi.BoundedVoronoiDiagram;
 import org.tinfour.voronoi.ThiessenPolygon;
+
+import com.github.micycle1.geoblitz.HilbertParallelPolygonUnion;
 
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.FarthestPointVoronoi;
 import micycle.pgs.commons.MultiplicativelyWeightedVoronoi;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
-import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 
@@ -411,66 +414,28 @@ public final class PGS_Voronoi {
 		Geometry g = fromPShape(shape);
 		Geometry densified = Densifier.densify(g, 2);
 
-		List<Vertex> vertices = new ArrayList<>();
-		final List<List<Vertex>> segmentVertexGroups = new ArrayList<>();
+		List<Vertex> vertices = new ArrayList<>(Math.max(16, densified.getNumPoints()));
+		List<List<Vertex>> segmentVertexGroups = new ArrayList<>(Math.max(16, densified.getNumGeometries()));
 
-		for (int i = 0; i < densified.getNumGeometries(); i++) {
-			Geometry geometry = densified.getGeometryN(i);
-			List<Vertex> featureVertices;
-			switch (geometry.getGeometryType()) {
-				case Geometry.TYPENAME_LINEARRING :
-				case Geometry.TYPENAME_POLYGON :
-				case Geometry.TYPENAME_LINESTRING :
-				case Geometry.TYPENAME_POINT :
-					featureVertices = toVertex(geometry.getCoordinates());
-					if (!featureVertices.isEmpty()) {
-						segmentVertexGroups.add(featureVertices);
-						vertices.addAll(featureVertices);
-					}
-					break;
-				case Geometry.TYPENAME_MULTILINESTRING :
-				case Geometry.TYPENAME_MULTIPOINT :
-				case Geometry.TYPENAME_MULTIPOLYGON : // nested multi polygon
-					for (int j = 0; j < geometry.getNumGeometries(); j++) {
-						featureVertices = toVertex(geometry.getGeometryN(j).getCoordinates());
-						if (!featureVertices.isEmpty()) {
-							segmentVertexGroups.add(featureVertices);
-							vertices.addAll(featureVertices);
-						}
-					}
-					break;
-				default :
-					break;
-			}
-		}
+		collectVertexGroups(densified, segmentVertexGroups, vertices);
 
 		if (vertices.size() > 2500) {
 			HilbertSort hs = new HilbertSort();
 			hs.sort(vertices);
 		}
-		final IncrementalTin tin = new IncrementalTin(2);
-		tin.add(vertices, null); // initial triangulation
-		if (!tin.isBootstrapped()) {
-			return new PShape(); // shape probably empty
-		}
 
 		final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();
-		final double x, y, w, h;
+		final Rectangle2D boundsRect;
 		if (bounds == null) {
-			final Envelope envelope = g.getEnvelopeInternal();
-			x = envelope.getMinX();
-			y = envelope.getMinY();
-			w = envelope.getMaxX() - envelope.getMinX();
-			h = envelope.getMaxY() - envelope.getMinY();
+			final Envelope e = g.getEnvelopeInternal();
+			boundsRect = new Rectangle2D.Double(e.getMinX(), e.getMinY(), e.getWidth(), e.getHeight());
 		} else {
-			x = bounds[0];
-			y = bounds[1];
-			w = bounds[2] - bounds[0];
-			h = bounds[3] - bounds[1];
+			boundsRect = new Rectangle2D.Double(bounds[0], bounds[1], bounds[2] - bounds[0], bounds[3] - bounds[1]);
 		}
-		options.setBounds(new Rectangle2D.Double(x, y, w, h));
+		options.setBounds(boundsRect);
+		options.enableAutomaticColorAssignment(false);
 
-		final BoundedVoronoiDiagram voronoi = new BoundedVoronoiDiagram(tin);
+		final BoundedVoronoiDiagram voronoi = new BoundedVoronoiDiagram(vertices, options);
 
 		// Map densified vertices to the voronoi cell they define.
 		final HashMap<Vertex, ThiessenPolygon> vertexCellMap = new HashMap<>();
@@ -481,27 +446,28 @@ public final class PGS_Voronoi {
 		 * vertices by their source geometry and then union/dissolve the cells belonging
 		 * to each vertex group.
 		 */
-		final List<PShape> faces = segmentVertexGroups.parallelStream().map(vertexGroup -> {
-			PShape cellSegments = new PShape(PConstants.GROUP);
+		final List<Geometry> faces = segmentVertexGroups.parallelStream().map(vertexGroup -> {
+			var cells = new ArrayList<Geometry>(vertexGroup.size());
 			vertexGroup.forEach(segmentVertex -> {
 				ThiessenPolygon thiessenCell = vertexCellMap.get(segmentVertex);
 				if (thiessenCell != null) { // null if degenerate input
-					PShape cellSegment = new PShape(PShape.PATH);
-					cellSegment.beginShape();
-					for (IQuadEdge e : thiessenCell.getEdges()) {
-						cellSegment.vertex((float) e.getA().x, (float) e.getA().y);
-					}
-					cellSegment.endShape(PConstants.CLOSE);
-					cellSegments.addChild(cellSegment);
+					cells.add(toPolygon(thiessenCell));
 				}
 			});
-			return PGS_ShapeBoolean.unionMesh(cellSegments);
-		}).collect(Collectors.toList());
 
-		PShape voronoiCells = PGS_Conversion.flatten(faces);
+			try {
+				return CoverageUnion.union(cells.toArray(new Geometry[0]));
+			} catch (TopologyException e) {
+				var gf = cells.get(0).getFactory();
+				var valid = GeometryFixer.fix(gf.createGeometryCollection(cells.toArray(new Geometry[0])));
+				return HilbertParallelPolygonUnion.union(valid);
+			}
+
+		}).toList();
+
+		PShape voronoiCells = toPShape(faces);
 		PGS_Conversion.setAllFillColor(voronoiCells, Colors.WHITE);
 		PGS_Conversion.setAllStrokeColor(voronoiCells, Colors.PINK, 2);
-
 		return voronoiCells;
 	}
 
@@ -669,5 +635,29 @@ public final class PGS_Voronoi {
 			vertices.add(new Vertex(coord.x, coord.y, 0));
 		}
 		return vertices;
+	}
+
+	/**
+	 * Collects coordinate sets into groups, handling nested GeometryCollections
+	 * uniformly.
+	 */
+	private static void collectVertexGroups(Geometry geom, List<List<Vertex>> groups, List<Vertex> allVertices) {
+		if (geom == null || geom.isEmpty())
+			return;
+
+		// GeometryCollection covers MultiPoint/MultiLineString/MultiPolygon and more.
+		if (geom instanceof org.locationtech.jts.geom.GeometryCollection gc) {
+			for (int i = 0; i < gc.getNumGeometries(); i++) {
+				collectVertexGroups(gc.getGeometryN(i), groups, allVertices);
+			}
+			return;
+		}
+
+		// For Polygon/LineString/LinearRing/Point etc.
+		List<Vertex> featureVertices = toVertex(geom.getCoordinates());
+		if (!featureVertices.isEmpty()) {
+			groups.add(featureVertices);
+			allVertices.addAll(featureVertices);
+		}
 	}
 }

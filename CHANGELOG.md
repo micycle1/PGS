@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_Morphology.reducePrecision()` now supports GROUP shapes without collapsing them.
 * `PGS_Construction.createSuperRandomPolygon()` no longer produces holes when `holes` is set to `false`.
 * `PGS_Contour.chordalAxis()` can no longer return polygonal output.
+* `PGS_Voronoi.compoundVoronoi()` now uses the given bounds (previously ignored).
 
 ### Removed
 * `polygonizeLines()` from `PGS_Processing`, in favour of `polygonize(PShape)`.
