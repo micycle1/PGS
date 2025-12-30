@@ -35,7 +35,6 @@ import com.github.micycle1.geoblitz.YStripesPointInAreaLocator;
 
 import micycle.pgs.commons.EllipticFourierDesc;
 import micycle.pgs.commons.GeometricMedian;
-import micycle.trapmap.TrapMap;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -155,9 +154,6 @@ public final class PGS_ShapePredicates {
 	/**
 	 * Finds the single child shape/cell (if any) that contains the query point from
 	 * a GROUP shape input (a shape that has non-overlapping children).
-	 * <p>
-	 * This method locates the containing shape in log(n) time (after some
-	 * pre-processing overhead).
 	 * 
 	 * @param groupShape a GROUP shape
 	 * @param point      the query point
@@ -173,23 +169,13 @@ public final class PGS_ShapePredicates {
 				return null;
 			}
 		}
-
-		TrapMap map;
-		try {
-			map = new TrapMap(PGS_Conversion.getChildren(groupShape));
-		} catch (Exception e) {
-			/*
-			 * Handle error thrown by TrapMap on degenerate/strange inputs. Generally
-			 * shearing will fix the problem (ideally this would be done within TrapMap).
-			 */
-			try {
-				map = new TrapMap(PGS_Conversion.getChildren(PGS_Transformation.shear(groupShape, .00001, 0)));
-			} catch (Exception e2) {
-				System.err.println(e.getMessage());
-				return new PShape();
+		
+		for (PShape child : PGS_Conversion.getChildren(groupShape)) {
+			if (PGS_ShapePredicates.containsPoint(child, point)) {
+				return child;
 			}
 		}
-		return map.findContainingPolygon(point.x, point.y);
+		return null;
 	}
 
 	/**
