@@ -26,6 +26,7 @@ import org.jgrapht.alg.matching.blossom.v5.ObjectiveSense;
 import org.jgrapht.alg.util.NeighborCache;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
+import org.locationtech.jts.coverage.CoverageCleaner;
 import org.locationtech.jts.coverage.CoverageSimplifier;
 import org.locationtech.jts.coverage.CoverageValidator;
 import org.locationtech.jts.geom.Coordinate;
@@ -40,12 +41,6 @@ import org.tinfour.common.Vertex;
 import org.tinfour.utils.TriangleCollector;
 
 import com.github.micycle1.geoblitz.EndpointSnapper;
-import com.vividsolutions.jcs.conflate.coverage.CoverageCleaner;
-import com.vividsolutions.jcs.conflate.coverage.CoverageCleaner.Parameters;
-import com.vividsolutions.jump.feature.FeatureCollection;
-import com.vividsolutions.jump.feature.FeatureDatasetFactory;
-import com.vividsolutions.jump.feature.FeatureUtil;
-import com.vividsolutions.jump.task.DummyTaskMonitor;
 
 import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
 import micycle.pgs.PGS_Conversion.PShapeData;
@@ -885,26 +880,24 @@ public class PGS_Meshing {
 	 * disparate polygons together.
 	 * </p>
 	 *
-	 * @param coverage          a GROUP shape consisting of the polygonal faces to
-	 *                          clean
-	 * @param distanceTolerance the distance below which segments and vertices are
-	 *                          considered to match
-	 * @param angleTolerance    the maximum angle difference between matching
-	 *                          segments, in degrees
+	 * @param coverage    a GROUP shape consisting of the polygonal faces to clean
+	 * @param maxGapWidth the maximum width of the gaps that will be filled and
+	 *                    merged
 	 * @return GROUP shape whose child polygons satisfy a (hopefully) valid coverage
 	 * @since 1.3.0
 	 * @see #findBreaks(PShape)
 	 * @see #fixBrokenFaces(PShape, double)
 	 */
-	public static PShape fixBreaks(PShape coverage, double distanceTolerance, double angleTolerance) {
-		final List<Geometry> geometries = PGS_Conversion.getChildren(coverage).stream().map(PGS_Conversion::fromPShape).collect(Collectors.toList());
-		final FeatureCollection features = FeatureDatasetFactory.createFromGeometry(geometries);
+	public static PShape fixBreaks(PShape coverage, double maxGapWidth) {
+		Geometry[] geomsIn = PGS_Conversion.getChildren(coverage).stream().map(f -> fromPShape(f)).filter(q -> q != null).toArray(Geometry[]::new);
 
-		final CoverageCleaner cc = new CoverageCleaner(features, new DummyTaskMonitor());
-		cc.process(new Parameters(distanceTolerance, angleTolerance));
+		CoverageCleaner cleaner = new CoverageCleaner(geomsIn);
+		cleaner.setGapMaximumWidth(maxGapWidth);
+		cleaner.clean();
 
-		final List<Geometry> cleanedGeometries = FeatureUtil.toGeometries(cc.getUpdatedFeatures().getFeatures());
-		final PShape out = PGS_Conversion.toPShape(cleanedGeometries);
+		var geomsOut = PGS.GEOM_FACTORY.createGeometryCollection(cleaner.getResult());
+
+		final PShape out = PGS_Conversion.toPShape(geomsOut);
 		PGS_Conversion.setAllStrokeColor(out, Colors.PINK, 2);
 		return out;
 	}

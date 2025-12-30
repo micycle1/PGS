@@ -5,9 +5,7 @@ import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import org.locationtech.jts.geom.Envelope;
@@ -32,7 +30,6 @@ import org.locationtech.jts.util.GeometricShapeFactory;
 
 import micycle.pgs.commons.FastOverlapRegions;
 import micycle.pgs.commons.Nullable;
-import micycle.pgs.commons.PEdge;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;

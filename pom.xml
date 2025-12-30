@@ -321,17 +321,6 @@
 			<version>2.3.2</version>
 		</dependency>
 		<dependency>
-			<groupId>com.github.openjump-gis</groupId>
-			<artifactId>topology-extension</artifactId>
-			<version>9c1d788f8d</version>
-			<exclusions>
-				<exclusion>
-					<groupId>org.locationtech.jts</groupId>
-					<artifactId>jts-core</artifactId>
-				</exclusion>
-			</exclusions>
-		</dependency>
-		<dependency>
 			<groupId>com.github.scoutant</groupId>
 			<artifactId>polyline-decoder</artifactId>
 			<version>5b6f55fc1a</version>

@@ -59,8 +59,6 @@ import org.locationtech.jts.io.WKBReader;
 import org.locationtech.jts.io.WKBWriter;
 import org.locationtech.jts.io.WKTReader;
 import org.locationtech.jts.io.WKTWriter;
-import org.locationtech.jts.io.geojson.GeoJsonReader;
-import org.locationtech.jts.io.geojson.GeoJsonWriter;
 import org.locationtech.jts.util.GeometricShapeFactory;
 import org.scoutant.polyline.PolylineDecoder;
 
@@ -1317,36 +1315,6 @@ public final class PGS_Conversion {
 			return toPShape(GEOM_FACTORY.createLinearRing(coordArray));
 		} else {
 			return toPShape(GEOM_FACTORY.createLineString(coordArray));
-		}
-	}
-
-	/**
-	 * Writes a shape into the string representation of its <i>GeoJSON</i> format.
-	 * 
-	 * @param shape
-	 * @return json JSON string
-	 * @since 1.3.0
-	 */
-	public static String toGeoJSON(PShape shape) {
-		final GeoJsonWriter writer = new GeoJsonWriter(1);
-		writer.setForceCCW(true);
-		return writer.write(fromPShape(shape));
-	}
-
-	/**
-	 * Converts a GeoJSON representation of a shape into its PShape counterpart.
-	 * 
-	 * @param json GeoJSON string
-	 * @return PShape represented by the GeoJSON
-	 * @since 1.3.0
-	 */
-	public static PShape fromGeoJSON(String json) {
-		final GeoJsonReader reader = new GeoJsonReader(GEOM_FACTORY);
-		try {
-			return toPShape(reader.read(json));
-		} catch (ParseException e) {
-			System.err.println("Error occurred when converting json to shape.");
-			return new PShape();
 		}
 	}
 

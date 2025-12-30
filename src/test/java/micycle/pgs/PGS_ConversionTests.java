@@ -615,21 +615,6 @@ class PGS_ConversionTests {
 	}
 
 	@Test
-	void testGeoJSONIO() {
-		final PShape shape = new PShape(PShape.GEOMETRY);
-		shape.beginShape();
-		shape.vertex(0, 0);
-		shape.vertex(10.1f, 0);
-		shape.vertex(0, 10.7f);
-		shape.endShape(PConstants.CLOSE);
-
-		String json = PGS_Conversion.toGeoJSON(shape);
-		PShape in = PGS_Conversion.fromGeoJSON(json);
-
-		assertTrue(PGS_ShapePredicates.equalsNorm(shape, in));
-	}
-
-	@Test
 	void testJava2DIO() {
 		final PShape shape = new PShape(PShape.GEOMETRY);
 		shape.beginShape();
