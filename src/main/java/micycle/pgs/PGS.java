@@ -35,7 +35,6 @@ import org.locationtech.jts.noding.NodedSegmentString;
 import org.locationtech.jts.noding.Noder;
 import org.locationtech.jts.noding.SegmentString;
 import org.locationtech.jts.noding.snapround.SnapRoundingNoder;
-import org.locationtech.jts.operation.linemerge.LineMerger;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.tinspin.index.IndexConfig;
 import org.tinspin.index.kdtree.KDTree;

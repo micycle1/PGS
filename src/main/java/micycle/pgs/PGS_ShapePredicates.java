@@ -120,7 +120,7 @@ public final class PGS_ShapePredicates {
 	 */
 	public static List<Boolean> containsPoints(PShape shape, Collection<PVector> points) {
 		final PointOnGeometryLocator pointLocator = new YStripesPointInAreaLocator(fromPShape(shape));
-		ArrayList<Boolean> bools = new ArrayList<>(points.size());
+		List<Boolean> bools = new ArrayList<>(points.size());
 		for (PVector p : points) {
 			bools.add(pointLocator.locate(new Coordinate(p.x, p.y)) != Location.EXTERIOR);
 		}
@@ -162,20 +162,7 @@ public final class PGS_ShapePredicates {
 	 * @since 1.3.0
 	 */
 	public static PShape findContainingShape(PShape groupShape, PVector point) {
-		if (groupShape.getKind() != PConstants.GROUP) { // handle non-mesh shape
-			if (containsPoint(groupShape, point)) {
-				return groupShape;
-			} else {
-				return null;
-			}
-		}
-		
-		for (PShape child : PGS_Conversion.getChildren(groupShape)) {
-			if (PGS_ShapePredicates.containsPoint(child, point)) {
-				return child;
-			}
-		}
-		return null;
+		return PGS_Meshing.findContainingFace(groupShape, point);
 	}
 
 	/**

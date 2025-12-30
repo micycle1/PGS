@@ -39,6 +39,7 @@ public final class PGS_Transformation {
 	 * 
 	 * @param shape
 	 * @param scale X and Y axis scale factor
+	 * @return A new copy of {@code shape} scaled relative to its centroid.
 	 */
 	public static PShape scale(PShape shape, double scale) {
 		Geometry g = fromPShape(shape);
@@ -56,6 +57,7 @@ public final class PGS_Transformation {
 	 * @param shape
 	 * @param scaleX X-axis scale factor
 	 * @param scaleY Y-axis scale factor
+	 * @return A new copy of {@code shape} scaled relative to its centroid.
 	 */
 	public static PShape scale(PShape shape, double scaleX, double scaleY) {
 		Geometry g = fromPShape(shape);
@@ -71,6 +73,7 @@ public final class PGS_Transformation {
 	 * Scale a shape around a point.
 	 * 
 	 * @since 2.0
+	 * @return A new copy of {@code shape} scaled around {@code point}.
 	 */
 	public static PShape scale(PShape shape, double scaleX, double scaleY, PVector point) {
 		Geometry g = fromPShape(shape);
@@ -82,6 +85,7 @@ public final class PGS_Transformation {
 	 * Scale a shape around a point.
 	 * 
 	 * @since 2.0
+	 * @return A new copy of {@code shape} scaled around the supplied point.
 	 */
 	public static PShape scale(PShape shape, double scale, double x, double y) {
 		Geometry g = fromPShape(shape);
@@ -95,6 +99,7 @@ public final class PGS_Transformation {
 	 * @param shape
 	 * @param scale scale factor
 	 * @since 1.3.0
+	 * @return A new copy of {@code shape} scaled relative to the origin.
 	 */
 	public static PShape originScale(PShape shape, double scale) {
 		Geometry g = fromPShape(shape);
@@ -540,6 +545,7 @@ public final class PGS_Transformation {
 	 * @param shape the shape to tranform/rotate
 	 * @param point rotation point
 	 * @param angle the rotation angle, in radians
+	 * @return A new copy of {@code shape} rotated around {@code point}.
 	 * @see #rotateAroundCenter(PShape, double)
 	 */
 	public static PShape rotate(PShape shape, PVector point, double angle) {
@@ -553,7 +559,7 @@ public final class PGS_Transformation {
 	 * 
 	 * @param shape
 	 * @param angle the rotation angle, in radians
-	 * @return
+	 * @return A new copy of {@code shape} rotated around its centroid.
 	 * @see #rotate(PShape, PVector, double)
 	 */
 	public static PShape rotateAroundCenter(PShape shape, double angle) {
@@ -569,6 +575,8 @@ public final class PGS_Transformation {
 	/**
 	 * Flips the shape horizontally based on its centre point (mirror over the
 	 * x-axis passing through its centroid).
+	 * 
+	 * @return A new {@code PShape} mirrored horizontally across its centroid.
 	 */
 	public static PShape flipHorizontal(PShape shape) {
 		Geometry g = fromPShape(shape);
@@ -585,7 +593,7 @@ public final class PGS_Transformation {
 	 * 
 	 * @param shape
 	 * @param y     y-coordinate of horizontal reflection line
-	 * @return
+	 * @return A new {@code PShape} mirrored across the horizontal line at {@code y}.
 	 */
 	public static PShape flipHorizontal(PShape shape, double y) {
 		AffineTransformation t = AffineTransformation.reflectionInstance(-1, y, 1, y);
@@ -595,6 +603,8 @@ public final class PGS_Transformation {
 	/**
 	 * Flips the shape vertically based on its centre point (mirror over the y-axis
 	 * passing through its centroid).
+	 * 
+	 * @return A new {@code PShape} mirrored vertically across its centroid.
 	 */
 	public static PShape flipVertical(PShape shape) {
 		Geometry g = fromPShape(shape);
@@ -611,7 +621,7 @@ public final class PGS_Transformation {
 	 * 
 	 * @param shape
 	 * @param x     x-coordinate of vertical reflection line
-	 * @return
+	 * @return A new {@code PShape} mirrored across the vertical line at {@code x}.
 	 */
 	public static PShape flipVertical(PShape shape, double x) {
 		AffineTransformation t = AffineTransformation.reflectionInstance(x, -1, x, 1);

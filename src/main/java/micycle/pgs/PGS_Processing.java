@@ -144,6 +144,8 @@ public final class PGS_Processing {
 	 *                          point away from the shape (outwards); negative
 	 *                          values offset the point inwards towards its
 	 *                          interior.
+	 * @return A {@link PVector} located on the exterior of {@code shape} at the
+	 *         requested perimeter position and offset.
 	 * @see #pointsOnExterior(PShape, int, double)
 	 */
 	public static PVector pointOnExterior(PShape shape, double perimeterPosition, double offsetDistance) {
@@ -170,6 +172,8 @@ public final class PGS_Processing {
 	 *                          point away from the shape (outwards); negative
 	 *                          values offset the point inwards towards its
 	 *                          interior.
+	 * @return A {@link PVector} located at the specified distance along the
+	 *         exterior perimeter, offset by {@code offsetDistance}.
 	 * @since 1.4.0
 	 */
 	public static PVector pointOnExteriorByDistance(PShape shape, double perimeterDistance, double offsetDistance) {
@@ -624,6 +628,8 @@ public final class PGS_Processing {
 	 * 
 	 * @param shape  defines the region in which random points are generated
 	 * @param points number of points to generate within the shape region
+	 * @return a list of {@link PVector} points randomly sampled inside
+	 *         {@code shape}
 	 * @see #generateRandomPoints(PShape, int, long)
 	 * @see #generateRandomGridPoints(PShape, int, boolean, double)
 	 */
