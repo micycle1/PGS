@@ -1084,7 +1084,7 @@ public final class PGS_PointSet {
 	 * @return a LINES PShape
 	 * @since 1.3.0
 	 */
-	public static PShape minimumSpanningTree(List<PVector> points) {
+	public static PShape minimumSpanningTree(Collection<PVector> points) {
 		/*
 		 * The Euclidean minimum spanning tree in a plane is a subgraph of the Delaunay
 		 * triangulation.
@@ -1107,7 +1107,7 @@ public final class PGS_PointSet {
 	 *         starting point).
 	 * @since 2.0
 	 */
-	public static PShape findShortestTour(List<PVector> points) {
+	public static PShape findShortestTour(Collection<PVector> points) {
 		var tour = new GreedyTSP<>(points, (a, b) -> a.dist(b));
 		return PGS_Conversion.fromPVector(tour.getTour());
 	}

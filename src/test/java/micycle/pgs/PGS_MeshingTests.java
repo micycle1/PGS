@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import processing.core.PShape;
 
-public class PGS_MeshingTests {
+class PGS_MeshingTests {
 
 	@Test
 	void testAreaMerge() {

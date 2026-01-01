@@ -19,7 +19,7 @@ import org.locationtech.jts.geom.Polygon;
 import micycle.pgs.commons.DiscreteCurveEvolution.DCETerminationCallback;
 import processing.core.PShape;
 
-public class PGS_MorphologyTests {
+class PGS_MorphologyTests {
 
 	private static final GeometryFactory GF = new GeometryFactory();
 

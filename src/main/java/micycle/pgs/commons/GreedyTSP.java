@@ -2,6 +2,7 @@ package micycle.pgs.commons;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.function.ToDoubleBiFunction;
 
@@ -70,7 +71,7 @@ public final class GreedyTSP<V> {
 	private final int k;
 	private final int[] cand;
 
-	public GreedyTSP(List<V> vertices, ToDoubleBiFunction<V, V> distFunc) {
+	public GreedyTSP(Collection<V> vertices, ToDoubleBiFunction<V, V> distFunc) {
 		if (vertices == null || vertices.isEmpty()) {
 			throw new IllegalArgumentException("Vertex list must not be null or empty");
 		}

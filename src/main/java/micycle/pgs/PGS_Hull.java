@@ -132,7 +132,7 @@ public class PGS_Hull {
 	 * 
 	 * @param points
 	 * @param concavity a factor value between 0 and 1, specifying how concave the
-	 *                  output is (where 1 is maximal concavity)
+	 *                  output is (where 0 is maximal concavity)
 	 * @return
 	 * @since 1.1.0
 	 * @see #concaveHullBFS(List, double)
