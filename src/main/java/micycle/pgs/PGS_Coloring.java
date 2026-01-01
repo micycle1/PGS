@@ -83,10 +83,6 @@ public final class PGS_Coloring {
 		 */
 		DSATUR,
 		/**
-		 * Finds the coarsest coloring of a graph.
-		 */
-		COARSE,
-		/**
 		 * Recursive largest-first coloring.
 		 */
 		RLF,
@@ -265,9 +261,6 @@ public final class PGS_Coloring {
 				break;
 			case DSATUR :
 				coloring = new SaturationDegreeColoring<>(graph).getColoring();
-				break;
-			case COARSE :
-				coloring = new ColorRefinementAlgorithm<>(graph).getColoring();
 				break;
 			case GENETIC :
 				coloring = new GeneticColoring<>(graph, SEED).getColoring();
