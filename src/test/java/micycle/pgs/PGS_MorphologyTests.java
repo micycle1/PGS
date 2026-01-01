@@ -138,9 +138,9 @@ class PGS_MorphologyTests {
 		return GF.createPolygon(exterior, holes);
 	}
 
-// Build a rectangular ring with two spike points per edge.
-// For spikesOutward = true: spikes point outside the rectangle bounds.
-// For spikesOutward = false (holes): spikes point toward the rectangle center.
+	// Build a rectangular ring with two spike points per edge.
+	// For spikesOutward = true: spikes point outside the rectangle bounds.
+	// For spikesOutward = false (holes): spikes point toward the rectangle center.
 	private static LinearRing spikyRectRing(double minX, double minY, double maxX, double maxY, double amplitude, boolean spikesOutward) {
 
 		List<Coordinate> coords = new ArrayList<>();
@@ -174,8 +174,6 @@ class PGS_MorphologyTests {
 	private static double lerp(double a, double b, double t) {
 		return a + (b - a) * t;
 	}
-
-	/* New helper assertion methods to remove duplication */
 
 	private Geometry getOutputGeom(PShape outShape) {
 		assertNotNull(outShape, "Output shape must not be null");

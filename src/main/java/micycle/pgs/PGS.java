@@ -31,6 +31,7 @@ import org.locationtech.jts.geom.MultiPolygon;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.PrecisionModel;
+import org.locationtech.jts.geom.util.PolygonExtracter;
 import org.locationtech.jts.noding.NodedSegmentString;
 import org.locationtech.jts.noding.Noder;
 import org.locationtech.jts.noding.SegmentString;
@@ -374,17 +375,13 @@ final class PGS {
 	 * list. Other geometry types contained within the input geometry are ignored.
 	 */
 	static List<Polygon> extractPolygons(Geometry g) {
-		List<Polygon> polygons = new ArrayList<>(g.getNumGeometries());
-		g.apply((GeometryFilter) geom -> {
-			if (geom instanceof Polygon) {
-				polygons.add((Polygon) geom);
-			} else if (geom instanceof MultiPolygon) {
-				for (int i = 0; i < geom.getNumGeometries(); i++) {
-					polygons.add((Polygon) geom.getGeometryN(i));
-				}
-			}
-		});
-		return polygons;
+	    List<Polygon> polygons = new ArrayList<>();
+	    g.apply((GeometryFilter) geom -> {
+	        if (geom instanceof Polygon) {
+	            polygons.add((Polygon) geom);
+	        }
+	    });
+	    return polygons;
 	}
 
 	/**

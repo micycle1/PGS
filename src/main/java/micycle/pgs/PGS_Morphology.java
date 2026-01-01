@@ -2,7 +2,6 @@ package micycle.pgs;
 
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiFunction;
@@ -40,10 +39,12 @@ import micycle.pgs.commons.CornerRounding.RoundingStyle;
 import micycle.pgs.commons.DiscreteCurveEvolution;
 import micycle.pgs.commons.DiscreteCurveEvolution.DCETerminationCallback;
 import micycle.pgs.commons.EllipticFourierDesc;
+import micycle.pgs.commons.FastAtan2;
 import micycle.pgs.commons.GaussianLineSmoothing;
 import micycle.pgs.commons.LaneRiesenfeldSmoothing;
 import micycle.pgs.commons.ShapeInterpolation;
 import micycle.uniformnoise.UniformNoise;
+import net.jafama.FastMath;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -139,7 +140,7 @@ public final class PGS_Morphology {
 	 * Buffers a shape with a varying buffer distance (interpolated between a start
 	 * distance and an end distance) along the shape's perimeter.
 	 * 
-	 * @param shape         a single polygon or lineal shape
+	 * @param shape         a polygon, lineal shape, or GROUP containing such shapes
 	 * @param startDistance the starting buffer amount
 	 * @param endDistance   the terminating buffer amount
 	 * @return a polygonal shape representing the variable buffer region (which may
@@ -147,11 +148,10 @@ public final class PGS_Morphology {
 	 * @since 1.3.0
 	 */
 	public static PShape variableBuffer(PShape shape, double startDistance, double endDistance) {
-		Geometry g = fromPShape(shape);
-		if (!g.getGeometryType().equals(Geometry.TYPENAME_LINEARRING) && !g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
-			g = ((Polygon) g).getExteriorRing(); // variable buffer applies to linestrings only
-		}
-		return toPShape(VariableBuffer.buffer(g, startDistance, endDistance));
+		return PGS.applyToLinealGeometries(shape, line -> {
+			var buffer = (Polygon) VariableBuffer.buffer(line, startDistance, endDistance);
+			return buffer.getExteriorRing();
+		});
 	}
 
 	/**
@@ -171,9 +171,10 @@ public final class PGS_Morphology {
 	 * }
 	 * </pre>
 	 *
-	 * @param shape          A single polygon or lineal shape
+	 * @param shape          A single polygon, lineal shape, or GROUP containing
+	 *                       such shapes
 	 * @param bufferCallback A callback function that receives the vertex coordinate
-	 *                       and a double representing tractional distance (0...1)
+	 *                       and a double representing fractional distance (0...1)
 	 *                       of the vertex along the shape's boundary. The function
 	 *                       may use properties of the vertex, or its position, to
 	 *                       determine the buffer width at that point.
@@ -183,27 +184,40 @@ public final class PGS_Morphology {
 	 * @since 2.0
 	 */
 	public static PShape variableBuffer(PShape shape, BiFunction<Coordinate, Double, Double> bufferCallback) {
-		final Geometry inputGeometry = fromPShape(shape);
-		if (!(inputGeometry instanceof Lineal || inputGeometry instanceof Polygon)) {
-			throw new IllegalArgumentException("The geometry must be linear or a non-multi polygonal shape.");
-		}
-		var coords = inputGeometry.getCoordinates();
-		double[] bufferDistances = new double[coords.length];
-		double totalLength = inputGeometry.getLength();
-		double running_length = 0;
-		Coordinate previousCoordinate = coords[0];
+		return PGS.applyToLinealGeometries(shape, line -> {
+			final Coordinate[] coords = line.getCoordinates();
+			if (coords.length == 0) {
+				// return an "empty buffer" geometry consistent with VariableBuffer expectations
+				return null;
+			}
 
-		for (int i = 1; i < coords.length; i++) {
-			running_length += previousCoordinate.distance(coords[i]);
-			double fractionalDistance = running_length / totalLength; // 0...1
-			bufferDistances[i] = bufferCallback.apply(coords[i], fractionalDistance);
-			previousCoordinate = coords[i];
-		}
+			final double totalLength = line.getLength();
+			final double[] bufferDistances = new double[coords.length];
 
-		bufferDistances[0] = bufferCallback.apply(coords[0], 0.0);
+			// Guard against degenerate/zero-length lines (all points same).
+			if (totalLength == 0) {
+				final double d0 = bufferCallback.apply(coords[0], 0.0);
+				for (int i = 0; i < bufferDistances.length; i++) {
+					bufferDistances[i] = d0;
+				}
+			} else {
+				bufferDistances[0] = bufferCallback.apply(coords[0], 0.0);
 
-		var variableBuffer = new VariableBuffer(inputGeometry, bufferDistances);
-		return toPShape(variableBuffer.getResult());
+				double runningLength = 0;
+				Coordinate prev = coords[0];
+
+				for (int i = 1; i < coords.length; i++) {
+					runningLength += prev.distance(coords[i]);
+					final double fractionalDistance = runningLength / totalLength; // 0..1
+					bufferDistances[i] = bufferCallback.apply(coords[i], fractionalDistance);
+					prev = coords[i];
+				}
+			}
+
+			final var vb = new VariableBuffer(line, bufferDistances);
+			var buffer = (Polygon) vb.getResult();
+			return buffer.getExteriorRing();
+		});
 	}
 
 	/**
@@ -666,19 +680,30 @@ public final class PGS_Morphology {
 	}
 
 	/**
-	 * Distorts a polygonal shape by radially displacing its vertices along the line
-	 * connecting each vertex with the shape's centroid, creating a warping or
+	 * Radially warps a polygon by moving each boundary vertex inward/outward along
+	 * the ray from the polygon centroid to that vertex, creating a warping or
 	 * perturbing effect.
 	 * <p>
-	 * The shape's input vertices can optionally be densified prior to the warping
-	 * operation.
+	 * Optionally, the input boundary can be densified before warping by inserting
+	 * additional vertices at a spacing of ~1 unit. This causes long edges to warp
+	 * smoothly along their full length rather than only at the original corner
+	 * vertices.
 	 * 
-	 * @param shape      A polygonal PShape object to be distorted.
-	 * @param magnitude  The degree of the displacement, which determines the
-	 *                   maximum Euclidean distance a vertex will be moved in
-	 *                   relation to the shape's centroid.
-	 * @param warpOffset An offset angle, which establishes the starting angle for
-	 *                   the displacement process.
+	 * @param shape      A polygonal {@link PShape} (or GROUP of polygons) to be
+	 *                   distorted. The warp is applied to each polygon ring
+	 *                   independently.
+	 * @param magnitude  Controls the strength of the warp. Larger values produce
+	 *                   larger radial displacements from the original boundary
+	 *                   (i.e., larger inward/outward movement). A value of
+	 *                   {@code 0} produces an unchanged shape.
+	 * @param warpOffset An angular phase offset (in radians) added to each vertex's
+	 *                   polar angle before sampling the noise field. Changing
+	 *                   {@code warpOffset} does not change the warp magnitude; it
+	 *                   rotates the noise pattern around the centroid (i.e., shifts
+	 *                   where bulges/indentations occur along the boundary). This
+	 *                   is useful for animation by incrementing {@code warpOffset}
+	 *                   over time. The warp has a period of 2π. A typical/useful
+	 *                   domain is {@code [0, 2*Math.PI)}.
 	 * @param densify    A boolean parameter determining whether the shape should be
 	 *                   densified (by inserting additional vertices at a distance
 	 *                   of 1) before warping. If true, shapes with long edges will
@@ -688,39 +713,69 @@ public final class PGS_Morphology {
 	 *         specified parameters.
 	 */
 	public static PShape radialWarp(PShape shape, double magnitude, double warpOffset, boolean densify) {
-		Geometry g = fromPShape(shape);
-		if (!g.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
-			System.err.println("radialWarp() expects (single) polygon input. The geometry resolved to a " + g.getGeometryType());
-			return shape;
-		}
-
-		final Point point = g.getCentroid();
-		final PVector c = new PVector((float) point.getX(), (float) point.getY());
-
-		final List<PVector> coords;
-
-		if (densify) {
-			final Densifier d = new Densifier(fromPShape(shape));
-			d.setDistanceTolerance(1);
-			d.setValidate(false);
-			coords = PGS_Conversion.toPVector(toPShape(d.getResultGeometry()));
-		} else {
-			coords = PGS_Conversion.toPVector(shape);
-		}
-
 		final UniformNoise noise = new UniformNoise(1337);
-		coords.forEach(coord -> {
-			PVector heading = PVector.sub(coord, c); // vector from center to each vertex
-			final double angle = heading.heading() + warpOffset;
-			float perturbation = noise.uniformNoise(Math.cos(angle), Math.sin(angle));
-			perturbation -= 0.5f; // [0...1] -> [-0.5...0.5]
-			perturbation *= magnitude * 2;
-			coord.add(heading.normalize().mult(perturbation)); // add perturbation to vertex
+
+		return PGS.applyToLinealGeometries(shape, line -> {
+
+			// radialWarp is defined for polygon rings; if we get an open line, just return
+			// it unchanged
+			if (!line.isClosed()) {
+				return line;
+			}
+			final Point centroid = line.getCentroid();
+			final PVector c = new PVector((float) centroid.getX(), (float) centroid.getY());
+
+			Geometry working = line;
+			if (densify) {
+				final Densifier d = new Densifier(line);
+				d.setDistanceTolerance(1);
+				d.setValidate(false);
+				working = d.getResultGeometry();
+			}
+
+			final Coordinate[] coords = working.getCoordinates();
+			if (coords.length == 0) {
+				return line;
+			}
+
+			// Warp all unique vertices; then explicitly re-close
+			final int n = coords.length;
+			for (int i = 0; i < n - 1; i++) { // ignore last coordinate (closure); we re-close after warping
+				final double x = coords[i].x;
+				final double y = coords[i].y;
+
+				double dx = x - c.x;
+				double dy = y - c.y;
+
+				final double len = Math.sqrt(dx * dx + dy * dy);
+				if (len == 0) {
+					continue; // vertex at centroid
+				}
+
+				final double angle = FastAtan2.atan2(dy, dx) + warpOffset;
+
+				float perturbation = noise.uniformNoise(FastMath.cos(angle), FastMath.sin(angle));
+				perturbation -= 0.5f; // [0..1] -> [-0.5..0.5]
+				perturbation *= (float) (magnitude * 2.0);
+
+				// normalize heading and displace
+				dx /= len;
+				dy /= len;
+
+				coords[i].x = x + dx * perturbation;
+				coords[i].y = y + dy * perturbation;
+			}
+
+			// ensure exact closure
+			coords[n - 1].x = coords[0].x;
+			coords[n - 1].y = coords[0].y;
+
+			// preserve ring-ness if possible
+			if (line instanceof LinearRing) {
+				return PGS.GEOM_FACTORY.createLinearRing(coords);
+			}
+			return PGS.GEOM_FACTORY.createLineString(coords);
 		});
-		if (!coords.get(0).equals(coords.get(coords.size() - 1))) {
-			coords.add(coords.get(0));
-		}
-		return PGS_Conversion.fromPVector(coords);
 	}
 
 	/**
@@ -887,20 +942,42 @@ public final class PGS_Morphology {
 	 * @since 2.0
 	 */
 	public static PShape pinchWarp(PShape shape, PVector pinchPoint, double weight) {
-		List<PVector> vertices = new ArrayList<>(shape.getVertexCount());
-		for (int i = 0; i < shape.getVertexCount(); i++) {
-			PVector vertex = shape.getVertex(i).copy();
-			float distance = PVector.dist(vertex, pinchPoint);
-			float w = (float) (weight / (distance + 1));
-			PVector direction = PVector.sub(pinchPoint, vertex);
-			direction.mult(w);
-			vertex.add(direction);
-			vertices.add(vertex);
-		}
-		if (shape.isClosed()) {
-			vertices.add(vertices.get(0));
-		}
-		return PGS_Conversion.fromPVector(vertices);
+		return PGS.applyToLinealGeometries(shape, line -> {
+			final var gf = line.getFactory();
+			final var coords = line.getCoordinates();
+
+			if (coords.length == 0) {
+				return line;
+			}
+
+			final boolean closed = line.isClosed();
+
+			for (int i = 0; i < coords.length; i++) {
+				// if closed, we'll re-close explicitly after warping to avoid drift
+				if (closed && i == coords.length - 1) {
+					break;
+				}
+
+				final double x = coords[i].x;
+				final double y = coords[i].y;
+
+				final double dx = pinchPoint.x - x;
+				final double dy = pinchPoint.y - y;
+
+				final double distance = Math.sqrt(dx * dx + dy * dy);
+				final double w = weight / (distance + 1.0);
+
+				coords[i].x = x + dx * w;
+				coords[i].y = y + dy * w;
+			}
+
+			if (closed) {
+				coords[coords.length - 1].x = coords[0].x;
+				coords[coords.length - 1].y = coords[0].y;
+			}
+
+			return gf.createLineString(coords);
+		});
 	}
 
 	/**
