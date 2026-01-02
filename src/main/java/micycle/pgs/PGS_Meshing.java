@@ -443,7 +443,8 @@ public class PGS_Meshing {
 			quads.add(triToPShape(t));
 		});
 
-		return PGS_Conversion.flatten(quads);
+		// sort faces so that output is structurally deterministic
+		return PGS_Optimisation.centroidSortFaces(PGS_Conversion.flatten(quads));
 	}
 
 	/**

@@ -459,6 +459,9 @@ public final class PGS_Triangulation {
 	 * @since 2.2
 	 */
 	public static void refine(IIncrementalTin triangulation, double minAngleDeg) {
+		if (minAngleDeg <= 0) {
+			return; // no-op
+		}
 		RuppertRefiner refiner = new RuppertRefiner(triangulation, minAngleDeg);
 		refiner.refine();
 	}
@@ -481,6 +484,9 @@ public final class PGS_Triangulation {
 	 * @since 2.2
 	 */
 	public static void refine(IIncrementalTin triangulation, double minAngleDeg, double minTriangleArea) {
+		if (minAngleDeg <= 0) {
+			return; // no-op
+		}
 		RuppertRefiner refiner = new RuppertRefiner(triangulation, minAngleDeg, minTriangleArea);
 		refiner.refine();
 	}

@@ -425,7 +425,7 @@ public class EdgePrunedFaces {
 			}
 
 			// 3-color the "edge graph" so no triangle has two edges of the same color
-			final Coloring<IQuadEdge> coloring = new RLFColoring<>(g, 1337).getColoring();
+			final Coloring<IQuadEdge> coloring = new DBLACColoring<>(g, 1337L).getColoring();
 
 			// Mark all edges of the chosen color as dropped, honoring perimeter
 			// preservation
@@ -437,7 +437,7 @@ public class EdgePrunedFaces {
 				 * NOTE 4-colorings are possible, so some triangles may have two or three edges
 				 * with color >= 2, and yield faces larger than quads once edges are dropped.
 				 */
-				if (color < 2) {
+				if (color < 2) { // skip 0, 1, so drop 2+
 					continue;
 				}
 
@@ -448,7 +448,7 @@ public class EdgePrunedFaces {
 					}
 				}
 
-				dropped.add(base);
+				dropped.add(base); // drop edge!
 			}
 		};
 	}

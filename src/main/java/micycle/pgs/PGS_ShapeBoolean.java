@@ -69,6 +69,29 @@ public final class PGS_ShapeBoolean {
 		result.setUserData(shapeA.getUserData()); // preserve shape style (if any)
 		return toPShape(result);
 	}
+	
+	/**
+	 * Calculates the intersection of all provided shapes, producing a new shape
+	 * representing the area shared by every input.
+	 * <p>
+	 * This is equivalent to {@code shapes[0] ∩ shapes[1] ∩ ...}.
+	 *
+	 * @param shapes the shapes to intersect (must contain at least 2 shapes)
+	 * @return a new shape representing the intersection of all inputs; retains the
+	 *         style of {@code shapes[0]}
+	 * @throws IllegalArgumentException if fewer than 2 shapes are provided
+	 * @since 2.2
+	 */
+	public static PShape intersect(final PShape... shapes) {
+		if (shapes == null || shapes.length < 2) {
+			throw new IllegalArgumentException("intersect requires at least 2 shapes");
+		}
+		PShape out = shapes[0];
+		for (int i = 1; i < shapes.length; i++) {
+			out = intersect(out, shapes[i]);
+		}
+		return out;
+	}
 
 	/**
 	 * Performs an intersection operation between a mesh-like shape (a polygonal
@@ -357,6 +380,26 @@ public final class PGS_ShapeBoolean {
 		Geometry result = OverlayNG.overlay(shapeA, fromPShape(b), OverlayNG.DIFFERENCE);
 		result.setUserData(shapeA.getUserData()); // preserve shape style (if any)
 		return toPShape(result);
+	}
+
+	/**
+	 * Subtracts multiple shapes from a base shape and returns the resulting shape.
+	 * This is equivalent to subtracting the union of {@code shapes} from {@code a}:
+	 *
+	 * <pre>{@code
+	 * subtract(a, s1, s2, s3) == subtract(a, union(s1, s2, s3))
+	 * }</pre>
+	 *
+	 * @param base   the {@code PShape} from which all subsequent shapes will be
+	 *               subtracted
+	 * @param shapes zero or more {@code PShape}s to subtract from {@code a}
+	 * @return a new {@code PShape} representing {@code a \ (s1 ∪ s2 ∪ ...)}; the
+	 *         returned shape has the style of {@code a}
+	 * @since 2.2
+	 * @see #subtract(PShape, PShape)
+	 */
+	public static PShape subtract(final PShape base, PShape... shapes) {
+		return subtract(base, union(Arrays.asList(shapes)));
 	}
 
 	/**
