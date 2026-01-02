@@ -32,6 +32,8 @@ Library functionality is split over the following classes:
   * Solve geometric optimisation problems, such as finding the maximum inscribed circle, or the closest vertex to a coordinate.
 * `PGS_PointSet`
   * Generates sets of 2D points having a variety of different distributions and constraints.
+* `PGS_Polygonisation`
+  * Generates simple polygonisations of point sets.
 * `PGS_Processing`
   * Methods that process a shape in some way: partition, slice, clean, etc.
 * `PGS_SegmentSet`
@@ -968,3 +970,48 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/tiling/softCells.gif"></td>
   </tr>
 </table>
+
+<section id="polygonisation">
+  <h2>Polygonisation</h2>
+
+  <table>
+    <tr>
+      <td align="center" valign="center"><b>Max Area</b></td>
+      <td align="center" valign="center"><b>Min Area</b></td>
+      <td align="center" valign="center"><b>Min Perimeter (TSP)</b></td>
+      <td align="center" valign="center"><b>Hilbert</b></td>
+    </tr>
+    <tr>
+      <td valign="top" width="25%"><img src="resources/polygonisation/maxArea.png" alt="maxArea"></td>
+      <td valign="top" width="25%"><img src="resources/polygonisation/minArea.png" alt="minArea"></td>
+      <td valign="top" width="25%"><img src="resources/polygonisation/minPerimeter.png" alt="minPerimeter"></td>
+      <td valign="top" width="25%"><img src="resources/polygonisation/hilbert.png" alt="hilbert"></td>
+    </tr>
+
+  <tr>
+      <td align="center" valign="center"><b>Horizontal</b></td>
+      <td align="center" valign="center"><b>Vertical</b></td>
+      <td align="center" valign="center"><b>Circular</b></td>
+      <td align="center" valign="center"><b>Angular</b></td>
+    </tr>
+    <tr>
+      <td valign="top" width="25%"><img src="resources/polygonisation/horizontal.png" alt="horizontal"></td>
+      <td valign="top" width="25%"><img src="resources/polygonisation/vertical.png" alt="vertical"></td>
+      <td valign="top" width="25%"><img src="resources/polygonisation/circular.png" alt="circular"></td>
+      <td valign="top" width="25%"><img src="resources/polygonisation/angular.png" alt="angular"></td>
+    </tr>
+
+  <tr>
+      <td align="center" valign="center"><b>Onion</b></td>
+      <td></td>
+      <td></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td valign="top" width="25%"><img src="resources/polygonisation/onion.png" alt="onion"></td>
+      <td valign="top" width="25%"></td>
+      <td valign="top" width="25%"></td>
+      <td valign="top" width="25%"></td>
+    </tr>
+  </table>
+</section>

@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## **2.2** *(2026-xx-xx)*
 
 ### Added
+#### Classes
+* **`PGS_Polygonisation`** — generates simple polygonisations of point sets.
+
+#### Methods
 * `fixBrokenFaces()` to `PGS_Meshing`. Repairs broken faces in near-coverage linework using endpoint-only snapping, then polygonises the result.
 * `polygonize()` to `PGS_Processing`. Finds polygonal faces from the given shape's linework.
 * `softCells()` to `PGS_Tiling`. Generates a softened (curved) version of a tiling using the SoftCells edge-bending algorithm.

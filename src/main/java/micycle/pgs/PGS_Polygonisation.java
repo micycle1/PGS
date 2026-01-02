@@ -11,7 +11,6 @@ import java.util.List;
 
 import micycle.pgs.commons.AreaOptimalPolygonizer;
 import micycle.pgs.commons.AreaOptimalPolygonizer.AreaObjective;
-import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.Uncrossing2Opt;
 import net.jafama.FastMath;
 import processing.core.PShape;
@@ -22,66 +21,131 @@ import processing.core.PVector;
  * <p>
  * A polygonisation is a simple polygon whose vertex set is exactly the given
  * point set, i.e. a non-self-intersecting Hamiltonian cycle through all points.
- * Different algorithms may produce different polygonizations of the same point
+ * Different algorithms may produce different polygonisations of the same point
  * set.
  * <p>
- * This class includes polygonization variants that optimize geometric
- * objectives such as minimizing or maximizing the enclosed area, as well as
- * heuristic constructions based on ordering, proximity, or tour improvement.
- * <p>
- * Polygonizations are distinct from geometric hulls: hulls may select a
+ * Polygonisations are distinct from geometric hulls: hulls may select a
  * <b>subset</b> of extreme points to form an enclosing boundary, whereas
- * polygonizations use all points as vertices.
+ * polygonisations must use all points as vertices.
  *
  * @author Michael Carleton
  * @since 2.2
  */
 public class PGS_Polygonisation {
 
-	// https://discourse.processing.org/t/shape-generator-help-armin-hofmanns-rubber-band-shape-generator/33190/40
-
-	// methods to create polygons from point sets
-	// min/max area (heuristic)
-	// tsp (min perimeter)
-	// angular sort
-	// horizontal sort (2-opt)
-	// circular sort (2-opt)
-	// Hamiltonian cycle?
-
+	/**
+	 * Produces a simple polygonisation that attempts to minimise the polygon area
+	 * while using every point in the supplied set as a vertex.
+	 * 
+	 * @param points the input point set (must not be {@code null}) containing >2
+	 *               points.
+	 * @return a new {@link processing.core.PShape PShape} representing a simple
+	 *         polygon that polygonises the input points and (attempts to) minimise
+	 *         area.
+	 * @see {@link #maxArea(Collection)}
+	 * @since 2.2
+	 */
 	public static PShape minArea(Collection<PVector> points) {
 		var coords = points.stream().map(p -> PGS.coordFromPVector(p)).toList();
 		var g = AreaOptimalPolygonizer.polygonize(coords, AreaObjective.MINIMIZE);
 		return toPShape(g);
 	}
 
+	/**
+	 * Produces a simple polygonisation that attempts to maximise the polygon area
+	 * while using every point in the supplied set as a vertex.
+	 *
+	 * @param points the input point set (must not be {@code null}) containing >2
+	 *               points.
+	 * @return a new {@link processing.core.PShape PShape} representing a simple
+	 *         polygon that polygonises the input points and (attempts to) maximise
+	 *         area.
+	 * @see #minArea(Collection)
+	 * @since 2.2
+	 */
 	public static PShape maxArea(Collection<PVector> points) {
 		var coords = points.stream().map(p -> PGS.coordFromPVector(p)).toList();
 		var g = AreaOptimalPolygonizer.polygonize(coords, AreaObjective.MAXIMIZE);
 		return toPShape(g);
 	}
 
+	/**
+	 * Computes a polygonisation that approximates a shortest closed tour visiting
+	 * every point exactly once (a Hamiltonian cycle with small perimeter).
+	 * <p>
+	 * This method is effectively a TSP-style polygonisation: it returns a simple
+	 * polygon whose total edge length is minimised (or approximated by the
+	 * underlying shortest-tour routine).
+	 *
+	 * @param points the input point set (must not be {@code null}). If the set
+	 *               contains fewer than three distinct points an appropriate
+	 *               degenerate {@link processing.core.PShape PShape} containing the
+	 *               input points will be returned.
+	 * @return a new {@link processing.core.PShape PShape} representing a simple
+	 *         polygon that attempts to minimise perimeter.
+	 * @since 2.2
+	 */
 	public static PShape minPerimeter(Collection<PVector> points) {
 		return PGS_PointSet.findShortestTour(points);
 	}
 
 	/**
-	 * Creates a polygonisation by scanning horizontally (i.e. sort primarily by Y,
-	 * then X) then removing crossings with a 2-opt (segment reversal) routine.
+	 * Builds a polygonisation by scanning points horizontally (primary sort by Y,
+	 * secondary by X) and then removing edge crossings via a 2-opt (segment
+	 * reversal) uncrossing routine.
+	 * <p>
+	 * The produced polygon has "horizontal scanline" characteristics.
+	 *
+	 * @param points the input point set (may be {@code null}). If {@code null} an
+	 *               empty {@link processing.core.PShape PShape} is returned. If the
+	 *               set contains fewer than three distinct points a degenerate
+	 *               {@link processing.core.PShape PShape} containing the input
+	 *               points is returned.
+	 * @return a new {@link processing.core.PShape PShape} representing a simple
+	 *         polygon constructed by horizontal scan and uncrossing.
+	 * @since 2.2
 	 */
 	public static PShape horizontal(Collection<PVector> points) {
-		// horizontal scanlines
 		return scanAndResolve(points, true);
 	}
 
 	/**
-	 * Creates a polygonisation by scanning vertically (i.e. sort primarily by X,
-	 * then Y) then removing crossings with a 2-opt (segment reversal) routine.
+	 * Builds a polygonisation by scanning points vertically (primary sort by X,
+	 * secondary by Y) and then removing edge crossings via a 2-opt (segment
+	 * reversal) uncrossing routine.
+	 * <p>
+	 * The produced polygon has "vertical scanline" characteristics.
+	 *
+	 * @param points the input point set (may be {@code null}). If {@code null} an
+	 *               empty {@link processing.core.PShape PShape} is returned. If the
+	 *               set contains fewer than three distinct points a degenerate
+	 *               {@link processing.core.PShape PShape} containing the input
+	 *               points is returned.
+	 * @return a new {@link processing.core.PShape PShape} representing a simple
+	 *         polygon constructed by vertical scan and uncrossing.
+	 * @since 2.2
 	 */
 	public static PShape vertical(Collection<PVector> points) {
-//		vertical scanlines
 		return scanAndResolve(points, false);
 	}
 
+	/**
+	 * Produces a polygonisation by ordering points according to a Hilbert curve
+	 * (space-filling curve) ordering, then applying a local uncrossing (2-opt) pass
+	 * to remove any segment intersections.
+	 * <p>
+	 * Hilbert ordering tends to preserve locality and thus often produces visually
+	 * compact, low-crossing initial orderings which the uncrossing step refines
+	 * into a simple polygon.
+	 *
+	 * @param points the input point set (must not be {@code null}). If the set
+	 *               contains fewer than three distinct points an appropriate
+	 *               degenerate {@link processing.core.PShape PShape} containing the
+	 *               input points will be returned.
+	 * @return a new {@link processing.core.PShape PShape} representing a simple
+	 *         polygon obtained from Hilbert ordering + uncrossing.
+	 * @since 2.2
+	 */
 	public static PShape hilbert(Collection<PVector> points) {
 		var seq = PGS_PointSet.hilbertSort(new ArrayList<PVector>(points));
 		Uncrossing2Opt.uncross(seq);
@@ -89,83 +153,29 @@ public class PGS_Polygonisation {
 	}
 
 	/**
-	 * Generic scan-based polygonisation. If primaryIsY is true, points are sorted
-	 * primarily by Y then X (horizontal scanlines). Otherwise sorted primarily by X
-	 * then Y (vertical scanlines). After sorting, a 2-opt style crossing removal is
-	 * applied by iteratively reversing segments that cause segment intersections.
+	 * Builds a polygonisation by grouping points into concentric "rings" around the
+	 * centroid, ordering points within each ring by polar angle, and stitching the
+	 * rings together into a single sequence.
+	 * <p>
+	 * This is a heuristic polygonisation: it favors "circular" or banded structures
+	 * (concentric/clustered layouts) and often produces visually compact,
+	 * low-crossing initial orders that the uncrossing step refines into a simple
+	 * polygon.
+	 *
+	 * @param points the input point set (may be {@code null}). If {@code null} an
+	 *               empty {@link processing.core.PShape PShape} is returned. If the
+	 *               set contains fewer than three distinct points a degenerate
+	 *               {@link processing.core.PShape PShape} containing the input
+	 *               points is returned.
+	 * @return a new {@link processing.core.PShape PShape} representing a simple
+	 *         polygon constructed by concentric ring (circular) ordering and
+	 *         subsequent uncrossing.
+	 * @since 2.2
 	 */
-	private static PShape scanAndResolve(Collection<PVector> points, boolean primaryIsY) {
-		// defensive handling
+	public static PShape circular(Collection<PVector> points) {
 		if (points == null) {
 			return new PShape();
 		}
-
-		final int n = points.size();
-		if (n == 0) {
-			return PGS_Conversion.fromPVector(points);
-		}
-		if (n < 3) {
-			// trivial: nothing to polygonise
-			return PGS_Conversion.fromPVector(new ArrayList<>(points));
-		}
-
-		// make a mutable copy
-		List<PVector> seq = new ArrayList<>(points);
-
-		// comparator depending on primary axis
-		Comparator<PVector> cmp;
-		if (primaryIsY) {
-			cmp = new Comparator<PVector>() {
-				@Override
-				public int compare(PVector a, PVector b) {
-					if (a.y < b.y)
-						return -1;
-					if (a.y > b.y)
-						return 1;
-					if (a.x < b.x)
-						return -1;
-					if (a.x > b.x)
-						return 1;
-					return 0;
-				}
-			};
-		} else {
-			cmp = new Comparator<PVector>() {
-				@Override
-				public int compare(PVector a, PVector b) {
-					if (a.x < b.x)
-						return -1;
-					if (a.x > b.x)
-						return 1;
-					if (a.y < b.y)
-						return -1;
-					if (a.y > b.y)
-						return 1;
-					return 0;
-				}
-			};
-		}
-
-		Collections.sort(seq, cmp);
-		Uncrossing2Opt.uncross(seq);
-
-		return toPolygon(seq);
-	}
-
-	/**
-	 * instead of sorting purely by angle (angular/radial sort = sort by θ around a
-	 * chosen center), "circular sorting" usually means grouping points into
-	 * concentric rings (or convex layers) and then ordering points inside each ring
-	 * by angle and stitching the rings together. The result is loopy/circular bands
-	 * rather than one long star-shaped sweep.
-	 * 
-	 * @param points
-	 * @return
-	 */
-	public static PShape circular(Collection<PVector> points) {
-		// (concentric rings with simple stitching + 2‑opt)
-		// other options: onion convex layers; spiral variant
-//	    if (points == null) return PGS_Conversion.fromPVector(null);
 		final int n = points.size();
 		if (n < 3)
 			return PGS_Conversion.fromPVector(new ArrayList<>(points));
@@ -252,8 +262,20 @@ public class PGS_Polygonisation {
 	}
 
 	/**
-	 * Angular / radial sort: sort points by angle around the centroid (atan2),
-	 * tie-break by radius. Then run a 2-opt crossing removal.
+	 * Generates a polygonisation by angular (radial) sorting: points are sorted by
+	 * angle around the centroid, tie-broken by distance from the centroid, and then
+	 * a 2-opt uncrossing pass is applied.
+	 * <p>
+	 * The angular sort usually gives a star-shaped output.
+	 *
+	 * @param points the input point set (may be {@code null}). If {@code null} an
+	 *               empty {@link processing.core.PShape PShape} is returned. If the
+	 *               set contains fewer than three distinct points a degenerate
+	 *               {@link processing.core.PShape PShape} containing the input
+	 *               points is returned.
+	 * @return a new {@link processing.core.PShape PShape} representing a simple
+	 *         polygon constructed by radial sorting and uncrossing.
+	 * @since 2.2
 	 */
 	public static PShape angular(Collection<PVector> points) {
 		if (points == null) {
@@ -281,19 +303,16 @@ public class PGS_Polygonisation {
 			double dx = p.x - cx;
 			double dy = p.y - cy;
 			double theta = FastMath.atan2(dy, dx);
-			double r = FastMath.hypot(dx, dy);
+			double r = Math.sqrt(dx * dx + dy * dy);
 			info.add(new Info(p, r, theta));
 		}
 
 		// sort by angle, tie-break by radius (closer first)
-		Collections.sort(info, new Comparator<Info>() {
-			@Override
-			public int compare(Info a, Info b) {
-				int c = Double.compare(a.theta, b.theta);
-				if (c != 0)
-					return c;
-				return Double.compare(a.r, b.r);
-			}
+		Collections.sort(info, (a, b) -> {
+			int c = Double.compare(a.theta, b.theta);
+			if (c != 0)
+				return c;
+			return Double.compare(a.r, b.r);
 		});
 
 		List<PVector> seq = new ArrayList<>(n);
@@ -306,6 +325,26 @@ public class PGS_Polygonisation {
 		return toPolygon(seq);
 	}
 
+	/**
+	 * Constructs a polygonisation using the "onion" (convex-layers) strategy:
+	 * repeatedly peel convex hull layers (outermost first), stitch hull layers into
+	 * a single cyclic order (alternating directions for continuity), insert any
+	 * leftover points with a cheapest-insertion heuristic, and finally apply a
+	 * 2-opt uncrossing pass.
+	 * <p>
+	 * This approach tends to respect global convex structure and produces
+	 * spiral-like polygonisations that use all points as vertices.
+	 *
+	 * @param points the input point set (may be {@code null}). If {@code null} an
+	 *               empty {@link processing.core.PShape PShape} is returned. If the
+	 *               set contains fewer than three distinct points a degenerate
+	 *               {@link processing.core.PShape PShape} containing the input
+	 *               points is returned.
+	 * @return a new {@link processing.core.PShape PShape} representing a simple
+	 *         polygon constructed by convex-layer peeling, stitching and
+	 *         uncrossing.
+	 * @since 2.2
+	 */
 	public static PShape onion(Collection<PVector> points) {
 		if (points == null)
 			return new PShape();
@@ -357,7 +396,40 @@ public class PGS_Polygonisation {
 			insertCheapest(seq, p);
 		}
 
-		// uncross
+		Uncrossing2Opt.uncross(seq);
+
+		return toPolygon(seq);
+	}
+
+	/**
+	 * Generic scan-based polygonisation. If primaryIsY is true, points are sorted
+	 * primarily by Y then X (horizontal scanlines). Otherwise sorted primarily by X
+	 * then Y (vertical scanlines). After sorting, a 2-opt style crossing removal is
+	 * applied by iteratively reversing segments that cause segment intersections.
+	 */
+	private static PShape scanAndResolve(Collection<PVector> points, boolean primaryIsY) {
+		// defensive handling
+		if (points == null) {
+			return new PShape();
+		}
+
+		final int n = points.size();
+		if (n == 0) {
+			return PGS_Conversion.fromPVector(points);
+		}
+		if (n < 3) {
+			// trivial: nothing to polygonise
+			return PGS_Conversion.fromPVector(new ArrayList<>(points));
+		}
+
+		// make a mutable copy
+		List<PVector> seq = new ArrayList<>(points);
+
+		// comparator depending on primary axis
+		Comparator<PVector> cmp = primaryIsY ? Comparator.comparingDouble((PVector p) -> p.y).thenComparingDouble(p -> p.x)
+				: Comparator.comparingDouble((PVector p) -> p.x).thenComparingDouble(p -> p.y);
+
+		Collections.sort(seq, cmp);
 		Uncrossing2Opt.uncross(seq);
 
 		return toPolygon(seq);
@@ -465,161 +537,6 @@ public class PGS_Polygonisation {
 	}
 
 	private static record Info(PVector p, double r, double theta) {
-	}
-
-	// Reverse elements in list from index i to j inclusive
-	private static void reverse(List<PVector> list, int i, int j) {
-		while (i < j) {
-			PVector tmp = list.get(i);
-			list.set(i, list.get(j));
-			list.set(j, tmp);
-			i++;
-			j--;
-		}
-	}
-
-	private static void uncross2Opt(List<PVector> seq) {
-	    int n = seq.size();
-	    if (n < 4) return;
-
-	    PVector[] arr = seq.toArray(new PVector[n]);
-	    
-	    // Cache coordinates in primitive arrays (better CPU cache)
-	    double[] x = new double[n];
-	    double[] y = new double[n];
-	    for (int k = 0; k < n; k++) {
-	        x[k] = arr[k].x;
-	        y[k] = arr[k].y;
-	    }
-	    
-	    boolean improved = true;
-	    while (improved) {
-	        improved = false;
-	        
-	        for (int i = 0; i < n - 2; i++) {
-	            double ax = x[i], ay = y[i];
-	            double bx = x[i+1], by = y[i+1];
-	            double abx = bx - ax;
-	            double aby = by - ay;
-	            
-	            int jMax = (i == 0) ? n - 1 : n;
-	            
-	            for (int j = i + 2; j < jMax; j++) {
-	                int j1 = (j + 1) % n;
-	                
-	                double cx = x[j], cy = y[j];
-	                double dx = x[j1], dy = y[j1];
-	                
-	                double o1 = abx * (cy - ay) - aby * (cx - ax);
-	                double o2 = abx * (dy - ay) - aby * (dx - ax);
-	                
-	                if ((o1 > 0 && o2 > 0) || (o1 < 0 && o2 < 0)) continue;
-	                
-	                double cdx = dx - cx;
-	                double cdy = dy - cy;
-	                double o3 = cdx * (ay - cy) - cdy * (ax - cx);
-	                double o4 = cdx * (by - cy) - cdy * (bx - cx);
-	                
-	                if ((o3 > 0 && o4 < 0) || (o3 < 0 && o4 > 0)) {
-	                    // Reverse coordinates
-	                    reverseDoubles(x, i + 1, j);
-	                    reverseDoubles(y, i + 1, j);
-	                    improved = true;
-	                    j = i + 1;
-	                }
-	            }
-	        }
-	    }
-	    
-	    // Rebuild PVectors
-	    for (int i = 0; i < n; i++) {
-	        arr[i].x = (float)x[i];
-	        arr[i].y = (float)y[i];
-	    }
-	}
-
-	private static void reverseDoubles(double[] arr, int start, int end) {
-	    while (start < end) {
-	        double tmp = arr[start];
-	        arr[start] = arr[end];
-	        arr[end] = tmp;
-	        start++;
-	        end--;
-	    }
-	}
-
-	private static void reverseArray(PVector[] arr, int start, int end) {
-	    while (start < end) {
-	        PVector tmp = arr[start];
-	        arr[start] = arr[end];
-	        arr[end] = tmp;
-	        start++;
-	        end--;
-	    }
-	}
-
-	private static boolean segmentsIntersect(final PVector a, final PVector b, final PVector c, final PVector d) {
-		// Compute deltas once
-		double abx = b.x - a.x;
-		double aby = b.y - a.y;
-		double acx = c.x - a.x;
-		double acy = c.y - a.y;
-		double adx = d.x - a.x;
-		double ady = d.y - a.y;
-
-		// Orient(a, b, c) and orient(a, b, d) share the ab vector
-		double o1 = abx * acy - aby * acx;
-		double o2 = abx * ady - aby * adx;
-
-		// Early exit if same side
-		if (o1 * o2 > 0)
-			return false;
-
-		double cdx = d.x - c.x;
-		double cdy = d.y - c.y;
-		double cax = a.x - c.x;
-		double cay = a.y - c.y;
-		double cbx = b.x - c.x;
-		double cby = b.y - c.y;
-
-		double o3 = cdx * cay - cdy * cax;
-		double o4 = cdx * cby - cdy * cbx;
-
-		// Check opposite sides
-		return o3 * o4 < 0;
-	}
-
-	private static boolean segmentsIntersect2(PVector a, PVector b, PVector c, PVector d) {
-		double o1 = orient(a, b, c);
-		double o2 = orient(a, b, d);
-		double o3 = orient(c, d, a);
-		double o4 = orient(c, d, b);
-
-		// proper intersection
-		if (o1 * o2 < 0 && o3 * o4 < 0) {
-			return true;
-		}
-//		final double EPS = 1e-9;
-		// handle collinear / endpoint cases
-//		if (Math.abs(o1) < EPS && onSegment(a, b, c))
-//			return true;
-//		if (Math.abs(o2) < EPS && onSegment(a, b, d))
-//			return true;
-//		if (Math.abs(o3) < EPS && onSegment(c, d, a))
-//			return true;
-//		if (Math.abs(o4) < EPS && onSegment(c, d, b))
-//			return true;
-
-		return false;
-	}
-
-	private static double orient(PVector a, PVector b, PVector c) {
-		return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
-	}
-
-	private static boolean onSegment(PVector a, PVector b, PVector p) {
-		final double EPS = 1e-9;
-		return p.x >= Math.min(a.x, b.x) - EPS && p.x <= Math.max(a.x, b.x) + EPS && p.y >= Math.min(a.y, b.y) - EPS && p.y <= Math.max(a.y, b.y) + EPS;
 	}
 
 	private static PShape toPolygon(List<PVector> points) {
