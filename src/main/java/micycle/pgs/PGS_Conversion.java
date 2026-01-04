@@ -59,6 +59,7 @@ import org.locationtech.jts.io.WKBReader;
 import org.locationtech.jts.io.WKBWriter;
 import org.locationtech.jts.io.WKTReader;
 import org.locationtech.jts.io.WKTWriter;
+import org.locationtech.jts.precision.GeometryPrecisionReducer;
 import org.locationtech.jts.util.GeometricShapeFactory;
 import org.scoutant.polyline.PolylineDecoder;
 
@@ -101,7 +102,6 @@ public final class PGS_Conversion {
 
 	/** Approximate distance between successive sample points on bezier curves */
 	static final float BEZIER_SAMPLE_DISTANCE = 2;
-	private static Field MATRIX_FIELD, PSHAPE_FILL_FIELD;
 	/**
 	 * A boolean flag that affects whether a PShape's style (fillColor, strokeColor,
 	 * strokeWidth) is preserved during <code>PShape->Geometry->PShape</code>
@@ -128,6 +128,41 @@ public final class PGS_Conversion {
 	 */
 	public static boolean HANDLE_MULTICONTOUR = false;
 
+	/**
+	 * When converting JTS {@link org.locationtech.jts.geom.Geometry Geometry} to a
+	 * Processing {@link processing.core.PShape PShape} (inside
+	 * {@link #toPShape(Geometry) toPShape()}), this flag controls whether PGS
+	 * performs an <b>explicit</b> precision reduction step <em>before</em> writing
+	 * vertices as floats.
+	 * <p>
+	 * Processing {@code PShape} vertices are stored as 32-bit floats, so a
+	 * <code>double-&gt;float</code> cast always introduces rounding. If this flag
+	 * is <code>false</code> (default), PGS relies on that implicit rounding only.
+	 * <p>
+	 * If this flag is <code>true</code>, PGS first snap-rounds each component
+	 * geometry to a fixed grid of <code>1/1024</code> and then casts to float. This
+	 * can reduce the (very rare) chance that float rounding breaks tight
+	 * topological relationships (e.g. a conforming mesh where vertices/edges must
+	 * match exactly), at the cost of intentionally coarsening coordinates even in
+	 * cases where the float cast alone might have preserved more detail.
+	 * <p>
+	 * <b>Scope:</b> This is currently applied <b>only</b> when converting
+	 * multi-geometries / collections (i.e. {@code GeometryCollection},
+	 * {@code MultiPolygon}, {@code MultiLineString}) containing more than one
+	 * component geometry. These cases are more susceptible to float rounding
+	 * causing adjacent components to no longer share identical boundary vertices
+	 * after conversion.
+	 * <p>
+	 * See {@link org.locationtech.jts.precision.GeometryPrecisionReducer
+	 * GeometryPrecisionReducer} for more information.
+	 * <p>
+	 * Default = <code>false</code>.
+	 */
+	public static boolean FLOAT_SAFE_MESH_CONVERSION = false;
+
+	private static GeometryPrecisionReducer reducer = new GeometryPrecisionReducer(PGS.PM);
+
+	private static Field MATRIX_FIELD, PSHAPE_FILL_FIELD;
 	static {
 		try {
 			MATRIX_FIELD = PShape.class.getDeclaredField("matrix");
@@ -216,7 +251,13 @@ public final class PGS_Conversion {
 				} else {
 					shape.setFamily(GROUP);
 					for (int i = 0; i < g.getNumGeometries(); i++) {
-						shape.addChild(toPShape(g.getGeometryN(i)));
+						Geometry child = g.getGeometryN(i);
+						if (FLOAT_SAFE_MESH_CONVERSION) {
+							Geometry reducedChild = reducer.reduce(child);
+							reducedChild.setUserData(child.getUserData());
+							child = reducedChild;
+						}
+						shape.addChild(toPShape(child));
 					}
 				}
 				break;
@@ -550,7 +591,7 @@ public final class PGS_Conversion {
 					continue;
 				default : // VERTEX
 					PVector v = shape.getVertex(i).copy();
-					// skip consecutive duplicate vertices
+					// NOTE skip consecutive duplicate vertices
 					if (lastVertex == null || !(v.x == lastVertex.x && v.y == lastVertex.y)) {
 						rings.get(currentGroup).add(v);
 						lastVertex = v;

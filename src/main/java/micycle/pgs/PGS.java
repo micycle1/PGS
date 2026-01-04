@@ -27,11 +27,9 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.GeometryFilter;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
-import org.locationtech.jts.geom.MultiPolygon;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.PrecisionModel;
-import org.locationtech.jts.geom.util.PolygonExtracter;
 import org.locationtech.jts.noding.NodedSegmentString;
 import org.locationtech.jts.noding.Noder;
 import org.locationtech.jts.noding.SegmentString;
@@ -58,9 +56,15 @@ final class PGS {
 	static final int SHAPE_SAMPLES = 80;
 
 	/**
-	 * PGS global geometry factory (uses 32 bit float precision).
+	 * Precision model that's suitable to guarantee conformity under float
+	 * coordinates.
 	 */
-	public static final GeometryFactory GEOM_FACTORY = new GeometryFactory(new PrecisionModel(PrecisionModel.FLOATING_SINGLE));
+	public static final PrecisionModel PM = new PrecisionModel(1024); // grid = 1/1024 == Math.ulp(1e4f)
+
+	/**
+	 * PGS global geometry factory.
+	 */
+	public static final GeometryFactory GEOM_FACTORY = new GeometryFactory(PM);
 
 	private PGS() {
 	}
@@ -334,11 +338,11 @@ final class PGS {
 		 * Other noder implementations do not node correctly (fail to detect
 		 * intersections) on many inputs; furthermore, using a very small tolerance
 		 * (i.e. ~1e-10) on SnappingNoder noder on a small tolerance misses
-		 * intersections too (hence 0.01 chosen as suitable). "Noding robustness issues
+		 * intersections too (hence 1/1024 chosen as suitable). "Noding robustness issues
 		 * are generally caused by nearly coincident line segments, or by very short
 		 * line segments. Snapping mitigates both of these situations.".
 		 */
-		Noder noder = new SnapRoundingNoder(new PrecisionModel(-5e-3));
+		Noder noder = new SnapRoundingNoder(PGS.PM);
 		noder.computeNodes(segments);
 		return noder.getNodedSubstrings();
 	}
