@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `refine()` to `PGS_Triangulation`. Refines an existing triangulation using Ruppert's Delaunay refinement algorithm.
 * `arapDeform()` to `PGS_Morphology`. Applies As-Rigid-As-Possible (ARAP) shape deformation using point handles.
 * `regularise()` to `PGS_Morphology`. Straightens the contour of a shape by snapping edges toward a small set of principal directions.
+* New method signature for `PGS_Conversion.toWKT()` that accepts a precision parameter to control the number of decimal places written.
 
 ### Changes
 * These methods in `PGS_Meshing` are more performant and robust: `urquhartFaces()`, `gabrielFaces()`, `spannerFaces()`, `relativeNeighborFaces()`, `edgeCollapseQuadrangulation()`, `centroidQuadrangulation()`.
@@ -29,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_Meshing.fixBreaks()` now uses a JTS implementation under the hood. The method's prior `angleTolerance` arg has been removed as it's no longer necessary.
 * A PShape's original `.name` is now included in the `PRESERVE_STYLE` routines.
 * All methods in `PGS_Morphology` now support GROUP shapes (where it makes sense to).
+* `PGS_Conversion.toWKT()` now writes coordinates in float precison by default (previously 2 decimal places).
 
 ### Fixed
 * `PGS_Optimisation.closestPoint()` now returns the nearest location on the shape's **boundary** for queries inside a polygonal shape (previously returned the query point itself).

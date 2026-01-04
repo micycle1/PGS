@@ -1133,6 +1133,8 @@ public final class PGS_Conversion {
 	 * Writes the <i>Well-Known Text</i> representation of a shape. The
 	 * <i>Well-Known Text</i> format is defined in the OGC Simple Features
 	 * Specification for SQL.
+	 * <p>
+	 * This variant uses single-precision floating point for output coordinates.
 	 *
 	 * @param shape shape to process
 	 * @return a Geometry Tagged Text string
@@ -1141,8 +1143,29 @@ public final class PGS_Conversion {
 	 */
 	public static String toWKT(PShape shape) {
 		WKTWriter writer = new WKTWriter(2);
-		writer.setPrecisionModel(new PrecisionModel(PrecisionModel.FIXED)); // 1 d.p.
+		writer.setPrecisionModel(new PrecisionModel(PrecisionModel.FLOATING_SINGLE));
 //		writer.setMaxCoordinatesPerLine(1);
+		return writer.writeFormatted(fromPShape(shape));
+	}
+
+	/**
+	 * Writes the <i>Well-Known Text</i> representation of a shape. The
+	 * <i>Well-Known Text</i> format is defined in the OGC Simple Features
+	 * Specification for SQL.
+	 * <p>
+	 * The precision of output coordinates is controlled via the
+	 * <code>decimalPlaces</code> parameter. A larger value will preserve more
+	 * digits after the decimal point.
+	 *
+	 * @param shape shape to process
+	 * @return a Geometry Tagged Text string
+	 * @since 2.2
+	 * @see #fromWKT(String)
+	 */
+	public static String toWKT(PShape shape, int decimalPlaces) {
+		decimalPlaces = Math.min(decimalPlaces, 10); // 10 max
+		WKTWriter writer = new WKTWriter(2);
+		writer.setPrecisionModel(new PrecisionModel(Math.pow(10, decimalPlaces - 1)));
 		return writer.writeFormatted(fromPShape(shape));
 	}
 
