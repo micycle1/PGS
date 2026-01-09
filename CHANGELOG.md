@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * A PShape's original `.name` is now included in the `PRESERVE_STYLE` routines.
 * All methods in `PGS_Morphology` now support GROUP shapes (where it makes sense to).
 * `PGS_Conversion.toWKT()` now writes coordinates in float precison by default (previously 2 decimal places).
+* Reimplemented `PGS_Morphology.interpolate()` using a more advanced approach that improves quality (though interpolations can still self-intersect).
 
 ### Fixed
 * `PGS_Optimisation.closestPoint()` now returns the nearest location on the shape's **boundary** for queries inside a polygonal shape (previously returned the query point itself).

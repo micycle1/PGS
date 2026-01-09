@@ -1,6 +1,7 @@
 package micycle.pgs;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -17,13 +18,14 @@ import org.locationtech.jts.geom.MultiPolygon;
 import org.locationtech.jts.geom.Polygon;
 
 import micycle.pgs.commons.DiscreteCurveEvolution.DCETerminationCallback;
+import processing.core.PConstants;
 import processing.core.PShape;
 
 class PGS_MorphologyTests {
 
 	private static final GeometryFactory GF = new GeometryFactory();
 
-	private PShape inShape;
+	private PShape inShape, a, b;
 	private Geometry inGeom;
 	private double[] originalAreas;
 	private int[] originalHoleCounts;
@@ -55,6 +57,22 @@ class PGS_MorphologyTests {
 			originalHoleCounts[i] = ((Polygon) gi).getNumInteriorRing();
 			originalAreas[i] = PGS_ShapePredicates.area(inShape.getChild(i));
 		}
+		
+		a = new PShape(PShape.GEOMETRY);
+		a.beginShape();
+		a.vertex(0, 0);
+		a.vertex(10, 0);
+		a.vertex(10, 10);
+		a.vertex(0, 10);
+		a.endShape(PConstants.CLOSE);
+
+		b = new PShape(PShape.GEOMETRY);
+		b.beginShape();
+		b.vertex(70, 70);
+		b.vertex(710, 70);
+		b.vertex(710, 710);
+		b.vertex(70, 710);
+		b.endShape(PConstants.CLOSE);
 	}
 
 	@Test
@@ -130,6 +148,20 @@ class PGS_MorphologyTests {
 		Geometry outGeom = getOutputGeom(outShape);
 		assertPolygonsAndHoleCounts(outGeom);
 		assertAreasDecreased(outShape, "after smoothing");
+	}
+	
+	@Test
+	public void testInterpolation() {
+		var from = a;
+		var to = b;
+		
+		var morph = PGS_Morphology.interpolate(from, to, 3);
+
+		assertTrue(PGS_ShapePredicates.equalsTopo(from, morph.getChild(0)));
+		assertTrue(PGS_ShapePredicates.equalsTopo(to, morph.getChild(2)));
+		
+		assertFalse(PGS_ShapePredicates.equalsTopo(to, morph.getChild(1)));
+		assertFalse(PGS_ShapePredicates.equalsTopo(from, morph.getChild(1)));		
 	}
 
 	/* Helper factories and geometry builders */

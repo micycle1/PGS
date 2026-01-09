@@ -56,7 +56,18 @@ import org.locationtech.jts.geom.LinearRing;
  */
 public final class NewtonThieleRingMorpher {
 
-	// Algorithm of Shape Morphing Based on Bivariate Non-linear Interpolation
+	/*-
+	 * TODO:
+	 * Cut shape with holes (hairline gap) to ensure each geometry has genus=1.
+	 * Cuts are discussed in 'Polygon Vertex Set Matching Algorithm for Shapefile Tweening'
+	 * Break-up single polygon to interpolate with a multipolygon.
+	 * See https://github.com/veltman/openvis/blob/master/README.md
+	 * See 'Guaranteed intersection-free polygon morphing'
+	 * See CGAl Shape Deformation: https://doc.cgal.org/latest/Barycentric_coordinates_2/index.html#title10
+	 * https://homepages.inf.ed.ac.uk/tkomura/cav/presentation14_2018.pdf
+	 * RAP C++ : https://github.com/catherinetaylor2/Shape_Interpolation/blob/master/rigid_interp.cpp
+	 * and https://github.com/deliagander/ARAPShapeInterpolation
+	 */
 
 	private final GeometryFactory gf;
 
@@ -75,23 +86,19 @@ public final class NewtonThieleRingMorpher {
 	private final double[][] coeffYAtOut; // [m][nOut]
 
 	/**
-	 * Convenience ctor for 2 rings.
-	 *
-	 * @param resampleVertices number of vertices to resample both rings to (unique,
-	 *                         ring is closed in JTS but we treat unique)
-	 * @param outputVertices   number of vertices in the output ring
-	 * @param useThieleInY     if false and outputVertices==resampleVertices, skips
-	 *                         Thiele and uses lattice values (fastest)
+	 * Convenience constructor for N rings.
+	 * 
+	 * @param rings the rings to interpolate (can be more than two)
 	 */
 	public NewtonThieleRingMorpher(LinearRing... rings) {
-		this(rings[0].getFactory(), Arrays.asList(rings), maxUniqueVertexCount(rings), // resampleVertices
+		this(Arrays.asList(rings), maxUniqueVertexCount(rings), // resampleVertices
 				maxUniqueVertexCount(rings), // outputVertices
 				false // useThieleInY (can be false since nOut==nIn)
 		);
 	}
 
 	/**
-	 * General ctor for multiple keyframes.
+	 * General constructor for multiple keyframes.
 	 *
 	 * @param keyframes        rings in temporal order
 	 * @param resampleVertices vertices to resample each ring to (unique points, no
@@ -100,8 +107,8 @@ public final class NewtonThieleRingMorpher {
 	 * @param useThieleInY     if false and outputVertices==resampleVertices, skips
 	 *                         Thiele and uses lattice values
 	 */
-	public NewtonThieleRingMorpher(GeometryFactory gf, List<LinearRing> keyframes, int resampleVertices, int outputVertices, boolean useThieleInY) {
-		this.gf = Objects.requireNonNull(gf, "gf");
+	public NewtonThieleRingMorpher(List<LinearRing> keyframes, int resampleVertices, int outputVertices, boolean useThieleInY) {
+		this.gf = keyframes.get(0).getFactory();
 		Objects.requireNonNull(keyframes, "keyframes");
 		if (keyframes.size() < 2) {
 			throw new IllegalArgumentException("Need at least 2 keyframes");
@@ -136,12 +143,6 @@ public final class NewtonThieleRingMorpher {
 			Coordinate[] aligned = rotateToBestMatch(ref, rings.get(i));
 			rings.set(i, aligned);
 		}
-		
-//		var ctx = new FFTCyclicShiftFinder.ShiftFinderContext(nIn);
-//		for (int i = 1; i < m; i++) {
-//		    int shift = ctx.findOptimalShift(ref, rings.get(i));
-//		    rings.set(i, FFTCyclicShiftFinder.applyShift(rings.get(i), shift));
-//		}
 
 		// 3) Build X[i][j], Y[i][j] grid
 		double[][] X = new double[m][nIn];

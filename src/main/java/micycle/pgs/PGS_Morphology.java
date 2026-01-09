@@ -42,7 +42,7 @@ import micycle.pgs.commons.EllipticFourierDesc;
 import micycle.pgs.commons.FastAtan2;
 import micycle.pgs.commons.GaussianLineSmoothing;
 import micycle.pgs.commons.LaneRiesenfeldSmoothing;
-import micycle.pgs.commons.ShapeInterpolation;
+import micycle.pgs.commons.NewtonThieleRingMorpher;
 import micycle.uniformnoise.UniformNoise;
 import net.jafama.FastMath;
 import processing.core.PConstants;
@@ -260,7 +260,7 @@ public final class PGS_Morphology {
 	 * 
 	 * @param shape  polygonal shape
 	 * @param buffer a positive number
-	 * @return
+	 * @return a polygonal {@code PShape} of the dilated geometry (may be empty)
 	 * @see #dilationErosion(PShape, double)
 	 */
 	public static PShape erosionDilation(PShape shape, double buffer) {
@@ -982,14 +982,11 @@ public final class PGS_Morphology {
 
 	/**
 	 * Generates an intermediate shape between two shapes by interpolating between
-	 * them. This process has many names: shape morphing / blending / averaging /
-	 * tweening / interpolation.
+	 * their exterior rings. This process has many names: shape morphing / blending
+	 * / averaging / tweening / interpolation.
 	 * <p>
-	 * The underlying technique rotates one of the shapes to minimise the total
-	 * distance between each shape's vertices, then performs linear interpolation
-	 * between vertices. This performs well in practice but the outcome worsens as
-	 * shapes become more concave; more sophisticated techniques would employ some
-	 * level of rigidity preservation.
+	 * Note the interpolated shape may self-intersect (this implementation is not
+	 * "rigid").
 	 * 
 	 * @param from                a single polygon; the shape we want to morph from
 	 * @param to                  a single polygon; the shape we want to morph
@@ -998,53 +995,74 @@ public final class PGS_Morphology {
 	 * @return a polygonal PShape
 	 * @since 1.2.0
 	 * @see #interpolate(PShape, PShape, int)
+	 * @implNote Uses {@link NewtonThieleRingMorpher} for higher-quality
+	 *           interpolation.
 	 */
 	public static PShape interpolate(PShape from, PShape to, double interpolationFactor) {
-		final Geometry fromGeom = fromPShape(from);
-		final Geometry toGeom = fromPShape(to);
-		if (toGeom.getGeometryType().equals(Geometry.TYPENAME_POLYGON) && fromGeom.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
-			final ShapeInterpolation tween = new ShapeInterpolation(fromGeom, toGeom);
-			return toPShape(PGS.GEOM_FACTORY.createPolygon(tween.tween(interpolationFactor)));
-		} else {
-			System.err.println("interpolate() accepts holeless single polygons only (for now).");
-			return from;
-		}
+		return interpolate(List.of(from, to), interpolationFactor);
 	}
 
 	/**
-	 * Generates intermediate shapes (frames) between two shapes by interpolating
-	 * between them. This process has many names: shape morphing / blending /
+	 * Generates an intermediate shape from a sequence of input shapes by
+	 * interpolating (morphing) between their exterior rings.
+	 * <p>
+	 * This is a generalisation of {@link #interpolate(PShape, PShape, double)} to
+	 * more than two shapes. The interpolation follows the order of {@code shapes}.
+	 * <p>
+	 * Note the interpolated shape may self-intersect (this implementation is not
+	 * "rigid").
+	 *
+	 * @param shapes              a list of single-polygon {@link PShape}s; only the
+	 *                            exterior ring is used.
+	 * @param interpolationFactor interpolation parameter in the range
+	 *                            {@code [0..1]}
+	 * @return a polygonal {@link PShape} representing the interpolated shape
+	 * @since 2.2.0
+	 * @see #interpolate(PShape, PShape, double)
+	 * @implNote Uses {@link NewtonThieleRingMorpher} for higher-quality
+	 *           interpolation.
+	 */
+	public static PShape interpolate(List<PShape> shapes, double interpolationFactor) {
+		var rings = shapes.stream().map(s -> ((Polygon) fromPShape(s)).getExteriorRing()).toArray(LinearRing[]::new);
+		NewtonThieleRingMorpher m = new NewtonThieleRingMorpher(rings);
+		var tween = m.interpolate(interpolationFactor);
+		return toPShape(tween);
+	}
+
+	/**
+	 * Generates intermediate shapes (frames) by interpolating (morphing) through a
+	 * sequence of shapes. This process has many names: shape morphing / blending /
 	 * averaging / tweening / interpolation.
 	 * <p>
-	 * This method is faster than calling
-	 * {@link #interpolate(PShape, PShape, double) interpolate()} repeatedly for
-	 * different interpolation factors.
-	 * 
-	 * @param from   a single polygon; the shape we want to morph from
-	 * @param to     a single polygon; the shape we want to morph <code>from</code>
-	 *               into
-	 * @param frames the number of frames (including first and last) to generate. >=
-	 *               2
-	 * @return a GROUP PShape, where each child shape is a frame from the
-	 *         interpolation
-	 * @since 1.3.0
+	 * The returned frames include both endpoints: the first frame corresponds to
+	 * {@code t = 0} (the first shape in {@code shapes}) and the last frame
+	 * corresponds to {@code t = 1} (the last shape in {@code shapes}). Intermediate
+	 * frames are evenly spaced in {@code [0..1]} using {@code t = i/(frames-1)}.
+	 * <p>
+	 * This method is faster than calling {@link #interpolate(List, double)} (or
+	 * {@link #interpolate(PShape, PShape, double)}) repeatedly for different
+	 * interpolation factors.
+	 *
+	 * @param shapes a list of single-polygon {@link PShape}s, in the order they
+	 *               should be morphed through; only the exterior ring is used.
+	 * @param frames the number of frames (including first and last) to generate;
+	 *               must be {@code >= 2}
+	 * @return a GROUP {@link PShape} whose children are the generated frames
+	 * @since 2.2.0
+	 * @see #interpolate(List, double)
 	 * @see #interpolate(PShape, PShape, double)
 	 */
-	public static PShape interpolate(PShape from, PShape to, int frames) {
-		final Geometry fromGeom = fromPShape(from);
-		final Geometry toGeom = fromPShape(to);
-		if (toGeom.getGeometryType().equals(Geometry.TYPENAME_POLYGON) && fromGeom.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
-			final ShapeInterpolation tween = new ShapeInterpolation(fromGeom, toGeom);
-			final float fraction = 1f / (frames - 1);
-			PShape out = new PShape();
-			for (int i = 0; i < frames; i++) {
-				out.addChild(toPShape(PGS.GEOM_FACTORY.createPolygon(tween.tween(fraction * i))));
-			}
-			return out;
-		} else {
-			System.err.println("interpolate() accepts holeless single polygons only (for now).");
-			return from;
+	public static PShape interpolate(List<PShape> shapes, int frames) {
+		var rings = shapes.stream().map(s -> ((Polygon) fromPShape(s)).getExteriorRing()).toArray(LinearRing[]::new);
+		NewtonThieleRingMorpher m = new NewtonThieleRingMorpher(rings);
+
+		final double fraction = 1d / (frames - 1);
+		PShape out = new PShape();
+		for (int i = 0; i < frames; i++) {
+			out.addChild(toPShape(m.interpolate(fraction * i)));
 		}
+
+		return out;
 	}
 
 	/**

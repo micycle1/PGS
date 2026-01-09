@@ -579,22 +579,11 @@ public class PGS_Meshing {
 	 * @since 1.4.0
 	 */
 	public static PShape smoothMesh(PShape mesh, int iterations, boolean preservePerimeter) {
-		// TODO smooth with enum for smoothing.
+		// TODO smooth with enum for smoothing?
 		PMesh m = new PMesh(mesh);
 		for (int i = 0; i < iterations; i++) {
 			m.smoothTaubin(0.25, -0.251, preservePerimeter);
 //			m.smoothHC(0.33, 0.33, 0.33, preservePerimeter);
-//			m.smoothCotanWeighted(preservePerimeter);
-		}
-		return m.getMesh();
-	}
-	
-	public static PShape smoothMesh(PShape mesh, int iterations, double x, double y) {
-		// TODO smooth with enum for smoothing.
-		PMesh m = new PMesh(mesh);
-		for (int i = 0; i < iterations; i++) {
-//			m.smoothTaubin(0.25, -0.251, preservePerimeter);
-			m.smoothHC(x, y, 0.33, true);
 //			m.smoothCotanWeighted(preservePerimeter);
 		}
 		return m.getMesh();
