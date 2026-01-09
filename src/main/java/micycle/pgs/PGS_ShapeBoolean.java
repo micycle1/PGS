@@ -278,7 +278,7 @@ public final class PGS_ShapeBoolean {
 		d.dissolve(totalSegs);
 		var dissolvedSegs = d.getDissolved();
 
-		Noder noder = new SnapRoundingNoder(new PrecisionModel(-5e-3));
+		Noder noder = new SnapRoundingNoder(PGS.PM);
 		noder.computeNodes(dissolvedSegs);
 		var nodedSegs = noder.getNodedSubstrings();
 

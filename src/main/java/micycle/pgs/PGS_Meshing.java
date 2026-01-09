@@ -7,6 +7,7 @@ import static micycle.pgs.PGS_Conversion.toPShape;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -32,6 +33,7 @@ import org.locationtech.jts.coverage.CoverageValidator;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.noding.SegmentString;
+import org.locationtech.jts.operation.overlay.snap.GeometrySnapper;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.tinfour.common.IConstraint;
 import org.tinfour.common.IIncrementalTin;
@@ -577,9 +579,23 @@ public class PGS_Meshing {
 	 * @since 1.4.0
 	 */
 	public static PShape smoothMesh(PShape mesh, int iterations, boolean preservePerimeter) {
+		// TODO smooth with enum for smoothing.
 		PMesh m = new PMesh(mesh);
 		for (int i = 0; i < iterations; i++) {
 			m.smoothTaubin(0.25, -0.251, preservePerimeter);
+//			m.smoothHC(0.33, 0.33, 0.33, preservePerimeter);
+//			m.smoothCotanWeighted(preservePerimeter);
+		}
+		return m.getMesh();
+	}
+	
+	public static PShape smoothMesh(PShape mesh, int iterations, double x, double y) {
+		// TODO smooth with enum for smoothing.
+		PMesh m = new PMesh(mesh);
+		for (int i = 0; i < iterations; i++) {
+//			m.smoothTaubin(0.25, -0.251, preservePerimeter);
+			m.smoothHC(x, y, 0.33, true);
+//			m.smoothCotanWeighted(preservePerimeter);
 		}
 		return m.getMesh();
 	}
@@ -846,6 +862,7 @@ public class PGS_Meshing {
 	 */
 	@SuppressWarnings("unchecked")
 	public static PShape fixBrokenFaces(PShape coverage, double tolerance) {
+		// TODO use GeometrySnapper.snapToSelf()?
 		var g = fromPShape(coverage);
 		EndpointSnapper snapper = new EndpointSnapper(tolerance);
 		var fixed = snapper.snapEndpoints(g, true);
@@ -929,6 +946,33 @@ public class PGS_Meshing {
 	public static PShape findContainingFace(PShape mesh, PVector position) {
 		return PGS_Conversion.getChildren(mesh).stream().filter(face -> PGS_ShapePredicates.containsPoint(face, position)).findFirst() // breaks early
 				.orElse(null);
+	}
+
+	/**
+	 * Identifies disconnected groups of faces (islands) within a mesh by analysing
+	 * face adjacency relationships.
+	 * <p>
+	 * The returned islands are sorted by the number of faces they contain in
+	 * descending order, with the island containing the most faces appearing first.
+	 *
+	 * @param mesh a PShape of type GROUP representing the input mesh
+	 * @return a list of PShape GROUP objects, each containing one connected island
+	 *         of faces, sorted from largest to smallest by face count. Returns an
+	 *         empty list if the mesh is empty or cannot be converted to a dual
+	 *         graph.
+	 * @since 2.2
+	 */
+	public static List<PShape> findIslands(PShape mesh) {
+		var dual = PGS_Conversion.toDualGraph(mesh);
+
+		if (dual == null || dual.vertexSet().isEmpty()) {
+			return List.of();
+		}
+
+		var inspector = new ConnectivityInspector<>(dual);
+		var components = inspector.connectedSets();
+
+		return components.stream().map(PGS_Conversion::flatten).sorted(Comparator.comparingInt(PShape::getChildCount).reversed()).toList();
 	}
 
 	/**
