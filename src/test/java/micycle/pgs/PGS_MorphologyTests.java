@@ -57,7 +57,7 @@ class PGS_MorphologyTests {
 			originalHoleCounts[i] = ((Polygon) gi).getNumInteriorRing();
 			originalAreas[i] = PGS_ShapePredicates.area(inShape.getChild(i));
 		}
-		
+
 		a = new PShape(PShape.GEOMETRY);
 		a.beginShape();
 		a.vertex(0, 0);
@@ -149,19 +149,19 @@ class PGS_MorphologyTests {
 		assertPolygonsAndHoleCounts(outGeom);
 		assertAreasDecreased(outShape, "after smoothing");
 	}
-	
+
 	@Test
 	public void testInterpolation() {
 		var from = a;
 		var to = b;
-		
-		var morph = PGS_Morphology.interpolate(from, to, 3);
+
+		var morph = PGS_Morphology.interpolate(List.of(from, to), 3);
 
 		assertTrue(PGS_ShapePredicates.equalsTopo(from, morph.getChild(0)));
 		assertTrue(PGS_ShapePredicates.equalsTopo(to, morph.getChild(2)));
-		
+
 		assertFalse(PGS_ShapePredicates.equalsTopo(to, morph.getChild(1)));
-		assertFalse(PGS_ShapePredicates.equalsTopo(from, morph.getChild(1)));		
+		assertFalse(PGS_ShapePredicates.equalsTopo(from, morph.getChild(1)));
 	}
 
 	/* Helper factories and geometry builders */

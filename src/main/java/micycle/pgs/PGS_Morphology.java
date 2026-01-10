@@ -43,6 +43,7 @@ import micycle.pgs.commons.FastAtan2;
 import micycle.pgs.commons.GaussianLineSmoothing;
 import micycle.pgs.commons.LaneRiesenfeldSmoothing;
 import micycle.pgs.commons.NewtonThieleRingMorpher;
+import micycle.pgs.commons.SchneiderBezierFitter;
 import micycle.uniformnoise.UniformNoise;
 import net.jafama.FastMath;
 import processing.core.PConstants;
@@ -395,7 +396,9 @@ public final class PGS_Morphology {
 	 * 
 	 * @param shape              the input shape
 	 * @param relevanceThreshold the relevance threshold; only vertices with
-	 *                           relevance >= the threshold will be kept
+	 *                           relevance >= the threshold will be kept. 20 is a
+	 *                           good starting value for generally imperceptible
+	 *                           simplification.
 	 * @return the simplified PShape
 	 * @since 2.1
 	 */
@@ -484,6 +487,13 @@ public final class PGS_Morphology {
 	 * Smoothes a shape. The smoothing algorithm inserts new vertices which are
 	 * positioned using Bezier splines. The output shape tends to be a little larger
 	 * than the input.
+	 * <p>
+	 * Note: this method effectively constructs a Bezier curve through the existing
+	 * vertices. As a result, if the input geometry already has very dense / closely
+	 * spaced vertices, the smoothing may have little or no perceptual effect. This
+	 * differs from other smoothing approaches (e.g. Gaussian) that operate at a
+	 * spatial scale and are therefore largely invariant to vertex density.
+	 * </p>
 	 * 
 	 * @param shape shape to smooth
 	 * @param alpha curvedness parameter (0 is linear, 1 is round, >1 is
@@ -494,6 +504,47 @@ public final class PGS_Morphology {
 	public static PShape smooth(PShape shape, double alpha) {
 		Geometry curve = CubicBezierCurve.bezierCurve(fromPShape(shape), alpha);
 		return toPShape(curve);
+	}
+
+	/**
+	 * Smoothes a shape by <em>fitting</em> one or more cubic Bezier curve segments
+	 * to each lineal component (polylines and polygon rings), then
+	 * <em>resampling</em> the fitted Beziers to produce a new vertex sequence.
+	 * <p>
+	 * This method uses Philip J. Schneider’s curve fitting algorithm. Unlike
+	 * {@link #smooth(PShape, double) smooth()}, which constructs a Bezier curve
+	 * <em>through</em> the existing vertices, this method approximates the input
+	 * within a user-specified tolerance and can substantially simplify noisy or
+	 * densely-vertexed input while producing a visually smoother result.
+	 * </p>
+	 * <p>
+	 * The {@code maxDeviation} parameter controls how closely the fitted Bezier(s)
+	 * must follow the original polyline/ring: smaller values preserve the original
+	 * shape more strictly (often producing more Bezier segments and/or more output
+	 * vertices), while larger values allow a smoother, more generalised result.
+	 * </p>
+	 * <p>
+	 * Implementation note: the fitted Bezier segments are sampled at a fixed
+	 * spacing (currently 2 units in the coordinate system of the input geometry) to
+	 * create the returned JTS geometry, which is then converted back to a
+	 * {@link PShape}.
+	 * </p>
+	 *
+	 * @param shape        shape whose lineal geometry (LineStrings and polygon
+	 *                     rings) will be Bezier-fit and resampled
+	 * @param maxDeviation maximum allowed deviation (error tolerance) between the
+	 *                     input vertices and the fitted Bezier curve(s); must be
+	 *                     {@code > 0}
+	 * @return a smoothed copy of {@code shape} produced by piecewise cubic Bezier
+	 *         fitting and resampling
+	 *
+	 * @since 2.2
+	 * @see SchneiderBezierFitter
+	 */
+	public static PShape smoothBezierFit(PShape shape, double maxDeviation) {
+		return PGS.applyToLinealGeometries(shape, ring -> {
+			return SchneiderBezierFitter.fitAndSample(ring, maxDeviation, PGS_Conversion.BEZIER_SAMPLE_DISTANCE);
+		});
 	}
 
 	/**

@@ -642,8 +642,7 @@ public class PGS_Construction {
 	 * @param generators the number of generator points for the underlying Voronoi
 	 *                   tessellation. Should be >5.
 	 * @param thickness  thickness of sponge structure walls
-	 * @param smoothing  the cell smoothing factor which determines how rounded the
-	 *                   cells are. a value of 6 is a good starting point.
+	 * @param smoothing  level of gaussian smoothing to apply to the structure
 	 * @param classes    the number of classes to use for the cell merging process,
 	 *                   where lower results in more merging (or larger "blob-like"
 	 *                   shapes).

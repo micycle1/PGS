@@ -323,11 +323,13 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center"><b>Pinch Warp</td>
     <td align="center" valign="center"><b>ARAP Deform</td>
     <td align="center" valign="center"><b>Regularise</td>
+    <td align="center" valign="center"><b>Bezier-fit Smoothing</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/morphology/pinchWarp.gif"></td>
     <td valign="top" width="25%"><img src="resources/morphology/arapMorph.gif"></td>
     <td valign="top" width="25%"><img src="resources/morphology/regularise.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/smoothBezierFit.gif"></td>
   </tr>
 </table>
 
