@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.locationtech.jts.coverage.CoverageUnion;
@@ -30,6 +31,8 @@ import org.tinfour.voronoi.BoundedVoronoiDiagram;
 import org.tinfour.voronoi.ThiessenPolygon;
 
 import com.github.micycle1.geoblitz.HilbertParallelPolygonUnion;
+import com.github.quickhull3d.PowerDiagram2D;
+import com.github.quickhull3d.PowerDiagram2D.Rect;
 
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.FarthestPointVoronoi;
@@ -482,16 +485,17 @@ public final class PGS_Voronoi {
 	 * generator points. This results in characteristically curved cell boundaries,
 	 * unlike the straight line boundaries seen in standard Voronoi diagrams.
 	 * 
-	 * @param sites  A list of PVectors, each representing one site:
-	 *               <code>(.x, .y)</code> represent the coordinate and
-	 *               <b><code>.z</code> represents weight</b>.
-	 * @param bounds an array of the form [minX, minY, maxX, maxY] representing the
-	 *               bounds of the diagram. The boundary must cover all points.
+	 * @param weightedSites A list of PVectors, each representing one site:
+	 *                      <code>(.x, .y)</code> represent the coordinate and
+	 *                      <b><code>.z</code> represents weight</b>.
+	 * @param bounds        an array of the form [minX, minY, maxX, maxY]
+	 *                      representing the bounds of the diagram. The boundary
+	 *                      must cover all points.
 	 * @return a GROUP PShape, where each child shape is a Voronoi cell
 	 * @since 2.0
 	 */
-	public static PShape multiplicativelyWeightedVoronoi(Collection<PVector> sites, double[] bounds) {
-		return multiplicativelyWeightedVoronoi(sites, bounds, false);
+	public static PShape multiplicativelyWeightedVoronoi(Collection<PVector> weightedSites, double[] bounds) {
+		return multiplicativelyWeightedVoronoi(weightedSites, bounds, false);
 	}
 
 	/**
@@ -505,7 +509,7 @@ public final class PGS_Voronoi {
 	 * generator points. This results in characteristically curved cell boundaries,
 	 * unlike the straight line boundaries seen in standard Voronoi diagrams.
 	 * 
-	 * @param sites           A list of PVectors, each representing one site:
+	 * @param weightedSites   A list of PVectors, each representing one site:
 	 *                        <code>(.x, .y)</code> represent the coordinate and
 	 *                        <b><code>.z</code> represents weight</b>.
 	 * @param bounds          an array of the form [minX, minY, maxX, maxY]
@@ -517,8 +521,8 @@ public final class PGS_Voronoi {
 	 * @return a GROUP PShape, where each child shape is a Voronoi cell
 	 * @since 2.0
 	 */
-	public static PShape multiplicativelyWeightedVoronoi(Collection<PVector> sites, double[] bounds, boolean forceConforming) {
-		var faces = MultiplicativelyWeightedVoronoi.getMWVFromPVectors(sites.stream().toList(), bounds);
+	public static PShape multiplicativelyWeightedVoronoi(Collection<PVector> weightedSites, double[] bounds, boolean forceConforming) {
+		var faces = MultiplicativelyWeightedVoronoi.getMWVFromPVectors(weightedSites.stream().toList(), bounds);
 		Geometry geoms = PGS.GEOM_FACTORY.createGeometryCollection(faces.toArray(new Geometry[] {}));
 		if (forceConforming) {
 			geoms = GeometrySnapper.snapToSelf(geoms, 1e-6, true); // slow
@@ -600,6 +604,83 @@ public final class PGS_Voronoi {
 		fpvd.setSites(sites.stream().map(s -> PGS.coordFromPVector(s)).toList());
 
 		return toPShape(fpvd.getDiagram());
+	}
+
+	/**
+	 * Computes a <b>power diagram</b> (a.k.a. <i>Laguerre–Voronoi</i> diagram) for
+	 * a set of <b>weighted</b> sites, with no clipping bounds.
+	 * <p>
+	 * Each site is given as a {@link PVector} where {@code (.x, .y)} is the site
+	 * location and {@code .z} is its weight.
+	 * <h3>Intuition</h3> A power diagram is the weighted analogue of a standard
+	 * Voronoi diagram, but it still produces <b>straight-edged (polygonal)
+	 * cells</b>. Increasing a site's weight can allow it to “win” territory even
+	 * when it is farther away in ordinary Euclidean distance.
+	 * <p>
+	 * Unlike an <b>additively-weighted Voronoi diagram</b> (Apollonius diagram),
+	 * which typically yields <b>curved</b> boundaries, power diagrams use <i>power
+	 * distance</i> (squared distance with a weight offset), which keeps boundaries
+	 * <b>linear</b>.
+	 *
+	 * @param weightedSites collection of sites encoded as PVectors:
+	 *                      {@code (.x, .y)} = position, {@code .z} = weight
+	 * @return a GROUP {@link PShape} whose children are the (closed) polygonal
+	 *         cells of the power diagram; empty/degenerate cells are omitted
+	 * @see #powerDiagram(Collection, double[])
+	 * @since 2.2
+	 */
+	public static PShape powerDiagram(Collection<PVector> weightedSites) {
+		return powerDiagram(weightedSites, null);
+	}
+
+	/**
+	 * Computes a <b>power diagram</b> (a.k.a. <i>Laguerre–Voronoi</i> diagram) for
+	 * a set of <b>weighted</b> sites.
+	 * <p>
+	 * Each site is given as a {@link PVector} where {@code (.x, .y)} is the site
+	 * location and {@code .z} is its weight.
+	 * <h3>Intuition</h3> A power diagram is the weighted analogue of a standard
+	 * Voronoi diagram, but it still produces <b>straight-edged (polygonal)
+	 * cells</b>. Conceptually, each site has an associated “strength” (its weight)
+	 * that offsets distance: a site with a larger weight can “win” territory even
+	 * if it is farther away in ordinary Euclidean terms. Power cells may be empty
+	 * (i.e. fewer cells than sites) and may not contain the site.
+	 * <p>
+	 * Unlike an <b>additively-weighted Voronoi diagram</b> (a.k.a. Apollonius
+	 * diagram), where distance is modified by <i>subtracting</i> a radius/weight
+	 * and cell boundaries are typically <b>curved</b> (circular arcs), the power
+	 * diagram uses <i>power distance</i> (squared distance with a weight offset),
+	 * which keeps boundaries <b>linear</b> and cells convex.
+	 * <p>
+	 * Note: in practice, weights often need to differ substantially in magnitude
+	 * (roughly on the order of ~100×) before the effect is visually obvious.
+	 *
+	 * @param weightedSites collection of sites encoded as PVectors:
+	 *                      {@code (.x, .y)} = position, {@code .z} = weight
+	 * @param bounds        optional clipping bounds as
+	 *                      {@code [minX, minY, maxX, maxY]}. If {@code null}, the
+	 *                      diagram is left unclipped.
+	 * @return a GROUP {@link PShape} whose children are the (closed) polygonal
+	 *         cells of the power diagram; empty/degenerate cells are omitted
+	 * @since 2.2
+	 * @see #powerDiagram(Collection)
+	 */
+	public static PShape powerDiagram(Collection<PVector> weightedSites, double[] bounds) {
+		var sites = weightedSites.stream().map(z -> new PowerDiagram2D.Site(z.x, z.y, z.z)).toList();
+		final Rect r = bounds == null ? null : new Rect(bounds[0], bounds[1], bounds[2], bounds[3]);
+		var cells = PowerDiagram2D.computeCells(sites, r);
+		var faces = cells.stream().map(cell -> {
+			if (cell.isEmpty()) {
+				return null;
+			}
+			var points = cell.stream().map(q -> new PVector((float) q.x(), (float) q.y())).collect(Collectors.toList());
+			if (!points.get(0).equals(points.get(points.size() - 1))) {
+				points.add(points.get(0)); // unclosed by default - close
+			}
+			return PGS_Conversion.fromPVector(points);
+		}).filter(Objects::nonNull).toList();
+
+		return PGS_Conversion.flatten(faces);
 	}
 
 	static Polygon toPolygon(ThiessenPolygon polygon) {

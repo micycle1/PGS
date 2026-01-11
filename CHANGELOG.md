@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `regularise()` to `PGS_Morphology`. Straightens the contour of a shape by snapping edges toward a small set of principal directions.
 * New method signature for `PGS_Conversion.toWKT()` that accepts a precision parameter to control the number of decimal places written.
 * `smoothBezierFit()` to `PGS_Morphology`. Smoothes a shape by fitting Bezier curves to its vertices.
+* `powerDiagram()` to `PGS_Voronoi`. Generates a Power Diagram for a set of weighted sites.
 
 ### Changes
 * These methods in `PGS_Meshing` are more performant and robust: `urquhartFaces()`, `gabrielFaces()`, `spannerFaces()`, `relativeNeighborFaces()`, `edgeCollapseQuadrangulation()`, `centroidQuadrangulation()`.
