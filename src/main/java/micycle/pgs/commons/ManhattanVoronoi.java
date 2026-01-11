@@ -1,0 +1,995 @@
+package micycle.pgs.commons;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Set;
+import java.util.function.BiFunction;
+import java.util.stream.Collectors;
+
+import org.locationtech.jts.algorithm.LineIntersector;
+import org.locationtech.jts.algorithm.RobustLineIntersector;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Polygon;
+
+/**
+ * Computes Manhattan (L1) Voronoi diagrams clipped to an axis-aligned
+ * rectangular bounding box.
+ * <p>
+ * This implementation is a Java port of the original JavaScript reference
+ * implementation ({@code JDragovich/manhattan-voronoi}) and is intended to
+ * preserve its behavior and structure for correctness and parity.
+ * <p>
+ * The underlying approach follows the divide-and-conquer scheme described by:
+ * <blockquote> Lee, Der-Tsai, and C. K. Wong. <i>"Voronoui Diagrams in L_1(L_∞)
+ * Metrics with 2-Dimensional Storage Applications."</i> SIAM Journal on
+ * Computing 9, no. 1 (1980): 200–211. </blockquote>
+ *
+ * <h2>High-level algorithm (graph construction)</h2>
+ * <ol>
+ * <li><b>Preprocess</b> (optional): nudge input sites slightly to avoid the
+ * degenerate "square bisector" case (|dx| = |dy|).</li>
+ * <li><b>Sort</b> sites by x-coordinate (breaking ties by y).</li>
+ * <li><b>Recursive split</b>: recursively divide the sorted sites into left and
+ * right subsets; for base cases, compute and attach the L1 bisector for a pair
+ * of sites.</li>
+ * <li><b>Merge step</b>:
+ * <ol>
+ * <li>Choose an initial cross-subset bisector between a candidate site from the
+ * left subset and its nearest neighbor in the right subset.</li>
+ * <li><b>Walk the merge chain</b> upward and downward: repeatedly intersect the
+ * current merge bisector with existing bisectors, trim bisectors at
+ * intersection points, and "hop" to adjacent sites to continue the merge.</li>
+ * <li><b>Orphan handling</b>: detect and remove bisectors that become trapped
+ * by the newly formed merge boundary; add replacement merge bisectors when
+ * needed.</li>
+ * <li>Attach all merge bisectors to their incident sites and remove bisectors
+ * invalidated by trapping.</li>
+ * </ol>
+ * </li>
+ * <li><b>Post-process per site</b>: derive an ordered list of boundary vertices
+ * for the clipped cell (and neighbor sites) from the site’s incident
+ * bisectors.</li>
+ * </ol>
+ *
+ * <p>
+ * <b>Note:</b> This class produces a topological graph (sites with incident
+ * bisectors and neighbor relations) and a set of boundary vertices for each
+ * cell.
+ * 
+ * @author Original javascript implementation by Joe Dragovich
+ * @author Java port by Michael Carleton
+ */
+public final class ManhattanVoronoi {
+
+	static final LineIntersector li = new RobustLineIntersector();
+
+	private ManhattanVoronoi() {
+	}
+
+	public static final class Site {
+		public final Coordinate site; // the actual point
+		public List<Bisector> bisectors = new ArrayList<>();
+
+		// outputs filled by generateL1Voronoi
+		public List<Coordinate> polygonPoints = new ArrayList<>();
+		public List<Site> neighbors = new ArrayList<>();
+
+		public Site(Coordinate site) {
+			this.site = site;
+		}
+
+		/**
+		 * Builds a JTS Polygon from this site's polygonPoints.
+		 *
+		 * @param gf geometry factory
+		 */
+		public Polygon toPolygon(GeometryFactory gf) {
+			if (polygonPoints == null || polygonPoints.isEmpty()) {
+				return gf.createPolygon(); // empty
+			}
+
+			List<Coordinate> pts = new ArrayList<>(polygonPoints.size());
+			for (int i = 0; i < polygonPoints.size(); i++) {
+				Coordinate c = polygonPoints.get(i);
+				pts.add(c);
+			}
+
+			// Need at least 3 vertices
+			if (pts.size() < 3) {
+				return gf.createPolygon();
+			}
+
+			if (pts.size() < 3) {
+				return gf.createPolygon();
+			}
+
+			// Close ring
+			pts.add(new Coordinate(pts.get(0)));
+
+			return gf.createPolygon(pts.toArray(Coordinate[]::new));
+		}
+
+		@Override
+		public String toString() {
+			return "Site{" + "site=" + fmt(site) + '}';
+		}
+	}
+
+	public static final class Bisector {
+		public final Site[] sites = new Site[2];
+		public boolean up; // same meaning as JS
+		public List<Coordinate> points = new ArrayList<>();
+		public List<Coordinate> intersections = new ArrayList<>();
+		public boolean compound = false;
+		public int mergeLine = 0;
+
+		public Bisector(Site a, Site b) {
+			sites[0] = a;
+			sites[1] = b;
+		}
+
+		public boolean sitesContainBoth(Site a, Site b) {
+			return (sites[0] == a || sites[1] == a) && (sites[0] == b || sites[1] == b);
+		}
+
+		@Override
+		public String toString() {
+			return "Bisector{" + "sites=" + sites[0] + "," + sites[1] + ", up=" + up + ", points="
+					+ points.stream().map(ManhattanVoronoi::fmt).collect(Collectors.toList()) + '}';
+		}
+	}
+
+	public static List<Site> generateL1Voronoi(List<Coordinate> sitePoints, double width, double height) {
+		return generateL1Voronoi(sitePoints, width, height, true);
+	}
+
+	/** Port of JS generateL1Voronoi. */
+	public static List<Site> generateL1Voronoi(List<Coordinate> sitePoints, double width, double height, boolean nudgeData) {
+		List<Coordinate> points = new ArrayList<>(sitePoints.size());
+		for (int i = 0; i < sitePoints.size(); i++) {
+			points.add(sitePoints.get(i).copy());
+		}
+
+		if (nudgeData) {
+			cleanData(points);
+		}
+
+		// Sort points by x then y
+		points.sort((a, b) -> {
+			int cx = Double.compare(a.x, b.x);
+			return (cx != 0) ? cx : Double.compare(a.y, b.y);
+		});
+
+		// Create sites
+		List<Site> sites = new ArrayList<>(points.size());
+		for (int i = 0; i < points.size(); i++) {
+			sites.add(new Site(points.get(i)));
+		}
+
+		BiFunction<Site, Site, Bisector> findBisector = curryFindBisector(ManhattanVoronoi::findL1Bisector, width, height);
+
+		List<Site> graph = recursiveSplit(sites, findBisector, width, height);
+
+		postProcessSites(graph, width, height);
+
+		return graph;
+	}
+
+	private static void postProcessSites(List<Site> graph, double width, double height) {
+		// Pre-create corners once
+		final Coordinate[] corners = new Coordinate[] { new Coordinate(0, 0), new Coordinate(width, 0), new Coordinate(width, height),
+				new Coordinate(0, height) };
+
+		graph.parallelStream().forEach(site -> {
+			buildPolygonPointsByChaining(site, width, height);
+			injectCornersIfNeeded(site, corners, width, height);
+
+			if (!site.polygonPoints.isEmpty()) {
+				// Sort around site
+				site.polygonPoints.sort((p1, p2) -> Double.compare(angle(site.site, p1), angle(site.site, p2)));
+			}
+//			computeNeighbors(site); // NOTE
+		});
+	}
+
+	private static void buildPolygonPointsByChaining(Site site, double width, double height) {
+
+		if (site.bisectors.isEmpty()) {
+			site.polygonPoints = new ArrayList<>();
+			return;
+		}
+
+		Bisector startBisector = findStartBisectorOnEdge(site, width, height);
+		if (startBisector == null) {
+			startBisector = site.bisectors.get(0);
+		}
+
+		// used set: identity semantics
+		Set<Bisector> used = Collections.newSetFromMap(new IdentityHashMap<>());
+		used.add(startBisector);
+
+		List<Coordinate> polygon = new ArrayList<>(startBisector.points.size());
+		polygon.addAll(startBisector.points);
+
+		// reverse if last point is on edge (matches JS)
+		if (!polygon.isEmpty() && isPointOnEdge(polygon.get(polygon.size() - 1), width, height)) {
+			Collections.reverse(polygon);
+		}
+
+		// chain remaining bisectors
+		while (used.size() < site.bisectors.size()) {
+			Coordinate last = polygon.get(polygon.size() - 1);
+
+			Bisector next = null;
+			double bestDist = Double.POSITIVE_INFINITY;
+
+			for (Bisector candidate : site.bisectors) {
+				if (used.contains(candidate)) {
+					continue;
+				}
+
+				Coordinate a = candidate.points.get(0);
+				Coordinate b = candidate.points.get(candidate.points.size() - 1);
+				double candDist = Math.min(distance(last, a), distance(last, b));
+
+				if (candDist < bestDist) {
+					bestDist = candDist;
+					next = candidate;
+				}
+			}
+
+			if (next == null) {
+				break; // JS assumes exists; keep safe
+			}
+			used.add(next);
+
+			// append points, reversing if needed
+			List<Coordinate> nextPts = new ArrayList<>(next.points);
+			if (!nextPts.isEmpty() && samePoint(nextPts.get(nextPts.size() - 1), last)) {
+				Collections.reverse(nextPts);
+			}
+			polygon.addAll(nextPts);
+		}
+
+		site.polygonPoints = polygon;
+	}
+
+	private static Bisector findStartBisectorOnEdge(Site site, double width, double height) {
+		for (Bisector b : site.bisectors) {
+			for (Coordinate element : b.points) {
+				if (isPointOnEdge(element, width, height)) {
+					return b;
+				}
+			}
+		}
+		return null;
+	}
+
+	private static void injectCornersIfNeeded(Site site, Coordinate[] corners, double width, double height) {
+		if (site.polygonPoints.isEmpty()) {
+			return;
+		}
+
+		Coordinate first = site.polygonPoints.get(0);
+		Coordinate last = site.polygonPoints.get(site.polygonPoints.size() - 1);
+
+		if (!(isPointOnEdge(first, width, height) && isPointOnEdge(last, width, height) && !arePointsOnSameEdge(first, last, width, height))) {
+			return;
+		}
+
+		List<Coordinate> filteredCorners = new ArrayList<>(4);
+
+		for (Coordinate corner : corners) {
+			boolean ok = true;
+			for (Bisector b : site.bisectors) {
+				// you already have this helper
+				if (segmentIntersectsBisector(corner, site.site, b)) {
+					ok = false;
+					break;
+				}
+			}
+
+			if (ok) {
+				filteredCorners.add(new Coordinate(corner));
+			}
+		}
+
+		if (!filteredCorners.isEmpty()) {
+			site.polygonPoints.addAll(filteredCorners);
+		}
+	}
+
+	private static void computeNeighbors(Site site) {
+		if (site.bisectors.isEmpty()) {
+			site.neighbors = new ArrayList<>();
+			return;
+		}
+
+		List<Site> neigh = new ArrayList<>(site.bisectors.size());
+		for (int bi = 0; bi < site.bisectors.size(); bi++) {
+			neigh.add(findHopTo(site.bisectors.get(bi), site));
+		}
+		site.neighbors = neigh;
+	}
+
+	private static boolean segmentIntersectsBisector(Coordinate s0, Coordinate s1, Bisector b) {
+		// Intersect the segment (s0->s1) with every segment of the bisector polyline
+		List<Coordinate> pts = b.points;
+		for (int i = 0; i < pts.size() - 1; i++) {
+			Coordinate p0 = pts.get(i);
+			Coordinate p1 = pts.get(i + 1);
+			if (segmentIntersection(s0, s1, p0, p1) != null) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Nudge points to hopefully eliminate square bisectors. Mutates the given
+	 * coordinates, matching JS behavior.
+	 */
+	public static List<Coordinate> cleanData(List<Coordinate> data) {
+		final double epsOffset = 1e-10;
+		for (int i = 0; i < data.size(); i++) {
+			Coordinate e = data.get(i);
+			for (int j = 0; j < data.size(); j++) {
+				Coordinate d = data.get(j);
+				if (i != j && Math.abs(d.x - e.x) == Math.abs(d.y - e.y)) {
+					d.x += epsOffset;
+					d.y -= epsOffset;
+				}
+			}
+		}
+		return data;
+	}
+
+	private static List<Site> recursiveSplit(List<Site> splitArray, BiFunction<Site, Site, Bisector> findBisector, double width, double height) {
+
+		if (splitArray.size() > 2) {
+			int splitPoint = (splitArray.size() - splitArray.size() % 2) / 2;
+
+			List<Site> L = recursiveSplit(splitArray.subList(0, splitPoint), findBisector, width, height);
+			List<Site> R = recursiveSplit(splitArray.subList(splitPoint, splitArray.size()), findBisector, width, height);
+
+			// current working sites
+			Site lLast = L.get(L.size() - 1);
+			List<Site> neighborArray = new ArrayList<>(R);
+			neighborArray.sort(Comparator.comparingDouble(s -> distance(lLast.site, s.site)));
+
+			StartingInfo startingInfo = determineStartingBisector(lLast, neighborArray.get(0), width, null, findBisector);
+
+			Bisector initialBisector = startingInfo.startingBisector;
+			Site initialR = startingInfo.nearestNeighbor;
+			Site initialL = startingInfo.w;
+
+			List<Bisector> upStrokeArray = walkMergeLine(initialR, initialL, initialBisector, new Coordinate(width, height), true, null, new ArrayList<>(),
+					findBisector);
+
+			List<Bisector> downStrokeArray = walkMergeLine(initialR, initialL, initialBisector, new Coordinate(0, 0), false, null, new ArrayList<>(),
+					findBisector);
+
+			List<Bisector> mergeArray = new ArrayList<>();
+			mergeArray.add(initialBisector);
+			mergeArray.addAll(upStrokeArray);
+			mergeArray.addAll(downStrokeArray);
+
+			for (Bisector bisector : mergeArray) {
+				bisector.mergeLine = splitArray.size();
+
+				bisector.sites[0].bisectors = clearOutOrphans(bisector.sites[0], bisector.sites[1]);
+				bisector.sites[1].bisectors = clearOutOrphans(bisector.sites[1], bisector.sites[0]);
+
+				for (Site site : bisector.sites) {
+					site.bisectors.add(bisector);
+				}
+			}
+
+			List<Site> combined = new ArrayList<>(L.size() + R.size());
+			combined.addAll(L);
+			combined.addAll(R);
+			return combined;
+
+		} else if (splitArray.size() == 2) {
+			Bisector bisector = findBisector.apply(splitArray.get(0), splitArray.get(1));
+			splitArray.get(0).bisectors.add(bisector);
+			splitArray.get(1).bisectors.add(bisector);
+			return new ArrayList<>(splitArray);
+
+		} else {
+			return new ArrayList<>(splitArray);
+		}
+	}
+
+	private static List<Bisector> walkMergeLine(Site currentR, Site currentL, Bisector currentBisector, Coordinate currentCropPoint, boolean goUp,
+			Bisector crossedBorder, List<Bisector> mergeArray, BiFunction<Site, Site, Bisector> findBisector) {
+
+		if (!currentBisector.sitesContainBoth(currentR, currentL)) {
+			currentBisector = findBisector.apply(currentR, currentL);
+			trimBisector(currentBisector, crossedBorder, currentCropPoint);
+			mergeArray.add(currentBisector);
+		}
+
+		List<CropCandidate> cropLArray = buildCropCandidatesForSide(currentL, currentBisector, currentR, currentCropPoint, goUp, crossedBorder, true,
+				findBisector);
+
+		List<CropCandidate> cropRArray = buildCropCandidatesForSide(currentR, currentBisector, currentL, currentCropPoint, goUp, crossedBorder, false,
+				findBisector);
+
+		CropCandidate cropL = (!cropLArray.isEmpty() && cropLArray.get(0).bisector != currentBisector) ? cropLArray.get(0)
+				: new CropCandidate(null, goUp ? new Coordinate(Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY)
+						: new Coordinate(Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY));
+
+		CropCandidate cropR = (!cropRArray.isEmpty() && cropRArray.get(0).bisector != currentBisector) ? cropRArray.get(0)
+				: new CropCandidate(null, goUp ? new Coordinate(Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY)
+						: new Coordinate(Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY));
+
+		// If no intersection, we're done.
+		if (cropL.bisector == null && cropR.bisector == null) {
+
+			Bisector leftOrphan = checkForOphans(currentR, currentL, goUp, findBisector);
+			Bisector rightOrphan = checkForOphans(currentL, currentR, goUp, findBisector);
+
+			if (leftOrphan != null) {
+				// Remove trapped bisector
+				for (Site s : leftOrphan.sites) {
+					s.bisectors.removeIf(b -> b == leftOrphan);
+				}
+
+				Site hopTo = findHopTo(leftOrphan, currentL);
+				currentR = findCorrectW(currentR, hopTo, findBisector);
+
+				Bisector newMergeBisector = findBisector.apply(hopTo, currentR);
+				mergeArray.add(newMergeBisector);
+
+				return walkMergeLine(currentR, hopTo, newMergeBisector, currentCropPoint, goUp, crossedBorder, mergeArray, findBisector);
+
+			} else if (rightOrphan != null) {
+				for (Site s : rightOrphan.sites) {
+					s.bisectors.removeIf(b -> b == rightOrphan);
+				}
+
+				Site hopTo = findHopTo(rightOrphan, currentR);
+				currentL = findCorrectW(currentL, hopTo, findBisector);
+
+				Bisector newMergeBisector = findBisector.apply(hopTo, currentL);
+				mergeArray.add(newMergeBisector);
+
+				return walkMergeLine(hopTo, currentL, newMergeBisector, currentCropPoint, goUp, crossedBorder, mergeArray, findBisector);
+			}
+
+			return mergeArray;
+		}
+
+		FirstBorderCross first = determineFirstBorderCross(cropR, cropL, currentCropPoint);
+
+		if (first == FirstBorderCross.RIGHT) {
+			trimBisector(cropR.bisector, currentBisector, cropR.point);
+			trimBisector(currentBisector, cropR.bisector, cropR.point);
+			currentBisector.intersections.add(cropR.point);
+
+			crossedBorder = cropR.bisector;
+			currentR = findOtherSite(cropR.bisector, currentR);
+			currentCropPoint = cropR.point;
+
+		} else if (first == FirstBorderCross.LEFT) {
+			trimBisector(cropL.bisector, currentBisector, cropL.point);
+			trimBisector(currentBisector, cropL.bisector, cropL.point);
+			currentBisector.intersections.add(cropL.point);
+
+			crossedBorder = cropL.bisector;
+			currentL = findOtherSite(cropL.bisector, currentL);
+			currentCropPoint = cropL.point;
+
+		} else {
+			// both
+			trimBisector(cropR.bisector, currentBisector, cropR.point);
+			trimBisector(currentBisector, cropR.bisector, cropR.point);
+			currentBisector.intersections.add(cropR.point);
+
+			crossedBorder = cropR.bisector;
+			currentR = findOtherSite(cropR.bisector, currentR);
+			currentCropPoint = cropR.point;
+
+			trimBisector(cropL.bisector, currentBisector, cropL.point);
+			trimBisector(currentBisector, cropL.bisector, cropL.point);
+			currentBisector.intersections.add(cropL.point);
+
+			crossedBorder = cropL.bisector;
+			currentL = findOtherSite(cropL.bisector, currentL);
+			currentCropPoint = cropL.point;
+		}
+
+		return walkMergeLine(currentR, currentL, currentBisector, currentCropPoint, goUp, crossedBorder, mergeArray, findBisector);
+	}
+
+	private static Site findOtherSite(Bisector bisector, Site current) {
+		return bisector.sites[0] == current ? bisector.sites[1] : bisector.sites[0];
+	}
+
+	private static double angle(Coordinate p1, Coordinate p2) {
+		double ang = FastAtan2.atan2(p2.y - p1.y, p2.x - p1.x);
+		if (ang < 0) {
+			ang = Math.PI + Math.PI + ang;
+		}
+		return ang;
+	}
+
+	private enum FirstBorderCross {
+		RIGHT, LEFT, BOTH
+	}
+
+	private static FirstBorderCross determineFirstBorderCross(CropCandidate cropR, CropCandidate cropL, Coordinate currentCropPoint) {
+		double dr = Math.abs(cropR.point.y - currentCropPoint.y);
+		double dl = Math.abs(cropL.point.y - currentCropPoint.y);
+
+		if (dr == dl) {
+			return FirstBorderCross.BOTH;
+		}
+		return (dr < dl) ? FirstBorderCross.RIGHT : FirstBorderCross.LEFT;
+	}
+
+	private record StartingInfo(Bisector startingBisector, Site w, Site nearestNeighbor, Coordinate startingIntersection) {
+	}
+
+	private static StartingInfo determineStartingBisector(Site w, Site nearestNeighbor, double width, Coordinate lastIntersect,
+			BiFunction<Site, Site, Bisector> findBisector) {
+
+		Coordinate z = new Coordinate(width, w.site.y);
+		if (lastIntersect == null) {
+			lastIntersect = w.site;
+		}
+
+		// zline = {points:[w.site, z]}
+		Bisector zline = new Bisector(w, w);
+		zline.points = List.of(new Coordinate(w.site.x, w.site.y), z);
+
+		// Find first intersection with nearestNeighbor's bisectors
+		IntersectionHit hit = null;
+		for (Bisector b : nearestNeighbor.bisectors) {
+			Coordinate p = bisectorIntersection(zline, b);
+			if (p != null) {
+				hit = new IntersectionHit(p, b);
+				break;
+			}
+		}
+
+		if (hit != null && distance(w.site, hit.point) > distance(nearestNeighbor.site, hit.point)) {
+			Bisector startingBisector = findBisector.apply(w, nearestNeighbor);
+			return new StartingInfo(startingBisector, w, nearestNeighbor, hit.point != null ? hit.point : w.site);
+
+		} else if (hit != null && distance(w.site, hit.point) < distance(nearestNeighbor.site, hit.point) && hit.point.x > lastIntersect.x) {
+
+			Site nextR = findOtherSite(hit.bisector, nearestNeighbor);
+			return determineStartingBisector(w, nextR, width, hit.point, findBisector);
+
+		} else {
+			w = findCorrectW(w, nearestNeighbor, findBisector);
+			Bisector startingBisector = findBisector.apply(w, nearestNeighbor);
+			return new StartingInfo(startingBisector, w, nearestNeighbor, hit != null ? hit.point : w.site);
+		}
+	}
+
+	private record IntersectionHit(Coordinate point, Bisector bisector) {
+	}
+
+	private static Site findCorrectW(Site w, Site nearestNeighbor, BiFunction<Site, Site, Bisector> findBisector) {
+		Bisector startingBisector = findBisector.apply(w, nearestNeighbor);
+
+		record Trap(Site hopTo, boolean trapped) {
+		}
+		Trap wTrap = w.bisectors.stream().map(b -> {
+			Site hopTo = findHopTo(b, w);
+			return new Trap(hopTo, isBisectorTrapped(hopTo, startingBisector));
+		}).filter(t -> t.trapped).sorted(Comparator.comparingDouble(t -> distance(t.hopTo.site, nearestNeighbor.site))).findFirst().orElse(null);
+
+		if (wTrap != null) {
+			return findCorrectW(wTrap.hopTo, nearestNeighbor, findBisector);
+		}
+		return w;
+	}
+
+	private static Bisector checkForOphans(Site trapper, Site trapped, boolean goUp, BiFunction<Site, Site, Bisector> findBisector) {
+
+		return trapped.bisectors.stream().filter(b -> {
+			Site hopTo = findHopTo(b, trapped);
+			return (goUp == (hopTo.site.y < trapped.site.y)) && isBisectorTrapped(trapper, b);
+		}).sorted((a, b) -> {
+			Site hopToA = findHopTo(a, trapped);
+			Site hopToB = findHopTo(b, trapped);
+
+			Bisector mergeLineA = findBisector.apply(hopToA, trapper);
+			Bisector mergeLineB = findBisector.apply(hopToB, trapper);
+
+			double extremeA = getExtremePoint(mergeLineA, goUp);
+			double extremeB = getExtremePoint(mergeLineB, goUp);
+
+			return goUp ? Double.compare(extremeB, extremeA) : Double.compare(extremeA, extremeB);
+		}).findFirst().orElse(null);
+	}
+
+	private static BiFunction<Site, Site, Bisector> curryFindBisector(FindBisectorCallback callback, double width, double height) {
+		return (p1, p2) -> callback.apply(p1, p2, width, height);
+	}
+
+	@FunctionalInterface
+	private interface FindBisectorCallback {
+		Bisector apply(Site p1, Site p2, double width, double height);
+	}
+
+	/**
+	 * Hyperoptimized findL1Bisector - eliminates allocations and redundant
+	 * operations.
+	 */
+	private static Bisector findL1Bisector(Site P1, Site P2, double width, double height) {
+		final double p1x = P1.site.x;
+		final double p1y = P1.site.y;
+		final double p2x = P2.site.x;
+		final double p2y = P2.site.y;
+
+		final double xDistance = p1x - p2x;
+		final double yDistance = p1y - p2y;
+
+		if (p1x == p2x && p1y == p2y) {
+			throw new IllegalArgumentException("Duplicate point: Points " + P1 + " and " + P2 + " are duplicates.");
+		}
+
+		final double absX = Math.abs(xDistance);
+		final double absY = Math.abs(yDistance);
+
+		// Square bisector check
+		if (absX == absY) {
+			throw new IllegalArgumentException("Square bisector: Points " + P1 + " and " + P2
+					+ " are points on a square (their vertical distance equals horizontal distance). Consider nudgeData.");
+		}
+
+		Bisector bisector = new Bisector(P1, P2);
+
+		// Fast path: vertical line (xDistance == 0)
+		if (absX == 0) {
+			final double midY = (p1y + p2y) * 0.5;
+			bisector.up = false;
+			bisector.points = List.of(new Coordinate(0, midY), new Coordinate(width, midY));
+			return bisector;
+		}
+
+		// Fast path: horizontal line (yDistance == 0)
+		if (absY == 0) {
+			final double midX = (p1x + p2x) * 0.5;
+			bisector.up = true;
+			bisector.points = List.of(new Coordinate(midX, 0), new Coordinate(midX, height));
+			return bisector;
+		}
+
+		// Pre-compute midpoint (used in both branches)
+		final double midX = (p1x + p2x) * 0.5;
+		final double midY = (p1y + p2y) * 0.5;
+
+		// Determine slope
+		final double slope = (yDistance * xDistance > 0) ? -1.0 : 1.0;
+		final double intercept = midY - midX * slope;
+
+		// Branch based on dominant direction
+		if (absX >= absY) {
+			// Horizontal-dominant (up = true)
+			bisector.up = true;
+
+			// Compute vertices directly in sorted order
+			final double v1x = (p1y - intercept) * slope; // slope is ±1, so division becomes multiplication
+			final double v2x = (p2y - intercept) * slope;
+
+			// Determine order based on y-coordinates
+			if (p1y < p2y) {
+				// p1y is lower, so v1 comes first
+				bisector.points = List.of(new Coordinate(v1x, 0), new Coordinate(v1x, p1y), new Coordinate(v2x, p2y), new Coordinate(v2x, height));
+			} else {
+				// p2y is lower, so v2 comes first
+				bisector.points = List.of(new Coordinate(v2x, 0), new Coordinate(v2x, p2y), new Coordinate(v1x, p1y), new Coordinate(v1x, height));
+			}
+
+		} else {
+			// Vertical-dominant (up = false)
+			bisector.up = false;
+
+			// Compute vertices directly in sorted order
+			final double v1y = p1x * slope + intercept;
+			final double v2y = p2x * slope + intercept;
+
+			// Determine order based on x-coordinates
+			if (p1x < p2x) {
+				// p1x is leftmost, so v1 comes first
+				bisector.points = List.of(new Coordinate(0, v1y), new Coordinate(p1x, v1y), new Coordinate(p2x, v2y), new Coordinate(width, v2y));
+			} else {
+				// p2x is leftmost, so v2 comes first
+				bisector.points = List.of(new Coordinate(0, v2y), new Coordinate(p2x, v2y), new Coordinate(p1x, v1y), new Coordinate(width, v1y));
+			}
+		}
+
+		return bisector;
+	}
+
+	private static List<Bisector> clearOutOrphans(Site orphanage, Site trapPoint) {
+		orphanage.bisectors.removeIf(b -> isBisectorTrapped(trapPoint, b));
+		return orphanage.bisectors;
+	}
+
+	private static Site findHopTo(Bisector bisector, Site hopFrom) {
+		return bisector.sites[0] == hopFrom ? bisector.sites[1] : bisector.sites[0];
+	}
+
+	/** Manhattan (L1) distance. */
+	public static double distance(final Coordinate p1, final Coordinate p2) {
+		return Math.abs(p1.x - p2.x) + Math.abs(p1.y - p2.y);
+	}
+
+	private static boolean isBisectorTrapped(Site trapPoint, Bisector bisector) {
+		for (Coordinate point : bisector.points) {
+			double dTrap = distance(trapPoint.site, point);
+			if (!(dTrap <= distance(bisector.sites[0].site, point) && dTrap <= distance(bisector.sites[1].site, point))) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private static double getExtremePoint(Bisector bisector, boolean goUp) {
+		double acc = goUp ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
+		for (Coordinate e : bisector.points) {
+			acc = goUp ? Math.max(e.y, acc) : Math.min(e.y, acc);
+		}
+		return acc;
+	}
+
+	private static void trimBisector(Bisector target, Bisector intersector, Coordinate intersection) {
+		if (intersector == null) {
+			return;
+		}
+
+		Site polygonSite = null;
+		for (Site s : intersector.sites) {
+			if (s != target.sites[0] && s != target.sites[1]) {
+				polygonSite = s;
+				break;
+			}
+		}
+		if (polygonSite == null) {
+			return;
+		}
+
+		final Site poly = polygonSite; // <- make effectively-final for lambda
+
+		List<Coordinate> newPoints = target.points.stream()
+				.filter(p -> distance(p, target.sites[0].site) < distance(p, poly.site) && distance(p, target.sites[1].site) < distance(p, poly.site))
+				.map(p -> new Coordinate(p.x, p.y)).collect(Collectors.toList());
+
+		newPoints.add(new Coordinate(intersection.x, intersection.y));
+
+		if (target.up) {
+			newPoints.sort(Comparator.comparingDouble(c -> c.y));
+		} else {
+			newPoints.sort(Comparator.comparingDouble(c -> c.x));
+		}
+
+		target.points = newPoints;
+	}
+
+	private record CropCandidate(Bisector bisector, Coordinate point) {
+	}
+
+	private static List<CropCandidate> buildCropCandidatesForSide(Site sideSite, // currentL or currentR
+			Bisector currentBisector, Site otherMergeSite, // currentR if sideSite is L, else currentL
+			Coordinate currentCropPoint, boolean goUp, Bisector crossedBorder, boolean isLeftSide, BiFunction<Site, Site, Bisector> findBisector) {
+		// map + filter stage
+		List<CropCandidate> candidates = new ArrayList<>();
+		for (Bisector b : sideSite.bisectors) {
+			Coordinate p = bisectorIntersection(currentBisector, b);
+			if (p == null) {
+				continue;
+			}
+
+			Site hopTo = findHopTo(b, sideSite);
+			boolean upward = isNewBisectorUpward(hopTo, sideSite, otherMergeSite, goUp);
+
+			boolean sameCropAndSameBorder = samePoint(p, currentCropPoint) && b == crossedBorder;
+			if ((goUp == upward) && !sameCropAndSameBorder) {
+				candidates.add(new CropCandidate(b, p));
+			}
+		}
+
+		// sort stage (matches JS sort directions)
+		candidates.sort((a, b) -> {
+			if (isLeftSide) {
+				// JS (left): angle(currentL, hopTo(b)) - angle(currentL, hopTo(a))
+				Site hopToB = findHopTo(b.bisector, sideSite);
+				Site hopToA = findHopTo(a.bisector, sideSite);
+				return Double.compare(angle(sideSite.site, hopToB.site), angle(sideSite.site, hopToA.site));
+			} else {
+				// JS (right): angle(currentR, hopTo(a)) - angle(currentR, hopTo(b))
+				Site hopToA = findHopTo(a.bisector, sideSite);
+				Site hopToB = findHopTo(b.bisector, sideSite);
+				return Double.compare(angle(sideSite.site, hopToA.site), angle(sideSite.site, hopToB.site));
+			}
+		});
+
+		// filter stage with candidates.every(...) parity
+		List<CropCandidate> filtered = new ArrayList<>();
+		for (CropCandidate e : candidates) {
+			Site hopTo = findHopTo(e.bisector, sideSite);
+
+			Bisector newMergeLine = isLeftSide ? findBisector.apply(otherMergeSite, hopTo) // JS left: findBisector(currentR, hopTo)
+					: findBisector.apply(otherMergeSite, hopTo); // JS right builds the opposite earlier, but the test uses trapped vs
+																	// newMergeLine similarly
+
+			// JS differs here:
+			// left: newMergeLine = findBisector(currentR, hopTo)
+			// right: newMergeLine = findBisector(currentL, hopTo)
+			// We passed otherMergeSite accordingly (currentR or currentL), so same call
+			// works.
+
+			trimBisector(newMergeLine, e.bisector, e.point);
+
+			boolean ok = true;
+			for (CropCandidate d : candidates) {
+				Site hopToD = findHopTo(d.bisector, sideSite);
+				boolean trapped = isBisectorTrapped(hopToD, newMergeLine);
+				if (trapped && hopToD != hopTo) {
+					ok = false;
+					break;
+				}
+			}
+
+			if (ok) {
+				filtered.add(e);
+			}
+		}
+
+		return filtered;
+	}
+
+	private static boolean isNewBisectorUpward(Site hopTo, Site hopFrom, Site site, boolean goUpUnused) {
+		double slope = (hopTo.site.y - site.site.y) / (hopTo.site.x - site.site.x);
+		double intercept = hopTo.site.y - (slope * hopTo.site.x);
+
+		if (Double.isInfinite(slope)) {
+			return site.site.y > hopTo.site.y;
+		}
+
+		return hopFrom.site.y > (slope * hopFrom.site.x) + intercept;
+	}
+
+	private static Coordinate bisectorIntersection(Bisector b1, Bisector b2) {
+		if (b1 == b2) {
+			return null;
+		}
+
+		final List<Coordinate> pts1 = b1.points;
+		final List<Coordinate> pts2 = b2.points;
+		final int size1 = pts1.size();
+		final int size2 = pts2.size();
+
+		// Early exit for empty bisectors
+		if (size1 < 2 || size2 < 2) {
+			return null;
+		}
+
+		// Bounding box check
+		final Coordinate p1_0 = pts1.get(0);
+		final Coordinate p1_last = pts1.get(size1 - 1);
+		final Coordinate p2_0 = pts2.get(0);
+		final Coordinate p2_last = pts2.get(size2 - 1);
+
+		final double b1_minX = Math.min(p1_0.x, p1_last.x);
+		final double b1_maxX = Math.max(p1_0.x, p1_last.x);
+		final double b1_minY = Math.min(p1_0.y, p1_last.y);
+		final double b1_maxY = Math.max(p1_0.y, p1_last.y);
+
+		final double b2_minX = Math.min(p2_0.x, p2_last.x);
+		final double b2_maxX = Math.max(p2_0.x, p2_last.x);
+		final double b2_minY = Math.min(p2_0.y, p2_last.y);
+		final double b2_maxY = Math.max(p2_0.y, p2_last.y);
+
+		// No overlap = no intersection
+		if (b1_maxX < b2_minX || b2_maxX < b1_minX || b1_maxY < b2_minY || b2_maxY < b1_minY) {
+			return null;
+		}
+
+		// Cache segment count (avoid repeated size() - 1)
+		final int seg1Count = size1 - 1;
+		final int seg2Count = size2 - 1;
+
+		// Cache-friendly iteration with segment bounding box tests
+		for (int i = 0; i < seg1Count; i++) {
+			final Coordinate a0 = pts1.get(i);
+			final Coordinate a1 = pts1.get(i + 1);
+
+			// Segment 1 bounds (extract to locals for cache efficiency)
+			final double a_minX = Math.min(a0.x, a1.x);
+			final double a_maxX = Math.max(a0.x, a1.x);
+			final double a_minY = Math.min(a0.y, a1.y);
+			final double a_maxY = Math.max(a0.y, a1.y);
+
+			for (int j = 0; j < seg2Count; j++) {
+				final Coordinate b0 = pts2.get(j);
+				final Coordinate bb1 = pts2.get(j + 1);
+
+				// Cheap segment bounding box test (eliminates 90% of intersection checks)
+				final double b_minX = Math.min(b0.x, bb1.x);
+				final double b_maxX = Math.max(b0.x, bb1.x);
+
+				if (a_maxX < b_minX || b_maxX < a_minX) {
+					continue;
+				}
+
+				final double b_minY = Math.min(b0.y, bb1.y);
+				final double b_maxY = Math.max(b0.y, bb1.y);
+
+				if (a_maxY < b_minY || b_maxY < a_minY) {
+					continue;
+				}
+
+				// Bounding boxes overlap - now do the expensive intersection test
+				Coordinate intersect = segmentIntersection(a0, a1, b0, bb1);
+				if (intersect != null) {
+					return intersect; // Early termination on first intersection
+				}
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Segment intersection ported from JS segementIntersection. - denom == 0 =>
+	 * null (JS returned null for parallel/collinear) - if no intersection within
+	 * segment bounds => null (JS returned false)
+	 */
+	private static Coordinate segmentIntersection(final Coordinate l10, final Coordinate l11, final Coordinate l20, final Coordinate l21) {
+		final double denom = (l21.y - l20.y) * (l11.x - l10.x) - (l21.x - l20.x) * (l11.y - l10.y);
+		if (denom == 0) {
+			return null;
+		}
+
+		final double ua = ((l21.x - l20.x) * (l10.y - l20.y) - (l21.y - l20.y) * (l10.x - l20.x)) / denom;
+		final double ub = ((l11.x - l10.x) * (l10.y - l20.y) - (l11.y - l10.y) * (l10.x - l20.x)) / denom;
+
+		if (!(ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1)) {
+			return null;
+		}
+
+		return new Coordinate(l10.x + ua * (l11.x - l10.x), l10.y + ua * (l11.y - l10.y));
+	}
+
+	private static Coordinate segmentIntersectionRobust(Coordinate a0, Coordinate a1, Coordinate b0, Coordinate b1) {
+		li.computeIntersection(a0, a1, b0, b1);
+
+		if (!li.hasIntersection()) {
+			return null;
+		}
+		if (li.getIntersectionNum() != 1) {
+			return null;
+		}
+
+		Coordinate ip = li.getIntersection(0);
+		return new Coordinate(ip.x, ip.y);
+	}
+
+	private static boolean samePoint(final Coordinate p1, final Coordinate p2) {
+		return p1.x == p2.x && p1.y == p2.y;
+	}
+
+	private static boolean isPointOnEdge(final Coordinate p, final double width, final double height) {
+		return p.x == 0 || p.x == width || p.y == 0 || p.y == height;
+	}
+
+	private static boolean arePointsOnSameEdge(final Coordinate p1, final Coordinate p2, final double width, final double height) {
+		return (p1.x == p2.x && p1.x == 0) || (p1.x == p2.x && p1.x == width) || (p1.y == p2.y && p1.y == 0) || (p1.y == p2.y && p1.y == height);
+	}
+
+	private static String fmt(final Coordinate c) {
+		return "[" + c.x + "," + c.y + "]";
+	}
+}
