@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 import org.locationtech.jts.algorithm.LineIntersector;
 import org.locationtech.jts.algorithm.RobustLineIntersector;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Polygon;
 
@@ -67,7 +68,19 @@ public final class ManhattanVoronoi {
 
 	static final LineIntersector li = new RobustLineIntersector();
 
-	private ManhattanVoronoi() {
+	private final double minX;
+	private final double minY;
+	private final double maxX;
+	private final double maxY;
+
+	private ManhattanVoronoi(Envelope bounds) {
+		if (bounds == null) {
+			throw new IllegalArgumentException("Bounds must not be null.");
+		}
+		this.minX = bounds.getMinX();
+		this.minY = bounds.getMinY();
+		this.maxX = bounds.getMaxX();
+		this.maxY = bounds.getMaxY();
 	}
 
 	public static final class Site {
@@ -143,12 +156,23 @@ public final class ManhattanVoronoi {
 		}
 	}
 
-	public static List<Site> generateL1Voronoi(List<Coordinate> sitePoints, double width, double height) {
-		return generateL1Voronoi(sitePoints, width, height, true);
+	public static List<Site> generate(List<Coordinate> sitePoints, double width, double height) {
+		return generate(sitePoints, new Envelope(0, width, 0, height));
 	}
 
-	/** Port of JS generateL1Voronoi. */
-	public static List<Site> generateL1Voronoi(List<Coordinate> sitePoints, double width, double height, boolean nudgeData) {
+	public static List<Site> generate(List<Coordinate> sitePoints, double width, double height, boolean nudgeData) {
+		return generate(sitePoints, new Envelope(0, width, 0, height), nudgeData);
+	}
+
+	public static List<Site> generate(List<Coordinate> sitePoints, Envelope bounds) {
+		return generate(sitePoints, bounds, true);
+	}
+
+	public static List<Site> generate(List<Coordinate> sitePoints, Envelope bounds, boolean nudgeData) {
+		return new ManhattanVoronoi(bounds).generate(sitePoints, nudgeData);
+	}
+
+	private List<Site> generate(List<Coordinate> sitePoints, boolean nudgeData) {
 		List<Coordinate> points = new ArrayList<>(sitePoints.size());
 		for (int i = 0; i < sitePoints.size(); i++) {
 			points.add(sitePoints.get(i).copy());
@@ -170,23 +194,23 @@ public final class ManhattanVoronoi {
 			sites.add(new Site(points.get(i)));
 		}
 
-		BiFunction<Site, Site, Bisector> findBisector = curryFindBisector(ManhattanVoronoi::findL1Bisector, width, height);
+		BiFunction<Site, Site, Bisector> findBisector = this::findL1Bisector;
 
-		List<Site> graph = recursiveSplit(sites, findBisector, width, height);
+		List<Site> graph = recursiveSplit(sites, findBisector);
 
-		postProcessSites(graph, width, height);
+		postProcessSites(graph);
 
 		return graph;
 	}
 
-	private static void postProcessSites(List<Site> graph, double width, double height) {
+	private void postProcessSites(List<Site> graph) {
 		// Pre-create corners once
-		final Coordinate[] corners = new Coordinate[] { new Coordinate(0, 0), new Coordinate(width, 0), new Coordinate(width, height),
-				new Coordinate(0, height) };
+		final Coordinate[] corners = new Coordinate[] { new Coordinate(minX, minY), new Coordinate(maxX, minY), new Coordinate(maxX, maxY),
+				new Coordinate(minX, maxY) };
 
 		graph.parallelStream().forEach(site -> {
-			buildPolygonPointsByChaining(site, width, height);
-			injectCornersIfNeeded(site, corners, width, height);
+			buildPolygonPointsByChaining(site);
+			injectCornersIfNeeded(site, corners);
 
 			if (!site.polygonPoints.isEmpty()) {
 				// Sort around site
@@ -196,14 +220,14 @@ public final class ManhattanVoronoi {
 		});
 	}
 
-	private static void buildPolygonPointsByChaining(Site site, double width, double height) {
+	private void buildPolygonPointsByChaining(Site site) {
 
 		if (site.bisectors.isEmpty()) {
 			site.polygonPoints = new ArrayList<>();
 			return;
 		}
 
-		Bisector startBisector = findStartBisectorOnEdge(site, width, height);
+		Bisector startBisector = findStartBisectorOnEdge(site);
 		if (startBisector == null) {
 			startBisector = site.bisectors.get(0);
 		}
@@ -216,7 +240,7 @@ public final class ManhattanVoronoi {
 		polygon.addAll(startBisector.points);
 
 		// reverse if last point is on edge (matches JS)
-		if (!polygon.isEmpty() && isPointOnEdge(polygon.get(polygon.size() - 1), width, height)) {
+		if (!polygon.isEmpty() && isPointOnEdge(polygon.get(polygon.size() - 1))) {
 			Collections.reverse(polygon);
 		}
 
@@ -258,10 +282,10 @@ public final class ManhattanVoronoi {
 		site.polygonPoints = polygon;
 	}
 
-	private static Bisector findStartBisectorOnEdge(Site site, double width, double height) {
+	private Bisector findStartBisectorOnEdge(Site site) {
 		for (Bisector b : site.bisectors) {
 			for (Coordinate element : b.points) {
-				if (isPointOnEdge(element, width, height)) {
+				if (isPointOnEdge(element)) {
 					return b;
 				}
 			}
@@ -269,7 +293,7 @@ public final class ManhattanVoronoi {
 		return null;
 	}
 
-	private static void injectCornersIfNeeded(Site site, Coordinate[] corners, double width, double height) {
+	private void injectCornersIfNeeded(Site site, Coordinate[] corners) {
 		if (site.polygonPoints.isEmpty()) {
 			return;
 		}
@@ -277,7 +301,7 @@ public final class ManhattanVoronoi {
 		Coordinate first = site.polygonPoints.get(0);
 		Coordinate last = site.polygonPoints.get(site.polygonPoints.size() - 1);
 
-		if (!(isPointOnEdge(first, width, height) && isPointOnEdge(last, width, height) && !arePointsOnSameEdge(first, last, width, height))) {
+		if (!(isPointOnEdge(first) && isPointOnEdge(last) && !arePointsOnSameEdge(first, last))) {
 			return;
 		}
 
@@ -348,29 +372,29 @@ public final class ManhattanVoronoi {
 		return data;
 	}
 
-	private static List<Site> recursiveSplit(List<Site> splitArray, BiFunction<Site, Site, Bisector> findBisector, double width, double height) {
+	private List<Site> recursiveSplit(List<Site> splitArray, BiFunction<Site, Site, Bisector> findBisector) {
 
 		if (splitArray.size() > 2) {
 			int splitPoint = (splitArray.size() - splitArray.size() % 2) / 2;
 
-			List<Site> L = recursiveSplit(splitArray.subList(0, splitPoint), findBisector, width, height);
-			List<Site> R = recursiveSplit(splitArray.subList(splitPoint, splitArray.size()), findBisector, width, height);
+			List<Site> L = recursiveSplit(splitArray.subList(0, splitPoint), findBisector);
+			List<Site> R = recursiveSplit(splitArray.subList(splitPoint, splitArray.size()), findBisector);
 
 			// current working sites
 			Site lLast = L.get(L.size() - 1);
 			List<Site> neighborArray = new ArrayList<>(R);
 			neighborArray.sort(Comparator.comparingDouble(s -> distance(lLast.site, s.site)));
 
-			StartingInfo startingInfo = determineStartingBisector(lLast, neighborArray.get(0), width, null, findBisector);
+			StartingInfo startingInfo = determineStartingBisector(lLast, neighborArray.get(0), null, findBisector);
 
 			Bisector initialBisector = startingInfo.startingBisector;
 			Site initialR = startingInfo.nearestNeighbor;
 			Site initialL = startingInfo.w;
 
-			List<Bisector> upStrokeArray = walkMergeLine(initialR, initialL, initialBisector, new Coordinate(width, height), true, null, new ArrayList<>(),
+			List<Bisector> upStrokeArray = walkMergeLine(initialR, initialL, initialBisector, new Coordinate(maxX, maxY), true, null, new ArrayList<>(),
 					findBisector);
 
-			List<Bisector> downStrokeArray = walkMergeLine(initialR, initialL, initialBisector, new Coordinate(0, 0), false, null, new ArrayList<>(),
+			List<Bisector> downStrokeArray = walkMergeLine(initialR, initialL, initialBisector, new Coordinate(minX, minY), false, null, new ArrayList<>(),
 					findBisector);
 
 			List<Bisector> mergeArray = new ArrayList<>();
@@ -536,10 +560,9 @@ public final class ManhattanVoronoi {
 	private record StartingInfo(Bisector startingBisector, Site w, Site nearestNeighbor, Coordinate startingIntersection) {
 	}
 
-	private static StartingInfo determineStartingBisector(Site w, Site nearestNeighbor, double width, Coordinate lastIntersect,
-			BiFunction<Site, Site, Bisector> findBisector) {
+	private StartingInfo determineStartingBisector(Site w, Site nearestNeighbor, Coordinate lastIntersect, BiFunction<Site, Site, Bisector> findBisector) {
 
-		Coordinate z = new Coordinate(width, w.site.y);
+		Coordinate z = new Coordinate(maxX, w.site.y);
 		if (lastIntersect == null) {
 			lastIntersect = w.site;
 		}
@@ -565,7 +588,7 @@ public final class ManhattanVoronoi {
 		} else if (hit != null && distance(w.site, hit.point) < distance(nearestNeighbor.site, hit.point) && hit.point.x > lastIntersect.x) {
 
 			Site nextR = findOtherSite(hit.bisector, nearestNeighbor);
-			return determineStartingBisector(w, nextR, width, hit.point, findBisector);
+			return determineStartingBisector(w, nextR, hit.point, findBisector);
 
 		} else {
 			w = findCorrectW(w, nearestNeighbor, findBisector);
@@ -612,20 +635,11 @@ public final class ManhattanVoronoi {
 		}).findFirst().orElse(null);
 	}
 
-	private static BiFunction<Site, Site, Bisector> curryFindBisector(FindBisectorCallback callback, double width, double height) {
-		return (p1, p2) -> callback.apply(p1, p2, width, height);
-	}
-
-	@FunctionalInterface
-	private interface FindBisectorCallback {
-		Bisector apply(Site p1, Site p2, double width, double height);
-	}
-
 	/**
 	 * Hyperoptimized findL1Bisector - eliminates allocations and redundant
 	 * operations.
 	 */
-	private static Bisector findL1Bisector(Site P1, Site P2, double width, double height) {
+	private Bisector findL1Bisector(Site P1, Site P2) {
 		final double p1x = P1.site.x;
 		final double p1y = P1.site.y;
 		final double p2x = P2.site.x;
@@ -653,7 +667,7 @@ public final class ManhattanVoronoi {
 		if (absX == 0) {
 			final double midY = (p1y + p2y) * 0.5;
 			bisector.up = false;
-			bisector.points = List.of(new Coordinate(0, midY), new Coordinate(width, midY));
+			bisector.points = List.of(new Coordinate(minX, midY), new Coordinate(maxX, midY));
 			return bisector;
 		}
 
@@ -661,7 +675,7 @@ public final class ManhattanVoronoi {
 		if (absY == 0) {
 			final double midX = (p1x + p2x) * 0.5;
 			bisector.up = true;
-			bisector.points = List.of(new Coordinate(midX, 0), new Coordinate(midX, height));
+			bisector.points = List.of(new Coordinate(midX, minY), new Coordinate(midX, maxY));
 			return bisector;
 		}
 
@@ -685,10 +699,10 @@ public final class ManhattanVoronoi {
 			// Determine order based on y-coordinates
 			if (p1y < p2y) {
 				// p1y is lower, so v1 comes first
-				bisector.points = List.of(new Coordinate(v1x, 0), new Coordinate(v1x, p1y), new Coordinate(v2x, p2y), new Coordinate(v2x, height));
+				bisector.points = List.of(new Coordinate(v1x, minY), new Coordinate(v1x, p1y), new Coordinate(v2x, p2y), new Coordinate(v2x, maxY));
 			} else {
 				// p2y is lower, so v2 comes first
-				bisector.points = List.of(new Coordinate(v2x, 0), new Coordinate(v2x, p2y), new Coordinate(v1x, p1y), new Coordinate(v1x, height));
+				bisector.points = List.of(new Coordinate(v2x, minY), new Coordinate(v2x, p2y), new Coordinate(v1x, p1y), new Coordinate(v1x, maxY));
 			}
 
 		} else {
@@ -702,10 +716,10 @@ public final class ManhattanVoronoi {
 			// Determine order based on x-coordinates
 			if (p1x < p2x) {
 				// p1x is leftmost, so v1 comes first
-				bisector.points = List.of(new Coordinate(0, v1y), new Coordinate(p1x, v1y), new Coordinate(p2x, v2y), new Coordinate(width, v2y));
+				bisector.points = List.of(new Coordinate(minX, v1y), new Coordinate(p1x, v1y), new Coordinate(p2x, v2y), new Coordinate(maxX, v2y));
 			} else {
 				// p2x is leftmost, so v2 comes first
-				bisector.points = List.of(new Coordinate(0, v2y), new Coordinate(p2x, v2y), new Coordinate(p1x, v1y), new Coordinate(width, v1y));
+				bisector.points = List.of(new Coordinate(minX, v2y), new Coordinate(p2x, v2y), new Coordinate(p1x, v1y), new Coordinate(maxX, v1y));
 			}
 		}
 
@@ -981,12 +995,12 @@ public final class ManhattanVoronoi {
 		return p1.x == p2.x && p1.y == p2.y;
 	}
 
-	private static boolean isPointOnEdge(final Coordinate p, final double width, final double height) {
-		return p.x == 0 || p.x == width || p.y == 0 || p.y == height;
+	private boolean isPointOnEdge(final Coordinate p) {
+		return p.x == minX || p.x == maxX || p.y == minY || p.y == maxY;
 	}
 
-	private static boolean arePointsOnSameEdge(final Coordinate p1, final Coordinate p2, final double width, final double height) {
-		return (p1.x == p2.x && p1.x == 0) || (p1.x == p2.x && p1.x == width) || (p1.y == p2.y && p1.y == 0) || (p1.y == p2.y && p1.y == height);
+	private boolean arePointsOnSameEdge(final Coordinate p1, final Coordinate p2) {
+		return (p1.x == p2.x && (p1.x == minX || p1.x == maxX)) || (p1.y == p2.y && (p1.y == minY || p1.y == maxY));
 	}
 
 	private static String fmt(final Coordinate c) {
