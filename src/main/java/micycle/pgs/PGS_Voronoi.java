@@ -16,6 +16,7 @@ import org.locationtech.jts.densify.Densifier;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryCollection;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.Polygonal;
 import org.locationtech.jts.geom.TopologyException;
@@ -36,6 +37,7 @@ import com.github.quickhull3d.PowerDiagram2D.Rect;
 
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.FarthestPointVoronoi;
+import micycle.pgs.commons.ManhattanVoronoi;
 import micycle.pgs.commons.MultiplicativelyWeightedVoronoi;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
@@ -665,7 +667,7 @@ public final class PGS_Voronoi {
 	 * @since 2.2
 	 * @see #powerDiagram(Collection)
 	 */
-	public static PShape powerDiagram(Collection<PVector> weightedSites, double[] bounds) {
+	public static PShape powerDiagram(Collection<PVector> weightedSites, @Nullable double[] bounds) {
 		var sites = weightedSites.stream().map(z -> new PowerDiagram2D.Site(z.x, z.y, z.z)).toList();
 		final Rect r = bounds == null ? null : new Rect(bounds[0], bounds[1], bounds[2], bounds[3]);
 		var cells = PowerDiagram2D.computeCells(sites, r);
@@ -681,6 +683,49 @@ public final class PGS_Voronoi {
 		}).filter(Objects::nonNull).toList();
 
 		return PGS_Conversion.flatten(faces);
+	}
+
+	/**
+	 * Computes a <b>Manhattan (L1) Voronoi diagram</b> for a set of sites,
+	 * optionally clipped to an axis-aligned bounding box.
+	 * <p>
+	 * In a Manhattan Voronoi diagram, distance is measured using the <i>L1</i>
+	 * (a.k.a. “city-block” or “taxicab”) metric. Each output cell contains the
+	 * points for which a given site is the <b>nearest</b> site under this metric
+	 * (ties may occur along cell boundaries).
+	 * <p>
+	 * If {@code bounds} is {@code null}, clipping bounds are computed automatically
+	 * from the input sites using their axis-aligned envelope (i.e. the min/max of
+	 * {@code x} and {@code y}). Note that this envelope is often a tight fit; if
+	 * you want visible “infinite” outer cells, pass an expanded bounding box.
+	 * <p>
+	 * Compared to a standard (Euclidean/L2) Voronoi diagram, Manhattan Voronoi
+	 * cells tend to align with the coordinate axes and produce characteristic
+	 * 45°/axis- aligned edges.
+	 *
+	 * @param sites  collection of {@link PVector} sites (only {@code x} and
+	 *               {@code y} are used)
+	 * @param bounds optional clipping bounds as {@code [minX, minY, maxX, maxY]}
+	 *               defining the axis-aligned rectangle to which the diagram is
+	 *               restricted. If {@code null}, bounds are derived from the sites'
+	 *               envelope.
+	 * @return a {@link PShape} representing the (optionally clipped) Manhattan
+	 *         Voronoi cells (a GROUP shape whose children are polygonal regions)
+	 * @since 2.2
+	 */
+	public static PShape manhattenVoronoi(Collection<PVector> sites, @Nullable double[] bounds) {
+		var coords = sites.stream().map(PGS::coordFromPVector).toList();
+		Envelope e;
+		if (bounds == null) {
+			var mp = PGS.GEOM_FACTORY.createMultiPointFromCoords(coords.toArray(Coordinate[]::new));
+			e = mp.getEnvelopeInternal();
+		} else {
+			e = new Envelope(bounds[0], bounds[2], bounds[1], bounds[3]);
+		}
+		var vSites = ManhattanVoronoi.generate(coords, e, false);
+
+		var cells = vSites.stream().map(s -> s.toPolygon(PGS.GEOM_FACTORY)).toList();
+		return toPShape(cells);
 	}
 
 	static Polygon toPolygon(ThiessenPolygon polygon) {
@@ -727,7 +772,7 @@ public final class PGS_Voronoi {
 			return;
 
 		// GeometryCollection covers MultiPoint/MultiLineString/MultiPolygon and more.
-		if (geom instanceof org.locationtech.jts.geom.GeometryCollection gc) {
+		if (geom instanceof GeometryCollection gc) {
 			for (int i = 0; i < gc.getNumGeometries(); i++) {
 				collectVertexGroups(gc.getGeometryN(i), groups, allVertices);
 			}
