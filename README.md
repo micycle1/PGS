@@ -949,33 +949,36 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/tiling/hatchSubdivision.png"></td>
   </tr>
   <tr>
-    <td align="center" valign="center"><b>Islamic Tiling</td>
+    <td align="center" valign="center"><b>Square Grid</td>
     <td align="center" valign="center" colspan="2"><b>Doyle Spiral</td>
     <td align="center" valign="center"><b>Hexagon Tiling</td>
   </tr>
   <tr>
-    <td valign="top" width="25%"><img src="resources/tiling/islamic.png"></td>
+    <td valign="top" width="25%"><img src="resources/tiling/grid.png"></td>
     <td valign="top" width="25%"><img src="resources/tiling/doyeSpiral1.png"></td>
     <td valign="top" width="25%"><img src="resources/tiling/doyeSpiral2.png"></td>
     <td valign="top" width="25%"><img src="resources/tiling/hex.png"></td>
   </tr>
   <tr>
+    <td align="center" valign="center"><b>Islamic Tiling</td>
     <td align="center" valign="center"><b>Penrose Tiling</td>
     <td align="center" valign="center"><b>Square-Triangle Tiling</td>
     <td align="center" valign="center"><b>Annular Bricks</td>
-    <td align="center" valign="center"><b>Slice Division</td>
+    
   </tr>
   <tr>
+    <td valign="top" width="25%"><img src="resources/tiling/islamic.png"></td>
     <td valign="top" width="25%"><img src="resources/tiling/penrose.png"></td>
     <td valign="top" width="25%"><img src="resources/tiling/stTiling.png"></td>
     <td valign="top" width="25%"><img src="resources/tiling/annularBricks.png"></td>
-    <td valign="top" width="25%"><img src="resources/tiling/sliceDivision.png"></td>
   </tr>
   <tr>
+    <td align="center" valign="center"><b>Slice Division</td>
     <td align="center" valign="center"><b>Arc Division</td>
     <td align="center" valign="center"><b>Soft Cells</td>
   </tr>
   <tr>
+    <td valign="top" width="25%"><img src="resources/tiling/sliceDivision.png"></td>
     <td valign="top" width="25%"><img src="resources/tiling/arcDivision.png"></td>
     <td valign="top" width="25%"><img src="resources/tiling/softCells.gif"></td>
   </tr>

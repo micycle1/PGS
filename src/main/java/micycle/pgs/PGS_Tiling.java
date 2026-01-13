@@ -166,6 +166,56 @@ public final class PGS_Tiling {
 	}
 
 	/**
+	 * Divides the plane into a simple axis-aligned grid using square cells.
+	 * <p>
+	 * Grid lines are placed every {@code cellSize} units in X and Y. If
+	 * {@code width} or {@code height} are not exact multiples of {@code cellSize},
+	 * the last row/col will be a smaller “remainder” cell band.
+	 * </p>
+	 *
+	 * @param width    the width of the plane
+	 * @param height   the height of the plane
+	 * @param cellSize the desired square cell size (must be > 0)
+	 * @return a GROUP PShape containing the grid cells
+	 * @since 2.2
+	 */
+	public static PShape squareGrid(final double width, final double height, final double cellSize) {
+		if (cellSize <= 0) {
+			throw new IllegalArgumentException("cellSize must be > 0");
+		}
+
+		final List<PEdge> cuts = new ArrayList<>();
+		final double x = 0, y = 0;
+
+		// boundary
+		final PVector A = new PVector((float) x, (float) y);
+		final PVector B = new PVector((float) (x + width), (float) y);
+		final PVector C = new PVector((float) (x + width), (float) (y + height));
+		final PVector D = new PVector((float) x, (float) (y + height));
+
+		cuts.add(new PEdge(A, B));
+		cuts.add(new PEdge(B, C));
+		cuts.add(new PEdge(C, D));
+		cuts.add(new PEdge(D, A));
+
+		// vertical grid lines
+		for (double xx = x + cellSize; xx < x + width; xx += cellSize) {
+			final PVector p1 = new PVector((float) xx, (float) y);
+			final PVector p2 = new PVector((float) xx, (float) (y + height));
+			cuts.add(new PEdge(p1, p2));
+		}
+
+		// horizontal grid lines
+		for (double yy = y + cellSize; yy < y + height; yy += cellSize) {
+			final PVector p1 = new PVector((float) x, (float) yy);
+			final PVector p2 = new PVector((float) (x + width), (float) yy);
+			cuts.add(new PEdge(p1, p2));
+		}
+
+		return PGS.polygonizeEdges(cuts);
+	}
+
+	/**
 	 * Randomly subdivides the plane into equal-width strips having varying lengths.
 	 *
 	 * @param width      width of the subdivision plane

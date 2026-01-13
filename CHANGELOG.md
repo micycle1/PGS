@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `manhattenVoronoi()` to `PGS_Voronoi`. Generates a Manhatten Voronoi Diagram for a set of sites and a bounding box.
 * `intersectionPoints(shape)` to `PGS_Processing`. Computes all self-intersection points of the linework contained within a single shape.
 * `intersections()` to `PGS_SegmentSet`. Computes all intersection points among the supplied edges.
+* `squareGrid()` to `PGS_Tiling`. Divides the plane into a simple axis-aligned grid using square cells.
 
 ### Changes
 * These methods in `PGS_Meshing` are more performant and robust: `urquhartFaces()`, `gabrielFaces()`, `spannerFaces()`, `relativeNeighborFaces()`, `edgeCollapseQuadrangulation()`, `centroidQuadrangulation()`.
