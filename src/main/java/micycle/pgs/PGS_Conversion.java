@@ -430,7 +430,7 @@ public final class PGS_Conversion {
 	 *         unsupported.
 	 */
 	public static Geometry fromPShape(PShape shape) {
-		Geometry g = GEOM_FACTORY.createEmpty(2);
+		Geometry g;
 
 		switch (shape.getFamily()) {
 			case PConstants.GROUP :
@@ -449,6 +449,8 @@ public final class PGS_Conversion {
 			case PShape.PRIMITIVE :
 				g = fromPrimitive(shape); // (no holes)
 				break;
+			default :
+				throw new IllegalArgumentException("Unrecognised (invalid) PShape family type: " + shape.getFamily());
 		}
 
 		if (PRESERVE_STYLE && g != null) {

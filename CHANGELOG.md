@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `smoothBezierFit()` to `PGS_Morphology`. Smoothes a shape by fitting Bezier curves to its vertices.
 * `powerDiagram()` to `PGS_Voronoi`. Generates a Power Voronoi Diagram for a set of weighted sites.
 * `manhattenVoronoi()` to `PGS_Voronoi`. Generates a Manhatten Voronoi Diagram for a set of sites and a bounding box.
+* `intersectionPoints(shape)` to `PGS_Processing`. Computes all self-intersection points of the linework contained within a single shape.
+* `intersections()` to `PGS_SegmentSet`. Computes all intersection points among the supplied edges.
 
 ### Changes
 * These methods in `PGS_Meshing` are more performant and robust: `urquhartFaces()`, `gabrielFaces()`, `spannerFaces()`, `relativeNeighborFaces()`, `edgeCollapseQuadrangulation()`, `centroidQuadrangulation()`.
@@ -34,7 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * A PShape's original `.name` is now included in the `PRESERVE_STYLE` routines.
 * All methods in `PGS_Morphology` now support GROUP shapes (where it makes sense to).
 * `PGS_Conversion.toWKT()` now writes coordinates in float precison by default (previously 2 decimal places).
-* Reimplemented `PGS_Morphology.interpolate()` using a more advanced approach that improves quality (though interpolations can still self-intersect).
+* Reimplemented `PGS_Morphology.interpolate()` using a more advanced approach with better quality (though interpolations can still self-intersect).
+* Renamed `shapeIntersection(a, b)` in `PGS_Processing` to `intersectionPoints()`.
 
 ### Fixed
 * `PGS_Optimisation.closestPoint()` now returns the nearest location on the shape's **boundary** for queries inside a polygonal shape (previously returned the query point itself).
@@ -49,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `unionMeshWithoutHoles()` from `PGS_ShapeBoolean`. Previously deprecated in favour of the more general `unionMesh()`.
 * `fromGeoJSON()` and `toGeoJSON()` from `PGS_Conversion`.
 * The `COARSE` mesh coloring algorithm, since it can color adjacent faces the same colour.
+* `lineSegmentsIntersection()` from `PGS_ShapeBoolean` in favour of `intersectionPoints(PShape)`.
 
 ## **2.1** *(2025-10-04)*
 
@@ -91,6 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `pruneRandomRemoveN()` to `PGS_PointSet`. Randomly removes exactly N points from a list of points.
 * `pruneRandomToN()` to `PGS_PointSet`. Randomly prunes a list of points to exactly N points.
 * `convexMaximumInscribedCircle()` to `PGS_Optimisation`. Computes the largest inscribed circle of a convex polygon (faster and exact).
+* `dissolve()` to `PGS_Processing`. Dissolves the linear components of a shape into a set of unique maximal-length lines
 
 ### Changes
 * Optimised `PGS_CirclePacking.tangencyPack()`. It's now around 1.5-2x faster and has higher precision.
@@ -110,7 +115,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_Processing.pointsOnExterior()` methods now return points on all elements of a shape, not just the perimeter of the first polygon.
 * `PGS_Processing.segmentsOnExterior()` now return segments on all elements of a shape, not just the perimeter of the first polygon.
 * These methods in `PGS_Morphology` now process any and all polygon/line elements in a shape: `chaikinCut()`, `smoothGaussian()`, `simplifyDCE()`, `simplifyHobby()`, `smoothEllipticFourier()`, `round()`.
-* `dissolve()` to `PGS_Processing`. Dissolves the linear components of a shape into a set of unique maximal-length lines
 
 ### Fixed
 * `PGS_Morphology.rounding()` no longer gives invalid results.

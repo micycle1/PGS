@@ -414,6 +414,23 @@ public class PGS_SegmentSet {
 	}
 
 	/**
+	 * 
+	 * Computes all intersection points among the supplied edges.
+	 * <p>
+	 * Each PEdge in {@code edges} is treated as a line segment and intersections
+	 * are computed pairwise between segment interiors. Endpoint-endpoint "touches"
+	 * are not included.
+	 * 
+	 * @param edges collection of PEdge objects to test for intersections
+	 * @return a List<PVector> containing intersection points; empty if none are
+	 *         found
+	 * @since 2.2
+	 */
+	public static List<PVector> intersections(Collection<PEdge> edges) {
+		return PGS_Processing.intersections(fromPEdges(edges), false);
+	}
+
+	/**
 	 * Computes all intersection points between two collections of line segments.
 	 * <p>
 	 * Given two collections of edges, this method finds and returns all points
