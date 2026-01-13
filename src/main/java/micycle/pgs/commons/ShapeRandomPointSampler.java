@@ -13,6 +13,7 @@ import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
 import org.tinfour.utils.TriangleCollector;
 
+import micycle.pgs.PGS_Processing;
 import micycle.pgs.PGS_Triangulation;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -31,20 +32,22 @@ public final class ShapeRandomPointSampler {
 	public ShapeRandomPointSampler(final PShape shape, final long seed) {
 		reseed(seed);
 
-		// Build constrained Delaunay TIN
-		final IIncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape);
+		// normalise required for identical runs (on shapes with holes having different
+		// structure)
+		final IIncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(PGS_Processing.normalise(shape));
 		final boolean constrained = !tin.getConstraints().isEmpty();
 
 		// Collect valid triangles and their areas
 		final List<double[]> tris = new ArrayList<>();
 		final List<Double> areas = new ArrayList<>();
-		final double eps = 1e-15;
+		final double eps = 1e-12;
 
 		TriangleCollector.visitSimpleTriangles(tin, (SimpleTriangle tri) -> {
 			final IConstraint region = tri.getContainingRegion();
 			final boolean inside = !constrained || (region != null && region.definesConstrainedRegion());
-			if (!inside)
+			if (!inside) {
 				return;
+			}
 
 			final Vertex A = tri.getVertexA();
 			final Vertex B = tri.getVertexB();
