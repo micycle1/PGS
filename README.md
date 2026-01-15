@@ -976,11 +976,13 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td align="center" valign="center"><b>Slice Division</td>
     <td align="center" valign="center"><b>Arc Division</td>
     <td align="center" valign="center"><b>Soft Cells</td>
+    <td align="center" valign="center"><b>Aztec Diamond</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/tiling/sliceDivision.png"></td>
     <td valign="top" width="25%"><img src="resources/tiling/arcDivision.png"></td>
     <td valign="top" width="25%"><img src="resources/tiling/softCells.gif"></td>
+    <td valign="top" width="25%"><img src="resources/tiling/aztecDiamond.png"></td>
   </tr>
 </table>
 

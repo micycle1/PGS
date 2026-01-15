@@ -1,10 +1,12 @@
 package micycle.pgs;
 
+import static micycle.pgs.PGS_Conversion.toPShape;
 import static micycle.pgs.PGS.GEOM_FACTORY;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.SplittableRandom;
 
 import org.locationtech.jts.geom.Coordinate;
@@ -16,6 +18,7 @@ import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
 
 import micycle.pgs.color.Colors;
+import micycle.pgs.commons.AztecDiamond;
 import micycle.pgs.commons.DoyleSpiral;
 import micycle.pgs.commons.HatchTiling;
 import micycle.pgs.commons.PEdge;
@@ -567,6 +570,44 @@ public final class PGS_Tiling {
 		}
 
 		return PGS_Conversion.flatten(bricks);
+	}
+
+	/**
+	 * Produces a random domino tiling of the <b>Aztec diamond</b> of the given
+	 * {@code order}.
+	 *
+	 * <p>
+	 * The generated arrangement is positioned so that {@code (originX, originY)} is
+	 * the <b>center</b> of the Aztec diamond. The tiling is generated on a unit
+	 * grid and scaled by {@code cellSize}.
+	 * </p>
+	 *
+	 * <p>
+	 * Each child shape is one domino. The child {@link PShape#getName() name}
+	 * encodes an integer “class” identifying one of four standard domino types
+	 * (horizontal/vertical orientation and checkerboard parity).
+	 * </p>
+	 *
+	 * @param originX  x-coordinate of the <b>center</b> of the generated tiling.
+	 * @param originY  y-coordinate of the <b>center</b> of the generated tiling.
+	 * @param order    Aztec diamond order {@code n}; must be {@code >= 1}.
+	 * @param cellSize width/height of underlying grid cells; must be {@code > 0}.
+	 * @param seed     seed used to initialise the RNG for reproducible tilings.
+	 * @return a flattened {@link PShape} whose child faces are axis-aligned domino
+	 *         rectangles tiling the Aztec diamond; each child’s {@code name}
+	 *         encodes one of four domino classes.
+	 * @since 2.2
+	 */
+	public static PShape aztecDiamond(double originX, double originY, int order, double cellSize, long seed) {
+		AztecDiamond a = new AztecDiamond(order, GEOM_FACTORY, new Random(seed));
+		var polys = a.toMultiPolygon(cellSize, originX, originY);
+		var out = PGS.extractPolygons(polys).stream().map(poly -> {
+			var s = toPShape(poly);
+			int id = (int) poly.getUserData();
+			s.setName(String.valueOf(id));
+			return s;
+		}).toList();
+		return PGS_Conversion.flatten(out);
 	}
 
 	/**
