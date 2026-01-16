@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `intersections()` to `PGS_SegmentSet`. Computes all intersection points among the supplied edges.
 * `squareGrid()` to `PGS_Tiling`. Divides the plane into a simple axis-aligned grid using square cells.
 * `aztecDiamond()` to `PGS_Tiling`. Produces a random domino tiling of the Aztec diamond of a given order.
+* `perpendicularPathSegments()` to `PGS_SegmentSet`. Extracts perpendicular segments along each linear component of shape, with each segment centered on the path/outline.
 
 ### Changes
 * These methods in `PGS_Meshing` are more performant and robust: `urquhartFaces()`, `gabrielFaces()`, `spannerFaces()`, `relativeNeighborFaces()`, `edgeCollapseQuadrangulation()`, `centroidQuadrangulation()`.

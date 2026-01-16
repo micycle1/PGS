@@ -14,6 +14,7 @@ import org.jgrapht.alg.interfaces.MatchingAlgorithm;
 import org.jgrapht.alg.matching.blossom.v5.KolmogorovWeightedMatching;
 import org.jgrapht.alg.matching.blossom.v5.KolmogorovWeightedPerfectMatching;
 import org.jgrapht.alg.matching.blossom.v5.ObjectiveSense;
+import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.algorithm.RobustLineIntersector;
 import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.dissolve.LineDissolver;
@@ -30,6 +31,8 @@ import org.locationtech.jts.noding.SegmentSetMutualIntersector;
 import org.locationtech.jts.noding.SegmentString;
 import org.locationtech.jts.noding.SegmentStringUtil;
 import org.tinfour.common.IIncrementalTin;
+
+import com.github.micycle1.geoblitz.IndexedLengthIndexedLine;
 
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.FastAtan2;
@@ -347,6 +350,158 @@ public class PGS_SegmentSet {
 			a.add(cos * -l, sin * -l);
 			edges.add(new PEdge(a, b));
 		}
+		return edges;
+	}
+
+	/**
+	 * Function that supplies the perpendicular segment length at each sampled
+	 * position along a shape component (optionally varying by location, phase, or
+	 * normal angle).
+	 */
+	@FunctionalInterface
+	public interface SegmentLengthFn {
+		/**
+		 * @param x        sampled boundary point x
+		 * @param y        sampled boundary point y
+		 * @param posFrac  fractional position along the current component in [0,1)
+		 *                 (includes {@code startOffset} phase)
+		 * @param angleRad angle of the (outward) unit normal in radians at the sample.
+		 *                 (Tangent angle is {@code angleRad - PI/2}).
+		 * @return desired segment length L. If {@code <= 0}, the segment is skipped.
+		 */
+		double length(double x, double y, double posFrac, double angleRad);
+	}
+
+	/**
+	 * Extracts perpendicular segments along each linear component of {@code shape},
+	 * with each segment centered on the path/outline.
+	 *
+	 * <p>
+	 * This method samples positions along each linear component (each path or
+	 * polygon boundary) at approximately {@code interSegmentDistance} spacing. At
+	 * every sampled position it builds a length {@code L} segment that is
+	 * perpendicular to the local direction and centered on the sampled point (i.e.
+	 * it extends {@code L/2} to each side).
+	 *
+	 * <p>
+	 * {@code startOffset} is wrapped into {@code [0,1)} and acts like a phase along
+	 * each component. For closed boundaries, increasing {@code startOffset}
+	 * advances sampling counterclockwise and decreasing it advances clockwise. For
+	 * open paths, it advances forward/backward along the path direction.
+	 *
+	 * @param shape                the input {@link PShape} containing rings or line
+	 *                             strings
+	 * @param interSegmentDistance spacing between successive segments along each
+	 *                             component (arc-length units)
+	 * @param L                    length of each perpendicular segment (must be
+	 *                             &gt; 0)
+	 * @param startOffset          fractional phase along each component (0..1);
+	 *                             values outside this range are wrapped
+	 * @return a list of {@link PEdge} segments from every linear component; empty
+	 *         if none produce segments
+	 * @since 2.2
+	 */
+	public static List<PEdge> perpendicularPathSegments(PShape shape, double interSegmentDistance, double L, double startOffset) {
+		return perpendicularPathSegments(shape, interSegmentDistance, (x, y, t, a) -> L, startOffset);
+	}
+
+	/**
+	 * Extracts perpendicular segments along each linear component of {@code shape},
+	 * with each segment centered on the path/outline, using a user-supplied
+	 * function to vary segment length.
+	 *
+	 * <p>
+	 * This method samples positions along each linear component (each path or
+	 * polygon boundary) at approximately {@code interSegmentDistance} spacing. At
+	 * every sampled position it builds a length {@code L} segment that is
+	 * perpendicular to the local direction and centered on the sampled point (i.e.
+	 * it extends {@code L/2} to each side).
+	 *
+	 * <p>
+	 * {@code startOffset} is wrapped into {@code [0,1)} and acts like a phase along
+	 * each component. For closed boundaries, increasing {@code startOffset}
+	 * advances sampling counterclockwise and decreasing it advances clockwise. For
+	 * open paths, it advances forward/backward along the path direction.
+	 *
+	 * @param shape                the input {@link PShape} containing rings or line
+	 *                             strings
+	 * @param interSegmentDistance spacing between successive segments along each
+	 *                             component (arc-length units)
+	 * @param lengthFn             function that returns a per-sample segment length
+	 * @param startOffset          fractional phase along each component (0..1);
+	 *                             values outside this range are wrapped
+	 * @return a list of {@link PEdge} segments; empty if none produce segments
+	 * @since 2.2
+	 */
+	public static List<PEdge> perpendicularPathSegments(PShape shape, double interSegmentDistance, SegmentLengthFn lengthFn, double startOffset) {
+		List<PEdge> edges = new ArrayList<>();
+		if (interSegmentDistance <= 0 || lengthFn == null) {
+			return edges;
+		}
+
+		final double startNorm = ((startOffset % 1.0) + 1.0) % 1.0;
+
+		PGS.applyToLinealGeometries(shape, line -> {
+
+			final boolean closed = line.isClosed();
+
+			// Only meaningful for closed components; keeps "outward" consistent.
+			if (closed && Orientation.isCCW(line.getCoordinates())) {
+				line = line.reverse();
+			}
+
+			final IndexedLengthIndexedLine l = new IndexedLengthIndexedLine(line);
+			final double end = l.getEndIndex();
+			if (end <= 0) {
+				return line;
+			}
+
+			final int count = Math.max(1, (int) Math.round(end / interSegmentDistance));
+			final double increment = 1.0 / count;
+
+			// ε chosen automatically; inline clamp
+			final double eps = Math.max(end * 1e-4, Math.min(interSegmentDistance * 0.35, end * 0.01));
+
+			for (int i = 0; i < count; i++) {
+				final double posFrac = (startNorm + i * increment) % 1.0;
+				final double idx = posFrac * end;
+
+				final double idxM = closed ? wrapIndex(idx - eps, end) : Math.max(0.0, Math.min(end, idx - eps));
+
+				final double idxP = closed ? wrapIndex(idx + eps, end) : Math.max(0.0, Math.min(end, idx + eps));
+
+				final Coordinate pm = l.extractPoint(idxM);
+				final Coordinate pp = l.extractPoint(idxP);
+				final Coordinate pc = l.extractPoint(idx);
+
+				final double tx = pp.x - pm.x;
+				final double ty = pp.y - pm.y;
+				final double tlen = Math.sqrt(tx * tx + ty * ty);
+				if (tlen == 0) {
+					continue;
+				}
+
+				// Left-hand unit normal (-ty, tx). For normalized CW rings, this points
+				// outward.
+				final double nx = -ty / tlen;
+				final double ny = tx / tlen;
+				final double normalAngle = FastAtan2.atan2(ny, nx);
+
+				final double L = lengthFn.length(pc.x, pc.y, posFrac, normalAngle);
+				if (!(L > 0)) {
+					continue;
+				}
+
+				final double half = L * 0.5;
+
+				PVector a = new PVector((float) (pc.x - nx * half), (float) (pc.y - ny * half));
+				PVector b = new PVector((float) (pc.x + nx * half), (float) (pc.y + ny * half));
+				edges.add(new PEdge(a, b));
+			}
+
+			return line;
+		});
+
 		return edges;
 	}
 
@@ -674,5 +829,13 @@ public class PGS_SegmentSet {
 
 	private static boolean intersect(Coordinate A, Coordinate B, Coordinate C, Coordinate D) {
 		return ccw(A, C, D) != ccw(B, C, D) && ccw(A, B, C) != ccw(A, B, D);
+	}
+
+	private static double wrapIndex(double idx, double end) {
+		double r = idx % end;
+		if (r < 0) {
+			r += end;
+		}
+		return r;
 	}
 }
