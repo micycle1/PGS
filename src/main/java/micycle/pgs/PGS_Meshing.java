@@ -33,7 +33,6 @@ import org.locationtech.jts.coverage.CoverageValidator;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.noding.SegmentString;
-import org.locationtech.jts.operation.overlay.snap.GeometrySnapper;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.tinfour.common.IConstraint;
 import org.tinfour.common.IIncrementalTin;
