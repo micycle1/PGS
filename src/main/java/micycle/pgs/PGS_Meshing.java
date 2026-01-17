@@ -799,6 +799,24 @@ public class PGS_Meshing {
 	}
 
 	/**
+	 * Convenience overload of {@link #fixBrokenFaces(PShape, double, boolean)} that
+	 * performs endpoint-only snapping within {@code tolerance} and then polygonises
+	 * the result ({@code polygonise = true}).
+	 *
+	 * @param coverage  input coverage as a {@link PShape}; may include polygons and
+	 *                  broken boundary lines
+	 * @param tolerance maximum distance within which endpoints may be
+	 *                  clustered/snapped
+	 * @return a flattened {@link PShape} containing polygonal faces, and any
+	 *         remaining linework
+	 * @see #fixBrokenFaces(PShape, double, boolean)
+	 * @since 2.2
+	 */
+	public static PShape fixBrokenFaces(PShape coverage, double tolerance) {
+		return fixBrokenFaces(coverage, tolerance, true);
+	}
+
+	/**
 	 * Repairs broken faces in near-coverage linework using endpoint-only snapping,
 	 * then polygonises the result.
 	 * <p>
@@ -849,11 +867,14 @@ public class PGS_Meshing {
 	 * @since 2.2
 	 */
 	@SuppressWarnings("unchecked")
-	public static PShape fixBrokenFaces(PShape coverage, double tolerance) {
-		// TODO use GeometrySnapper.snapToSelf()?
+	public static PShape fixBrokenFaces(PShape coverage, double tolerance, boolean polygonise) {
 		var g = fromPShape(coverage);
 		EndpointSnapper snapper = new EndpointSnapper(tolerance);
 		var fixed = snapper.snapEndpoints(g, true);
+
+		if (!polygonise) {
+			return toPShape(fixed);
+		}
 
 		Polygonizer p = new Polygonizer(false);
 		p.add(fixed);

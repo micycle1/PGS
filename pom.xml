@@ -219,6 +219,12 @@
 			<version>4.5.0</version>
 			<scope>provided</scope> <!-- don't package into uber jar -->
 			<optional>true</optional> <!-- user artifact should override when provided -->
+			<exclusions>
+				<exclusion>
+					<groupId>commons-logging</groupId>
+					<artifactId>commons-logging</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>org.locationtech.jts</groupId>
@@ -306,11 +312,6 @@
 			</exclusions>
 		</dependency>
 		<dependency>
-			<groupId>it.unimi.dsi</groupId>
-			<artifactId>fastutil</artifactId>
-			<version>8.5.18</version>
-		</dependency>
-		<dependency>
 			<groupId>net.jafama</groupId>
 			<artifactId>jafama</artifactId>
 			<version>2.3.2</version>
@@ -332,6 +333,10 @@
 				<exclusion>
 					<groupId>ch.qos.logback</groupId>
 					<artifactId>logback-core</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>commons-logging</groupId>
+					<artifactId>commons-logging</artifactId>
 				</exclusion>
 			</exclusions>
 		</dependency>

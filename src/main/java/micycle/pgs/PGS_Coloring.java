@@ -4,7 +4,6 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
-import org.jgrapht.alg.color.ColorRefinementAlgorithm;
 import org.jgrapht.alg.color.LargestDegreeFirstColoring;
 import org.jgrapht.alg.color.RandomGreedyColoring;
 import org.jgrapht.alg.color.SaturationDegreeColoring;
@@ -143,6 +142,25 @@ public final class PGS_Coloring {
 	public static Map<PShape, Integer> colorMesh(Collection<PShape> shapes, ColoringAlgorithm coloringAlgorithm) {
 		final Coloring<PShape> coloring = findColoring(shapes, coloringAlgorithm);
 		return coloring.getColors();
+	}
+
+	/**
+	 * Computes a coloring of the given mesh shape using the default coloring
+	 * algorithm ({@link ColoringAlgorithm#DBLAC DBLAC}) and applies the provided
+	 * palette to its faces.
+	 * <p>
+	 * This method mutates the fill colour of the input {@code meshShape} by setting
+	 * the fill of each child face {@link PShape}. If the computed number of
+	 * required colors exceeds the palette length.
+	 *
+	 * @param meshShape    a GROUP {@link PShape} whose children constitute the
+	 *                     faces of a <b>conforming</b> mesh
+	 * @param colorPalette the colors with which to color the mesh
+	 * @return the input {@code meshShape} (whose faces have now been colored)
+	 * @see #colorMesh(PShape, ColoringAlgorithm, int[])
+	 */
+	public static PShape colorMesh(PShape meshShape, int[] colorPalette) {
+		return colorMesh(meshShape, ColoringAlgorithm.DBLAC, colorPalette);
 	}
 
 	/**

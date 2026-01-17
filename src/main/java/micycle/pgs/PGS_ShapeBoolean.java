@@ -228,7 +228,7 @@ public final class PGS_ShapeBoolean {
 		var lB = LinearComponentExtracter.getGeometry(bG);
 
 		Polygonizer polygonizer = new Polygonizer(false);
-		polygonizer.add(OverlayNG.overlay(lA, lB, OverlayOp.UNION, new PrecisionModel(-1e-3)));
+		polygonizer.add(OverlayNG.overlay(lA, lB, OverlayOp.UNION, PGS.PM));
 
 		return toPShape(polygonizer.getGeometry());
 	}
