@@ -128,6 +128,7 @@ public class PGS_Construction {
 	 * @param centerX centre point X
 	 * @param centerY centre point Y
 	 * @param width   polygon width
+	 * @return a PShape representing a regular polygon
 	 * @since 2.0
 	 */
 	public static PShape createRegularPolyon(int n, double centerX, double centerY, double width) {
@@ -234,7 +235,7 @@ public class PGS_Construction {
 			r = Math.pow(t1 + t2, 1 / n1);
 			if (Math.abs(r) != 0) {
 				r *= radius; // multiply r (0...1) by (max) radius
-//				r = radius/r;
+				// r = radius/r;
 				shape.vertex((float) (centerX + r * FastMath.cos(angle)), (float) (centerY + r * FastMath.sin(angle)));
 			}
 
@@ -376,7 +377,7 @@ public class PGS_Construction {
 	 * @param outerRadius The outer radius of the star
 	 * @param roundness   A roundness value between 0.0 and 1.0, for the inner and
 	 *                    outer corners of the star.
-	 * @return The star shape
+	 * @return The star shape as a PShape
 	 */
 	public static PShape createStar(double centerX, double centerY, int numRays, double innerRadius, double outerRadius, double roundness) {
 		roundness = Math.max(Math.min(1, roundness), 0);

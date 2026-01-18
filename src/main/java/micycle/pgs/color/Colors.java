@@ -1,5 +1,13 @@
 package micycle.pgs.color;
 
+/**
+ * Provides a collection of standard and library-specific color constants as
+ * ARGB integers. These colors are used for default styling of generated
+ * geometries.
+ * 
+ * @author Michael Carleton
+ *
+ */
 public final class Colors {
 
 	/** ColorUtils (0, 0, 0) */

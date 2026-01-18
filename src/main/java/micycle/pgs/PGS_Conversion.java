@@ -1187,7 +1187,7 @@ public final class PGS_Conversion {
 	public static String toWKT(PShape shape) {
 		WKTWriter writer = new WKTWriter(2);
 		writer.setPrecisionModel(new PrecisionModel(PrecisionModel.FLOATING_SINGLE));
-//		writer.setMaxCoordinatesPerLine(1);
+		// writer.setMaxCoordinatesPerLine(1);
 		return writer.writeFormatted(fromPShape(shape));
 	}
 

@@ -406,6 +406,10 @@ public class PGS_Polygonisation {
 	 * primarily by Y then X (horizontal scanlines). Otherwise sorted primarily by X
 	 * then Y (vertical scanlines). After sorting, a 2-opt style crossing removal is
 	 * applied by iteratively reversing segments that cause segment intersections.
+	 * 
+	 * @param points     the input point set
+	 * @param primaryIsY whether to sort primarily by Y (true) or X (false)
+	 * @return a simple polygon PShape
 	 */
 	private static PShape scanAndResolve(Collection<PVector> points, boolean primaryIsY) {
 		// defensive handling
@@ -435,6 +439,12 @@ public class PGS_Polygonisation {
 		return toPolygon(seq);
 	}
 
+	/**
+	 * Computes the convex hull of a point set using the Monotone Chain algorithm.
+	 * 
+	 * @param pts list of points
+	 * @return a list of points representing the convex hull in CCW order
+	 */
 	private static List<PVector> convexHullMonotoneChain(List<PVector> pts) {
 		// returns CCW hull without repeating the first point
 		int n = pts.size();
@@ -505,6 +515,13 @@ public class PGS_Polygonisation {
 		return out;
 	}
 
+	/**
+	 * Inserts a point into a cycle at the position that minimizes the increase in
+	 * total length (cheapest insertion heuristic).
+	 * 
+	 * @param cycle the current polygon cycle (modified in place)
+	 * @param p     the point to insert
+	 */
 	private static void insertCheapest(List<PVector> cycle, PVector p) {
 		int n = cycle.size();
 		if (n == 0) {
@@ -539,6 +556,9 @@ public class PGS_Polygonisation {
 	private static record Info(PVector p, double r, double theta) {
 	}
 
+	/**
+	 * Converts a list of vertices into a closed polygon PShape.
+	 */
 	private static PShape toPolygon(List<PVector> points) {
 		if (!points.get(0).equals(points.get(points.size() - 1))) {
 			points.add(points.get(0)); // close

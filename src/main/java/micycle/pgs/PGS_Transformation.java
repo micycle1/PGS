@@ -37,7 +37,7 @@ public final class PGS_Transformation {
 	 * Scales the dimensions of the shape by a scaling factor relative to its
 	 * centroid.
 	 * 
-	 * @param shape
+	 * @param shape the PShape to scale
 	 * @param scale X and Y axis scale factor
 	 * @return A new copy of {@code shape} scaled relative to its centroid.
 	 */
@@ -54,7 +54,7 @@ public final class PGS_Transformation {
 	/**
 	 * Scales the shape relative to its centroid.
 	 * 
-	 * @param shape
+	 * @param shape  the PShape to scale
 	 * @param scaleX X-axis scale factor
 	 * @param scaleY Y-axis scale factor
 	 * @return A new copy of {@code shape} scaled relative to its centroid.
@@ -152,7 +152,7 @@ public final class PGS_Transformation {
 	 * Resizes a shape (based on its envelope) to the given dimensions, relative to
 	 * its centroid.
 	 * 
-	 * @param shape
+	 * @param shape        the PShape to resize
 	 * @param targetWidth  width of the output copy
 	 * @param targetHeight height of the output copy
 	 * @return resized copy of input shape
@@ -593,7 +593,8 @@ public final class PGS_Transformation {
 	 * 
 	 * @param shape
 	 * @param y     y-coordinate of horizontal reflection line
-	 * @return A new {@code PShape} mirrored across the horizontal line at {@code y}.
+	 * @return A new {@code PShape} mirrored across the horizontal line at
+	 *         {@code y}.
 	 */
 	public static PShape flipHorizontal(PShape shape, double y) {
 		AffineTransformation t = AffineTransformation.reflectionInstance(-1, y, 1, y);

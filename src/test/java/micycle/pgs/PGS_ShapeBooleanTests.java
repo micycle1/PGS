@@ -24,6 +24,18 @@ class PGS_ShapeBooleanTests {
 	}
 
 	@Test
+	void testSelfUnion() {
+		PShape a = createSquare(0, 0, 10);
+		PShape b = createSquare(5, 0, 10);
+		var s = PGS_Conversion.flatten(a, b);
+		PShape union = PGS_ShapeBoolean.union(s);
+
+		// Expected area: (10*10) + (10*10) - (5*10) = 150
+		assertEquals(150.0, PGS_ShapePredicates.area(union), 1e-6);
+		assertEquals(1, union.getChildCount() == 0 ? 1 : union.getChildCount());
+	}
+
+	@Test
 	void testPolygonPolygonIntersection() {
 		PShape a = createSquare(0, 0, 10);
 		PShape b = createSquare(5, 5, 10);
