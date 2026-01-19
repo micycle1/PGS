@@ -41,6 +41,7 @@ import micycle.pgs.commons.DiscreteCurveEvolution.DCETerminationCallback;
 import micycle.pgs.commons.EllipticFourierDesc;
 import micycle.pgs.commons.FastAtan2;
 import micycle.pgs.commons.GaussianLineSmoothing;
+import micycle.pgs.commons.HausdorffInterpolator;
 import micycle.pgs.commons.LaneRiesenfeldSmoothing;
 import micycle.pgs.commons.NewtonThieleRingMorpher;
 import micycle.pgs.commons.SchneiderBezierFitter;
@@ -1114,6 +1115,31 @@ public final class PGS_Morphology {
 		}
 
 		return out;
+	}
+
+	/**
+	 * Interpolates ("morphs") between two shapes using a Hausdorff-distance based
+	 * construction.
+	 * <p>
+	 * The interpolation is based on the idea of buffering each input shape by a
+	 * complementary amount (derived from the Hausdorff distance between the shapes)
+	 * and taking the intersection of those buffers to produce an intermediate
+	 * shape. This tends to produce a robust intermediate even when the two shapes
+	 * have different vertex counts or do not have a clear vertex-to-vertex
+	 * correspondence.
+	 *
+	 * @param from                the starting shape (α = 0)
+	 * @param to                  the ending shape (α = 1)
+	 * @param interpolationFactor the interpolation parameter α (in {@code [0,1]})
+	 * @return a new {@code PShape} representing the Hausdorff morph between
+	 *         {@code from} and {@code to}
+	 * @since 2.2
+	 */
+	public static PShape hausdorffInterpolate(PShape from, PShape to, double interpolationFactor) {
+		var gFrom = fromPShape(from);
+		var gTo = fromPShape(to);
+		var i = HausdorffInterpolator.interpolateUsingEstimatedHausdorff(gFrom, gTo, interpolationFactor, 1, 16);
+		return toPShape(i);
 	}
 
 	/**
