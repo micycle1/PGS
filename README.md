@@ -333,10 +333,12 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
-    <td align="center" valign="center"><b>Hausdorff Interpolation</td>
+    <td align="center" valign="center"><b>Dilation Morph</td>
+    <td align="center" valign="center"><b>Voronoi Morph</td>
   </tr>
   <tr>
-    <td valign="top" width="25%"><img src="resources/morphology/hausdorffInterpolate.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/dilationMorph.gif"></td>
+    <td valign="top" width="25%"><img src="resources/morphology/voronoiMorph.gif"></td>
   </tr>
 </table>
 

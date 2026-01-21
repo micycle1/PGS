@@ -45,6 +45,7 @@ import micycle.pgs.commons.HausdorffInterpolator;
 import micycle.pgs.commons.LaneRiesenfeldSmoothing;
 import micycle.pgs.commons.NewtonThieleRingMorpher;
 import micycle.pgs.commons.SchneiderBezierFitter;
+import micycle.pgs.commons.VoronoiInterpolator;
 import micycle.uniformnoise.UniformNoise;
 import net.jafama.FastMath;
 import processing.core.PConstants;
@@ -1119,27 +1120,91 @@ public final class PGS_Morphology {
 
 	/**
 	 * Interpolates ("morphs") between two shapes using a Hausdorff-distance based
-	 * construction.
+	 * <em>dilation</em> approach.
 	 * <p>
-	 * The interpolation is based on the idea of buffering each input shape by a
-	 * complementary amount (derived from the Hausdorff distance between the shapes)
-	 * and taking the intersection of those buffers to produce an intermediate
-	 * shape. This tends to produce a robust intermediate even when the two shapes
-	 * have different vertex counts or do not have a clear vertex-to-vertex
-	 * correspondence.
+	 * The intermediate shape is computed by buffering each input by a complementary
+	 * amount (based on the estimated Hausdorff distance between the shapes) and
+	 * intersecting the two buffers. This provides a correspondence-free morph that
+	 * works even when the inputs have different vertex counts, components, or
+	 * holes.
 	 *
-	 * @param from                the starting shape (α = 0)
-	 * @param to                  the ending shape (α = 1)
-	 * @param interpolationFactor the interpolation parameter α (in {@code [0,1]})
+	 * @param from        the starting shape (α = 0)
+	 * @param to          the ending shape (α = 1)
+	 * @param morphFactor the interpolation parameter α (in {@code [0,1]})
 	 * @return a new {@code PShape} representing the Hausdorff morph between
 	 *         {@code from} and {@code to}
 	 * @since 2.2
 	 */
-	public static PShape hausdorffInterpolate(PShape from, PShape to, double interpolationFactor) {
+	public static PShape dilationMorph(PShape from, PShape to, double morphFactor) {
 		var gFrom = fromPShape(from);
 		var gTo = fromPShape(to);
-		var i = HausdorffInterpolator.interpolateUsingEstimatedHausdorff(gFrom, gTo, interpolationFactor, 1, 16);
+		var i = HausdorffInterpolator.interpolateUsingEstimatedHausdorff(gFrom, gTo, morphFactor, 1, 15);
 		return toPShape(i);
+	}
+
+	/**
+	 * Computes the Voronoi-based Hausdorff morph between two shapes.
+	 * <p>
+	 * Convenience overload for
+	 * {@link #voronoiMorph(PShape, PShape, double, double, boolean)} using default
+	 * parameters.
+	 * <p>
+	 * Uses {@code maxSegmentLength = 0} (no boundary densification) and
+	 * {@code unionResult = true} (returns a cleaned area geometry).
+	 *
+	 * @param from        the starting shape (α = 0)
+	 * @param to          the ending shape (α = 1)
+	 * @param morphFactor the morph parameter α, in {@code [0,1]}
+	 * @return a new {@code PShape} representing the Voronoi Hausdorff morph between
+	 *         {@code from} and {@code to}
+	 * @see #voronoiMorph(PShape, PShape, double, double, boolean)
+	 * @since 2.2
+	 */
+	public static PShape voronoiMorph(PShape from, PShape to, double morphFactor) {
+		return voronoiMorph(from, to, morphFactor, 0, true);
+	}
+
+	/**
+	 * Interpolates ("morphs") between two shapes using a <em>Voronoi partition</em>
+	 * approach.
+	 * <p>
+	 * The non-overlapping parts of each input are partitioned by Voronoi cells
+	 * induced by sampled boundary sites of the other shape; each partition piece is
+	 * then moved toward its closest site:
+	 * <ul>
+	 * <li>closest <em>vertex</em>: uniform scaling toward that vertex,</li>
+	 * <li>closest <em>edge</em>: scaling perpendicular to the edge’s supporting
+	 * line.</li>
+	 * </ul>
+	 * The result is the union of transformed pieces from {@code from} using
+	 * fraction {@code α} and transformed pieces from {@code to} using fraction
+	 * {@code 1-α}, plus their overlap.
+	 * <p>
+	 * This method supports polygons with holes and groups with disconnected
+	 * components, and does not require any explicit correspondence between the
+	 * inputs.
+	 *
+	 * @param from             the starting shape (α = 0)
+	 * @param to               the ending shape (α = 1)
+	 * @param morphFactor      the morph parameter α, in {@code [0,1]}
+	 * @param maxSegmentLength maximum segment length used to densify boundaries
+	 *                         when sampling Voronoi sites; {@code <= 0} disables
+	 *                         densification
+	 * @param unionResult      if {@code true}, unions the result into a clean area
+	 *                         geometry (slower); if {@code false}, returns a
+	 *                         combined multi/collection geometry (faster) that may
+	 *                         retain overlaps/seams
+	 * @return a new {@code PShape} representing the Voronoi-partition morph between
+	 *         {@code from} and {@code to}
+	 * @see #voronoiMorph(PShape, PShape, double)
+	 * @since 2.2
+	 */
+	public static PShape voronoiMorph(PShape from, PShape to, double morphFactor, double maxSegmentLength, boolean unionResult) {
+		var gFrom = fromPShape(from);
+		var gTo = fromPShape(to);
+		var pvp = VoronoiInterpolator.prepareVoronoiPartition(gFrom, gTo, maxSegmentLength, 0);
+		var g = VoronoiInterpolator.interpolateVoronoi(pvp, morphFactor, unionResult);
+		return toPShape(g);
 	}
 
 	/**

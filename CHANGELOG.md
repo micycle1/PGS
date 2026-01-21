@@ -30,7 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `squareGrid()` to `PGS_Tiling`. Divides the plane into a simple axis-aligned grid using square cells.
 * `aztecDiamond()` to `PGS_Tiling`. Produces a random domino tiling of the Aztec diamond of a given order.
 * `perpendicularPathSegments()` to `PGS_SegmentSet`. Extracts perpendicular segments along each linear component of shape, with each segment centered on the path/outline.
-* `hausdorffInterpolate()` to `PGS_Morphology`. Interpolates between two shapes using a Hausdorff-distance based construction.
+* `dilationMorph()` to `PGS_Morphology`. Interpolates between two shapes using a Hausdorff-distance based method.
+* `voronoiMorph()` to `PGS_Morphology`. Interpolates between two shapes using a Voronoi-based morph.
 
 ### Changes
 * These methods in `PGS_Meshing` are more performant and robust: `urquhartFaces()`, `gabrielFaces()`, `spannerFaces()`, `relativeNeighborFaces()`, `edgeCollapseQuadrangulation()`, `centroidQuadrangulation()`.
