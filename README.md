@@ -248,6 +248,13 @@ Much of the functionality (but by no means all) is demonstrated below:
     <tr>
     <td align="center" valign="center">A contour map based on a distance field of a shape</td>
   </tr>
+    <tr>
+    <td align="center" valign="center" colspan="2"><b>Isolines from function</td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="resources/contour/isolinesFromFunction1.gif"></td>
+    <td valign="top"><img src="resources/contour/isolinesFromFunction2.gif"></td>
+  </tr>
 </table>
 
 ## *Morphology*

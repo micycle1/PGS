@@ -30,8 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `squareGrid()` to `PGS_Tiling`. Divides the plane into a simple axis-aligned grid using square cells.
 * `aztecDiamond()` to `PGS_Tiling`. Produces a random domino tiling of the Aztec diamond of a given order.
 * `perpendicularPathSegments()` to `PGS_SegmentSet`. Extracts perpendicular segments along each linear component of shape, with each segment centered on the path/outline.
-* `dilationMorph()` to `PGS_Morphology`. Interpolates between two shapes using a Hausdorff-distance based method.
-* `voronoiMorph()` to `PGS_Morphology`. Interpolates between two shapes using a Voronoi-based morph.
+* `dilationMorph()` to `PGS_Morphology`. Morphs between two shapes using a Hausdorff-distance based method.
+* `voronoiMorph()` to `PGS_Morphology`. Morphs between two shapes using a Voronoi-based method.
+* `isolinesFromFunction()` to `PGS_Contour`. Extracts contour lines (isolines) from a user-defined 2D “height map” over a rectangular region.
 
 ### Changes
 * These methods in `PGS_Meshing` are more performant and robust: `urquhartFaces()`, `gabrielFaces()`, `spannerFaces()`, `relativeNeighborFaces()`, `edgeCollapseQuadrangulation()`, `centroidQuadrangulation()`.
@@ -43,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_Conversion.toWKT()` now writes coordinates in float precison by default (previously 2 decimal places).
 * Reimplemented `PGS_Morphology.interpolate()` using a more advanced approach with better quality (though interpolations can still self-intersect).
 * Renamed `shapeIntersection(a, b)` in `PGS_Processing` to `intersectionPoints()`.
+* Reimplemented `PGS_Morphology.distanceField()` with a better quality approach, and added an additional method signature that accepts a 'pole' parameter to compute the distance field with respect to a specific point.
 
 ### Fixed
 * `PGS_Optimisation.closestPoint()` now returns the nearest location on the shape's **boundary** for queries inside a polygonal shape (previously returned the query point itself).

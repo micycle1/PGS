@@ -162,7 +162,7 @@ public final class MarchingSquares {
 	 * @param fn            (x,y) -> value whose zero-set is traced
 	 * @return map of PShape -> level (always 0f)
 	 */
-	public static Map<PShape, Float> isolineZero(double[] bounds, double sampleSpacing, int smoothing, DoubleBinaryOperator fn) {
+	public static Map<PShape, Float> isolineZero(double[] bounds, double sampleSpacing, DoubleBinaryOperator fn) {
 
 		if (sampleSpacing <= 0) {
 			throw new IllegalArgumentException("sampleSpacing must be > 0");

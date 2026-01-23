@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.DoubleBinaryOperator;
 import java.util.stream.Collectors;
 
 import javax.vecmath.Point3d;
@@ -37,6 +38,7 @@ import org.locationtech.jts.operation.buffer.BufferOp;
 import org.locationtech.jts.operation.buffer.BufferParameters;
 import org.locationtech.jts.operation.buffer.OffsetCurve;
 import org.locationtech.jts.operation.distance.IndexedFacetDistance;
+import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.IQuadEdge;
@@ -54,6 +56,7 @@ import org.twak.camp.Skeleton;
 import org.twak.utils.collections.Loop;
 import org.twak.utils.collections.LoopL;
 
+import com.github.micycle1.geoblitz.SegmentVoronoiIndex;
 import com.github.micycle1.geoblitz.YStripesPointInAreaLocator;
 import com.google.common.collect.Lists;
 
@@ -62,6 +65,7 @@ import micycle.medialAxis.MedialAxis.MedialDisk;
 import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.color.ColorUtils;
 import micycle.pgs.color.Colors;
+import micycle.pgs.commons.MarchingSquares;
 import micycle.pgs.commons.PEdge;
 import net.jafama.FastMath;
 import processing.core.PConstants;
@@ -589,42 +593,176 @@ public final class PGS_Contour {
 	}
 
 	/**
-	 * Generates vector contour lines representing a distance field derived from a
-	 * shape.
+	 * Extracts contour lines (isolines) from a user-defined 2D “height map” over a
+	 * rectangular region.
 	 * <p>
-	 * The distance field for a shape assigns each interior point a value equal to
-	 * the shortest Euclidean distance from that point to the shape boundary. This
-	 * method computes a series of contour lines (isolines), where each line
-	 * connects points with the same distance value, effectively visualizing the
-	 * "levels" of the distance field like elevation contours on a topographic map.
+	 * You provide a function {@code f(x,y)} that returns a numeric value for every
+	 * point. This method samples that function on a regular grid over
+	 * {@code bounds}, then traces contour lines that connect points with the same
+	 * value (like elevation contours on a map) using the Marching Squares
+	 * algorithm.
+	 * <p>
+	 * This is a very versatile way to turn simple math functions into computational
+	 * patterns—ripples, bands, interference fields, cellular textures, etc.—without
+	 * manually constructing geometry. The contour value range is determined
+	 * automatically from the sampled minimum/maximum values.
 	 *
-	 * @param shape   A polygonal shape for which to calculate the distance field
-	 *                contours.
-	 * @param spacing The interval between successive contour lines, i.e., the
-	 *                distance value difference between each contour.
-	 * @return A GROUP PShape. Each child of the group is a closed contour line or a
-	 *         section (partition) of a contour line, collectively forming the
-	 *         contour map.
+	 * @param bounds          Sampling bounds as {@code [xmin, ymin, xmax, ymax]}.
+	 * @param sampleSpacing   Grid spacing in coordinate units (smaller yields finer
+	 *                        detail but is slower). 5 is sufficient for very high
+	 *                        quality.
+	 * @param contourInterval The value step between successive contour lines.
+	 * @param valueFunction   Function that returns the value at {@code (x,y)}.
+	 * @return A map of isoline shapes to their corresponding contour (height)
+	 *         value.
+	 * @since 2.2
+	 */
+	public static PShape isolinesFromFunction(double[] bounds, double sampleSpacing, double contourInterval, DoubleBinaryOperator valueFunction) {
+		return isolinesFromFunction(bounds, sampleSpacing, contourInterval, valueFunction, Double.NaN, Double.NaN);
+	}
+
+	/**
+	 * Extracts contour lines (isolines) from a user-defined 2D “height map” over a
+	 * rectangular region, within a specified value range.
+	 * <p>
+	 * You provide a function {@code f(x,y)} that returns a numeric value for every
+	 * point. This method samples that function on a regular grid over
+	 * {@code bounds}, then traces contour lines that connect points with the same
+	 * value (like elevation contours on a map) using the Marching Squares
+	 * algorithm.
+	 * <p>
+	 * This is a very versatile way to turn simple math functions into computational
+	 * patterns. Only contour lines with values in {@code [isolineMin, isolineMax]}
+	 * are produced.
+	 *
+	 * @param bounds          Sampling bounds as {@code [xmin, ymin, xmax, ymax]}.
+	 * @param sampleSpacing   Grid spacing in coordinate units (smaller yields finer
+	 *                        detail but is slower). 5 is sufficient for very high
+	 *                        quality.
+	 * @param contourInterval The value step between successive contour lines.
+	 * @param valueFunction   Function that returns the value at {@code (x,y)}.
+	 * @param isolineMin      Minimum contour value (inclusive).
+	 * @param isolineMax      Maximum contour value (inclusive).
+	 * @return A map of isoline shapes to their corresponding contour (height)
+	 *         value.
+	 * @since 2.2
+	 */
+	public static PShape isolinesFromFunction(double[] bounds, double sampleSpacing, double contourInterval, DoubleBinaryOperator valueFunction,
+			double isolineMin, double isolineMax) {
+		var isolines = MarchingSquares.isolines(bounds, sampleSpacing, contourInterval, isolineMin, isolineMax, valueFunction).keySet();
+
+		var out = PGS_Conversion.flatten(isolines);
+		PGS_Conversion.setAllStrokeColor(out, micycle.pgs.color.Colors.PINK, 4, PConstants.SQUARE);
+
+		return out;
+	}
+
+	/**
+	 * Extracts the <em>zero</em> contour (the 0-level set) from a user-defined 2D
+	 * “height map” over a rectangular region.
+	 * <p>
+	 * You provide a function {@code f(x,y)} that returns a numeric value for every
+	 * point. This method samples that function on a regular grid over
+	 * {@code bounds}, then traces the isoline where {@code f(x,y) = 0} using the
+	 * Marching Squares algorithm.
+	 * <p>
+	 * The resulting contour follows the boundary between positive and negative
+	 * values of {@code f} (i.e., where the function crosses zero). This is useful
+	 * for extracting implicit curves such as circles, signed-distance fields, and
+	 * other zero-crossing patterns.
+	 *
+	 * @param bounds        Sampling bounds as {@code [xmin, ymin, xmax, ymax]}.
+	 * @param sampleSpacing Grid spacing in coordinate units (smaller yields finer
+	 *                      detail but is slower). 5 is sufficient for very high
+	 *                      quality.
+	 * @param valueFunction Function that returns the value at {@code (x,y)}.
+	 * @return A {@link PShape} containing all extracted zero-value isoline
+	 *         polylines within {@code bounds}.
+	 * @since 2.2
+	 */
+	public static PShape isolineZeroFromFunction(double[] bounds, double sampleSpacing, DoubleBinaryOperator valueFunction) {
+		var isolines = MarchingSquares.isolineZero(bounds, sampleSpacing, valueFunction).keySet();
+
+		var out = PGS_Conversion.flatten(isolines);
+		PGS_Conversion.setAllStrokeColor(out, micycle.pgs.color.Colors.PINK, 4, PConstants.SQUARE);
+
+		return out;
+	}
+
+	/**
+	 * Generates interior contour lines (isolines) that radiate from a shape
+	 * “center”.
+	 * <p>
+	 * The result resembles offset curves (inward parallels), but the underlying
+	 * metric is not a pure boundary offset. Instead, contours are derived from a
+	 * distance-like field that balances distance to the boundary with distance to
+	 * an interior pole (chosen automatically), producing characteristic
+	 * rings/levels emanating from the shape’s interior.
+	 *
+	 * @param shape   A polygonal {@link PShape} to generate contours for.
+	 * @param spacing The contour interval between successive lines.
+	 * @return A {@code GROUP} {@link PShape} whose children form the contour set
+	 *         inside {@code shape}.
 	 * @since 1.3.0
+	 * @see #distanceField(PShape, double, PVector)
 	 */
 	public static PShape distanceField(PShape shape, double spacing) {
-		Geometry g = fromPShape(shape);
-		MedialAxis m = new MedialAxis(g);
+		PVector mic = new PVector();
+		PGS_Optimisation.maximumInscribedCircle(shape, 1, mic);
+		return distanceField(shape, spacing, mic);
+	}
 
-		List<PVector> disks = new ArrayList<>();
-		double min = Double.POSITIVE_INFINITY;
-		double max = Double.NEGATIVE_INFINITY;
-		for (MedialDisk d : m.getDisks()) {
-			disks.add(new PVector((float) d.position.x, (float) d.position.y, (float) d.distance));
-			min = Math.min(d.distance, min);
-			max = Math.max(d.distance, max);
-		}
+	/**
+	 * Generates interior contour lines (isolines) that radiate from a specified
+	 * pole point within a polygon.
+	 * <p>
+	 * The result is similar in spirit to inward offset curves, but governed by a
+	 * distance-like field that blends proximity to the boundary with proximity to
+	 * the given {@code pole}. This tends to produce characteristic “rings”/levels
+	 * centred on {@code pole}, clipped to the shape interior.
+	 *
+	 * @param shape   A polygonal {@link PShape} to generate contours for.
+	 * @param spacing The contour interval between successive lines.
+	 * @param pole    The point that the contours are oriented around (need not lie
+	 *                inside {@code shape}).
+	 * @return A {@code GROUP} {@link PShape} whose children form the contour set
+	 *         inside {@code shape}.
+	 * @since 2.2
+	 */
+	public static PShape distanceField(PShape shape, double spacing, PVector pole) {
+		final Geometry g = fromPShape(shape);
+		final var svi = new SegmentVoronoiIndex((Polygon) g, Math.max(spacing / 5.0, 4));
 
-		PShape out = PGS_Conversion.flatten(PGS_Contour.isolines(disks, spacing, min, max, 1).keySet());
-		PShape i = PGS_ShapeBoolean.intersect(shape, out);
-		PGS_Conversion.disableAllFill(i); // since some shapes may be polygons
-		PGS_Conversion.setAllStrokeColor(i, micycle.pgs.color.Colors.PINK, 4, PConstants.SQUARE);
-		return i;
+		DoubleBinaryOperator fn = (x, y) -> {
+			Coordinate c = new Coordinate(x, y);
+			double dGeo = svi.distanceToNearestSegment(c);
+			double dPoint = Math.sqrt((x - pole.x) * (x - pole.x) + (y - pole.y) * (y - pole.y));
+			return dGeo - dPoint; // no abs() as abs produces cusp where dGeo==dPoint
+		};
+
+		var env = g.getEnvelopeInternal();
+		env.expandBy(1);
+		double[] bounds = { env.getMinX(), env.getMinY(), env.getMaxX(), env.getMaxY() };
+
+		double sampleSpacing = Math.max(spacing / 10.0, 4); // heuristic
+		var contourMap = isolinesFromFunction(bounds, sampleSpacing, spacing, fn);
+
+		/*
+		 * Experienced 'Overlay input is mixed-dimension' issue when intersecting
+		 * geometry collection of isolines with g - so force to MultiLineString.
+		 */
+
+		var contours = PGS_Conversion.getChildren(contourMap).stream().map(c -> {
+			var cg = fromPShape(c);
+			return cg.getGeometryType().equals(Geometry.TYPENAME_POLYGON) ? cg.getBoundary() : cg;
+		}).toArray(LineString[]::new);
+
+		var contourStrings = PGS.GEOM_FACTORY.createMultiLineString(contours);
+		var out = toPShape(OverlayNG.overlay(contourStrings, g, OverlayNG.INTERSECTION));
+
+		PGS_Conversion.setAllStrokeColor(out, micycle.pgs.color.Colors.PINK, 4, PConstants.SQUARE);
+
+		return out;
 	}
 
 	/**
@@ -939,7 +1077,7 @@ public final class PGS_Contour {
 		}
 
 		final BufferParameters bufParams = new BufferParameters(8, BufferParameters.CAP_FLAT, style.style, BufferParameters.DEFAULT_MITRE_LIMIT);
-//		bufParams.setSimplifyFactor(5); // can produce "poor" yet interesting results
+		// bufParams.setSimplifyFactor(5); // can produce "poor" yet interesting results
 
 		spacing = Math.max(1, Math.abs(spacing)); // ensure positive and >=1
 		spacing = outwards ? spacing : -spacing;
@@ -1013,8 +1151,8 @@ public final class PGS_Contour {
 	 * @param spacingY
 	 * @return
 	 */
-	private static ArrayList<PVector> generateGrid(double minX, double minY, double maxX, double maxY, double spacingX, double spacingY) {
-		ArrayList<PVector> grid = new ArrayList<>();
+	private static List<PVector> generateGrid(double minX, double minY, double maxX, double maxY, double spacingX, double spacingY) {
+		List<PVector> grid = new ArrayList<>();
 		double[] y = generateDoubleSequence(minY, maxY, spacingY);
 		double[] x = generateDoubleSequence(minX, maxX, spacingX);
 
