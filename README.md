@@ -922,9 +922,11 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
   <tr>
     <td align="center" valign="center"><b>Distance Prune</td>
+    <td align="center" valign="center"><b>k Centers</td>
   </tr>
   <tr>
     <td valign="top" width="25%"><img src="resources/point_set/removeWithinDistance.gif"></td>
+    <td valign="top" width="25%"><img src="resources/point_set/kCenters.gif"></td>
   </tr>
 </table>
 

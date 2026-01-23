@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `dilationMorph()` to `PGS_Morphology`. Morphs between two shapes using a Hausdorff-distance based method.
 * `voronoiMorph()` to `PGS_Morphology`. Morphs between two shapes using a Voronoi-based method.
 * `isolinesFromFunction()` to `PGS_Contour`. Extracts contour lines (isolines) from a user-defined 2D “height map” over a rectangular region.
+* `kCenters()` to `PGS_PointSet`. Selects k points from the input to act as centers that are typically well distributed over the input space.
 
 ### Changes
 * These methods in `PGS_Meshing` are more performant and robust: `urquhartFaces()`, `gabrielFaces()`, `spannerFaces()`, `relativeNeighborFaces()`, `edgeCollapseQuadrangulation()`, `centroidQuadrangulation()`.

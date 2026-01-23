@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.SplittableRandom;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -30,6 +31,7 @@ import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
 import micycle.pgs.commons.GeometricMedian;
+import micycle.pgs.commons.GonHeuristic;
 import micycle.pgs.commons.GreedyTSP;
 import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.PoissonDistributionJRUS;
@@ -1110,6 +1112,45 @@ public final class PGS_PointSet {
 	public static PShape findShortestTour(Collection<PVector> points) {
 		var tour = new GreedyTSP<>(points, (a, b) -> a.dist(b));
 		return PGS_Conversion.fromPVector(tour.getTour());
+	}
+
+	/**
+	 * Selects {@code k} points from {@code points} to act as centers that are
+	 * typically well distributed over the input set (i.e., each new center tends to
+	 * be chosen from the currently “largest uncovered” / most distant region
+	 * relative to the centers selected so far).
+	 *
+	 * @param points the input points; must be non-empty and contain at least
+	 *               {@code k} points
+	 * @param k      the number of centers to return; must be {@code >= 1}
+	 * @return a list containing {@code k} points chosen as centers (subset of
+	 *         {@code points})
+	 * @throws IllegalArgumentException if {@code k <= 0}, {@code points} is empty,
+	 *                                  or {@code points.size() < k}
+	 * @since 2.2
+	 */
+	public static List<PVector> kCenters(Collection<PVector> points, int k) {
+		return kCenters(points, k, System.nanoTime());
+	}
+
+	/**
+	 * Selects {@code k} points from {@code points} to act as centers that are
+	 * typically well distributed over the input set (i.e., each new center tends to
+	 * be chosen from the currently “largest uncovered” / most distant region
+	 * relative to the centers selected so far).
+	 *
+	 * @param points the input points; must be non-empty and contain at least
+	 *               {@code k} points
+	 * @param k      the number of centers to return; must be {@code >= 1}
+	 * @param seed   random seed used for deterministic center selection
+	 * @return a list containing {@code k} points chosen as centers (subset of
+	 *         {@code points})
+	 * @since 2.2
+	 */
+	public static List<PVector> kCenters(Collection<PVector> points, int k, long seed) {
+		GonHeuristic<PVector> gh = new GonHeuristic<>(new Random(seed));
+		var centers = gh.getCenters(points, k, (a, b) -> PGS.distanceSq(a, b));
+		return centers;
 	}
 
 	/**
