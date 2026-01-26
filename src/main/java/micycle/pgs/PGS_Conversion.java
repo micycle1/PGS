@@ -59,6 +59,7 @@ import org.locationtech.jts.io.WKBReader;
 import org.locationtech.jts.io.WKBWriter;
 import org.locationtech.jts.io.WKTReader;
 import org.locationtech.jts.io.WKTWriter;
+import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.precision.GeometryPrecisionReducer;
 import org.locationtech.jts.util.GeometricShapeFactory;
 import org.scoutant.polyline.PolylineDecoder;
@@ -534,9 +535,10 @@ public final class PGS_Conversion {
 
 	/**
 	 * Extracts the contours from a <code>POLYGON</code> or <code>PATH</code>
-	 * PShape, represented as lists of PVector points. It extracts both the exterior
-	 * contour (perimeter) and interior contours (holes). For such PShape types, all
-	 * contours after the first are guaranteed to be holes.
+	 * PShape, represented as lists of PVector points (having closing vertex). It
+	 * extracts both the exterior contour (perimeter) and interior contours (holes).
+	 * For such PShape types, all contours after the first are guaranteed to be
+	 * holes.
 	 * <p>
 	 * Background: The PShape data structure stores all vertices in a single array,
 	 * with contour breaks designated in a separate array of vertex codes. This
@@ -981,17 +983,52 @@ public final class PGS_Conversion {
 	 */
 	public static SimpleGraph<PVector, PEdge> toGraph(PShape shape) {
 		final SimpleGraph<PVector, PEdge> graph = new SimpleWeightedGraph<>(PEdge.class);
+
 		for (PShape child : getChildren(shape)) {
-			final int stride = child.getKind() == PShape.LINES ? 2 : 1;
-			// Handle other child shapes (e.g., faces)
-			for (int i = 0; i < child.getVertexCount() - (child.isClosed() ? 0 : 1); i += stride) {
+
+			final int kind = child.getKind();
+
+			// Contour-aware handling (preserves holes as separate rings)
+			if (kind == PConstants.POLYGON || kind == PShape.PATH) {
+				final List<List<PVector>> rings = toContours(child);
+
+				for (List<PVector> ring : rings) {
+					final int n = ring.size();
+					if (n < 2) {
+						continue;
+					}
+
+					for (int i = 0; i < n - 1; i++) {
+						final PVector a = ring.get(i);
+						final PVector b = ring.get((i + 1));
+						if (a.equals(b)) {
+							continue;
+						}
+
+						final PEdge e = new PEdge(a, b);
+						graph.addVertex(a);
+						graph.addVertex(b);
+						graph.addEdge(a, b, e);
+						graph.setEdgeWeight(e, e.length());
+					}
+				}
+
+				continue;
+			}
+
+			// Original behavior for LINES and other non-contour shapes
+			final int stride = (kind == PConstants.LINES) ? 2 : 1;
+			final int vc = child.getVertexCount();
+			final int end = vc - (child.isClosed() ? 0 : 1);
+
+			for (int i = 0; i < end; i += stride) {
 				final PVector a = child.getVertex(i);
-				final PVector b = child.getVertex((i + 1) % child.getVertexCount());
+				final PVector b = child.getVertex((i + 1) % vc);
 				if (a.equals(b)) {
 					continue;
 				}
-				final PEdge e = new PEdge(a, b);
 
+				final PEdge e = new PEdge(a, b);
 				graph.addVertex(a);
 				graph.addVertex(b);
 				graph.addEdge(a, b, e);
@@ -1004,15 +1041,20 @@ public final class PGS_Conversion {
 
 	/**
 	 * Converts a given SimpleGraph consisting of PVectors and PEdges into a PShape
-	 * by polygonizing its edges. If the graph represented a shape with holes, these
-	 * will not be preserved during the conversion.
+	 * by polygonizing its edges. Nested rings are inferred as holes of the
+	 * enclosing polygon, rather than returned as separate overlapping polygons.
 	 * 
 	 * @param graph the graph to be converted into a PShape.
 	 * @return a PShape representing the polygonized edges of the graph.
 	 * @since 1.4.0
 	 */
 	public static PShape fromGraph(SimpleGraph<PVector, PEdge> graph) {
-		return PGS.polygonizeNodedEdges(graph.edgeSet());
+		final Polygonizer polygonizer = new Polygonizer();
+		var edges = graph.edgeSet().stream().map(e -> PGS.createLineString(e.a, e.b)).toList();
+		polygonizer.add(edges);
+		@SuppressWarnings("unchecked")
+		List<Polygon> polys = (List<Polygon>) polygonizer.getPolygons();
+		return toPShape(PGS.dropHolePolygons(polys, false));
 	}
 
 	/**

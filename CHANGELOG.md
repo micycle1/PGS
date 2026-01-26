@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_Contour.chordalAxis()` can no longer return polygonal output.
 * `PGS_Voronoi.compoundVoronoi()` now uses the given bounds (previously ignored).
 * `PGS_Processing.generateRandomPoints()` can no longer produce different outputs for the same seed on polygons with holes.
+* The `toGraph()` and `fromGraph()` methods in `PGS_Conversion` now correctly handle shapes with holes.
 
 ### Removed
 * `polygonizeLines()` from `PGS_Processing`, in favour of `polygonize(PShape)`.

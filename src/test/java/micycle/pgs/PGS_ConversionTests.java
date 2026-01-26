@@ -649,7 +649,7 @@ class PGS_ConversionTests {
 	@Test
 	void testToFromGraph() {
 		var segs = PGS_SegmentSet.graphMatchedSegments(PGS_PointSet.poisson(50, 50, 950, 950, 20, 0));
-		segs = PGS_SegmentSet.filterAxisAligned(segs, 0.02); // 1 degree
+		segs = PGS_SegmentSet.filterAxisAligned(segs, Math.toRadians(1));
 		var segsS = PGS_SegmentSet.toPShape(segs);
 
 		segsS = PGS_Voronoi.compoundVoronoi(segsS);
@@ -659,6 +659,11 @@ class PGS_ConversionTests {
 		var meshOut = PGS_Conversion.fromGraph(PGS_Conversion.toGraph(meshIn));
 
 		assertTrue(PGS_ShapePredicates.equalsNorm(meshIn, meshOut));
+
+		// test shape with holes
+		var ring = PGS_Construction.createRing(500, 500, 500, 100);
+		var ringOut = PGS_Conversion.fromGraph(PGS_Conversion.toGraph(ring));
+		assertTrue(PGS_ShapePredicates.equalsTopo(ring, ringOut));
 	}
 
 	private static boolean isFilled(PShape shape) {

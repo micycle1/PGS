@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -23,6 +24,7 @@ import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryCollection;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.GeometryFilter;
 import org.locationtech.jts.geom.LineString;
@@ -35,6 +37,7 @@ import org.locationtech.jts.noding.Noder;
 import org.locationtech.jts.noding.SegmentString;
 import org.locationtech.jts.noding.snapround.SnapRoundingNoder;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
+import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.tinspin.index.IndexConfig;
 import org.tinspin.index.kdtree.KDTree;
 
@@ -327,6 +330,83 @@ final class PGS {
 	}
 
 	/**
+	 * Post-processes polygons produced by JTS
+	 * {@link org.locationtech.jts.operation.polygonize.Polygonizer Polygonizer} so
+	 * that nested rings are interpreted as holes of their enclosing polygon.
+	 * <p>
+	 * This is necessary because {@code Polygonizer} returns <em>all</em> bounded
+	 * faces implied by the input linework. For example, when a ring lies inside
+	 * another ring, {@code Polygonizer} will typically produce both the enclosing
+	 * polygon-with-hole <em>and</em> the inner “hole face” as a standalone polygon.
+	 * This method removes those hole faces by classifying faces by nesting depth
+	 * (odd depth = hole, even depth = filled).
+	 * </p>
+	 *
+	 * @param polygonizerFaces polygons returned by {@code Polygonizer}.
+	 * @param dissolve         if {@code true}, unions the kept faces into a
+	 *                         dissolved geometry; if {@code false}, returns a
+	 *                         {@link GeometryCollection} of the kept faces.
+	 * @return a geometry containing only the “filled” faces, with holes inferred
+	 *         from nesting.
+	 */
+	static Geometry dropHolePolygons(List<Polygon> polygonizerFaces, boolean dissolve) {
+		// method could be optimised, but shouldn't need used much
+		if (polygonizerFaces == null || polygonizerFaces.isEmpty()) {
+			return new GeometryFactory().createGeometryCollection();
+		}
+
+		record Face(Polygon face, Polygon shellOnly, double area) {
+		}
+
+		// Build faces with "shell-only" geometry (exterior ring only)
+		List<Face> faces = new ArrayList<>(polygonizerFaces.size());
+		for (Polygon p : polygonizerFaces) {
+			if (p == null || p.isEmpty()) {
+				continue;
+			}
+			LinearRing shell = p.getExteriorRing();
+			Polygon shellOnly = GEOM_FACTORY.createPolygon(shell, null);
+			faces.add(new Face(p, shellOnly, shellOnly.getArea()));
+		}
+
+		// Sort by increasing area to find smallest containing parent efficiently (still
+		// O(n^2))
+		faces.sort(Comparator.comparingDouble(Face::area));
+
+		int n = faces.size();
+		int[] parent = new int[n];
+		Arrays.fill(parent, -1);
+
+		// Parent of i = smallest-area shell that covers a point inside i's shell
+		for (int i = 0; i < n; i++) {
+			Point testPt = faces.get(i).shellOnly().getInteriorPoint();
+			for (int j = i + 1; j < n; j++) {
+				if (faces.get(j).shellOnly().covers(testPt)) {
+					parent[i] = j;
+					break;
+				}
+			}
+		}
+
+		// Keep even-depth faces (filled), drop odd-depth faces (holes)
+		List<Polygon> kept = new ArrayList<>();
+		for (int i = 0; i < n; i++) {
+			int depth = 0;
+			for (int p = parent[i]; p != -1; p = parent[p]) {
+				depth++;
+			}
+			if ((depth & 1) == 0) {
+				kept.add(faces.get(i).face());
+			}
+		}
+
+		if (!dissolve) {
+			return GEOM_FACTORY.createGeometryCollection(kept.toArray(Geometry[]::new));
+		}
+		return kept.isEmpty() ? GEOM_FACTORY.createGeometryCollection() : UnaryUnionOp.union(kept);
+	}
+
+	/**
 	 * Computes a robust noding for a collection of SegmentStrings.
 	 * 
 	 * @param segments
@@ -338,9 +418,9 @@ final class PGS {
 		 * Other noder implementations do not node correctly (fail to detect
 		 * intersections) on many inputs; furthermore, using a very small tolerance
 		 * (i.e. ~1e-10) on SnappingNoder noder on a small tolerance misses
-		 * intersections too (hence 1/1024 chosen as suitable). "Noding robustness issues
-		 * are generally caused by nearly coincident line segments, or by very short
-		 * line segments. Snapping mitigates both of these situations.".
+		 * intersections too (hence 1/1024 chosen as suitable). "Noding robustness
+		 * issues are generally caused by nearly coincident line segments, or by very
+		 * short line segments. Snapping mitigates both of these situations.".
 		 */
 		Noder noder = new SnapRoundingNoder(PGS.PM);
 		noder.computeNodes(segments);
@@ -379,13 +459,13 @@ final class PGS {
 	 * list. Other geometry types contained within the input geometry are ignored.
 	 */
 	static List<Polygon> extractPolygons(Geometry g) {
-	    List<Polygon> polygons = new ArrayList<>();
-	    g.apply((GeometryFilter) geom -> {
-	        if (geom instanceof Polygon) {
-	            polygons.add((Polygon) geom);
-	        }
-	    });
-	    return polygons;
+		List<Polygon> polygons = new ArrayList<>();
+		g.apply((GeometryFilter) geom -> {
+			if (geom instanceof Polygon) {
+				polygons.add((Polygon) geom);
+			}
+		});
+		return polygons;
 	}
 
 	/**
