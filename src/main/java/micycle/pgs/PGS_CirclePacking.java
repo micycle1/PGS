@@ -83,7 +83,7 @@ public final class PGS_CirclePacking {
 		areaCoverRatio = Math.min(areaCoverRatio, 1 - (1e-3));
 		final Geometry geometry = fromPShape(shape);
 		final Geometry obstacles = fromPShape(PGS_Conversion.toPointsPShape(pointObstacles));
-		LargestEmptyCircles lec = new LargestEmptyCircles(obstacles, geometry, areaCoverRatio > 0.95 ? 0.5 : 1);
+		var lec = new LargestEmptyCircles(geometry, obstacles, areaCoverRatio > 0.95 ? 0.5 : 1);
 
 		final double shapeArea = geometry.getArea();
 		double circlesArea = 0;
@@ -321,7 +321,7 @@ public final class PGS_CirclePacking {
 	 */
 	public static List<PVector> maximumInscribedPack(PShape shape, int n, double tolerance) {
 		tolerance = Math.max(0.01, tolerance);
-		LargestEmptyCircles mics = new LargestEmptyCircles(fromPShape(shape), null, tolerance);
+		LargestEmptyCircles mics = new LargestEmptyCircles(fromPShape(shape),  tolerance);
 
 		final List<PVector> out = new ArrayList<>();
 		for (int i = 0; i < n; i++) {
@@ -351,7 +351,7 @@ public final class PGS_CirclePacking {
 	public static List<PVector> maximumInscribedPack(PShape shape, double minRadius, double tolerance) {
 		tolerance = Math.max(0.01, tolerance);
 		minRadius = Math.max(0.01, minRadius);
-		LargestEmptyCircles mics = new LargestEmptyCircles(fromPShape(shape), null, tolerance);
+		LargestEmptyCircles mics = new LargestEmptyCircles(fromPShape(shape), tolerance);
 
 		final List<PVector> out = new ArrayList<>();
 		double[] currentLEC;

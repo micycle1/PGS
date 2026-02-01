@@ -687,8 +687,9 @@ public final class PGS_Optimisation {
 	 */
 	public static List<PVector> largestEmptyCircles(PShape obstacles, @Nullable PShape boundary, int n, double tolerance) {
 		tolerance = Math.max(0.01, tolerance);
-		LargestEmptyCircles lecs = new LargestEmptyCircles(obstacles == null ? null : fromPShape(obstacles), boundary == null ? null : fromPShape(boundary),
-				tolerance);
+		var boundaryG = boundary == null ? null : fromPShape(boundary);
+		var obstaclesG = obstacles == null ? null : fromPShape(obstacles);
+		var lecs = new LargestEmptyCircles(boundaryG, obstaclesG, tolerance);
 
 		final List<PVector> out = new ArrayList<>();
 		for (int i = 0; i < n; i++) {
