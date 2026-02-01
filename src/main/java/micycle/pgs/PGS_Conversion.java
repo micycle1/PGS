@@ -282,14 +282,12 @@ public final class PGS_Conversion {
 				break;
 			case Geometry.TYPENAME_LINEARRING : {
 				// LinearRings are closed by definition
-				// always treat as areal filled polygons
+				// treat as lineal
 				final LineString ring = (LineString) g;
 				shape.setFamily(PShape.PATH);
+				shape.setFill(false);
 
-				// Ensure it's treated like a polygon (filled)
-				shape.setFill(true);
-
-				shape.beginShape(PConstants.POLYGON); // encode polygonness
+				shape.beginShape(PConstants.PATH); // encode polygonness
 				Coordinate[] coords = ring.getCoordinates();
 				// Skip the closing coordinate (same as first)
 				for (int i = 0; i < coords.length - 1; i++) {
@@ -306,7 +304,7 @@ public final class PGS_Conversion {
 				final boolean closed = l.isClosed();
 
 				shape.setFamily(PShape.PATH);
-				shape.setFill(false); // IMPORTANT: never fill LineStrings (even if closed)
+				shape.setFill(false); // never fill LineStrings (even if closed)
 
 				shape.beginShape(PConstants.PATH); // encode lineal
 				final Coordinate[] coords = l.getCoordinates();

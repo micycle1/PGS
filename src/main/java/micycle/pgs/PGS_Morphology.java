@@ -2,6 +2,8 @@ package micycle.pgs;
 
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
+import static micycle.pgs.PGS.GEOM_FACTORY;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiFunction;
@@ -67,7 +69,7 @@ import uk.osgb.algorithm.minkowski_sum.MinkowskiSum;
 public final class PGS_Morphology {
 
 	static {
-		MinkowskiSum.setGeometryFactory(PGS.GEOM_FACTORY);
+		MinkowskiSum.setGeometryFactory(GEOM_FACTORY);
 	}
 
 	private PGS_Morphology() {
@@ -614,7 +616,7 @@ public final class PGS_Morphology {
 			if (ring.isClosed()) {
 				final EllipticFourierDesc efd = new EllipticFourierDesc((LinearRing) ring, descriptorz);
 				Coordinate[] coords = efd.createPolygon();
-				return PGS.GEOM_FACTORY.createLinearRing(coords);
+				return GEOM_FACTORY.createLinearRing(coords);
 			} else {
 				return null; // open linestrings not supported
 			}
@@ -825,9 +827,9 @@ public final class PGS_Morphology {
 
 			// preserve ring-ness if possible
 			if (line instanceof LinearRing) {
-				return PGS.GEOM_FACTORY.createLinearRing(coords);
+				return GEOM_FACTORY.createLinearRing(coords);
 			}
-			return PGS.GEOM_FACTORY.createLineString(coords);
+			return GEOM_FACTORY.createLineString(coords);
 		});
 	}
 
@@ -863,7 +865,7 @@ public final class PGS_Morphology {
 		}
 		coords.closeRing();
 
-		Geometry out = GeometryFixer.fix(PGS.GEOM_FACTORY.createPolygon(coords.toCoordinateArray()));
+		Geometry out = GeometryFixer.fix(GEOM_FACTORY.createPolygon(coords.toCoordinateArray()));
 		return PGS_Conversion.toPShape(out);
 	}
 
@@ -1112,7 +1114,7 @@ public final class PGS_Morphology {
 		final double fraction = 1d / (frames - 1);
 		PShape out = new PShape();
 		for (int i = 0; i < frames; i++) {
-			out.addChild(toPShape(m.interpolate(fraction * i)));
+			out.addChild(toPShape(GEOM_FACTORY.createPolygon(m.interpolate(fraction * i))));
 		}
 
 		return out;

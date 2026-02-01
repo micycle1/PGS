@@ -390,7 +390,7 @@ class PGS_ConversionTests {
 		final PShape shape = toPShape(ring);
 
 		assertEquals(PShape.PATH, shape.getFamily());
-		assertTrue(isFilled(shape), "LinearRings must be treated as filled polygons");
+		assertTrue(!isFilled(shape), "LinearRings should not be treated as filled polygons");
 
 		// toPShape() skips the duplicated closing coordinate
 		assertEquals(coords.length - 1, shape.getVertexCount());
