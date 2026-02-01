@@ -524,7 +524,7 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/voronoi/compoundLines.png"></td>
   </tr>
   <tr>
-    <td align="center" valign="center"><b>Manhatten Voronoi</td>
+    <td align="center" valign="center"><b>Manhattan Voronoi</td>
     <td align="center" valign="center"><b>Power Diagram</td>
     <td align="center" valign="center"><b>Multiplicatively Weighted Voronoi</td>
     <td align="center" valign="center"><b>Farthest-Point Voronoi</td>

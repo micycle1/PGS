@@ -236,7 +236,8 @@ public final class PGS_Optimisation {
 
 	/**
 	 * Finds the rectangle with a maximum area whose sides are parallel to the
-	 * x-axis and y-axis ("axis-aligned"), contained/insribed within a convex shape.
+	 * x-axis and y-axis ("axis-aligned"), contained/inscribed within a convex
+	 * shape.
 	 * <p>
 	 * This method computes the MIR for convex shapes only; if a concave shape is
 	 * passed in, the resulting rectangle will be computed based on its convex hull.

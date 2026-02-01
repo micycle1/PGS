@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * New method signature for `PGS_Conversion.toWKT()` that accepts a precision parameter to control the number of decimal places written.
 * `smoothBezierFit()` to `PGS_Morphology`. Smoothes a shape by fitting Bezier curves to its vertices.
 * `powerDiagram()` to `PGS_Voronoi`. Generates a Power Voronoi Diagram for a set of weighted sites.
-* `manhattenVoronoi()` to `PGS_Voronoi`. Generates a Manhatten Voronoi Diagram for a set of sites and a bounding box.
+* `manhattanVoronoi()` to `PGS_Voronoi`. Generates a Manhattan Voronoi Diagram for a set of sites and a bounding box.
 * `intersectionPoints(shape)` to `PGS_Processing`. Computes all self-intersection points of the linework contained within a single shape.
 * `intersections()` to `PGS_SegmentSet`. Computes all intersection points among the supplied edges.
 * `squareGrid()` to `PGS_Tiling`. Divides the plane into a simple axis-aligned grid using square cells.

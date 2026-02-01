@@ -131,7 +131,7 @@ public class PGS_Construction {
 	 * @return a PShape representing a regular polygon
 	 * @since 2.0
 	 */
-	public static PShape createRegularPolyon(int n, double centerX, double centerY, double width) {
+	public static PShape createRegularPolygon(int n, double centerX, double centerY, double width) {
 		final GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
 		shapeFactory.setNumPoints(n);
 		shapeFactory.setCentre(new Coordinate(centerX, centerY));
@@ -419,8 +419,8 @@ public class PGS_Construction {
 	 */
 	public static PShape createBlobbie(double centerX, double centerY, double maxWidth, double a, double b, double c, double d) {
 		// http://paulbourke.net/geometry/blobbie/
-		final double cirumference = 2 * Math.PI * maxWidth / 2;
-		final int samples = (int) (cirumference / 2); // 1 point every 2 distance
+		final double circumference = 2 * Math.PI * maxWidth / 2;
+		final int samples = (int) (circumference / 2); // 1 point every 2 distance
 		double dt = Math.PI * 2 / samples;
 
 		final CoordinateList blobbieCoords = new CoordinateList();
@@ -555,8 +555,8 @@ public class PGS_Construction {
 		curve.setFill(Colors.WHITE);
 		curve.beginShape();
 
-		final double cirumference = 2 * Math.PI * radius;
-		final int samples = (int) (cirumference / 5); // 1 point every 5 distance
+		final double circumference = 2 * Math.PI * radius;
+		final int samples = (int) (circumference / 5); // 1 point every 5 distance
 		final double angleInc = Math.PI * 2 / samples;
 		double angle = 0;
 

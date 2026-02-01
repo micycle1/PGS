@@ -656,7 +656,6 @@ public final class PGS_Triangulation {
 	 * weights are their euclidean length of their triangulation equivalent.
 	 * 
 	 * @param triangulation triangulation mesh
-	 * @return
 	 * @since 1.3.0
 	 * @see #toTinfourGraph(IIncrementalTin)
 	 * @see #toDualGraph(IIncrementalTin)
@@ -665,9 +664,6 @@ public final class PGS_Triangulation {
 		final SimpleGraph<PVector, PEdge> graph = new SimpleWeightedGraph<>(PEdge.class);
 		final boolean notConstrained = triangulation.getConstraints().isEmpty();
 		triangulation.edges().forEach(e -> {
-//			if (isEdgeOnPerimeter(e)) {
-//				return; // skip to next triangle
-//			}
 			if (notConstrained || e.isConstraintRegionMember()) {
 				final IQuadEdge base = e.getBaseReference();
 				PVector a = toPVector(base.getA());
@@ -686,11 +682,10 @@ public final class PGS_Triangulation {
 	 * Finds the graph equivalent to a triangulation. Graph vertices are
 	 * triangulation vertices; graph edges are triangulation edges.
 	 * <p>
-	 * The output is an undirected weighted graph of Tinfour primtives; edge weights
-	 * are their euclidean length of their triangulation equivalent.
+	 * The output is an undirected weighted graph of Tinfour primitives; edge
+	 * weights are their euclidean length of their triangulation equivalent.
 	 * 
 	 * @param triangulation triangulation mesh
-	 * @return
 	 * @since 1.3.0
 	 * @see #toGraph(IIncrementalTin)
 	 * @see #toDualGraph(IIncrementalTin)
@@ -699,9 +694,6 @@ public final class PGS_Triangulation {
 		final SimpleGraph<Vertex, IQuadEdge> graph = new SimpleWeightedGraph<>(IQuadEdge.class);
 		final boolean notConstrained = triangulation.getConstraints().isEmpty();
 		triangulation.edges().forEach(e -> {
-//			if (isEdgeOnPerimeter(e)) {
-//				return; // skip to next triangle
-//			}
 			if ((notConstrained || e.isConstraintRegionMember())) {
 				final IQuadEdge base = e.getBaseReference();
 				graph.addVertex(base.getA());
@@ -788,26 +780,6 @@ public final class PGS_Triangulation {
 
 	static PEdge toPEdge(final IQuadEdge e) {
 		return new PEdge(toPVector(e.getA()), toPVector(e.getB()));
-	}
-
-	/**
-	 * Determines whether an edge or its dual is on the perimeter.
-	 *
-	 * @param edge a valid instance
-	 * @return true if the edge is on the perimeter; otherwise, false.
-	 */
-	private static boolean isEdgeOnPerimeter(IQuadEdge edge) {
-		/*
-		 * The logic here is that each edge defines one side of a triangle with vertices
-		 * A, B, and C. Vertices A and B are the first and second vertices of the edge,
-		 * vertex C is the opposite one. Triangles lying outside the Delaunay
-		 * Triangulation have a "ghost" vertex for vertex C. Tinfour represents a ghost
-		 * vertex with a null reference. So we test both the edge and its dual to see if
-		 * their vertex C reference is null. Also note that vertex C is the second
-		 * vertex of the forward edge from our edge of interest. Thus the C =
-		 * edge.getForward().getB().
-		 */
-		return edge.getForward().getB() == null || edge.getForwardFromDual().getB() == null;
 	}
 
 	/**

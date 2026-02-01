@@ -65,7 +65,7 @@ public final class PGS_Tiling {
 	 * @param height   height of the quad subdivision plane
 	 * @param maxDepth maximum number of subdivisions (recursion depth)
 	 * @return a GROUP PShape, where each child shape is a face of the subdivision
-	 * @see #rectSubdivision(double, double, int, long) seeded rectSubdivsion()
+	 * @see #rectSubdivision(double, double, int, long) seeded rectSubdivision()
 	 */
 	public static PShape rectSubdivision(final double width, final double height, final int maxDepth) {
 		return rectSubdivision(width, height, maxDepth, System.nanoTime());
@@ -79,7 +79,7 @@ public final class PGS_Tiling {
 	 * @param maxDepth maximum number of subdivisions (recursion depth)
 	 * @param seed     the random seed
 	 * @return a GROUP PShape, where each child shape is a face of the subdivision
-	 * @see #rectSubdivision(double, double, int) non-seeded rectSubdivsion()
+	 * @see #rectSubdivision(double, double, int) non-seeded rectSubdivision()
 	 */
 	public static PShape rectSubdivision(final double width, final double height, int maxDepth, final long seed) {
 		maxDepth++; // so that given depth==0 returns non-divided square
@@ -98,7 +98,7 @@ public final class PGS_Tiling {
 	 * @param maxDepth maximum number of subdivisions (recursion depth)
 	 * @return a GROUP PShape, where each child shape is a face of the subdivision
 	 * @see #triangleSubdivision(double, double, int, long) seeded
-	 *      triangleSubdivsion()
+	 *      triangleSubdivision()
 	 */
 	public static PShape triangleSubdivision(final double width, final double height, final int maxDepth) {
 		return triangleSubdivision(width, height, maxDepth, System.nanoTime());

@@ -149,7 +149,7 @@ public final class PGS_Contour {
 	 * <p>
 	 * In its primitive form, the chordal axis is constructed by joining the
 	 * midpoints of the chords and the centroids of junction and terminal triangles
-	 * of the delaunay trianglution of a shape.
+	 * of the delaunay triangulation of a shape.
 	 * <p>
 	 * It can be considered a more useful alternative to the medial axis for
 	 * obtaining skeletons of discrete shapes.

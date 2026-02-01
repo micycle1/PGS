@@ -796,7 +796,7 @@ public final class PGS_Conversion {
 									"PGS_Conversion Error: Shape contour #%s was identified as a hole but no existing exterior rings contained it.", j));
 						}
 					}
-				} else { // this ring is new polygon (or explictly contour #1)
+				} else { // this ring is new polygon (or explicitly contour #1)
 					ring = GEOM_FACTORY.createLinearRing(contourCoords);
 					if (previousRingIsHole) {
 						previousRingIsHole = false;

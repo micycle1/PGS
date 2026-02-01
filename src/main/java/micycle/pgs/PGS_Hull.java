@@ -18,7 +18,7 @@ import uk.osgb.algorithm.concavehull.ConcaveHull;
 import uk.osgb.algorithm.concavehull.TriCheckerChi;
 
 /**
- * Generates various types of geomtric hulls (convex, concave, etc.) for
+ * Generates various types of geometric hulls (convex, concave, etc.) for
  * polygons and point sets.
  * <p>
  * A hull is the smallest enclosing shape of some nature that contains all

@@ -321,7 +321,7 @@ public final class PGS_CirclePacking {
 	 */
 	public static List<PVector> maximumInscribedPack(PShape shape, int n, double tolerance) {
 		tolerance = Math.max(0.01, tolerance);
-		LargestEmptyCircles mics = new LargestEmptyCircles(fromPShape(shape),  tolerance);
+		LargestEmptyCircles mics = new LargestEmptyCircles(fromPShape(shape), tolerance);
 
 		final List<PVector> out = new ArrayList<>();
 		for (int i = 0; i < n; i++) {

@@ -88,7 +88,7 @@ public final class PGS_ShapePredicates {
 
 	/**
 	 * Determines whether a shape contains every point from a list of points. It is
-	 * faster to use method rather than than calling
+	 * faster to use this method rather than calling
 	 * {@link #containsPoint(PShape, PVector) containsPoint()} repeatedly. Any
 	 * points that lie on the boundary of the shape are considered to be contained.
 	 * 
@@ -224,7 +224,7 @@ public final class PGS_ShapePredicates {
 	}
 
 	/**
-	 * Computes the ratio (density) of the shape's area compared to the area of it's
+	 * Computes the ratio (density) of the shape's area compared to the area of its
 	 * envelope.
 	 * 
 	 * @param shape
@@ -612,8 +612,7 @@ public final class PGS_ShapePredicates {
 	 * in the same order.
 	 * <p>
 	 * Note: If two Polygons have matching vertices, but one is arranged clockwise
-	 * while the other is counter-clockwise, then then this method will return
-	 * false.
+	 * while the other is counter-clockwise, then this method will return false.
 	 * 
 	 * @param a shape a
 	 * @param b shape b

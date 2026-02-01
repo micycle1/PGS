@@ -395,7 +395,7 @@ public final class PGS_PointSet {
 	 * point set is centered around the given center, given by mean coordinates.
 	 * 
 	 * @param centerX x coordinate of the center/mean of the point set
-	 * @param centerY x coordinate of the center/mean of the point set
+	 * @param centerY y coordinate of the center/mean of the point set
 	 * @param sd      standard deviation, which specifies how much the values can
 	 *                vary from the mean. 68% of point samples have a value within
 	 *                one standard deviation of the mean; three standard deviations
@@ -413,7 +413,7 @@ public final class PGS_PointSet {
 	 * by mean coordinates.
 	 * 
 	 * @param centerX x coordinate of the center/mean of the point set
-	 * @param centerY x coordinate of the center/mean of the point set
+	 * @param centerY y coordinate of the center/mean of the point set
 	 * @param sd      standard deviation, which specifies how much the values can
 	 *                vary from the mean. 68% of point samples have a value within
 	 *                one standard deviation of the mean; three standard deviations
@@ -549,7 +549,7 @@ public final class PGS_PointSet {
 	 * (annulus).
 	 * 
 	 * @param centerX     x coordinate of the center/mean of the ring
-	 * @param centerY     x coordinate of the center/mean of the ring
+	 * @param centerY     y coordinate of the center/mean of the ring
 	 * @param innerRadius radius of the ring's hole
 	 * @param outerRadius outer radius of the ring
 	 * @param maxAngle    sweep angle of the ring (in radians). Can be negative

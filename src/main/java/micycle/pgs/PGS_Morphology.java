@@ -319,7 +319,7 @@ public final class PGS_Morphology {
 	 * 
 	 * @param shape
 	 * @param distanceTolerance the tolerance to use
-	 * @return simplifed copy of the shape
+	 * @return simplified copy of the shape
 	 * @see #simplifyVW(PShape, double) simplifyVW()
 	 * @see #simplifyTopology(PShape, double) simplifyTopology()
 	 * @see {@link PGS_Meshing#simplifyMesh(PShape, double, boolean) simplifyMesh()}
@@ -334,9 +334,9 @@ public final class PGS_Morphology {
 	 * 
 	 * @param shape
 	 * @param distanceTolerance The simplification tolerance is specified as a
-	 *                          distance.This is converted to an area tolerance by
+	 *                          distance. This is converted to an area tolerance by
 	 *                          squaring it.
-	 * @return simplifed copy of the shape
+	 * @return simplified copy of the shape
 	 * @see #simplify(PShape, double) simplify()
 	 * @see #simplifyTopology(PShape, double) simplifyTopology()
 	 */
@@ -350,7 +350,7 @@ public final class PGS_Morphology {
 	 * 
 	 * @param shape
 	 * @param distanceTolerance the tolerance to use
-	 * @return simplifed copy of the shape
+	 * @return simplified copy of the shape
 	 * @see #simplify(PShape, double) simplify()
 	 * @see #simplifyVW(PShape, double) simplifyVW()
 	 */

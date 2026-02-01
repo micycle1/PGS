@@ -28,7 +28,7 @@ class PGS_VoronoiTests {
 	
 	@Test
 	void testManhattenVoronoi() {
-		assertEquals(N, PGS_Voronoi.manhattenVoronoi(sites, bounds).getChildCount());
+		assertEquals(N, PGS_Voronoi.manhattanVoronoi(sites, bounds).getChildCount());
 	}
 	
 	@Test

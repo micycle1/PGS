@@ -306,8 +306,8 @@ final class PGS {
 	 * Polygonizes a set of edges using JTS Polygonizer (occasionally
 	 * FastPolygonizer is not robust enough).
 	 * 
-	 * @param edges a collection of NODED (i.e. non intersecting / must onlymeet at
-	 *              their endpoints) edges. The collection can containduplicates.
+	 * @param edges a collection of NODED (i.e. non intersecting / must only meet at
+	 *              their endpoints) edges. The collection can contain duplicates.
 	 * @return a GROUP PShape, where each child shape represents a polygon face
 	 *         formed by the given edges
 	 */
@@ -315,7 +315,7 @@ final class PGS {
 	private static final PShape polygonizeEdgesRobust(Collection<PEdge> edges) {
 		final Set<PEdge> edgeSet = new HashSet<>(edges);
 		final Polygonizer polygonizer = new Polygonizer();
-//		polygonizer.setCheckRingsValid(false);
+		// polygonizer.setCheckRingsValid(false);
 		edgeSet.forEach(ss -> {
 			/*
 			 * NOTE: If the same LineString is added more than once to the polygonizer, the
@@ -556,9 +556,9 @@ final class PGS {
 			ArrayList<LinearRing> rings = new ArrayList<>(g.getNumGeometries());
 			for (int i = 0; i < g.getNumGeometries(); i++) {
 				Polygon poly = (Polygon) g.getGeometryN(i);
-//				if (poly.getNumPoints() == 0) {
-//					continue;
-//				}
+				// if (poly.getNumPoints() == 0) {
+				// continue;
+				// }
 				rings.add(poly.getExteriorRing());
 				for (int j = 0; j < poly.getNumInteriorRing(); j++) {
 					rings.add(poly.getInteriorRingN(j));

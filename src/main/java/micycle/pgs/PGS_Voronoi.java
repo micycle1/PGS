@@ -713,7 +713,7 @@ public final class PGS_Voronoi {
 	 *         Voronoi cells (a GROUP shape whose children are polygonal regions)
 	 * @since 2.2
 	 */
-	public static PShape manhattenVoronoi(Collection<PVector> sites, @Nullable double[] bounds) {
+	public static PShape manhattanVoronoi(Collection<PVector> sites, @Nullable double[] bounds) {
 		var coords = sites.stream().map(PGS::coordFromPVector).toList();
 		Envelope e;
 		if (bounds == null) {

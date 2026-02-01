@@ -582,8 +582,8 @@ public class PGS_Meshing {
 		PMesh m = new PMesh(mesh);
 		for (int i = 0; i < iterations; i++) {
 			m.smoothTaubin(0.25, -0.251, preservePerimeter);
-//			m.smoothHC(0.33, 0.33, 0.33, preservePerimeter);
-//			m.smoothCotanWeighted(preservePerimeter);
+			// m.smoothHC(0.33, 0.33, 0.33, preservePerimeter);
+			// m.smoothCotanWeighted(preservePerimeter);
 		}
 		return m.getMesh();
 	}
@@ -642,7 +642,7 @@ public class PGS_Meshing {
 	 *                          the original.
 	 * @param preservePerimeter whether to only simplify inner-boundaries and
 	 *                          leaving outer boundary edges unchanged.
-	 * @return GROUP shape comprising the simplfied mesh faces
+	 * @return GROUP shape comprising the simplified mesh faces
 	 * @since 1.4.0
 	 */
 	public static PShape simplifyMesh(PShape mesh, double tolerance, boolean preservePerimeter) {
@@ -673,7 +673,7 @@ public class PGS_Meshing {
 	 * @param mesh           The mesh containing faces to subdivide.
 	 * @param edgeSplitRatio The distance ratio [0...1] along each edge where the
 	 *                       faces are subdivided. A value of 0.5 is mid-edge
-	 *                       division (recommended value for a simple subvision).
+	 *                       division (recommended value for a simple subdivision).
 	 * @return A new GROUP PShape representing the subdivided mesh.
 	 * @since 1.4.0
 	 */

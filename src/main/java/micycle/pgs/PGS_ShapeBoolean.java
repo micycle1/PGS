@@ -68,7 +68,7 @@ public final class PGS_ShapeBoolean {
 		result.setUserData(shapeA.getUserData()); // preserve shape style (if any)
 		return toPShape(result);
 	}
-	
+
 	/**
 	 * Calculates the intersection of all provided shapes, producing a new shape
 	 * representing the area shared by every input.
@@ -213,7 +213,7 @@ public final class PGS_ShapeBoolean {
 	 * </p>
 	 *
 	 * @param a The first input geometry as a {@link PShape}.
-	 * @param b b The second input geometry as a {@link PShape}, or {@code null} to
+	 * @param b The second input geometry as a {@link PShape}, or {@code null} to
 	 *          use only {@code a}'s linework.
 	 * @return A new {@link PShape} representing the polygonal faces created by the
 	 *         union of the input geometries' linework. Returns {@code null} if the

@@ -1214,7 +1214,7 @@ public final class PGS_Processing {
 	 * Randomly partitions a shape into N approximately equal-area polygonal cells.
 	 * 
 	 * @param shape a polygonal (non-group, no holes) shape to partition
-	 * @param parts number of roughly equal area partitons to create
+	 * @param parts number of roughly equal area partitions to create
 	 * @return a GROUP PShape, whose child shapes are partitions of the original
 	 * @since 1.3.0
 	 */
@@ -1227,7 +1227,7 @@ public final class PGS_Processing {
 	 * equal-area polygonal cells.
 	 * 
 	 * @param shape a polygonal (non-group, no holes) shape to partition
-	 * @param parts number of roughly equal area partitons to create
+	 * @param parts number of roughly equal area partitions to create
 	 * @param seed  number used to initialize the underlying pseudorandom number
 	 *              generator
 	 * @return a GROUP PShape, whose child shapes are partitions of the original
