@@ -445,9 +445,11 @@ public final class PGS_Processing {
 	 * @since 1.2.0
 	 */
 	public static PShape extractPerimeter(PShape shape, double from, double to) {
-		from = floatMod(from, 1);
-		if (to != 1) { // so that value of 1 is not moduloed to equal 0
-			to = floatMod(to, 1);
+		if (!isWhole(from)) {
+			from = floatMod(from, 1.0);
+		}
+		if (!isWhole(to)) {
+			to = floatMod(to, 1.0);
 		}
 		Geometry g = fromPShape(shape);
 		if (!g.getGeometryType().equals(Geometry.TYPENAME_LINEARRING) && !g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
@@ -463,26 +465,8 @@ public final class PGS_Processing {
 					.createLineString(Stream.concat(Arrays.stream(l1.getCoordinates()), Arrays.stream(l2.getCoordinates())).toArray(Coordinate[]::new)));
 		}
 
-		/*
-		 * The PGS toPShape() method treats a closed linestring as polygonal (having a
-		 * fill), which occurs when from==0 and to==1. We don't want the output to be
-		 * filled in, so build the PATH shape here without closing it.
-		 */
 		LineString string = (LineString) l.extractLine(length * from, length * to);
-		PShape perimeter = new PShape();
-		perimeter.setFamily(PShape.PATH);
-		perimeter.setStroke(true);
-		perimeter.setStroke(micycle.pgs.color.Colors.PINK);
-		perimeter.setStrokeWeight(4);
-
-		perimeter.beginShape();
-		Coordinate[] coords = string.getCoordinates();
-		for (Coordinate coord : coords) {
-			perimeter.vertex((float) coord.x, (float) coord.y);
-		}
-		perimeter.endShape();
-
-		return perimeter;
+		return toPShape(string);
 	}
 
 	/**
@@ -1760,6 +1744,10 @@ public final class PGS_Processing {
 	private static double floatMod(double x, double y) {
 		// x mod y behaving the same way as Math.floorMod but with doubles
 		return (x - Math.floor(x / y) * y);
+	}
+
+	private static boolean isWhole(double v) {
+		return Double.isFinite(v) && Math.abs(v - Math.rint(v)) < 1e-12;
 	}
 
 }
