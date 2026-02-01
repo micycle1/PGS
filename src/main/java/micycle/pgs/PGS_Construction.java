@@ -473,7 +473,7 @@ public class PGS_Construction {
 		PShape heart = new PShape(PShape.PATH);
 		heart.setFill(true);
 		heart.setFill(Colors.WHITE);
-		heart.beginShape();
+		heart.beginShape(PConstants.POLYGON);
 
 		final double length = 6.3855 * width; // Arc length of parametric curve from wolfram alpha
 		final int points = (int) length / 2; // sample every 2 units along curve (roughly)
@@ -980,7 +980,7 @@ public class PGS_Construction {
 		final PShape curve = new PShape(PShape.PATH);
 		curve.setFill(true);
 		curve.setFill(Colors.WHITE);
-		curve.beginShape();
+		curve.beginShape(PConstants.POLYGON);
 		half1.forEach(p -> curve.vertex((float) p[0], (float) p[1]));
 		curve.endShape(PConstants.CLOSE);
 
@@ -1271,6 +1271,7 @@ public class PGS_Construction {
 
 	private static PShape rectImpl(float x1, float y1, float x2, float y2, float tl, float tr, float br, float bl) {
 		PShape sh = new PShape(PShape.PATH);
+		sh.setKind(PConstants.POLYGON);
 		sh.setFill(true);
 		sh.setFill(Colors.WHITE);
 		sh.beginShape();

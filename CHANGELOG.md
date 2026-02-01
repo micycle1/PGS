@@ -36,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `kCenters()` to `PGS_PointSet`. Selects k points from the input to act as centers that are typically well distributed over the input space.
 
 ### Changes
+* `PGS_Conversion.fromPShape()` now disambiguates closed paths using the PShape’s `kind`: closed shapes with `kind == POLYGON` convert to JTS `Polygon`, while closed shapes with `kind == PATH` convert to a (closed) JTS `LineString` (previously closed paths were generally treated as polygonal).
+* `PGS_Conversion.toPShape()` now encodes polygon-vs-line semantics by setting the output PShape’s `kind` appropriately (`POLYGON` for JTS polygonal geometries; `PATH` for JTS lineal geometries), so closed linework no longer becomes ambiguous on round-trip.
 * These methods in `PGS_Meshing` are more performant and robust: `urquhartFaces()`, `gabrielFaces()`, `spannerFaces()`, `relativeNeighborFaces()`, `edgeCollapseQuadrangulation()`, `centroidQuadrangulation()`.
 * Reimplemented `PGS_Processing.convexPartition()` using the optimal *Keil & Snoeyink* partitioning algorithm.
 * Reimplemented `PGS_PointSet.findShortestTour()` TSP algorithm. Much faster (~50x) on larger inputs.

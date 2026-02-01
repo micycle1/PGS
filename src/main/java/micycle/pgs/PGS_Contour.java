@@ -541,7 +541,7 @@ public final class PGS_Contour {
 	 *                             requirements of the application. Values in the
 	 *                             range 5 to 40 are good candidates for
 	 *                             investigation.
-	 * @return a map of {isoline -> height of the isoline}
+	 * @return a map of {isoline (path) -> height of the isoline}
 	 */
 	public static Map<PShape, Float> isolines(Collection<PVector> points, double intervalValueSpacing, double isolineMin, double isolineMax, int smoothing) {
 		final IncrementalTin tin = new IncrementalTin(intervalValueSpacing / 10);
@@ -571,7 +571,7 @@ public final class PGS_Contour {
 			isoline.setStroke(Colors.PINK);
 
 			PVector last = new PVector(Float.NaN, Float.NaN);
-			isoline.beginShape();
+			isoline.beginShape(PConstants.PATH);
 			for (int i = 0; i < coords.length; i += 2) {
 				float vx = (float) coords[i];
 				float vy = (float) coords[i + 1];

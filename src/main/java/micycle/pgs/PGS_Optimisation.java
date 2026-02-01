@@ -51,6 +51,7 @@ import micycle.pgs.commons.MinimumBoundingEllipse;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.SpiralIterator;
 import micycle.pgs.commons.VisibilityPolygon;
+import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 import whitegreen.dalsoo.DalsooPack;
@@ -508,7 +509,7 @@ public final class PGS_Optimisation {
 		final PShape ellipse = new PShape(PShape.PATH);
 		ellipse.setFill(true);
 		ellipse.setFill(Colors.WHITE);
-		ellipse.beginShape();
+		ellipse.beginShape(PConstants.POLYGON);
 		for (double[] eEoord : eEoords) {
 			ellipse.vertex((float) eEoord[0], (float) eEoord[1]);
 		}

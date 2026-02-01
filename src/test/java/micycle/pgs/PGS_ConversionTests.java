@@ -400,6 +400,66 @@ class PGS_ConversionTests {
 	}
 
 	@Test
+	void testClosedPathKindPathToClosedLineString() {
+		final PShape shape = new PShape(PShape.PATH);
+
+		// closed + kind=PATH => lineal (closed LineString), not Polygon
+		shape.beginShape(PConstants.PATH);
+		shape.vertex(0, 0);
+		shape.vertex(10, 0);
+		shape.vertex(10, 10);
+		shape.vertex(0, 10);
+		shape.endShape(PConstants.CLOSE);
+
+		final Geometry g = fromPShape(shape);
+
+		assertEquals(Geometry.TYPENAME_LINESTRING, g.getGeometryType());
+		assertEquals(shape.getVertexCount() + 1, g.getCoordinates().length); // closed adds final coord
+		assertTrue(g.getCoordinates()[0].equals2D(g.getCoordinates()[g.getCoordinates().length - 1]));
+	}
+
+	@Test
+	void testClosedPathKindPolygonToPolygon() {
+		final PShape shape = new PShape(PShape.PATH);
+
+		// closed + kind=POLYGON => Polygon
+		shape.beginShape(PConstants.POLYGON);
+		shape.vertex(0, 0);
+		shape.vertex(10, 0);
+		shape.vertex(0, 10);
+		shape.endShape(PConstants.CLOSE);
+
+		final Geometry g = fromPShape(shape);
+
+		assertEquals(Geometry.TYPENAME_POLYGON, g.getGeometryType());
+		assertEquals(shape.getVertexCount() + 1, g.getCoordinates().length); // polygon exterior ring is closed
+	}
+
+	@Test
+	void testUnclosedPolygonKindToLineString() {
+		final PShape shape = new PShape(PShape.PATH);
+
+		shape.setKind(PConstants.POLYGON);
+
+		shape.beginShape();
+		shape.vertex(0, 0);
+		shape.vertex(10, 0);
+		shape.vertex(10, 10);
+		shape.vertex(0, 10);
+		shape.endShape(PConstants.OPEN); // unclosed
+
+		final Geometry g = fromPShape(shape);
+
+		// POLYGON kind only implies Polygon when actually closed (or has holes)
+		assertEquals(Geometry.TYPENAME_LINESTRING, g.getGeometryType());
+		assertEquals(shape.getVertexCount(), g.getCoordinates().length);
+
+		for (int i = 0; i < g.getCoordinates().length; i++) {
+			assertTrue(pointsAreEqual(g.getCoordinates()[i], shape.getVertex(i)));
+		}
+	}
+
+	@Test
 	void testMultiLinestringToPaths_UnfilledEvenIfClosed() {
 		Coordinate c1 = new Coordinate(0, 0);
 		Coordinate c2 = new Coordinate(10, 0);
