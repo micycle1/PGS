@@ -29,9 +29,13 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.GeometryFilter;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
+import org.locationtech.jts.geom.MultiLineString;
+import org.locationtech.jts.geom.MultiPoint;
+import org.locationtech.jts.geom.MultiPolygon;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.PrecisionModel;
+import org.locationtech.jts.geom.util.GeometryTransformer;
 import org.locationtech.jts.noding.NodedSegmentString;
 import org.locationtech.jts.noding.Noder;
 import org.locationtech.jts.noding.SegmentString;
@@ -599,174 +603,113 @@ final class PGS {
 	}
 
 	/**
-	 * Apply a transformation to every lineal element in a PShape, preserving
-	 * geometry structure and polygon/hole relationships, and return a non-null
-	 * result.
+	 * Apply a transformation to every lineal element in a {@code PShape},
+	 * preserving geometry structure and polygon/hole relationships, and return a
+	 * non-null result.
 	 *
 	 * <p>
-	 * The geometry encoded by {@code shape} (via {@code fromPShape}) is traversed,
+	 * The geometry encoded by {@code shape} (via {@code fromPShape}) is traversed
 	 * and {@code function} is applied to each lineal component: {@code LineString}
-	 * and {@code LinearRing}. The function may return a replacement
+	 * and polygon rings ({@code LinearRing}, passed to the function as a
+	 * {@code LineString}). The function may return a replacement
 	 * {@code LineString}, or {@code null} to drop that element.
 	 *
-	 * <p>
-	 * Structure preservation:
+	 * <h3>Structure preservation</h3>
 	 * <ul>
-	 * <li>GeometryCollection / MultiPolygon / MultiLineString:
+	 * <li><b>GeometryCollection / MultiPolygon / MultiLineString</b>
 	 * <ul>
-	 * <li>Children are processed recursively; original grouping and order are
-	 * preserved.</li>
-	 * <li>Children for which the function yields {@code null} (or become empty) are
-	 * filtered out before assembling the result.</li>
-	 * <li>A GROUP {@code PShape} is always returned (it may be empty if nothing
-	 * survives).</li>
+	 * <li>Children are processed in index order; the relative order of surviving
+	 * children is preserved.</li>
+	 * <li>Children for which the function yields {@code null} (or that become
+	 * empty) are omitted from the result.</li>
+	 * <li>If the <i>input</i> encodes a multi/collection geometry, the returned
+	 * {@code PShape} is always of kind {@code GROUP} (it may be empty if nothing
+	 * survives), even if only a single child remains after filtering.</li>
 	 * </ul>
 	 * </li>
-	 * <li>Polygon / LinearRing:
+	 *
+	 * <li><b>Polygon</b>
 	 * <ul>
-	 * <li>Rings are visited shell-first (exterior, then holes), preserving the
-	 * exterior–hole relations.</li>
-	 * <li>If the exterior becomes {@code null} or invalid, the entire polygon is
+	 * <li>Rings are visited shell-first (exterior, then holes in interior-ring
+	 * index order), preserving exterior–hole relationships.</li>
+	 * <li>If the exterior ring is dropped or becomes invalid, the entire polygon is
 	 * dropped.</li>
-	 * <li>Holes that become {@code null} or invalid are omitted; remaining holes
-	 * retain order.</li>
-	 * <li>Ring orientation is enforced: exterior is CW; holes are CCW.</li>
+	 * <li>Holes that are dropped or become invalid are omitted; remaining holes
+	 * retain their original order.</li>
+	 * <li>Ring orientation is enforced: exterior is clockwise (CW); holes are
+	 * counter-clockwise (CCW).</li>
+	 * </ul>
+	 * </li>
+	 *
+	 * <li><b>LinearRing</b>
+	 * <ul>
+	 * <li>If a {@code LinearRing} is encountered outside a polygon, it is treated
+	 * as an exterior ring for closure/orientation rules.</li>
 	 * </ul>
 	 * </li>
 	 * </ul>
 	 *
-	 * <p>
-	 * Additional behavior:
+	 * <h3>Additional behavior</h3>
 	 * <ul>
-	 * <li>Non-closed outputs are closed when possible (if at least two points
+	 * <li>Non-closed ring outputs are closed when possible (if at least two points
 	 * exist).</li>
 	 * <li>Rings must have at least 4 coordinates (including repeated first/last)
 	 * after closing; otherwise they are dropped.</li>
-	 * <li>LineString elements return the transformed line or are dropped if
-	 * {@code function} returns {@code null}.</li>
-	 * <li>Unsupported geometry types yield an empty {@code PShape}.</li>
+	 * <li>{@code LineString} elements return the transformed line, or are dropped
+	 * if {@code function} returns {@code null}.</li>
+	 * <li>Unsupported geometry types are ignored (dropped). If the root geometry is
+	 * unsupported, an empty {@code PShape} is returned.</li>
 	 * <li>No full topology validation is performed; run JTS validators if
 	 * needed.</li>
 	 * </ul>
 	 *
-	 * <p>
-	 * Return contract:
+	 * <h3>Return contract</h3>
 	 * <ul>
 	 * <li>This method never returns {@code null}. If no geometry survives, an empty
-	 * {@code PShape} is returned.</li>
+	 * {@code PShape} is returned (for multi/collection inputs, an empty
+	 * {@code GROUP} {@code PShape}).</li>
 	 * </ul>
 	 *
-	 * @param shape    input PShape encoding geometries to transform (must be
-	 *                 convertible via {@code fromPShape})
-	 * @param function a UnaryOperator that receives each {@code LineString} (linear
-	 *                 rings are passed as {@code LineString}) and returns a
-	 *                 modified {@code LineString}, or {@code null} to drop the
-	 *                 element
-	 * @return a non-null {@code PShape} representing the transformed geometry; for
-	 *         multi/geometries a GROUP {@code PShape} is returned and may be empty
-	 *         when no children survive
+	 * @param shape    input {@code PShape} encoding geometries to transform (must
+	 *                 be convertible via {@code fromPShape})
+	 * @param function operator applied to each {@code LineString}; polygon rings
+	 *                 are passed as {@code LineString}. Returning {@code null}
+	 *                 drops that element.
+	 * @return a non-null {@code PShape} representing the transformed geometry
 	 * @since 2.1
 	 */
-	static PShape applyToLinealGeometries(PShape shape, UnaryOperator<LineString> function) {
-		Geometry g = fromPShape(shape);
-		final var data = g.getUserData(); // probably styling
-		switch (g.getGeometryType()) {
-			case Geometry.TYPENAME_GEOMETRYCOLLECTION :
-			case Geometry.TYPENAME_MULTIPOLYGON :
-			case Geometry.TYPENAME_MULTILINESTRING : {
-				PShape group = new PShape(GROUP);
-				for (int i = 0; i < g.getNumGeometries(); i++) {
-					PShape child = applyToLinealGeometries(toPShape(g.getGeometryN(i)), function);
-					if (!isEmptyShape(child)) {
-						group.addChild(child);
-					}
-				}
-				// Always return a group, possibly empty
-				return group;
-			}
-			case Geometry.TYPENAME_LINEARRING :
-			case Geometry.TYPENAME_POLYGON : {
-				// Preserve exterior-hole relations; allow function to return null (skip)
-				LinearRing[] rings = new LinearRingIterator(g).getLinearRings();
-				List<LinearRing> processed = new ArrayList<>(rings.length);
-				for (int i = 0; i < rings.length; i++) {
-					LinearRing ring = rings[i];
-					LineString out = function.apply(ring);
-					final boolean isHole = i > 0;
+	static PShape applyToLinealGeometries(PShape shape, UnaryOperator<LineString> fn) {
+		final Geometry in = fromPShape(shape);
 
-					if (out == null) {
-						// If the exterior is removed, drop the whole polygon -> empty shape
-						if (!isHole) {
-							return new PShape();
-						} else {
-							// skip this hole
-							continue;
-						}
-					}
-
-					Coordinate[] coords = out.getCoordinates();
-
-					// Ensure closed; if not, close automatically when possible.
-					if (!out.isClosed()) {
-						if (coords.length >= 2) {
-							Coordinate[] closedCoords = Arrays.copyOf(coords, out.getNumPoints() + 1);
-							closedCoords[closedCoords.length - 1] = closedCoords[0]; // close the ring
-							coords = closedCoords;
-						} else {
-							// Too short to form a ring; skip this ring
-							if (!isHole) {
-								return new PShape();
-							} else {
-								continue;
-							}
-						}
-					}
-
-					// Need at least 4 coordinates for a valid closed ring (including repeated
-					// first)
-					if (coords.length >= 4) {
-						// as createPolygon() doesn't check ring orientation
-						final boolean ccw = Orientation.isCCWArea(coords);
-						if (isHole && !ccw) {
-							ArrayUtils.reverse(coords); // make hole CCW
-						} else if (!isHole && ccw) {
-							ArrayUtils.reverse(coords); // make exterior CW
-						}
-						processed.add(GEOM_FACTORY.createLinearRing(coords));
-					} else {
-						if (!isHole) {
-							return new PShape();
-						}
-						// skip hole otherwise
-					}
-				}
-
-				if (processed.isEmpty()) {
-					return new PShape();
-				}
-
-				LinearRing exterior = processed.get(0);
-				LinearRing[] holes = (processed.size() > 1) ? processed.subList(1, processed.size()).toArray(new LinearRing[0]) : null;
-
-				var polygon = GEOM_FACTORY.createPolygon(exterior, holes);
-				polygon.setUserData(data);
-				return toPShape(polygon);
-			}
-			case Geometry.TYPENAME_LINESTRING : {
-				LineString l = (LineString) g;
-				LineString out = function.apply(l);
-				if (out == null) {
-					return new PShape();
-				}
-				out.setUserData(data);
-				var line = toPShape(out);
-				line.setFill(false);
-				return line;
-			}
-			default :
-				// Return an empty PShape to indicate "ignored / not processed"
-				return new PShape();
+		if (in instanceof Point || in instanceof MultiPoint) {
+			return new PShape();
 		}
+
+		final boolean rootIsMultiPolygon = in instanceof MultiPolygon;
+		final boolean rootIsMultiLineString = in instanceof MultiLineString;
+		final boolean rootIsGeomCollection = (in instanceof GeometryCollection) && !rootIsMultiPolygon && !rootIsMultiLineString && !(in instanceof MultiPoint);
+
+		final Object rootUserData = in.getUserData();
+
+		Geometry out = new PGS_Transformer(fn).transform(in);
+
+		// Never return null; match empty policies
+		if (out == null || out.isEmpty()) {
+			return new PShape(PConstants.GROUP);
+		}
+
+		// Preserve "GROUP-ness" for multi/collection roots even if only one child
+		// survives
+		if (rootIsMultiPolygon && out instanceof Polygon p) {
+			out = GEOM_FACTORY.createMultiPolygon(new Polygon[] { p });
+		} else if (rootIsMultiLineString && out instanceof LineString ls && !(out instanceof MultiLineString)) {
+			out = GEOM_FACTORY.createMultiLineString(new LineString[] { ls });
+		} else if (rootIsGeomCollection && !(out instanceof GeometryCollection)) {
+			out = GEOM_FACTORY.createGeometryCollection(new Geometry[] { out });
+		}
+
+		out.setUserData(rootUserData);
+		return toPShape(out);
 	}
 
 	static boolean isEmptyShape(PShape s) {
@@ -780,6 +723,130 @@ final class PGS {
 			return false;
 		}
 		return true;
+	}
+
+	private static class PGS_Transformer extends GeometryTransformer {
+
+		private final UnaryOperator<LineString> fn;
+
+		PGS_Transformer(UnaryOperator<LineString> fn) {
+			this.fn = fn;
+		}
+
+		@Override
+		protected Geometry transformPolygon(Polygon p, Geometry parent) {
+			// Own the polygon traversal order: shell first, then holes by index.
+			LinearRing shell = processRing(p.getExteriorRing(), false);
+			if (shell == null) {
+				return null; // drop whole polygon
+			}
+
+			List<LinearRing> holes = new ArrayList<>(p.getNumInteriorRing());
+			for (int i = 0; i < p.getNumInteriorRing(); i++) {
+				LinearRing h = processRing(p.getInteriorRingN(i), true);
+				if (h != null) {
+					holes.add(h);
+				}
+			}
+
+			Polygon out = GEOM_FACTORY.createPolygon(shell, holes.toArray(LinearRing[]::new));
+			out.setUserData(p.getUserData());
+			return out;
+		}
+
+		@Override
+		protected Geometry transformLinearRing(LinearRing ring, Geometry parent) {
+			// Standalone rings: treat as exterior policy (CW)
+			LinearRing out = processRing(ring, false);
+			if (out != null) {
+				out.setUserData(ring.getUserData());
+			}
+			return out;
+		}
+
+		@Override
+		protected Geometry transformLineString(LineString ls, Geometry parent) {
+			// Note: GeometryTransformer may route rings here too; ensure we handle them as
+			// rings.
+			if (ls instanceof LinearRing r) {
+				return transformLinearRing(r, parent);
+			}
+
+			LineString res = fn.apply(ls);
+			if (res == null || res.isEmpty()) {
+				return null;
+			}
+
+			LineString out = GEOM_FACTORY.createLineString(res.getCoordinateSequence());
+			out.setUserData(ls.getUserData());
+			return out;
+		}
+
+		@Override
+		protected Geometry transformGeometryCollection(GeometryCollection gc, Geometry parent) {
+			// Preserve order; filter null/empty; preserve container type
+			List<Geometry> kept = new ArrayList<>(gc.getNumGeometries());
+			for (int i = 0; i < gc.getNumGeometries(); i++) {
+				Geometry t = transform(gc.getGeometryN(i));
+				if (t != null && !t.isEmpty()) {
+					kept.add(t);
+				}
+			}
+
+			if (gc instanceof MultiPolygon) {
+				List<Polygon> polys = new ArrayList<>();
+				for (Geometry g : kept) {
+					if (g instanceof Polygon p) {
+						polys.add(p);
+					}
+				}
+				return GEOM_FACTORY.createMultiPolygon(polys.toArray(Polygon[]::new));
+			}
+
+			if (gc instanceof MultiLineString) {
+				List<LineString> lines = new ArrayList<>();
+				for (Geometry g : kept) {
+					if (g instanceof LineString ls) {
+						lines.add(ls);
+					}
+				}
+				return GEOM_FACTORY.createMultiLineString(lines.toArray(LineString[]::new));
+			}
+
+			return GEOM_FACTORY.createGeometryCollection(kept.toArray(Geometry[]::new));
+		}
+
+		private LinearRing processRing(LinearRing ring, boolean isHole) {
+			// Apply fn to ring (passed as LineString)
+			LineString res = fn.apply(ring);
+			if (res == null || res.isEmpty()) {
+				return null;
+			}
+
+			Coordinate[] coords = res.getCoordinates();
+
+			// Ensure closed when possible
+			if (coords.length >= 2 && !coords[0].equals2D(coords[coords.length - 1])) {
+				coords = Arrays.copyOf(coords, coords.length + 1);
+				coords[coords.length - 1] = coords[0];
+			}
+
+			// Need at least 4 coordinates for a valid ring
+			if (coords.length < 4) {
+				return null;
+			}
+
+			// Enforce orientation: exterior CW, holes CCW
+			boolean ccw = Orientation.isCCWArea(coords);
+			if (isHole && !ccw) {
+				ArrayUtils.reverse(coords);
+			}
+			if (!isHole && ccw) {
+				ArrayUtils.reverse(coords);
+			}
+
+			return GEOM_FACTORY.createLinearRing(coords);
+		}
 	}
 
 }

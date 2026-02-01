@@ -1440,11 +1440,11 @@ public final class PGS_Conversion {
 		boolean isClosed = coordArray.length > 1 && coordArray[0].equals2D(coordArray[coordArray.length - 1]);
 
 		/*
-		 * Inherently ambiguous (did the closed polyline represent an areal or lineal
-		 * geometry?), but treat closed polyline as areal (linearring).
+		 * NOTE Inherently ambiguous (did the closed polyline represent an areal or
+		 * lineal geometry?). Treat closed polyline as polygon.
 		 */
 		if (isClosed && coordArray.length >= 4) {
-			return toPShape(GEOM_FACTORY.createLinearRing(coordArray));
+			return toPShape(GEOM_FACTORY.createPolygon(coordArray));
 		} else {
 			return toPShape(GEOM_FACTORY.createLineString(coordArray));
 		}
