@@ -239,11 +239,14 @@ public final class PGS_Tiling {
 	/**
 	 * Divides the plane into randomly “sliced” polygonal regions.
 	 * <p>
-	 * {@code slices} random cuts are generated across the plane (dimensions w×h, at
-	 * (0,0)). Each cut connects a random point on one side of the plane to a random
-	 * point on another side. If {@code forceOpposite} is true, each cut always
-	 * connects opposite sides; otherwise the two sides are chosen at random (but
-	 * never the same side).
+	 * {@code slices} is the number of random interior <em>cuts</em> (line segments)
+	 * to add across the plane (i.e., the number of cuts, <strong>not</strong> the
+	 * number of resulting regions/pieces). These {@code slices} cuts are generated
+	 * over a w×h rectangle at (0,0); each cut connects a random point on one side
+	 * of the rectangle to a random point on another side. If {@code forceOpposite}
+	 * is true, each cut always connects opposite sides; otherwise the two sides are
+	 * chosen at random (but never the same side). The final number of polygonal
+	 * regions depends on how the cuts intersect and partition the rectangle.
 	 * </p>
 	 * <p>
 	 * <strong>In practice:</strong>

@@ -661,9 +661,10 @@ class PGS_ConversionTests {
 		assertTrue(PGS_ShapePredicates.equalsNorm(meshIn, meshOut));
 
 		// test shape with holes
-		var ring = PGS_Construction.createRing(500, 500, 500, 100);
-		var ringOut = PGS_Conversion.fromGraph(PGS_Conversion.toGraph(ring));
-		assertTrue(PGS_ShapePredicates.equalsTopo(ring, ringOut));
+		var carpet = PGS_Construction.createSierpinskiCarpet(1, 1, 2);
+		assertTrue(PGS_ShapePredicates.holes(carpet) > 0);
+		var ringOut = PGS_Conversion.fromGraph(PGS_Conversion.toGraph(carpet));
+		assertTrue(PGS_ShapePredicates.equalsTopo(carpet, ringOut));
 	}
 
 	private static boolean isFilled(PShape shape) {

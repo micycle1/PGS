@@ -912,7 +912,10 @@ public final class PGS_Optimisation {
 	 */
 	public static PVector closestPoint(PShape shape, PVector point) {
 		Geometry g = fromPShape(shape);
-		Coordinate coord = DistanceOp.nearestPoints(g.getBoundary(), PGS.pointFromPVector(point))[0];
+		if (g instanceof Polygonal) {
+			g = g.getBoundary();
+		}
+		Coordinate coord = DistanceOp.nearestPoints(g, PGS.pointFromPVector(point))[0];
 		return new PVector((float) coord.x, (float) coord.y);
 	}
 
