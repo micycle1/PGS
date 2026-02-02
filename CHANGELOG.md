@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `isolinesFromFunction()` to `PGS_Contour`. Extracts contour lines (isolines) from a user-defined 2D “height map” over a rectangular region.
 * `kCenters()` to `PGS_PointSet`. Selects k points from the input to act as centers that are typically well distributed over the input space.
 * `extractBoundary()` to `PGS_Processing`. Extracts the topological boundary of the given shape.
+* `weaveSegments()` to `PGS_SegmentSet`. Creates a fabric-like layout of horizontal and vertical segments.
 
 ### Changes
 * `PGS_Conversion.fromPShape()` now disambiguates closed paths using the PShape’s `kind`: closed shapes with `kind == POLYGON` convert to JTS `Polygon`, while closed shapes with `kind == PATH` convert to a (closed) JTS `LineString` (previously closed paths were generally treated as polygonal).

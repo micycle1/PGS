@@ -506,6 +506,254 @@ public class PGS_SegmentSet {
 	}
 
 	/**
+	 * Creates a fabric-like layout of horizontal and vertical segments on a regular
+	 * cell grid, controlled by the A (horizontal run), B (vertical run), and C (row
+	 * shift) weave parameters.
+	 *
+	 * <p>
+	 * The pattern is built on a rectangular grid of cells (size {@code cellSize}).
+	 * Each cell is assigned one of two states (“horizontal on top” or “vertical on
+	 * top”) so the grid reads like a simple over/under weaving diagram. Contiguous
+	 * same-state cells in a row become one horizontal segment; contiguous
+	 * same-state cells in a column become one vertical segment.
+	 * </p>
+	 *
+	 * <ul>
+	 * <li><b>A</b> - how many cells in a row the horizontal strand stays on top.
+	 * Increasing A lengthens horizontal runs (longer horizontal elements).</li>
+	 * <li><b>B</b> - how many cells in a row the vertical strand stays on top.
+	 * Increasing B lengthens vertical runs (longer vertical elements).</li>
+	 * <li><b>C</b> - how far each successive row is shifted (a phase offset).
+	 * Changing C slides the pattern row-by-row and can change where segments meet
+	 * or form longer/shorter junctions. (C is applied modulo A + B.)</li>
+	 * </ul>
+	 *
+	 * <p>
+	 * Many traditional weaves are expressible with A–B–C (e.g., plain weave 1–1–1,
+	 * twill 2–2–1). Patterns where the shift and period are “coprime” (gcd(A+B,
+	 * C)=1) tend to produce a single connected repeating motif (“hang together”);
+	 * if not, the repeat unit can be larger or the motif can repeat in bands.
+	 * </p>
+	 *
+	 * @param width    domain width
+	 * @param height   domain height
+	 * @param cellSize size of a grid cell (world units)
+	 * @param A        consecutive weft-visible (horizontal on-top) cells per
+	 *                 period; controls horizontal run length (A >= 1)
+	 * @param B        consecutive warp-visible (vertical on-top) cells per period;
+	 *                 controls vertical run length (B >= 1)
+	 * @param C        row-to-row offset (phase shift) in cells (C >= 0)
+	 * @return list of {@link PEdge} segments representing the weaves
+	 * @throws IllegalArgumentException if cellSize <= 0, A <= 0, or B <= 0
+	 * @since 2.2
+	 */
+	public static List<PEdge> weaveSegments(final double width, final double height, final double cellSize, final int A, final int B, final int C) {
+		return weaveSegments(width, height, cellSize, A, B, C, false, 1, true);
+	}
+
+	/**
+	 * Creates a fabric-like layout of horizontal and vertical segments on a regular
+	 * cell grid, controlled by the A (horizontal run), B (vertical run), and C (row
+	 * shift) weave parameters.
+	 *
+	 * <p>
+	 * The pattern is built on a rectangular grid of cells (size {@code cellSize}).
+	 * Each cell is assigned one of two states (“horizontal on top” or “vertical on
+	 * top”) so the grid reads like a simple over/under weaving diagram. Contiguous
+	 * same-state cells in a row become one horizontal segment; contiguous
+	 * same-state cells in a column become one vertical segment.
+	 * </p>
+	 *
+	 * <ul>
+	 * <li><b>A</b> — how many cells in a row the horizontal strand stays on top.
+	 * Increasing A lengthens horizontal runs (longer horizontal elements).</li>
+	 * <li><b>B</b> — how many cells in a row the vertical strand stays on top.
+	 * Increasing B lengthens vertical runs (longer vertical elements).</li>
+	 * <li><b>C</b> — how far each successive row is shifted (a phase offset).
+	 * Changing C slides the pattern row-by-row and can change where segments meet
+	 * or form longer/shorter junctions. (C is applied modulo A + B.)</li>
+	 * </ul>
+	 *
+	 * <p>
+	 * Many traditional weaves are expressible with A–B–C (e.g., plain weave 1–1–1,
+	 * twill 2–2–1). Patterns where the shift and period are “coprime” (gcd(A+B,
+	 * C)=1) tend to produce a single connected repeating motif (“hang together”);
+	 * if not, the repeat unit can be larger or the motif can repeat in bands.
+	 * </p>
+	 * 
+	 * </ul>
+	 * <h3>Endpoint placement and edge behavior</h3>
+	 * <p>
+	 * The {@code cellFraction} value controls how segment endpoints sit inside the
+	 * terminal cell of each run: 0.5 places endpoints at cell centers (short
+	 * segments), values closer to 1 move endpoints toward cell edges (longer
+	 * segments). If {@code extendSingletonsToEdge} is true, single-cell runs that
+	 * touch the outer domain boundary are extended to the grid edge so they are not
+	 * rendered as tiny isolated dots at the border.
+	 * </p>
+	 *
+	 * @param width                  domain width
+	 * @param height                 domain height
+	 * @param cellSize               size of a grid cell (world units)
+	 * @param A                      consecutive weft-visible (horizontal on-top)
+	 *                               cells per period; controls horizontal run
+	 *                               length (A >= 1)
+	 * @param B                      consecutive warp-visible (vertical on-top)
+	 *                               cells per period; controls vertical run length
+	 *                               (B >= 1)
+	 * @param C                      row-to-row offset (phase shift) in cells (C >=
+	 *                               0)
+	 * @param swapColors             if true, swap roles of weft/warp (horizontal ↔
+	 *                               vertical)
+	 * @param cellFraction           endpoint position inside the run end cells
+	 *                               (0.5..1.0 typical)
+	 * @param extendSingletonsToEdge if true, extend single-cell runs on the domain
+	 *                               boundary to the edge
+	 * @return list of {@link PEdge} segments representing the weaves
+	 * @since 2.2
+	 */
+	private static List<PEdge> weaveSegments(final double width, final double height, final double cellSize, final int A, final int B, final int C,
+			final boolean swapColors, final double cellFraction, final boolean extendSingletonsToEdge) {
+		/*
+		 * Implements 'ABC-Auxetics: An Implicit Design Approach for Negative Poisson’s
+		 * Ratio Materials'
+		 */
+		if (cellSize <= 0) {
+			throw new IllegalArgumentException("cellSize must be > 0");
+		}
+		if (A <= 0 || B <= 0) {
+			throw new IllegalArgumentException("A and B must be > 0");
+		}
+		if (!(cellFraction > 0.0)) {
+			throw new IllegalArgumentException("cellFraction must be > 0");
+		}
+
+		final int P = A + B;
+
+		final double f = Math.max(0.0, Math.min(1.0, cellFraction));
+
+		// Fit an integer grid inside the domain; center it.
+		final int cols = Math.max(1, (int) Math.floor(width / cellSize));
+		final int rows = Math.max(1, (int) Math.floor(height / cellSize));
+		final double gridW = cols * cellSize;
+		final double gridH = rows * cellSize;
+		final double dx = (width - gridW) * 0.5;
+		final double dy = (height - gridH) * 0.5;
+
+		// World-space bounds of the actual grid (may be inset if dx/dy != 0)
+		final double gridLeft = dx;
+		final double gridRight = dx + gridW;
+		final double gridBottom = dy;
+		final double gridTop = dy + gridH;
+
+		// Build 2-color matrix: true = weft (horizontal), false = warp (vertical)
+		final boolean[][] weft = new boolean[rows][cols];
+		for (int r = 0; r < rows; r++) {
+			final int shift = Math.floorMod(r * C, P);
+			for (int c = 0; c < cols; c++) {
+				final int idx = Math.floorMod(c + shift, P);
+				boolean isWeft = idx < A;
+				if (swapColors) {
+					isWeft = !isWeft;
+				}
+				weft[r][c] = isWeft;
+			}
+		}
+
+		final List<PEdge> segs = new ArrayList<>();
+
+		// Horizontal segments from contiguous WEFT runs per row
+		for (int r = 0; r < rows; r++) {
+			int c = 0;
+			while (c < cols) {
+				if (!weft[r][c]) {
+					c++;
+					continue;
+				}
+
+				final int start = c;
+				while (c + 1 < cols && weft[r][c + 1]) {
+					c++;
+				}
+				final int end = c;
+
+				final int runLen = end - start + 1;
+
+				final double y = dy + (r + 0.5) * cellSize;
+
+				// Endpoints controlled by cellFraction:
+				// left endpoint is inside first cell at (1-f), right endpoint inside last cell
+				// at f.
+				double x0 = dx + (start + (1.0 - f)) * cellSize;
+				double x1 = dx + (end + f) * cellSize;
+
+				// Special case: single-cell run on boundary becomes half-cell from center to
+				// boundary.
+				if (extendSingletonsToEdge && runLen == 1) {
+					final double cx = dx + (start + 0.5) * cellSize;
+					if (start == 0) {
+						x0 = gridLeft;
+						x1 = cx;
+					} else if (end == cols - 1) {
+						x0 = cx;
+						x1 = gridRight;
+					}
+				}
+
+				// Clamp to grid bounds (keeps segments from bleeding into margins due to f)
+				x0 = Math.max(gridLeft, Math.min(gridRight, x0));
+				x1 = Math.max(gridLeft, Math.min(gridRight, x1));
+
+				segs.add(new PEdge(x0, y, x1, y));
+				c++;
+			}
+		}
+
+		// Vertical segments from contiguous WARP runs per column
+		for (int c = 0; c < cols; c++) {
+			int r = 0;
+			while (r < rows) {
+				if (weft[r][c]) {
+					r++;
+					continue;
+				} // warp = !weft
+
+				final int start = r;
+				while (r + 1 < rows && !weft[r + 1][c]) {
+					r++;
+				}
+				final int end = r;
+
+				final int runLen = end - start + 1;
+
+				final double x = dx + (c + 0.5) * cellSize;
+
+				double y0 = dy + (start + (1.0 - f)) * cellSize;
+				double y1 = dy + (end + f) * cellSize;
+
+				if (extendSingletonsToEdge && runLen == 1) {
+					final double cy = dy + (start + 0.5) * cellSize;
+					if (start == 0) {
+						y0 = gridBottom;
+						y1 = cy;
+					} else if (end == rows - 1) {
+						y0 = cy;
+						y1 = gridTop;
+					}
+				}
+
+				y0 = Math.max(gridBottom, Math.min(gridTop, y0));
+				y1 = Math.max(gridBottom, Math.min(gridTop, y1));
+
+				segs.add(new PEdge(x, y0, x, y1));
+				r++;
+			}
+		}
+
+		return segs;
+	}
+
+	/**
 	 * Converts a collection of {@link micycle.pgs.commons.PEdge PEdges} into a
 	 * <code>LINES</code> shape.
 	 * 
