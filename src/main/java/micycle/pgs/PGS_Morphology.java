@@ -23,7 +23,6 @@ import org.locationtech.jts.geom.util.GeometryFixer;
 import org.locationtech.jts.linearref.LengthIndexedLine;
 import org.locationtech.jts.operation.buffer.BufferOp;
 import org.locationtech.jts.operation.buffer.BufferParameters;
-import org.locationtech.jts.operation.buffer.VariableBuffer;
 import org.locationtech.jts.precision.GeometryPrecisionReducer;
 import org.locationtech.jts.shape.CubicBezierCurve;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
@@ -31,6 +30,7 @@ import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.simplify.VWSimplifier;
 
 import com.gihub.micycle1.malleo.Malleo;
+import com.github.micycle1.geoblitz.FastVariableBuffer;
 
 import micycle.pgs.PGS_Contour.OffsetStyle;
 import micycle.pgs.commons.ChaikinCut;
@@ -154,7 +154,7 @@ public final class PGS_Morphology {
 	 */
 	public static PShape variableBuffer(PShape shape, double startDistance, double endDistance) {
 		return PGS.applyToLinealGeometries(shape, line -> {
-			var buffer = (Polygon) VariableBuffer.buffer(line, startDistance, endDistance);
+			var buffer = (Polygon) FastVariableBuffer.buffer(line, startDistance, endDistance);
 			return buffer.getExteriorRing();
 		});
 	}
@@ -219,12 +219,12 @@ public final class PGS_Morphology {
 				}
 			}
 
-			final var vb = new VariableBuffer(line, bufferDistances);
+			final var vb = new FastVariableBuffer(line, bufferDistances);
 			var buffer = (Polygon) vb.getResult();
 			return buffer.getExteriorRing();
 		});
 	}
-
+	
 	/**
 	 * Erodes (a negative buffer) a shape by a normalised amount (scaled to shape
 	 * size).
