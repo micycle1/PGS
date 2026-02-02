@@ -964,6 +964,41 @@ public final class PGS_Processing {
 	}
 
 	/**
+	 * Extracts the topological boundary of the given shape.
+	 *
+	 * <p>
+	 * For a polygonal (area) {@code PShape}, the boundary is its perimeter: the
+	 * outer outline plus the outlines of any holes. The returned shape encodes this
+	 * as one or more unfilled {@link PShape#PATH PATH} shapes (closed where
+	 * appropriate).
+	 *
+	 * <p>
+	 * For non-area shapes, the boundary may be empty or may reduce to point-like
+	 * elements (for example, the boundary of an open path consists of its end
+	 * vertices).
+	 *
+	 * <p>
+	 * This is useful because some operations have different semantics depending on
+	 * whether the input is encoded as an area ({@code kind == POLYGON}) or as a
+	 * stroke/path ({@code kind == PATH}). For example, buffering a {@code POLYGON}
+	 * expands/contracts an area, whereas buffering a {@code PATH} produces a
+	 * stroked “tube” around the linework. Extracting the boundary provides a
+	 * consistent way to convert an area into its outline representation prior to
+	 * such operations.
+	 *
+	 * <p>
+	 * Note: the returned {@code PShape} may be a {@link PConstants#GROUP} if the
+	 * boundary contains multiple disjoint components.
+	 *
+	 * @param shape the input shape whose boundary is to be returned
+	 * @return a {@code PShape} representing the boundary of {@code shape}
+	 * @since 2.2
+	 */
+	public static PShape extractBoundary(PShape shape) {
+		return toPShape(fromPShape(shape).getBoundary());
+	}
+
+	/**
 	 * Finds polygonal faces from the given shape's linework.
 	 * <p>
 	 * This method extracts linework from the supplied PShape (including existing
