@@ -1009,6 +1009,13 @@ Much of the functionality (but by no means all) is demonstrated below:
     <td valign="top" width="25%"><img src="resources/tiling/softCells.gif"></td>
     <td valign="top" width="25%"><img src="resources/tiling/aztecDiamond.png"></td>
   </tr>
+  <tr>
+    <td align="center" valign="center" colspan="2"><b>Auxetic Tiling</td>
+  </tr>
+  <tr>
+    <td valign="top" width="25%"><img src="resources/tiling/auxetic1.png"></td>
+    <td valign="top" width="25%"><img src="resources/tiling/auxetic2.png"></td>
+  </tr>
 </table>
 
 <section id="polygonisation">

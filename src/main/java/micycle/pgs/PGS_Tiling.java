@@ -512,6 +512,80 @@ public final class PGS_Tiling {
 	}
 
 	/**
+	 * Builds a tiling of interlocking cells that form an auxetic structure.
+	 *
+	 * <p>
+	 * An <i>auxetic structure</i> tends to widen when stretched (it can show a
+	 * negative <i>Poisson’s ratio</i>). This method builds a fabric/weave-like
+	 * layout of horizontal and vertical segments then runs a Voronoi-like
+	 * construction on those line segments. The resulting cell boundaries are made
+	 * of straight and gently curved pieces, producing an interlocking tiling (which
+	 * would have auxetic properties if physical).
+	 * </p>
+	 *
+	 * <h3>The A–B–C parameters</h3>
+	 * <p>
+	 * The A-B-C parameters affect the underlying segment generation. Each row
+	 * follows A cells with the horizontal (weft) thread on top, then B cells with
+	 * the vertical (warp) thread on top. Each next row is shifted right by C cells
+	 * (wraps around modulo P).
+	 * </p>
+	 * <h3>What features appear, and when</h3>
+	 * <p>
+	 * The Voronoi construction produces a small set of recurring unit-cell types.
+	 * Below is a short, non-technical guide to what those features look like and
+	 * the simple conditions that cause them to appear (using C' = C mod (A+B)):
+	 * </p>
+	 *
+	 * <ul>
+	 * <li><b>Quad</b> - four-armed vertex (a small “X-like” quad). Appears when the
+	 * row-shift aligns with a run boundary: typically when {@code A == C'} or
+	 * {@code B == C'}.</li>
+	 *
+	 * <li><b>Tri-adjacent</b> - the most common cell: two curved (parabolic) arcs
+	 * meeting at a vertex plus a short straight edge. This cell shows up in nearly
+	 * every weave except when the shift exactly matches a run length: it is absent
+	 * if {@code A == C'} or {@code B == C'}.</li>
+	 *
+	 * <li><b>Tri-across</b> - a rarer symmetric three-armed cell formed by two
+	 * mirrored parabolas and a straight ray across the vertex. It typically
+	 * requires both runs to be at least length 2 and the shift to fall inside the
+	 * interior of the repeat: occurs when {@code A > 1}, {@code B > 1}, and
+	 * {@code 1 < C' < A + B - 2}.</li>
+	 *
+	 * <li><b>Straight</b> - long straight edges (horizontal or vertical) with a
+	 * relatively small offset. These happen when the shift produces a significant
+	 * mismatch with a run length, e.g. when {@code |C' - A| > 1} (horizontal
+	 * straight) or {@code |C' - B| > 1} (vertical straight). Note that straight
+	 * elements by themselves are not auxetic; changing how many straight elements
+	 * occur can change the mechanical character of the cell but does not trivially
+	 * predict Poisson’s ratio.</li>
+	 * </ul>
+	 *
+	 * @param width    domain width
+	 * @param height   domain height
+	 * @param cellSize size of a grid cell (world units), must be &gt; 0
+	 * @param A        number of consecutive cells where the horizontal
+	 *                 (<i>weft</i>) thread is on top (A &gt;= 1)
+	 * @param B        number of consecutive cells where the vertical (<i>warp</i>)
+	 *                 thread is on top (B &gt;= 1)
+	 * @param C        per-row horizontal shift (in cells), applied modulo
+	 *                 {@code A + B}
+	 * @return a {@link PShape} containing the Voronoi-derived cell boundaries (a
+	 *         weave-based auxetic lattice)
+	 * @since 2.2
+	 * @see PGS_SegmentSet#weaveSegments(double, double, double, int, int, int)
+	 *      weaveSegments()
+	 * @throws IllegalArgumentException if {@code cellSize <= 0} or {@code A <= 0}
+	 *                                  or {@code B <= 0}
+	 */
+	public static PShape auxeticTiling(final double width, final double height, final double cellSize, final int A, final int B, final int C) {
+		var segs = PGS_SegmentSet.weaveSegments(width, height, cellSize, A, B, C);
+		var shape = PGS_SegmentSet.toPShape(segs);
+		return PGS_Voronoi.compoundVoronoi(shape);
+	}
+
+	/**
 	 * Generates a geometric arrangement composed of annular-sector bricks arranged
 	 * in concentric circular rings. Rings progressively expand from the inside out
 	 * based on the growth rates provided. Brick sizes (arc length) adapt radially
