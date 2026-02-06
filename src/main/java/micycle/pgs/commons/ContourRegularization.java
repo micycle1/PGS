@@ -50,7 +50,7 @@ public final class ContourRegularization {
 	 * numerically identical.
 	 * </p>
 	 */
-	public static final class Parameters {
+	public static final class RegParameters {
 		/**
 		 * Angle threshold (degrees) used when testing "near parallel" between
 		 * consecutive edges. Typical values: 3..10.
@@ -81,7 +81,7 @@ public final class ContourRegularization {
 
 		public final ContourDirections directions;
 
-		private Parameters(Builder b) {
+		private RegParameters(Builder b) {
 			this.parallelAngleThresholdDeg = b.parallelAngleThresholdDeg;
 			this.maximumOffset = b.maximumOffset;
 			this.minEdgeLength = b.minEdgeLength;
@@ -90,7 +90,7 @@ public final class ContourRegularization {
 			this.directions = b.directions;
 		}
 
-		public static Parameters defaults() {
+		public static RegParameters defaults() {
 			return builder().build();
 		}
 
@@ -131,8 +131,8 @@ public final class ContourRegularization {
 				return this;
 			}
 
-			public Parameters build() {
-				return new Parameters(this);
+			public RegParameters build() {
+				return new RegParameters(this);
 			}
 
 			public Builder directions(ContourDirections directions) {
@@ -149,7 +149,7 @@ public final class ContourRegularization {
 		 *
 		 * <p>
 		 * Recommended contract: return a NEW instance (do not mutate and return
-		 * {@code this}), so that a single {@link Parameters} instance can be reused
+		 * {@code this}), so that a single {@link RegParameters} instance can be reused
 		 * safely across calls/threads.
 		 * </p>
 		 *
@@ -634,14 +634,14 @@ public final class ContourRegularization {
 	}
 
 	/**
-	 * Regularizes a geometry using {@link Parameters#defaults()} and
+	 * Regularizes a geometry using {@link RegParameters#defaults()} and
 	 * {@link LongestEdgeDirections}.
 	 *
 	 * @param input {@link LineString}, {@link LinearRing}, or {@link Polygon}
 	 * @return a new geometry of the same runtime type
 	 */
 	public static Geometry regularize(Geometry input) {
-		return regularize(input, Parameters.defaults());
+		return regularize(input, RegParameters.defaults());
 	}
 
 	/**
@@ -660,7 +660,7 @@ public final class ContourRegularization {
 	 * @param params configuration
 	 * @return a new geometry
 	 */
-	public static Geometry regularize(Geometry input, Parameters params) {
+	public static Geometry regularize(Geometry input, RegParameters params) {
 		Objects.requireNonNull(input, "input");
 		Objects.requireNonNull(params, "params");
 
@@ -680,7 +680,7 @@ public final class ContourRegularization {
 	 * Regularize a {@link LineString}. If the LineString is closed, it is treated
 	 * as a ring.
 	 */
-	public static LineString regularize(LineString line, Parameters params) {
+	public static LineString regularize(LineString line, RegParameters params) {
 		Objects.requireNonNull(line, "line");
 		GeometryFactory gf = line.getFactory();
 
@@ -696,7 +696,7 @@ public final class ContourRegularization {
 	/**
 	 * Regularize a {@link LinearRing}. Always treated as closed.
 	 */
-	public static LinearRing regularize(LinearRing ring, Parameters params) {
+	public static LinearRing regularize(LinearRing ring, RegParameters params) {
 		Objects.requireNonNull(ring, "ring");
 		GeometryFactory gf = ring.getFactory();
 
@@ -712,7 +712,7 @@ public final class ContourRegularization {
 	 * Regularize a {@link Polygon}. Shell and each hole ring are processed
 	 * independently.
 	 */
-	public static Polygon regularize(Polygon poly, Parameters params) {
+	public static Polygon regularize(Polygon poly, RegParameters params) {
 		Objects.requireNonNull(poly, "poly");
 		GeometryFactory gf = poly.getFactory();
 
@@ -743,7 +743,7 @@ public final class ContourRegularization {
 	 * @param params      configuration
 	 * @return regularized coordinates; if closed, guaranteed last==first
 	 */
-	public static Coordinate[] regularizeCoordinates(Coordinate[] coordinates, boolean closed, Parameters params) {
+	public static Coordinate[] regularizeCoordinates(Coordinate[] coordinates, boolean closed, RegParameters params) {
 		Objects.requireNonNull(coordinates, "coordinates");
 		Objects.requireNonNull(params, "params");
 
@@ -1226,7 +1226,7 @@ public final class ContourRegularization {
 
 			double ux = ref.p1.x - ref.p0.x;
 			double uy = ref.p1.y - ref.p0.y;
-			double un = Math.hypot(ux, uy);
+			double un = ref.p1.distance(ref.p0);
 			if (un == 0.0) {
 				return new LineSegment(new Coordinate(ref.p0), new Coordinate(ref.p1));
 			}

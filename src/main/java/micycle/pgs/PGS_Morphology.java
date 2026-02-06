@@ -35,7 +35,7 @@ import com.github.micycle1.geoblitz.FastVariableBuffer;
 import micycle.pgs.PGS_Contour.OffsetStyle;
 import micycle.pgs.commons.ChaikinCut;
 import micycle.pgs.commons.ContourRegularization;
-import micycle.pgs.commons.ContourRegularization.Parameters;
+import micycle.pgs.commons.ContourRegularization.RegParameters;
 import micycle.pgs.commons.CornerRounding;
 import micycle.pgs.commons.CornerRounding.RoundingStyle;
 import micycle.pgs.commons.DiscreteCurveEvolution;
@@ -1298,7 +1298,7 @@ public final class PGS_Morphology {
 	 * @since 2.2
 	 */
 	public static PShape regularise(PShape shape, double maxOffset) {
-		var params = Parameters.builder().maximumOffset(maxOffset);
+		var params = RegParameters.builder().maximumOffset(maxOffset);
 		return PGS.applyToLinealGeometries(shape, l -> {
 			return ContourRegularization.regularize(l, params.build());
 		});
@@ -1327,7 +1327,7 @@ public final class PGS_Morphology {
 	 */
 	public static PShape regularise(PShape shape, double maxOffset, double axisOrientation) {
 		var d = new ContourRegularization.UserDefinedDirections(5, axisOrientation);
-		var params = Parameters.builder().maximumOffset(maxOffset).directions(d);
+		var params = RegParameters.builder().maximumOffset(maxOffset).directions(d);
 		return PGS.applyToLinealGeometries(shape, l -> {
 			return ContourRegularization.regularize(l, params.build());
 		});

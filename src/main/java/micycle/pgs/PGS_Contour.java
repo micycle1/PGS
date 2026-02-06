@@ -40,6 +40,8 @@ import org.locationtech.jts.operation.buffer.OffsetCurve;
 import org.locationtech.jts.operation.distance.IndexedFacetDistance;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
+import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
+import org.locationtech.jts.simplify.VWSimplifier;
 import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.SimpleTriangle;
@@ -1073,7 +1075,7 @@ public final class PGS_Contour {
 		}
 
 		if (g.getCoordinates().length > 2000) {
-			g = DouglasPeuckerSimplifier.simplify(g, 0.25);
+			g = TopologyPreservingSimplifier.simplify(g, 0.25);
 		}
 
 		final BufferParameters bufParams = new BufferParameters(8, BufferParameters.CAP_FLAT, style.style, BufferParameters.DEFAULT_MITRE_LIMIT);
