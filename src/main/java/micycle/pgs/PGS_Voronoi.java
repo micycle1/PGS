@@ -668,16 +668,14 @@ public final class PGS_Voronoi {
 	 * @see #powerDiagram(Collection)
 	 */
 	public static PShape powerDiagram(Collection<PVector> weightedSites, @Nullable double[] bounds) {
-		var sites = weightedSites.stream().map(z -> new PowerDiagram2D.Site(z.x, z.y, z.z)).toList();
+		// NOTE r^2
+		var sites = weightedSites.stream().map(z -> new PowerDiagram2D.Site(z.x, z.y, z.z * z.z)).toList();
 		final Rect r = bounds == null ? null : new Rect(bounds[0], bounds[1], bounds[2], bounds[3]);
 		var cells = PowerDiagram2D.computeCells(sites, r);
 		var faces = cells.stream().map(cell -> {
-			if (cell.isEmpty()) {
-				return null;
-			}
-			var points = cell.stream().map(q -> new PVector((float) q.x(), (float) q.y())).collect(Collectors.toList());
+			var points = cell.polygon().stream().map(q -> new PVector((float) q.x(), (float) q.y())).collect(Collectors.toList());
 			if (!points.get(0).equals(points.get(points.size() - 1))) {
-				points.add(points.get(0)); // unclosed by default - close
+				points.add(points.get(0)); // unclosed by default, so close
 			}
 			return PGS_Conversion.fromPVector(points);
 		}).filter(Objects::nonNull).toList();
