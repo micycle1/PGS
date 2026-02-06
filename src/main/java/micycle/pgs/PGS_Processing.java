@@ -9,10 +9,8 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -66,7 +64,6 @@ import org.locationtech.jts.noding.SegmentString;
 import org.locationtech.jts.noding.SegmentStringUtil;
 import org.locationtech.jts.noding.snap.SnappingNoder;
 import org.locationtech.jts.operation.overlay.snap.GeometrySnapper;
-import org.locationtech.jts.operation.overlayng.MultiOperationOverlayNG;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
@@ -79,7 +76,6 @@ import com.github.micycle1.geoblitz.IndexedLengthIndexedLine;
 import com.github.micycle1.geoblitz.YStripesPointInAreaLocator;
 
 import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
-import micycle.pgs.color.ColorUtils;
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.KeilSnoeyinkConvexPartitioner;
 import micycle.pgs.commons.SeededRandomPointsInGridBuilder;
@@ -855,59 +851,6 @@ public final class PGS_Processing {
 		});
 
 		return out.getChildCount() == 1 ? out.getChild(0) : out;
-	}
-
-	/**
-	 * Removes overlap between polygons contained in a <code>GROUP</code> shape,
-	 * preserving only visible line segments suitable for pen plotting and similar
-	 * applications.
-	 * <p>
-	 * This method processes a <code>GROUP</code> shape consisting of lineal or
-	 * polygonal child shapes, aiming to create linework that represents only the
-	 * segments visible to a human, rather than a computer. The resulting linework
-	 * is useful for pen plotters or other applications where only the visible paths
-	 * are desired.
-	 * <p>
-	 * During the operation, any overlapping lines are also removed to ensure a
-	 * clean and clear representation of the shapes. It's important to note that the
-	 * order of shape layers in the input GROUP shape is significant. The method
-	 * considers the last child shape of the input to be "on top" of all other
-	 * shapes, as is the case visually.
-	 * 
-	 * @param shape A GROUP shape containing lineal or polygonal child shapes.
-	 * @return The resulting linework of the overlapping input as a LINES PShape,
-	 *         representing only visible line segments.
-	 * @since 1.3.0
-	 */
-	public static PShape removeHiddenLines(PShape shape) {
-		if (shape.getChildCount() == 0) {
-			return shape;
-		}
-
-		List<PShape> layers = PGS_Conversion.getChildren(shape); // visual top last
-		Collections.reverse(layers); // visual top first
-		final List<Geometry> geometries = layers.stream().map(PGS_Conversion::fromPShape).collect(Collectors.toList());
-		Geometry union = geometries.get(0); // start of cascading union
-
-		List<Geometry> culledGeometries = new ArrayList<>(geometries.size());
-		Iterator<Geometry> i = geometries.iterator();
-		culledGeometries.add(i.next());
-
-		// for each shape, subtract the union of shapes visually above it
-		while (i.hasNext()) {
-			final Geometry layer = i.next();
-			MultiOperationOverlayNG overlay = new MultiOperationOverlayNG(layer, union);
-			Geometry occulted = overlay.getResult(OverlayNG.DIFFERENCE); // occulted version of layer
-			union = overlay.getResult(OverlayNG.UNION);
-
-			culledGeometries.add(occulted);
-		}
-
-		Geometry dissolved = LineDissolver.dissolve(GEOM_FACTORY.createGeometryCollection(culledGeometries.toArray(new Geometry[0])));
-		PShape out = toPShape(dissolved);
-		PGS_Conversion.setAllStrokeColor(out, ColorUtils.setAlpha(Colors.PINK, 192), 4);
-
-		return out;
 	}
 
 	/**

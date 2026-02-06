@@ -29,6 +29,7 @@ import org.locationtech.jts.util.GeometricShapeFactory;
 
 import micycle.pgs.commons.FastOverlapRegions;
 import micycle.pgs.commons.Nullable;
+import micycle.pgs.commons.OcclusionSubtract;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -463,13 +464,39 @@ public final class PGS_ShapeBoolean {
 					return f; // outside -- keep
 				}
 				// preserve the fill etc of the PShape during subtraction
-				Geometry boundarySubtract = OverlayNG.overlay(f, g, OverlayNG.DIFFERENCE);
+				Geometry boundarySubtract = OverlayNG.overlay(f, g, OverlayNG.DIFFERENCE, PGS.PM);
 				boundarySubtract.setUserData(f.getUserData());
 				return boundarySubtract;
 			}
-		}).collect(Collectors.toList());
+		}).toList();
 
 		return PGS_Conversion.toPShape(faces);
+	}
+
+	/**
+	 * Removes hidden areas from shapes contained in a <code>GROUP</code> shape,
+	 * preserving only the visible portions of each shape.
+	 * <p>
+	 * This method processes a <code>GROUP</code> shape, aiming to create a set of
+	 * shapes that represent only the areas visible to the viewer (a.k.a. hidden
+	 * surface removal). The resulting geometry is useful for layering effects or
+	 * limiting overdraw.
+	 * <p>
+	 * It's important to note that the order of shape layers in the input GROUP
+	 * shape is significant. The method considers the last child shape of the input
+	 * to be "on top" of all other shapes, as is the case visually. For each child,
+	 * any area overlapped by subsequent (higher) children is subtracted from it.
+	 * Only polygonal shapes act as occluders; lines and points do not occlude
+	 * other shapes.
+	 *
+	 * @param shape A GROUP shape containing child shapes.
+	 * @return A new shape (typically a {@code GROUP}) containing the visible
+	 *         portions of the input components.
+	 * @since 2.2
+	 */
+	public static PShape occlusionSubtract(PShape shape) {
+		OcclusionSubtract o = new OcclusionSubtract(fromPShape(shape));
+		return toPShape(o.subtractArealOcclusion());
 	}
 
 	/**

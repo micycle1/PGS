@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `extractBoundary()` to `PGS_Processing`. Extracts the topological boundary of the given shape.
 * `weaveSegments()` to `PGS_SegmentSet`. Creates a fabric-like layout of horizontal and vertical segments.
 * `auxeticTiling()` to `PGS_Tiling`. Builds a tiling of interlocking cells that form an auxetic structure.
+* `occlusionSubtract()` to `PGS_ShapeBoolean`. Computes the visible parts of overlapping shapes (hidden surface removal).
 
 ### Changes
 * `PGS_Conversion.fromPShape()` now disambiguates closed paths using the PShape’s `kind`: closed shapes with `kind == POLYGON` convert to JTS `Polygon`, while closed shapes with `kind == PATH` convert to a (closed) JTS `LineString` (previously closed paths were generally treated as polygonal).
@@ -69,6 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `fromGeoJSON()` and `toGeoJSON()` from `PGS_Conversion`.
 * The `COARSE` mesh coloring algorithm, since it can color adjacent faces the same colour.
 * `lineSegmentsIntersection()` from `PGS_ShapeBoolean` in favour of `intersectionPoints(PShape)`.
+* `removeHiddenLines()` from `PGS_Processing`. This functionality has been superseded by `occlusionSubtract()` in `PGS_ShapeBoolean` (which handles generic shapes, not just lines).
 
 ## **2.1** *(2025-10-04)*
 
