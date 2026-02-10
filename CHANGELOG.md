@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `weaveSegments()` to `PGS_SegmentSet`. Creates a fabric-like layout of horizontal and vertical segments.
 * `auxeticTiling()` to `PGS_Tiling`. Builds a tiling of interlocking cells that form an auxetic structure.
 * `occlusionSubtract()` to `PGS_ShapeBoolean`. Computes the visible parts of overlapping shapes (hidden surface removal).
+* `additivelyWeightedVoronoi()` to `PGS_Voronoi`. Generates an Additively Weighted Voronoi Diagram for a set of weighted sites and a bounding box.
 
 ### Changes
 * `PGS_Conversion.fromPShape()` now disambiguates closed paths using the PShape’s `kind`: closed shapes with `kind == POLYGON` convert to JTS `Polygon`, while closed shapes with `kind == PATH` convert to a (closed) JTS `LineString` (previously closed paths were generally treated as polygonal).

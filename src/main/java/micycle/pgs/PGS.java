@@ -159,7 +159,7 @@ final class PGS {
 	}
 
 	static final Coordinate coordFromPVector(final PVector p) {
-		return new Coordinate(p.x, p.y);
+		return new Coordinate(p.x, p.y, p.z);
 	}
 
 	static final Coordinate[] toCoords(final Collection<PVector> points) {

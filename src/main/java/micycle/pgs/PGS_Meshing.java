@@ -916,17 +916,25 @@ public class PGS_Meshing {
 	 * @see #fixBrokenFaces(PShape, double)
 	 */
 	public static PShape fixBreaks(PShape coverage, double maxGapWidth) {
-		Geometry[] geomsIn = PGS_Conversion.getChildren(coverage).stream().map(f -> fromPShape(f)).filter(q -> q != null).toArray(Geometry[]::new);
+		var geoms = PGS_Conversion.getChildren(coverage).stream().map(f -> fromPShape(f)).filter(q -> q != null).toList();
 
+		var clean = fixBreaks(geoms, maxGapWidth);
+
+		final PShape out = PGS_Conversion.toPShape(clean);
+		PGS_Conversion.setAllStrokeColor(out, Colors.PINK, 2);
+		return out;
+	}
+
+	/**
+	 * Fixes breaks using JTS CoverageCleaner.
+	 */
+	static List<Geometry> fixBreaks(List<? extends Geometry> geoms, double maxGapWidth) {
+		Geometry[] geomsIn = geoms.toArray(Geometry[]::new);
 		CoverageCleaner cleaner = new CoverageCleaner(geomsIn);
 		cleaner.setGapMaximumWidth(maxGapWidth);
 		cleaner.clean();
 
-		var geomsOut = PGS.GEOM_FACTORY.createGeometryCollection(cleaner.getResult());
-
-		final PShape out = PGS_Conversion.toPShape(geomsOut);
-		PGS_Conversion.setAllStrokeColor(out, Colors.PINK, 2);
-		return out;
+		return Arrays.asList(cleaner.getResult());
 	}
 
 	/**
