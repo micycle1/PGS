@@ -22,7 +22,6 @@ import com.github.micycle1.betterbeziers.CubicBezier;
  * {@link org.locationtech.jts.geom.LineString LineString} by sampling those
  * Beziers at a fixed arc-length spacing.
  */
-
 public final class SchneiderBezierFitter {
 
 	private static final int MAX_FIT_ITERS = 4;
@@ -73,29 +72,21 @@ public final class SchneiderBezierFitter {
 	public static LineString fitAndSample(LineString line, double error, double interSampleDistance, GeometryFactory gf) {
 		Objects.requireNonNull(line, "line");
 		Objects.requireNonNull(gf, "gf");
+
+		line = (LineString) line.norm();
+
 		Coordinate[] coords = line.getCoordinates();
-		if (coords.length < 2) {
+		if (coords.length < 2)
 			throw new IllegalArgumentException("LineString must have at least 2 coordinates");
-		}
 
-		boolean closed = line.isClosed();
-
-		// If closed, drop the duplicate last vertex before fitting; we will re-close
-		// after sampling.
+		// if closed, keep the duplicate last coordinate so the closing edge is fitted
 		List<Coordinate> pts = new ArrayList<>(coords.length);
-		for (Coordinate coord : coords) {
+		for (Coordinate coord : coords)
 			pts.add(coord);
-		}
-		if (closed && pts.size() > 1 && pts.get(0).equals2D(pts.get(pts.size() - 1))) {
-			pts.remove(pts.size() - 1);
-		}
 
-		LineString smoothed = fitAndSample(pts, error, interSampleDistance, gf);
-
-		if (closed) {
-			return ensureClosed(smoothed, gf);
-		}
-		return smoothed;
+		// Fit+sample directly; if input is closed, output will already end where it
+		// starts
+		return fitAndSample(pts, error, interSampleDistance, gf);
 	}
 
 	/**
@@ -127,6 +118,10 @@ public final class SchneiderBezierFitter {
 			throw new IllegalArgumentException("interSampleDistance must be > 0");
 		}
 
+		// Detect closed ring by duplicate last==first
+		final boolean closed = points.size() >= 4 && points.get(0) != null && points.get(points.size() - 1) != null
+				&& points.get(0).equals2D(points.get(points.size() - 1));
+
 		List<Vector2D> pts = new ArrayList<>(points.size());
 		for (Coordinate c : points) {
 			if (c == null) {
@@ -135,8 +130,24 @@ public final class SchneiderBezierFitter {
 			pts.add(new Vector2D(c.x, c.y));
 		}
 
-		Vector2D leftTangent = computeLeftTangent(pts);
-		Vector2D rightTangent = computeRightTangent(pts);
+		// Use wrap-around to define a seam-consistent tangent at p0 == plast,
+		// so the closing edge gets smoothed and the join is less kinky.
+		final Vector2D leftTangent;
+		final Vector2D rightTangent;
+		if (closed) {
+			int n = pts.size();
+			Vector2D pPrev = pts.get(n - 2); // last unique vertex
+			Vector2D p0 = pts.get(0); // unused
+			Vector2D pNext = pts.get(1);
+
+			Vector2D t = safeNormalize(pNext.subtract(pPrev));
+
+			leftTangent = t; // tangent leaving p0 toward p1
+			rightTangent = t.negate(); // tangent leaving last point (also p0) toward pPrev
+		} else {
+			leftTangent = computeLeftTangent(pts);
+			rightTangent = computeRightTangent(pts);
+		}
 
 		MultiBezierCurve fitted = fitCurves(0, pts.size() - 1, error, new MultiBezierCurve(), leftTangent, rightTangent, pts);
 
@@ -149,7 +160,7 @@ public final class SchneiderBezierFitter {
 
 			for (int i = 0; i < samples.length; i++) {
 				if (!firstSeg && i == 0) {
-					continue; // avoid duplicate join vertex
+					continue; // avoid duplicate join vertex between segments
 				}
 				out.add(new Coordinate(samples[i][0], samples[i][1]));
 			}
@@ -386,25 +397,6 @@ public final class SchneiderBezierFitter {
 
 	private static double dist(Vector2D a, Vector2D b) {
 		return a.distance(b);
-	}
-
-	private static LineString ensureClosed(LineString ls, GeometryFactory gf) {
-		Coordinate[] c = ls.getCoordinates();
-		if (c.length == 0) {
-			return ls;
-		}
-		if (c.length == 1) {
-			return gf.createLineString(new Coordinate[] { new Coordinate(c[0]), new Coordinate(c[0]) });
-		}
-
-		if (c[0].equals2D(c[c.length - 1])) {
-			return ls;
-		}
-
-		Coordinate[] closed = new Coordinate[c.length + 1];
-		System.arraycopy(c, 0, closed, 0, c.length);
-		closed[closed.length - 1] = new Coordinate(c[0]);
-		return gf.createLineString(closed);
 	}
 
 	private static double B0(double t) {
