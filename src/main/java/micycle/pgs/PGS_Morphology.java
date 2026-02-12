@@ -20,6 +20,8 @@ import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.Polygonal;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.locationtech.jts.geom.util.GeometryFixer;
+import org.locationtech.jts.geom.util.LineStringExtracter;
+import org.locationtech.jts.geom.util.PolygonExtracter;
 import org.locationtech.jts.linearref.LengthIndexedLine;
 import org.locationtech.jts.operation.buffer.BufferOp;
 import org.locationtech.jts.operation.buffer.BufferParameters;
@@ -144,6 +146,9 @@ public final class PGS_Morphology {
 	/**
 	 * Buffers a shape with a varying buffer distance (interpolated between a start
 	 * distance and an end distance) along the shape's perimeter.
+	 * <p>
+	 * For polygons, only the <em>exterior ring</em> (perimeter) is buffered;
+	 * interior rings (holes) are ignored.
 	 * 
 	 * @param shape         a polygon, lineal shape, or GROUP containing such shapes
 	 * @param startDistance the starting buffer amount
@@ -152,17 +157,28 @@ public final class PGS_Morphology {
 	 *         be empty)
 	 * @since 1.3.0
 	 */
+	@SuppressWarnings("unchecked")
 	public static PShape variableBuffer(PShape shape, double startDistance, double endDistance) {
-		return PGS.applyToLinealGeometries(shape, line -> {
-			var buffer = (Polygon) FastVariableBuffer.buffer(line, startDistance, endDistance);
-			return buffer.getExteriorRing();
+		var g = fromPShape(shape);
+		List<LineString> lines = LineStringExtracter.getLines(g);
+		List<Polygon> polys = PolygonExtracter.getPolygons(g);
+		polys.forEach(p -> {
+			// not defined for polygons
+			lines.add(p.getExteriorRing());
 		});
+
+		var buffered = lines.stream().map(line -> FastVariableBuffer.buffer(line, startDistance, endDistance)).toList();
+
+		return toPShape(buffered);
 	}
 
 	/**
 	 * Applies a variable buffer to a shape. The buffer width at each vertex is
 	 * determined by a callback function that considers the vertex's properties and
 	 * its relative position along the shape's boundary.
+	 * <p>
+	 * For polygons, only the <em>exterior ring</em> (perimeter) is buffered;
+	 * interior rings (holes) are ignored.
 	 * <p>
 	 * Example usage:
 	 * 
@@ -188,8 +204,17 @@ public final class PGS_Morphology {
 	 *         vertex is calculated independently.
 	 * @since 2.0
 	 */
+	@SuppressWarnings("unchecked")
 	public static PShape variableBuffer(PShape shape, BiFunction<Coordinate, Double, Double> bufferCallback) {
-		return PGS.applyToLinealGeometries(shape, line -> {
+		var g = fromPShape(shape);
+		List<LineString> lines = LineStringExtracter.getLines(g);
+		List<Polygon> polys = PolygonExtracter.getPolygons(g);
+		polys.forEach(p -> {
+			// not defined for polygons
+			lines.add(p.getExteriorRing());
+		});
+
+		var buffered = lines.stream().map(line -> {
 			final Coordinate[] coords = line.getCoordinates();
 			if (coords.length == 0) {
 				// return an "empty buffer" geometry consistent with VariableBuffer expectations
@@ -220,11 +245,12 @@ public final class PGS_Morphology {
 			}
 
 			final var vb = new FastVariableBuffer(line, bufferDistances);
-			var buffer = (Polygon) vb.getResult();
-			return buffer.getExteriorRing();
-		});
+			return vb.getResult();
+		}).toList();
+
+		return toPShape(buffered);
 	}
-	
+
 	/**
 	 * Erodes (a negative buffer) a shape by a normalised amount (scaled to shape
 	 * size).
