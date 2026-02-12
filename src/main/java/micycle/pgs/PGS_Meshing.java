@@ -11,6 +11,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -548,7 +549,10 @@ public class PGS_Meshing {
 		graph.removeAllEdges(toRemove);
 		ConnectivityInspector<PShape, DefaultEdge> ci = new ConnectivityInspector<>(graph);
 
-		List<PShape> blobs = ci.connectedSets().stream().map(group -> PGS_ShapeBoolean.unionMesh(PGS_Conversion.flatten(group))).collect(Collectors.toList());
+		List<PShape> blobs = ci.connectedSets().stream().map(group -> {
+			var blob = PGS_ShapeBoolean.unionMesh(PGS_Conversion.flatten(group));
+			return PGS_Processing.normalise(blob); // ensure constant vertex order
+		}).toList();
 
 		return applyOriginalStyling(PGS_Conversion.flatten(blobs), mesh);
 	}
