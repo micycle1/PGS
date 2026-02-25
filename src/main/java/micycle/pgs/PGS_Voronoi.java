@@ -642,10 +642,12 @@ public final class PGS_Voronoi {
 		var faces = MultiplicativelyWeightedVoronoi.getMWVFromPVectors(weightedSites.stream().toList(), bounds);
 		Geometry geoms = GEOM_FACTORY.createGeometryCollection(faces.toArray(new Geometry[] {}));
 		if (forceConforming) {
-			geoms = GeometrySnapper.snapToSelf(geoms, 1e-6, true); // slow
+			geoms = GeometrySnapper.snapToSelf(geoms, 1e-5, true); // slow
 		}
 		var s = PGS_Conversion.toPShape(geoms);
-//		s = PGS_Meshing.fixBreaks(s, 1e-4, 10); // faster than GeometrySnapper, less robust
+//		if (forceConforming) {
+//			s = PGS_Meshing.fixBreaks(s, 1e-4); // faster than GeometrySnapper, less robust
+//		}
 		return s;
 	}
 

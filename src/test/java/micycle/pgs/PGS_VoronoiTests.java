@@ -21,7 +21,8 @@ class PGS_VoronoiTests {
 	static void initSites() {
 		sites = PGS_PointSet.random(200, 200, 800, 800, N, 0);
 		// assign slightly different weights, but not enough to collapse cells
-		sites = PGS_PointSet.applyRandomWeights(sites, 1, 5);
+		// (so we can check voronoi faces against N)
+		sites = PGS_PointSet.applyRandomWeights(sites, 1, 3, 0);
 		bounds = new double[] { 0, 0, 1000, 1000 };
 	}
 
@@ -58,7 +59,7 @@ class PGS_VoronoiTests {
 
 	private void assertValidVoronoi(TriFunction<Collection<PVector>, double[], Boolean, PShape> op, boolean flag) {
 		PShape vd = op.apply(sites, bounds, flag);
-		assertTrue(PGS_ShapePredicates.isConformingMesh(vd));
+		assertTrue(PGS_ShapePredicates.isConformingMesh(vd), "Voronoi output is non-conforming");
 		assertEquals(N, vd.getChildCount());
 	}
 
