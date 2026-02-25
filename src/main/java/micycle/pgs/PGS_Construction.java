@@ -1072,7 +1072,7 @@ public class PGS_Construction {
 			return PGS_Conversion.toPVector(bezierShape).stream(); // to stream (for flattening)
 		}).toList();
 
-		return PGS_Conversion.fromPVector(curveVertices);
+		return PGS_Conversion.toPathPShape(curveVertices);
 	}
 
 	/**
@@ -1156,7 +1156,7 @@ public class PGS_Construction {
 		CoordinateList list = new CoordinateList(path.getCoordinates());
 		list.closeRing();
 
-		PShape out = toPShape(PGS.GEOM_FACTORY.createLinearRing(list.toCoordinateArray()));
+		PShape out = toPShape(PGS.GEOM_FACTORY.createPolygon(list.toCoordinateArray()));
 		out.setStroke(false);
 		out = PGS_Transformation.resizeByWidth(out, width);
 		out = PGS_Transformation.translateToOrigin(out);

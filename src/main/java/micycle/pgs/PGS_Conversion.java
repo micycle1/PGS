@@ -254,9 +254,9 @@ public final class PGS_Conversion {
 		PShape shape = new PShape();
 		// apply PGS style by default
 		shape.setFill(true);
-		shape.setFill(micycle.pgs.color.Colors.WHITE);
+		shape.setFill(Colors.WHITE);
 		shape.setStroke(true);
-		shape.setStroke(micycle.pgs.color.Colors.PINK);
+		shape.setStroke(Colors.PINK);
 		shape.setStrokeWeight(4);
 		shape.setStrokeJoin(PConstants.ROUND);
 		shape.setStrokeCap(PConstants.ROUND);
@@ -393,9 +393,9 @@ public final class PGS_Conversion {
 	public static PShape toPShape(Collection<? extends Geometry> geometries) {
 		PShape shape = new PShape(GROUP);
 		shape.setFill(true);
-		shape.setFill(micycle.pgs.color.Colors.WHITE);
+		shape.setFill(Colors.WHITE);
 		shape.setStroke(true);
-		shape.setStroke(micycle.pgs.color.Colors.PINK);
+		shape.setStroke(Colors.PINK);
 		shape.setStrokeWeight(4);
 
 		geometries.forEach(g -> shape.addChild(toPShape(g)));
@@ -929,7 +929,7 @@ public final class PGS_Conversion {
 		shape.setFamily(PShape.PATH);
 		shape.setStrokeCap(PConstants.ROUND);
 		shape.setStroke(true);
-		shape.setStroke(micycle.pgs.color.Colors.PINK);
+		shape.setStroke(Colors.PINK);
 		shape.setStrokeWeight(6);
 		shape.beginShape(PConstants.POINTS);
 		points.forEach(p -> shape.vertex(p.x, p.y));
@@ -1530,6 +1530,93 @@ public final class PGS_Conversion {
 	 */
 	public static PShape fromPVector(PVector... vertices) {
 		return fromPVector(Arrays.asList(vertices));
+	}
+
+	/**
+	 * Creates a {@link PShape} whose geometry should be interpreted as
+	 * <em>areal</em> (a polygon), not merely a polyline.
+	 * <p>
+	 * This method always produces a polygonal shape by calling
+	 * {@code beginShape(PConstants.POLYGON)} and ensuring the vertex ring is
+	 * closed. If the supplied vertex sequence is not already closed (i.e. first
+	 * vertex is not equal to last vertex), the first vertex will be appended to
+	 * close it.
+	 * <p>
+	 * The distinction between {@code POLYGON} vs {@code PATH} matters for
+	 * downstream geometry processing semantics: use this method when the vertex
+	 * sequence represents an area and should be treated as a polygon.
+	 *
+	 * @param vertices polygon ring vertices; may be open or closed (will be forced
+	 *                 closed)
+	 * @return a {@code PShape} in the {@code PShape.PATH} family, begun with
+	 *         {@code PConstants.POLYGON} and ended with {@code CLOSE}
+	 * @since 2.2
+	 * @see #toPathPShape(Collection)
+	 * @see #fromContours(List, List)
+	 */
+	public static PShape toPolygonPShape(Collection<PVector> vertices) {
+		return fromPVectorImpl(vertices, PConstants.POLYGON, true);
+	}
+
+	/**
+	 * Creates a {@link PShape} whose geometry should be interpreted as
+	 * <em>lineal</em> (a path/linestring), even if the provided vertices happen to
+	 * form a closed loop.
+	 * <p>
+	 * This method calls {@code beginShape(PConstants.PATH)} and does
+	 * <strong>not</strong> force closure. If the input is closed (first vertex
+	 * equals last vertex), the returned {@code PShape} will be closed visually
+	 * (ended with {@code CLOSE}), but it is still semantically a {@code PATH}
+	 * rather than a {@code POLYGON}.
+	 * <p>
+	 * Use this method when the vertex sequence represents a line. This preserves
+	 * lineal semantics for later geometry processing.
+	 *
+	 * @param vertices path vertices; may be open or closed (closure is not forced)
+	 * @return a {@code PShape} in the {@code PShape.PATH} family, begun with
+	 *         {@code PConstants.PATH}; ended with {@code OPEN} or {@code CLOSE}
+	 *         depending on whether the input is already closed
+	 * @since 2.2
+	 * @see #toPolygonPShape(Collection)
+	 * @see #fromPVector(Collection)
+	 */
+	public static PShape toPathPShape(Collection<PVector> vertices) {
+		return fromPVectorImpl(vertices, PConstants.PATH, false);
+	}
+
+	private static PShape fromPVectorImpl(Collection<PVector> vertices, int beginKind, boolean forceClosed) {
+		List<PVector> verticesList = new ArrayList<>(vertices);
+
+		boolean closed = false;
+		if (!verticesList.isEmpty() && verticesList.get(0).equals(verticesList.get(verticesList.size() - 1))) {
+			closed = true;
+		}
+
+		if (forceClosed && !verticesList.isEmpty() && !closed) {
+			verticesList.add(verticesList.get(0));
+			closed = true;
+		}
+
+		PShape shape = new PShape();
+		shape.setFamily(PShape.PATH);
+
+		shape.setFill(Colors.WHITE);
+		shape.setFill(closed);
+
+		shape.setStroke(true);
+		shape.setStroke(closed ? Colors.PINK : Colors.WHITE);
+		shape.setStrokeWeight(2);
+
+		shape.beginShape(beginKind);
+
+		int limit = verticesList.size() - (closed ? 1 : 0); // avoid duplicating last==first when closing
+		for (int i = 0; i < limit; i++) {
+			PVector v = verticesList.get(i);
+			shape.vertex(v.x, v.y);
+		}
+
+		shape.endShape(closed ? PConstants.CLOSE : PConstants.OPEN);
+		return shape;
 	}
 
 	/**
