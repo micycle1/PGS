@@ -1,29 +1,23 @@
 package micycle.pgs;
 
 import static micycle.pgs.PGS.GEOM_FACTORY;
-import static micycle.pgs.PGS.prepareLinesPShape;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.DoubleBinaryOperator;
 import java.util.stream.Collectors;
-
-import javax.vecmath.Point3d;
 
 import org.jgrapht.alg.interfaces.ShortestPathAlgorithm;
 import org.jgrapht.alg.shortestpath.BFSShortestPath;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 import org.locationtech.jts.algorithm.Angle;
-import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.dissolve.LineDissolver;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
@@ -41,7 +35,6 @@ import org.locationtech.jts.operation.distance.IndexedFacetDistance;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
-import org.locationtech.jts.simplify.VWSimplifier;
 import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.SimpleTriangle;
@@ -51,15 +44,10 @@ import org.tinfour.contour.ContourBuilderForTin;
 import org.tinfour.standard.IncrementalTin;
 import org.tinfour.utils.HilbertSort;
 import org.tinfour.utils.SmoothingFilter;
-import org.twak.camp.Corner;
-import org.twak.camp.Edge;
-import org.twak.camp.Machine;
-import org.twak.camp.Skeleton;
-import org.twak.utils.collections.Loop;
-import org.twak.utils.collections.LoopL;
 
 import com.github.micycle1.geoblitz.SegmentVoronoiIndex;
 import com.github.micycle1.geoblitz.YStripesPointInAreaLocator;
+import com.github.micycle1.grassfire4j.Grassfire;
 import com.google.common.collect.Lists;
 
 import micycle.medialAxis.MedialAxis;
@@ -272,123 +260,41 @@ public final class PGS_Contour {
 	 * @return PShape based on the input polygon structure, either as a single or
 	 *         multi-polygon skeleton representation.
 	 */
-	public static PShape straightSkeleton(PShape shape) {
-		return straightSkeleton(shape, Integer.MAX_VALUE);
-	}
-
-	/**
-	 * Computes the straight skeleton for a shape. This method signature accepts an
-	 * integer to control the number of nearest neighboring edges considered during
-	 * collision detection. In practice this can speed up computation considerably.
-	 * <p>
-	 * A straight skeleton is a skeletal structure similar to the medial axis,
-	 * consisting of straight-line segments only. Roughly, it is the geometric graph
-	 * whose edges are the traces of vertices of shrinking mitered offset curves of
-	 * the polygon.
-	 * <p>
-	 * For a single polygon, this method returns a GROUP PShape containing three
-	 * children:
-	 * <ul>
-	 * <li>Child 0: GROUP PShape consisting of skeleton faces.</li>
-	 * <li>Child 1: LINES PShape representing branches, which are lines connecting
-	 * the skeleton to the polygon's edge.</li>
-	 * <li>Child 2: LINES PShape composed of bones, depicting the pure straight
-	 * skeleton of the polygon.</li>
-	 * </ul>
-	 * <p>
-	 * For multi-polygons, the method returns a master GROUP PShape. This master
-	 * shape includes multiple skeleton GROUP shapes, each corresponding to a single
-	 * polygon and structured as described above.
-	 * 
-	 * @param shape a single polygon (that can contain holes), or a multi polygon
-	 *              (whose polygons can contain holes)
-	 * @param k     The number of nearest neighboring edges to consider when
-	 *              searching for collisions using the spatial index. This parameter
-	 *              balances performance and correctness: too few neighbors may miss
-	 *              collisions, while too many may reduce the performance benefits
-	 *              of the spatial index.
-	 * @return PShape based on the input polygon structure, either as a single or
-	 *         multi-polygon skeleton representation.
-	 * @since 2.1
-	 */
 	@SuppressWarnings("unchecked")
-	public static PShape straightSkeleton(PShape shape, int k) {
+	public static PShape straightSkeleton(PShape shape) {
 		final Geometry g = fromPShape(shape);
-		var skeletons = GeometryExtracter.extract(g, Geometry.TYPENAME_POLYGON).parallelStream().map(p -> straightSkeleton((Polygon) p, k)).toList();
+		var skeletons = GeometryExtracter.extract(g, Geometry.TYPENAME_POLYGON).parallelStream().map(p -> straightSkeleton((Polygon) p)).toList();
 		return PGS_Conversion.flatten(skeletons);
 	}
 
-	private static PShape straightSkeleton(Polygon polygon, int k) {
-		final Set<Coordinate> edgeCoordsSet = new HashSet<>();
-		final Skeleton skeleton;
-		final LoopL<Edge> loops = new LoopL<>(); // list of loops
-		final Machine speed = new Machine(1); // every edge same speed
+	private static PShape straightSkeleton(Polygon polygon) {
+		var skeleton = Grassfire.computeSkeleton(polygon);
 
-		final LinearRing[] rings = new LinearRingIterator(polygon).getLinearRings();
-		for (int i = 0; i < rings.length; i++) {
-			loops.add(ringToLoop(rings[i], i > 0, edgeCoordsSet, speed));
-		}
-
-		final PShape lines = new PShape(PConstants.GROUP);
-		final PShape faces = new PShape(PConstants.GROUP);
-		/*
-		 * Create PEdges first to prevent lines being duplicated in output shapes since
-		 * faces share branches and bones.
-		 */
-		final Set<PEdge> branchEdges = new HashSet<>();
-		final Set<PEdge> boneEdges = new HashSet<>();
-		try {
-			skeleton = new Skeleton(loops, k);
-			skeleton.skeleton(); // compute skeleton
-
-			skeleton.output.faces.values().forEach(f -> {
-				List<Point3d> vertices = f.getLoopL().iterator().next().stream().toList();
-				List<PVector> faceVertices = new ArrayList<>();
-
-				for (int i = 0; i < vertices.size(); i++) {
-					final Point3d p1 = vertices.get(i);
-					final Point3d p2 = vertices.get((i + 1) % vertices.size());
-					faceVertices.add(new PVector((float) p1.x, (float) p1.y));
-					final boolean a = edgeCoordsSet.contains(new Coordinate(p1.x, p1.y)); // NOTE Coordinate()
-					final boolean b = edgeCoordsSet.contains(new Coordinate(p2.x, p2.y));
-					if (a ^ b) { // branch (xor)
-						branchEdges.add(new PEdge(p1.x, p1.y, p2.x, p2.y));
-					} else {
-						if (!a) { // bone
-							boneEdges.add(new PEdge(p1.x, p1.y, p2.x, p2.y));
-						}
-					}
-				}
-
-				PShape face = PGS_Conversion.fromPVector(faceVertices);
-				face.setStroke(true);
-				face.setStrokeWeight(1);
-				face.setStroke(ColorUtils.composeColor(147, 112, 219));
-				faces.addChild(face);
-			});
-		} catch (Exception ignore) {
-			// hide init or collision errors from console
-		}
-
-		final PShape bones = prepareLinesPShape(null, null, 2);
-		boneEdges.forEach(e -> {
-			bones.vertex(e.a.x, e.a.y);
-			bones.vertex(e.b.x, e.b.y);
-		});
-		bones.endShape();
-
-		final PShape branches = prepareLinesPShape(ColorUtils.composeColor(40, 235, 180), null, null);
-		branchEdges.forEach(e -> {
-			branches.vertex(e.a.x, e.a.y);
-			branches.vertex(e.b.x, e.b.y);
+		final PShape out = new PShape(PConstants.GROUP);
+		var faces = skeleton.asPolygonFaces(polygon);
+		var branches = PGS.prepareLinesPShape(ColorUtils.composeColor(40, 235, 180), null, null);
+		var bones = PGS.prepareLinesPShape(null, null, null);		
+		
+		skeleton.segments().forEach(segment -> {
+			if (segment.info1() != null || segment.info2() != null) {
+				branches.vertex((float) segment.p1().x, (float) segment.p1().y);
+				branches.vertex((float) segment.p2().x, (float) segment.p2().y);
+			}
+			else {
+				bones.vertex((float) segment.p1().x, (float) segment.p1().y);
+				bones.vertex((float) segment.p2().x, (float) segment.p2().y);				
+			}
 		});
 		branches.endShape();
+		bones.endShape();
 
-		lines.addChild(faces);
-		lines.addChild(branches);
-		lines.addChild(bones);
-
-		return lines;
+		var facesShape = toPShape(faces);
+		facesShape  = PGS_Conversion.setAllStrokeColor(facesShape, Colors.PINK, 1);
+		out.addChild(facesShape);
+		out.addChild(branches);
+		out.addChild(bones);
+		
+		return out;
 	}
 
 	/**
@@ -455,7 +361,7 @@ public final class PGS_Contour {
 
 		PShape out = toPShape(DouglasPeuckerSimplifier.simplify(contourGeom, 0.25).intersection(g));
 		PGS_Conversion.disableAllFill(out);
-		PGS_Conversion.setAllStrokeColor(out, micycle.pgs.color.Colors.PINK, 4, PConstants.SQUARE);
+		PGS_Conversion.setAllStrokeColor(out, Colors.PINK, 4, PConstants.SQUARE);
 
 		return out;
 	}
@@ -654,7 +560,7 @@ public final class PGS_Contour {
 		var isolines = MarchingSquares.isolines(bounds, sampleSpacing, contourInterval, isolineMin, isolineMax, valueFunction).keySet();
 
 		var out = PGS_Conversion.flatten(isolines);
-		PGS_Conversion.setAllStrokeColor(out, micycle.pgs.color.Colors.PINK, 4, PConstants.SQUARE);
+		PGS_Conversion.setAllStrokeColor(out, Colors.PINK, 4, PConstants.SQUARE);
 
 		return out;
 	}
@@ -686,7 +592,7 @@ public final class PGS_Contour {
 		var isolines = MarchingSquares.isolineZero(bounds, sampleSpacing, valueFunction).keySet();
 
 		var out = PGS_Conversion.flatten(isolines);
-		PGS_Conversion.setAllStrokeColor(out, micycle.pgs.color.Colors.PINK, 4, PConstants.SQUARE);
+		PGS_Conversion.setAllStrokeColor(out, Colors.PINK, 4, PConstants.SQUARE);
 
 		return out;
 	}
@@ -762,7 +668,7 @@ public final class PGS_Contour {
 		var contourStrings = PGS.GEOM_FACTORY.createMultiLineString(contours);
 		var out = toPShape(OverlayNG.overlay(contourStrings, g, OverlayNG.INTERSECTION));
 
-		PGS_Conversion.setAllStrokeColor(out, micycle.pgs.color.Colors.PINK, 4, PConstants.SQUARE);
+		PGS_Conversion.setAllStrokeColor(out, Colors.PINK, 4, PConstants.SQUARE);
 
 		return out;
 	}
@@ -792,7 +698,7 @@ public final class PGS_Contour {
 		final double[] b = new double[4];
 		PGS_Hull.boundingBox(shape, b); // write to bounding box
 		final var g = fromPShape(shape);
-		final var pointLocator = new YStripesPointInAreaLocator((Polygon) g.buffer(10));
+		final var pointLocator = new YStripesPointInAreaLocator(g.buffer(10));
 		final IndexedFacetDistance distIndex = new IndexedFacetDistance(g);
 		double adjustedArea = g.getArea() / PGS_ShapePredicates.density(shape);
 
@@ -812,7 +718,7 @@ public final class PGS_Contour {
 
 		PShape contours = PGS_ShapeBoolean.intersect(shape, lines);
 		contours = PGS_Conversion.disableAllFill(contours); // since some shapes may be polygons
-		PGS_Conversion.setAllStrokeColor(contours, micycle.pgs.color.Colors.PINK, 4, PConstants.SQUARE);
+		PGS_Conversion.setAllStrokeColor(contours, Colors.PINK, 4, PConstants.SQUARE);
 
 		return contours;
 	}
@@ -1191,32 +1097,6 @@ public final class PGS_Contour {
 			coords[i / 2] = new Coordinate(vx, vy);
 		}
 		return GEOM_FACTORY.createLineString(coords);
-	}
-
-	private static Loop<Edge> ringToLoop(LinearRing ring, boolean hole, Set<Coordinate> edgeCoordsSet, Machine speed) {
-		Coordinate[] coords = ring.getCoordinates();
-		if (!hole && !Orientation.isCCW(coords)) {
-			reverse(coords); // exterior should be CCW
-		}
-		if (hole && Orientation.isCCW(coords)) {
-			reverse(coords); // holes should be CW
-		}
-
-		List<Corner> corners = new ArrayList<>();
-		Loop<Edge> loop = new Loop<>();
-
-		for (Coordinate coord : coords) {
-			corners.add(new Corner(coord.x, coord.y));
-			edgeCoordsSet.add(coord);
-		}
-
-		for (int j = 0; j < corners.size() - 1; j++) {
-			Edge edge = new Edge(corners.get(j), corners.get((j + 1) % (corners.size() - 1)));
-			edge.machine = speed;
-			loop.append(edge);
-		}
-
-		return loop;
 	}
 
 }

@@ -233,8 +233,8 @@
 		</dependency>
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
-			<artifactId>campskeleton</artifactId>
-			<version>spatial-index-845e720af6-1</version>
+			<artifactId>grassfire4j</artifactId>
+			<version>b50e08b133</version>
 		</dependency>
 		<dependency>
 			<groupId>org.jgrapht</groupId>
@@ -263,6 +263,12 @@
 			<version>3.6.1</version>
 		</dependency>
 		<dependency>
+			<groupId>javax.vecmath</groupId>
+			<artifactId>vecmath</artifactId>
+			<version>1.5.2</version>
+			<scope>compile</scope>
+		</dependency>
+		<dependency>
 			<groupId>org.tinspin</groupId>
 			<artifactId>tinspin-indexes</artifactId>
 			<version>2.1.3</version>
@@ -270,6 +276,12 @@
 		<dependency> <!-- for test running -->
 			<groupId>org.junit.jupiter</groupId>
 			<artifactId>junit-jupiter-api</artifactId>
+			<version>${junit.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-params</artifactId>
 			<version>${junit.version}</version>
 			<scope>test</scope>
 		</dependency>
