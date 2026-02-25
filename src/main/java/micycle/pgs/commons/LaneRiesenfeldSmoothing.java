@@ -55,24 +55,49 @@ public class LaneRiesenfeldSmoothing {
 	 * @return A new subdivided geometry (LineString or LinearRing).
 	 */
 	public static LineString subdivide(LineString geometry, int degree, int subdivisions, double antiContractionFactor) {
+		if (geometry == null)
+			return null;
+
 		Coordinate[] coords = geometry.getCoordinates();
 		boolean closed = geometry.isClosed();
-		if (closed && coords.length > 0) {
-			coords = Arrays.copyOf(coords, coords.length - 1); // Remove the last coordinate if closed
+
+		// Handle degenerate inputs early
+		if (coords == null || coords.length < 2 || degree < 1 || subdivisions < 1) {
+			return geometry;
 		}
+
+		// If closed in JTS, last coordinate duplicates first -> remove it for cyclic
+		// processing
+		if (closed && coords.length > 1 && coords[0].equals2D(coords[coords.length - 1])) {
+			coords = Arrays.copyOf(coords, coords.length - 1);
+		}
+
+		// For a closed curve, we need at least 3 unique vertices to form a ring
+		if (closed && coords.length < 3) {
+			return geometry; // or throw IllegalArgumentException
+		}
+
 		Coordinate[] subdivided = lr4(coords, degree, closed, antiContractionFactor, subdivisions);
+
 		GeometryFactory factory = geometry.getFactory();
 		return createGeometry(factory, subdivided, closed);
 	}
 
 	private static LineString createGeometry(GeometryFactory factory, Coordinate[] coords, boolean closed) {
-		if (closed && coords.length > 0) {
-			List<Coordinate> coordList = new ArrayList<>(Arrays.asList(coords));
-			coordList.add(new Coordinate(coordList.get(0)));
-			return factory.createLinearRing(coordList.toArray(new Coordinate[0]));
-		} else {
-			return factory.createLineString(coords);
+		if (coords == null)
+			coords = new Coordinate[0];
+
+		if (closed) {
+			// Ensure closure by appending first coordinate at the end
+			if (coords.length == 0) {
+				return factory.createLinearRing(new Coordinate[0]);
+			}
+			Coordinate[] ring = Arrays.copyOf(coords, coords.length + 1);
+			ring[ring.length - 1] = new Coordinate(coords[0]);
+			return factory.createLinearRing(ring);
 		}
+
+		return factory.createLineString(coords);
 	}
 
 	/**
@@ -97,7 +122,7 @@ public class LaneRiesenfeldSmoothing {
 		for (int s = 0; s < subdivisions; s++) {
 			v = fourPoint(v, closed, w);
 
-			for (int d = 1; d < degree; d++) {
+			for (int d = 0; d < degree; d++) {
 				int n = v.length;
 				List<Coordinate> u = new ArrayList<>();
 
