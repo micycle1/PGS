@@ -57,6 +57,7 @@ import org.locationtech.jts.linearref.LengthIndexedLine;
 import org.locationtech.jts.noding.BasicSegmentString;
 import org.locationtech.jts.noding.MCIndexNoder;
 import org.locationtech.jts.noding.MCIndexSegmentSetMutualIntersector;
+import org.locationtech.jts.noding.NodedSegmentString;
 import org.locationtech.jts.noding.Noder;
 import org.locationtech.jts.noding.SegmentIntersectionDetector;
 import org.locationtech.jts.noding.SegmentIntersector;
@@ -343,7 +344,6 @@ public final class PGS_Processing {
 		double interLineDistanceFinal = Math.max(interLineDistance, 0.0);
 
 		PShape topGroup = new PShape(PConstants.GROUP);
-
 		// Process every linear component independently
 		PGS.applyToLinealGeometries(shape, ring -> {
 			// Normalise orientation so offsets are consistent
@@ -965,7 +965,8 @@ public final class PGS_Processing {
 	 */
 	public static PShape polygonize(PShape shape) {
 		var g = fromPShape(shape);
-		var segs = SegmentStringUtil.extractNodedSegmentStrings(g);
+		@SuppressWarnings("unchecked")
+		List<NodedSegmentString> segs = SegmentStringUtil.extractNodedSegmentStrings(g);
 		return PGS.polygonizeSegments(segs, true);
 	}
 

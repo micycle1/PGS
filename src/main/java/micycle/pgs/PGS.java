@@ -2,14 +2,12 @@ package micycle.pgs;
 
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
-import static processing.core.PConstants.GROUP;
 import static processing.core.PConstants.LINES;
 import static processing.core.PConstants.ROUND;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -246,7 +244,7 @@ final class PGS {
 	 * @return a GROUP PShape, where each child shape represents a polygon face
 	 *         formed by the given edges
 	 */
-	static final PShape polygonizeSegments(Collection<SegmentString> segments, boolean node) {
+	static final PShape polygonizeSegments(Collection<? extends SegmentString> segments, boolean node) {
 		if (node) {
 			segments = nodeSegmentStrings(segments);
 		}
@@ -256,7 +254,7 @@ final class PGS {
 				meshEdges.add(new PEdge(toPVector(ss.getCoordinate(i)), toPVector(ss.getCoordinate(i + 1))));
 			}
 		});
-		Collections.shuffle(meshEdges);
+//		Collections.shuffle(meshEdges);
 		return polygonizeNodedEdges(meshEdges);
 	}
 
@@ -330,7 +328,11 @@ final class PGS {
 			final LineString l = createLineString(ss.a, ss.b);
 			polygonizer.add(l);
 		});
-		return PGS_Conversion.toPShape(polygonizer.getPolygons());
+
+		List<Polygon> polys = (List<Polygon>) polygonizer.getPolygons();
+		// polygonizer preserves poly order but not vertex order
+		polys.forEach(poly -> poly.normalize());
+		return PGS_Conversion.toPShape(polys);
 	}
 
 	/**

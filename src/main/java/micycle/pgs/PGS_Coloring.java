@@ -164,6 +164,31 @@ public final class PGS_Coloring {
 	}
 
 	/**
+	 * Colors a <em>non-conforming</em> mesh-like {@link PShape} using the default
+	 * coloring algorithm ({@link ColoringAlgorithm#DBLAC DBLAC}) and the provided
+	 * palette.
+	 * <p>
+	 * Unlike {@link #colorMesh(PShape, int[]) colorMesh()}, this method is intended
+	 * for inputs whose faces do not form a conforming planar mesh (e.g., adjacent
+	 * faces may overlap, have T-junctions, or otherwise fail to share fully noded
+	 * boundaries). The input is first converted to a noded (conforming)
+	 * representation and the resulting faces are then colored.
+	 *
+	 * @param meshShape    a GROUP {@link PShape} whose children are faces of a
+	 *                     <b>non-conforming</b> mesh-like planar subdivision
+	 * @param colorPalette palette of colors used to fill the resulting noded faces
+	 * @return a noded (conforming) GROUP {@code PShape} derived from
+	 *         {@code meshShape}, with its faces colored
+	 * @since 2.2
+	 * @see #colorNonMesh(PShape, ColoringAlgorithm, int[])
+	 * @see #colorMesh(PShape, int[])
+	 * @see PGS_Meshing#nodeNonMesh(PShape)
+	 */
+	public static PShape colorNonMesh(PShape meshShape, int[] colorPalette) {
+		return colorNonMesh(meshShape, ColoringAlgorithm.DBLAC, colorPalette);
+	}
+
+	/**
 	 * Computes a coloring of the given mesh shape and colors its faces using the
 	 * colors provided. This method mutates the fill colour of the input shape.
 	 * 
