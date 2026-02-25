@@ -10,7 +10,6 @@ import static processing.core.PConstants.QUADRATIC_VERTEX;
 import java.awt.Shape;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.PathIterator;
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -18,6 +17,9 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,7 +34,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.apache.commons.io.FileUtils;
 import org.jgrapht.alg.drawing.IndexedFRLayoutAlgorithm2D;
 import org.jgrapht.alg.drawing.LayoutAlgorithm2D;
 import org.jgrapht.alg.drawing.model.Box2D;
@@ -1325,8 +1326,10 @@ public final class PGS_Conversion {
 	public static void toWKB(PShape shape, String filename) {
 		WKBWriter writer = new WKBWriter();
 		byte[] bytes = writer.write(fromPShape(shape));
+
 		try {
-			FileUtils.writeByteArrayToFile(new File(filename), bytes);
+			Path path = Paths.get(filename);
+			Files.write(path, bytes); // creates/overwrites the file
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -1358,16 +1361,16 @@ public final class PGS_Conversion {
 	 * @return a PShape specified by the WKB in the file
 	 */
 	public static PShape fromWKB(String filename) {
-		byte[] shapeWKB;
 		try {
-			shapeWKB = FileUtils.readFileToByteArray(new File(filename));
+			Path path = Paths.get(filename);
+			byte[] shapeWKB = Files.readAllBytes(path);
+
 			WKBReader reader = new WKBReader();
 			return toPShape(reader.read(shapeWKB));
 		} catch (IOException | ParseException e) {
 			e.printStackTrace();
 			return new PShape();
 		}
-
 	}
 
 	/**
