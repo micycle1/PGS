@@ -1253,9 +1253,10 @@ public final class PGS_Conversion {
 	 */
 	public static String toWKT(PShape shape) {
 		WKTWriter writer = new WKTWriter(2);
-		writer.setPrecisionModel(new PrecisionModel(PrecisionModel.FLOATING_SINGLE));
+		var g = fromPShape(shape);
+		writer.setPrecisionModel(g.getPrecisionModel());
 		// writer.setMaxCoordinatesPerLine(1);
-		return writer.writeFormatted(fromPShape(shape));
+		return writer.writeFormatted(g);
 	}
 
 	/**

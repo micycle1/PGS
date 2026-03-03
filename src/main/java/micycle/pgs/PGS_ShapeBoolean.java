@@ -375,9 +375,10 @@ public final class PGS_ShapeBoolean {
 	 * @see #simpleSubtract(PShape, PShape)
 	 */
 	public static PShape subtract(final PShape a, final PShape b) {
-		Geometry shapeA = fromPShape(a);
-		Geometry result = OverlayNG.overlay(shapeA, fromPShape(b), OverlayNG.DIFFERENCE);
-		result.setUserData(shapeA.getUserData()); // preserve shape style (if any)
+		var geomA = fromPShape(a);
+		var geomB = fromPShape(b);
+		var result = OverlayNG.overlay(geomA, geomB, OverlayNG.DIFFERENCE);
+		result.setUserData(geomA.getUserData()); // preserve shape style (if any)
 		return toPShape(result);
 	}
 
