@@ -1,7 +1,6 @@
 package micycle.pgs.commons;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -10,17 +9,10 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.LineString;
-import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.locationtech.jts.operation.overlayng.RingClipper;
-import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
-import org.tinspin.index.Index.PointEntryKnn;
-import org.tinspin.index.PointMap;
-import org.tinspin.index.kdtree.KDTree;
-
 import net.jafama.FastMath;
 import processing.core.PVector;
 
@@ -51,6 +43,13 @@ import processing.core.PVector;
  */
 public class MultiplicativelyWeightedVoronoi {
 
+	private static final double HALF_PLANE_EPS = 1e-12;
+	/**
+	 * Approximates a near-linear Apollonius arc by a perpendicular bisector when
+	 * its maximum deviation from straightness across the bounds is below this
+	 * fraction of the bounds diagonal.
+	 */
+	private static final double BISECTOR_APPROX_MAX_DEVIATION_RATIO = 0.01; // 1%
 	private final static GeometryFactory geometryFactory = new GeometryFactory();
 
 	private MultiplicativelyWeightedVoronoi() {
@@ -75,117 +74,339 @@ public class MultiplicativelyWeightedVoronoi {
 		}
 
 		Envelope extent = new Envelope(bounds[0], bounds[2], bounds[1], bounds[3]); // NOTE x,x,y,y
-
-		boolean allWeightsDifferent = sites.stream().map(s -> s.z).distinct().count() == sites.size();
-
-		return allWeightsDifferent ? getMWVDFast(sites, extent) : getMWVD(sites, extent);
+		return getMWVDFast(sites, extent);
 	}
 
 	/**
-	 * Optimised implementation. Reduces redundant geometric boolean operations.
-	 * Requires all weights to be different (doesn't handle bisectors arising from
-	 * equal pairwise weights to remain simpler).
+	 * Optimised implementation.
+	 *
+	 * Handles: - unequal-weight pairs via Apollonius circles - equal-weight pairs
+	 * via clipped bisector half-planes
+	 * <p>
+	 * Cell(site) = extent ∩ all equal-weight bisector half-planes containing site ∩
+	 * all Apollonius circles that contain site \ union(all Apollonius circles that
+	 * exclude site)
 	 */
 	private static List<Geometry> getMWVDFast(List<Coordinate> sites, Envelope extent) {
-		// The MWV cell for each site is equivalent to:
-		// intersection(all ap_circles containing s)-union(all ap_circles not containing
-		// s)
-
 		sites.sort((s1, s2) -> Double.compare(s1.z, s2.z));
+
 		final Geometry extentGeometry = geometryFactory.toGeometry(extent);
 		final RingClipper rc = new RingClipper(extent);
 
-		return sites.parallelStream().map(site -> { // NOTE parallel
-			// s2 dominates s1 (hence s1 contained in apollo circle)
+		return sites.parallelStream().map(site -> {
 			List<double[]> inCircleData = new ArrayList<>();
 			List<double[]> exCircleData = new ArrayList<>();
 
-			// prepare apollonian circles
-			for (int j = 0; j < sites.size(); j++) {
-				Coordinate site2 = sites.get(j);
-				if (site == site2) {
-					continue;
-				}
-				var circle = calculateWeightedApollonius(site, site2);
-				double radius = circle[2];
-				if (radius == 0) { // ideally not!
+			// Equal-weight constraints are linear half-planes, clipped against extent.
+			// We keep them as a convex polygon in coordinate form to avoid expensive
+			// polygonisation/splitting.
+			List<Coordinate> bisectorCell = null;
+
+			for (Coordinate other : sites) {
+				if (site == other) {
 					continue;
 				}
 
-				if (site.z < site2.z) { // equivalent to distance(s1,s2) < radius
+				int cmp = Double.compare(site.z, other.z);
+
+				// Exact equal-weight case: true bisector
+				if (cmp == 0) {
+					if (bisectorCell == null) {
+						bisectorCell = extentPolygon(extent);
+					}
+					bisectorCell = clipPolygonToBisectorHalfPlane(bisectorCell, site, other);
+
+					if (bisectorCell.size() < 3) {
+						return null;
+					}
+					continue;
+				}
+
+				double[] circle = calculateWeightedApollonius(site, other);
+				double radius = circle[2];
+				if (radius == 0 || !Double.isFinite(radius)) {
+					continue;
+				}
+
+				// Near-equal / huge-radius case: approximate the circle by the bisector
+				if (shouldApproximateAsBisector(radius, extent)) {
+					if (bisectorCell == null) {
+						bisectorCell = extentPolygon(extent);
+					}
+					bisectorCell = clipPolygonToBisectorHalfPlane(bisectorCell, site, other);
+
+					if (bisectorCell.size() < 3) {
+						return null;
+					}
+					continue;
+				}
+
+				if (cmp < 0) {
+					// site is weaker, so its dominance lies INSIDE the circle
 					inCircleData.add(circle);
 				} else {
+					// site is stronger, so its dominance lies OUTSIDE the circle
 					exCircleData.add(circle);
 				}
 			}
 
-			List<Geometry> inCircles = new ArrayList<>();
-			List<Geometry> exCircles = new ArrayList<>();
+			// Fast trivial case: no bisectors and no in-circles
+			if (bisectorCell == null && inCircleData.isEmpty()) {
+				if (exCircleData.isEmpty()) {
+					return extentGeometry;
+				}
 
-			if (inCircleData.isEmpty()) {
-				// if no incircles, cell is simply defined by difference between plane and
-				// exCircles
+				exCircleData = filterContainedCircles(exCircleData);
+				List<Geometry> exCircles = new ArrayList<>(exCircleData.size());
 				exCircleData.forEach(c -> exCircles.add(createClippedCircle(c[0], c[1], c[2], rc)));
-				var outerDom = UnaryUnionOp.union(exCircles);
+
+				Geometry outerDom = UnaryUnionOp.union(exCircles);
 				return extentGeometry.difference(outerDom);
 			}
 
+			Geometry localDominance = (bisectorCell == null) ? extentGeometry : toPolygon(bisectorCell);
+			if (localDominance.isEmpty()) {
+				return null;
+			}
+
 			/*
-			 * NOTE optimisation: filter out redundant circles that completely cover other
-			 * circles to reduce number of required intersection operations.
+			 * Optimisation: remove any larger in-circle that completely contains a smaller
+			 * one, because intersecting with the larger adds no information.
 			 */
-			inCircleData.sort((a, b) -> Double.compare(a[2], b[2])); // sort by radius, smallest first
-			List<double[]> essentialCircles = new ArrayList<>(inCircleData);
-			for (double[] smaller : inCircleData) {
-				// Remove any larger circles that completely contain this one
-				essentialCircles.removeIf(larger -> {
-					if (larger[2] <= smaller[2]) {
-						return false; // Skip if not larger
+			if (!inCircleData.isEmpty()) {
+				List<double[]> essentialInCircles = filterRedundantInCircles(inCircleData);
+
+				for (double[] c : essentialInCircles) {
+					Geometry inCircle = createClippedCircle(c[0], c[1], c[2], rc);
+
+					if (!localDominance.getEnvelopeInternal().intersects(inCircle.getEnvelopeInternal())) {
+						return null;
 					}
 
-					double dx = smaller[0] - larger[0];
-					double dy = smaller[1] - larger[1];
-					double distanceSquared = (dx * dx) + (dy * dy);
-					return Math.sqrt(distanceSquared) + smaller[2] <= larger[2];
-				});
+					localDominance = OverlayNG.overlay(localDominance, inCircle, OverlayNG.INTERSECTION);
+					if (localDominance.isEmpty()) {
+						return null;
+					}
+				}
 			}
 
-			essentialCircles.forEach(c -> inCircles.add(createClippedCircle(c[0], c[1], c[2], rc)));
-			// intersect all inCircles to find the dominant region for this site
-			var localDominance = inCircles.stream().reduce((geom1, geom2) -> OverlayNG.overlay(geom1, geom2, OverlayNG.INTERSECTION)).get();
+			if (exCircleData.isEmpty()) {
+				return localDominance;
+			}
 
 			/*
-			 * NOTE optimisation: only circles that intersect the MBC of the localDominance
-			 * area need subtracting from it. Will usually reduce the number of outcircles
-			 * to union together.
+			 * Only ex-circles that can intersect the current local dominance region matter.
+			 * Use the MBC as a cheap coarse filter.
 			 */
 			MinimumBoundingCircle mbc = new MinimumBoundingCircle(localDominance);
-			var mbcP = mbc.getCentre();
-			var maxDominanceRegion = new double[] { mbcP.x, mbcP.y, mbc.getRadius() };
-//			var maxDominanceRegion = inCircleData.get(0); // smallest circle (but mbc even smaller...)
+			Coordinate mbcC = mbc.getCentre();
+			double mbcR = mbc.getRadius();
+
 			exCircleData = exCircleData.stream().filter(c -> {
-				double dx = maxDominanceRegion[0] - c[0];
-				double dy = maxDominanceRegion[1] - c[1];
-				double distanceSquared = (dx * dx) + (dy * dy);
-				double radiusSum = maxDominanceRegion[2] + c[2];
-				// keep if intersects
-				return distanceSquared < radiusSum * radiusSum;
+				double dx = mbcC.x - c[0];
+				double dy = mbcC.y - c[1];
+				double radiusSum = mbcR + c[2];
+				return dx * dx + dy * dy < radiusSum * radiusSum;
 			}).collect(Collectors.toList());
 
-			/*
-			 * NOTE optimisation, similar to inCircleData optimisation, but this time,
-			 * remove any SMALLER circles that are contained by another.
-			 */
 			exCircleData = filterContainedCircles(exCircleData);
+
+			if (exCircleData.isEmpty()) {
+				return localDominance;
+			}
+
+			List<Geometry> exCircles = new ArrayList<>(exCircleData.size());
 			exCircleData.forEach(c -> exCircles.add(createClippedCircle(c[0], c[1], c[2], rc)));
 
-			if (exCircles.isEmpty()) {
-				return localDominance;
-			} else {
-				var outerDom = UnaryUnionOp.union(exCircles);
-				return localDominance.difference(outerDom);
+			Geometry outerDom = UnaryUnionOp.union(exCircles);
+			return localDominance.difference(outerDom);
+
+		}).filter(g -> g != null && !g.isEmpty()).toList();
+	}
+
+	private static List<double[]> filterRedundantInCircles(List<double[]> inCircleData) {
+		if (inCircleData.size() <= 1) {
+			return inCircleData;
+		}
+
+		inCircleData.sort((a, b) -> Double.compare(a[2], b[2])); // smallest first
+		List<double[]> essentialCircles = new ArrayList<>(inCircleData);
+
+		for (double[] smaller : inCircleData) {
+			essentialCircles.removeIf(larger -> {
+				if (larger == smaller || larger[2] <= smaller[2]) {
+					return false;
+				}
+				return circleContains(larger, smaller);
+			});
+		}
+
+		return essentialCircles;
+	}
+
+	private static boolean circleContains(double[] outer, double[] inner) {
+		double dx = inner[0] - outer[0];
+		double dy = inner[1] - outer[1];
+		double radiusDiff = outer[2] - inner[2];
+		return radiusDiff >= 0 && dx * dx + dy * dy <= radiusDiff * radiusDiff;
+	}
+
+	private static List<Coordinate> extentPolygon(Envelope extent) {
+		List<Coordinate> poly = new ArrayList<>(4);
+		poly.add(new Coordinate(extent.getMinX(), extent.getMinY()));
+		poly.add(new Coordinate(extent.getMaxX(), extent.getMinY()));
+		poly.add(new Coordinate(extent.getMaxX(), extent.getMaxY()));
+		poly.add(new Coordinate(extent.getMinX(), extent.getMaxY()));
+		return poly;
+	}
+
+	/**
+	 * Returns true if the Apollonius circle is so large that, across the current
+	 * bounds, it is effectively indistinguishable from a straight line.
+	 *
+	 * We measure this using the sagitta (max arc deviation from its chord) across
+	 * the extent diagonal.
+	 */
+	private static boolean shouldApproximateAsBisector(double radius, Envelope extent) {
+		if (!Double.isFinite(radius) || radius <= 0) {
+			return false;
+		}
+
+		double span = extent.getDiameter();
+		if (span <= HALF_PLANE_EPS) {
+			return true;
+		}
+
+		double halfChord = span * 0.5;
+
+		// If the radius isn't even big enough to support such a chord, then the arc is
+		// definitely not near-linear over the full bounds.
+		if (radius <= halfChord) {
+			return false;
+		}
+
+		// Sagitta = r - sqrt(r^2 - (L/2)^2)
+		// Use the approximation for very large radii to avoid cancellation error.
+		double deviation;
+		double t = halfChord / radius;
+		if (t < 1e-3) {
+			deviation = (halfChord * halfChord) / (2.0 * radius); // ~ L^2 / (8r)
+		} else {
+			deviation = radius - Math.sqrt(radius * radius - halfChord * halfChord);
+		}
+
+		return deviation <= BISECTOR_APPROX_MAX_DEVIATION_RATIO * span;
+	}
+
+	/**
+	 * Clips a convex polygon against the half-plane of the perpendicular bisector
+	 * that contains s1, i.e. points p such that dist(p, s1) <= dist(p, s2).
+	 */
+	private static List<Coordinate> clipPolygonToBisectorHalfPlane(List<Coordinate> polygon, Coordinate s1, Coordinate s2) {
+		if (polygon.isEmpty()) {
+			return polygon;
+		}
+
+		double nx = s2.x - s1.x;
+		double ny = s2.y - s1.y;
+
+		// Degenerate coincident case: undefined bisector, leave polygon unchanged.
+		if (Math.abs(nx) < HALF_PLANE_EPS && Math.abs(ny) < HALF_PLANE_EPS) {
+			return polygon;
+		}
+
+		double mx = (s1.x + s2.x) * 0.5;
+		double my = (s1.y + s2.y) * 0.5;
+
+		List<Coordinate> out = new ArrayList<>(polygon.size() + 2);
+
+		Coordinate prev = polygon.get(polygon.size() - 1);
+		double prevSide = bisectorSide(prev, mx, my, nx, ny);
+		boolean prevInside = prevSide <= HALF_PLANE_EPS;
+
+		for (Coordinate curr : polygon) {
+			double currSide = bisectorSide(curr, mx, my, nx, ny);
+			boolean currInside = currSide <= HALF_PLANE_EPS;
+
+			if (prevInside && currInside) {
+				addDistinct(out, curr);
+			} else if (prevInside) {
+				addDistinct(out, bisectorIntersection(prev, curr, prevSide, currSide));
+			} else if (currInside) {
+				addDistinct(out, bisectorIntersection(prev, curr, prevSide, currSide));
+				addDistinct(out, curr);
 			}
-		}).toList();
+
+			prev = curr;
+			prevSide = currSide;
+			prevInside = currInside;
+		}
+
+		if (out.size() > 1 && samePoint(out.get(0), out.get(out.size() - 1))) {
+			out.remove(out.size() - 1);
+		}
+
+		return out;
+	}
+
+	private static double bisectorSide(Coordinate p, double mx, double my, double nx, double ny) {
+		return (p.x - mx) * nx + (p.y - my) * ny;
+	}
+
+	private static Coordinate bisectorIntersection(Coordinate a, Coordinate b, double fa, double fb) {
+		double denom = fa - fb;
+		if (Math.abs(denom) < HALF_PLANE_EPS) {
+			return new Coordinate(b);
+		}
+
+		double t = fa / denom;
+		t = Math.max(0.0, Math.min(1.0, t));
+
+		return new Coordinate(a.x + t * (b.x - a.x), a.y + t * (b.y - a.y));
+	}
+
+	private static void addDistinct(List<Coordinate> coords, Coordinate c) {
+		if (c == null) {
+			return;
+		}
+		if (coords.isEmpty() || !samePoint(coords.get(coords.size() - 1), c)) {
+			coords.add(c);
+		}
+	}
+
+	private static boolean samePoint(Coordinate a, Coordinate b) {
+		return a.distanceSq(b) <= HALF_PLANE_EPS * HALF_PLANE_EPS;
+	}
+
+	private static Polygon toPolygon(List<Coordinate> coords) {
+		if (coords == null || coords.size() < 3) {
+			return geometryFactory.createPolygon();
+		}
+
+		List<Coordinate> clean = new ArrayList<>(coords.size());
+		for (Coordinate c : coords) {
+			addDistinct(clean, c);
+		}
+
+		if (clean.size() < 3) {
+			return geometryFactory.createPolygon();
+		}
+
+		if (samePoint(clean.get(0), clean.get(clean.size() - 1))) {
+			clean.remove(clean.size() - 1);
+		}
+
+		if (clean.size() < 3) {
+			return geometryFactory.createPolygon();
+		}
+
+		Coordinate[] ring = new Coordinate[clean.size() + 1];
+		for (int i = 0; i < clean.size(); i++) {
+			ring[i] = clean.get(i);
+		}
+		ring[clean.size()] = new Coordinate(clean.get(0));
+
+		return geometryFactory.createPolygon(ring);
 	}
 
 	/**
@@ -250,165 +471,6 @@ public class MultiplicativelyWeightedVoronoi {
 		}
 
 		return filteredCircles;
-	}
-
-	/**
-	 * Builds an MWVD cell per site by intersecting its dominance constraints
-	 * against other sites, but accelerates the O(n²) all-pairs process using an
-	 * adaptive KNN expansion on a KD-tree. Handles equal-weighted pairs.
-	 */
-	private static List<Geometry> getMWVD(List<Coordinate> sites, Envelope extent) {
-		final PointMap<Point> tree = KDTree.create(2);
-		sites.forEach(s -> {
-			Point p = geometryFactory.createPoint(s);
-			p.setUserData(s.z);
-			tree.insert(new double[] { p.getX(), p.getY() }, p);
-		});
-
-		final Geometry extentGeometry = geometryFactory.toGeometry(extent);
-
-		// Start small, expand as needed
-		final int kStart = Math.min(16, Math.max(2, sites.size()));
-		final int kMax = sites.size(); // correctness backstop
-
-		// Heuristic: if the furthest neighbor we considered is much farther than the
-		// current cell size,
-		// then remaining (even farther) points are unlikely to affect it.
-		final double stopFactor = 4.0;
-
-		return sites.parallelStream().map(site -> {
-			Geometry dominance = extentGeometry;
-
-			int k = Math.min(kStart, kMax);
-			int processed = 0;
-
-			List<PointEntryKnn<Point>> neighbors = new ArrayList<>();
-
-			while (true) {
-				neighbors.clear();
-
-				var query = tree.queryKnn(new double[] { site.x, site.y }, k);
-				var me = query.next().value(); // first query is always the site itself
-				Double w = (Double) me.getUserData();
-
-				query.forEachRemaining(neighbors::add);
-
-				// Process only newly-added neighbors (when k expands)
-				for (int i = processed; i < neighbors.size(); i++) {
-					var otherSite = neighbors.get(i);
-					Coordinate other = otherSite.value().getCoordinate();
-					Double wOther = (Double) otherSite.value().getUserData();
-
-					Geometry constraint = apolloniusCircle(site, other, w, wOther, extentGeometry);
-
-					if (!dominance.getEnvelopeInternal().intersects(constraint.getEnvelopeInternal())) {
-						return null;
-					}
-
-					// More robust overlay than Geometry#intersection for tricky cases
-					dominance = OverlayNG.overlay(dominance, constraint, OverlayNG.INTERSECTION);
-
-					if (dominance.isEmpty()) {
-						return null;
-					}
-				}
-				processed = neighbors.size();
-
-				if (k >= kMax || dominance.isEmpty()) {
-					break;
-				}
-
-				// Stopping heuristic based on current cell size vs. furthest considered
-				// neighbor distance
-				MinimumBoundingCircle mbc = new MinimumBoundingCircle(dominance);
-				double cellR = mbc.getRadius();
-
-				// If the cell has collapsed to tiny, we’re done
-				if (cellR <= 1e-12) {
-					break;
-				}
-
-				// KNN is returned sorted by distance, so last neighbor is the furthest in this
-				// batch
-				Coordinate furthest = neighbors.get(neighbors.size() - 1).value().getCoordinate();
-				double furthestDist = site.distance(furthest);
-
-				if (furthestDist > stopFactor * cellR) {
-					break;
-				}
-
-				// Expand search
-				k = Math.min(kMax, k * 2);
-			}
-
-			return !dominance.isEmpty() ? dominance : null;
-		}).filter(g -> g != null && !g.isEmpty()).toList();
-	}
-
-	private static Geometry apolloniusCircle(Coordinate s1, Coordinate s2, double w1, double w2, Geometry extentG) {
-		Geometry localDominanceCircle;
-		if (w1 == w2 || s1.distance(s2) < 1e-7) { // Regular Voronoi (Perpendicular Bisector)
-			localDominanceCircle = calculatePerpendicularBisector(s1, s2, extentG);
-		} else { // Weighted Voronoi (Circle)
-			double[] circle = calculateWeightedApollonius(s1, s2);
-			Coordinate center = new Coordinate(circle[0], circle[1]); // often lies outside bounds
-			double radius = circle[2];
-			double distance = s1.distance(center);
-			localDominanceCircle = createClippedCircle(center.x, center.y, radius, null);
-			/*
-			 * The circle will either enclose site 1 (i.e. it's dominated by site 2), or
-			 * will bend away from site 1 (enclosing and dominating site 2).
-			 */
-			if (distance < radius) { // circle encloses site 1
-				return localDominanceCircle.intersection(extentG);
-			} else { // circle encloses site 2
-				// site 1's dominance is the rest of the plane
-				var out = extentG.difference(localDominanceCircle);
-				return out;
-			}
-		}
-
-		Point s1Geom = geometryFactory.createPoint(s1);
-
-		if (s1Geom.intersects(localDominanceCircle)) {
-			return localDominanceCircle.intersection(extentG);
-		} else {
-			return extentG.difference(localDominanceCircle);
-		}
-	}
-
-	private static Geometry calculatePerpendicularBisector(Coordinate s1, Coordinate s2, Geometry extent) {
-		Coordinate midPoint = new Coordinate((s1.x + s2.x) / 2, (s1.y + s2.y) / 2);
-		double dx = s2.x - s1.x;
-		double dy = s2.y - s1.y;
-		double length = extent.getEnvelopeInternal().getWidth() + extent.getEnvelopeInternal().getHeight();
-		Coordinate endPoint1, endPoint2;
-
-		if (dy == 0) {
-			// Handle the case where dy is zero (horizontal line)
-			// The bisector will be a vertical line passing through the midpoint.
-			endPoint1 = new Coordinate(midPoint.x, midPoint.y + length / 2);
-			endPoint2 = new Coordinate(midPoint.x, midPoint.y - length / 2);
-		} else {
-			// regular case (non-horizontal line)
-			double angle = Math.atan2(dy, dx) + Math.PI / 2;
-			endPoint1 = new Coordinate(midPoint.x + length * Math.cos(angle), midPoint.y + length * Math.sin(angle));
-			endPoint2 = new Coordinate(midPoint.x - length * Math.cos(angle), midPoint.y - length * Math.sin(angle));
-		}
-
-		// create the bisector line
-		LineString bisectorLine = geometryFactory.createLineString(new Coordinate[] { endPoint1, endPoint2 });
-
-		// split the extent with the bisector
-		Geometry nodedLine = extent.getBoundary().union(bisectorLine);
-		Polygonizer polygonizer = new Polygonizer();
-		polygonizer.add(nodedLine);
-
-		Collection<Geometry> polygons = polygonizer.getPolygons();
-		Geometry[] polygonArray = polygons.toArray(new Geometry[0]);
-
-		// both [0] and [1] seem to work.
-		return polygonArray[0];
 	}
 
 	/**
