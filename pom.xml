@@ -392,7 +392,7 @@
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>geoblitz</artifactId>
-			<version>0.9.5</version>
+			<version>0.9.6</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.micycle1</groupId>

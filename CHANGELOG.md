@@ -36,11 +36,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `kCenters()` to `PGS_PointSet`. Selects k points from the input to act as centers that are typically well distributed over the input space.
 * `extractBoundary()` to `PGS_Processing`. Extracts the topological boundary of the given shape.
 * `weaveSegments()` to `PGS_SegmentSet`. Creates a fabric-like layout of horizontal and vertical segments.
-* `auxeticTiling()` to `PGS_Tiling`. Builds a tiling of interlocking cells that form an auxetic structure.
+* `auxeticTiling()` to `PGS_Tiling`. Builds a tiling of **interlocking** cells that form an auxetic structure.
 * `occlusionSubtract()` to `PGS_ShapeBoolean`. Computes the visible parts of overlapping shapes (hidden surface removal).
 * `additivelyWeightedVoronoi()` to `PGS_Voronoi`. Generates an Additively Weighted Voronoi Diagram for a set of weighted sites and a bounding box.
 * `toPolygonPShape()` to `PGS_Conversion`. Converts a polygonal (areal) PShape from a collection of PVector vertices.
 * `toPathPShape()` to `PGS_Conversion`. Converts a path (lineal) PShape from a collection of PVector vertices.
+* `unionCircles()` to `PGS_ShapeBoolean`. Efficiently unions circles defined as PVectors, using a specialised disk-union algorithm that is faster than general shape union for circular inputs.
 
 ### Changes
 * `PGS_Conversion.fromPShape()` now disambiguates closed paths using the PShape’s `kind`: closed shapes with `kind == POLYGON` convert to JTS `Polygon`, while closed shapes with `kind == PATH` convert to a (closed) JTS `LineString` (previously closed paths were generally treated as polygonal).

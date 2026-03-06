@@ -27,6 +27,8 @@ import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
+import com.github.micycle1.geoblitz.DiskUnion;
+
 import micycle.pgs.commons.FastOverlapRegions;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.OcclusionSubtract;
@@ -201,6 +203,37 @@ public final class PGS_ShapeBoolean {
 	 */
 	public static PShape union(PShape... shapes) {
 		return union(Arrays.asList(shapes));
+	}
+
+	/**
+	 * Performs a specialised union of circles represented by center/radius vectors.
+	 * <p>
+	 * This method is optimised for circular inputs and is typically much faster
+	 * than constructing circle {@code PShape}s and passing them through the
+	 * general-purpose {@link #union(Collection) union()} method. Internally, it
+	 * operates directly on disk/arc segments rather than polygonised circle
+	 * geometries.
+	 * </p>
+	 * <p>
+	 * Each input {@link PVector} is interpreted as a circle definition, where
+	 * {@code x} and {@code y} specify the circle center and {@code z} specifies the
+	 * radius. The returned shape represents the combined area of all input circles,
+	 * with overlapping regions included only once.
+	 * </p>
+	 *
+	 * @param circles a collection of circle definitions as {@code PVector}s, where
+	 *                {@code x} and {@code y} are the center coordinates and
+	 *                {@code z} is the radius
+	 * @return a new {@code PShape} representing the union of all input circles
+	 * @since 2.2
+	 * @see #union(Collection)
+	 * @see #union(PShape...)
+	 */
+	public static PShape unionCircles(Collection<PVector> circles) {
+		var disks = circles.stream().map(c -> PGS.coordFromPVector(c)).toList();
+		var union = DiskUnion.union(disks, PGS_Conversion.BEZIER_SAMPLE_DISTANCE);
+
+		return toPShape(union);
 	}
 
 	/**
@@ -486,8 +519,8 @@ public final class PGS_ShapeBoolean {
 	 * shape is significant. The method considers the last child shape of the input
 	 * to be "on top" of all other shapes, as is the case visually. For each child,
 	 * any area overlapped by subsequent (higher) children is subtracted from it.
-	 * Only polygonal shapes act as occluders; lines and points do not occlude
-	 * other shapes.
+	 * Only polygonal shapes act as occluders; lines and points do not occlude other
+	 * shapes.
 	 *
 	 * @param shape A GROUP shape containing child shapes.
 	 * @return A new shape (typically a {@code GROUP}) containing the visible
