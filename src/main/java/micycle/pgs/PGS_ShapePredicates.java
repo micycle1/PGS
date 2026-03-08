@@ -598,6 +598,7 @@ public final class PGS_ShapePredicates {
 	 */
 	public static double efdSimilarity(PShape a, PShape b) {
 		int n = Math.min(a.getVertexCount(), b.getVertexCount()) / 2;
+		n = Math.max(n, 3); // min of 3 descriptors (indices 0,1 are skipped by distance)
 		n = Math.min(n, 50); // max of 50 descriptors
 		EllipticFourierDesc efdA = new EllipticFourierDesc(((Polygon) fromPShape(a)).getExteriorRing(), n);
 		EllipticFourierDesc efdB = new EllipticFourierDesc(((Polygon) fromPShape(b)).getExteriorRing(), n);
