@@ -9,9 +9,6 @@ import java.util.SplittableRandom;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import javax.vecmath.Point3d;
-import javax.vecmath.Point4d;
-
 import org.apache.commons.math3.ml.clustering.Clusterable;
 import org.apache.commons.math3.ml.clustering.Clusterer;
 import org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer;
@@ -22,6 +19,8 @@ import org.apache.commons.math3.util.Pair;
 import org.jgrapht.alg.interfaces.SpanningTreeAlgorithm;
 import org.jgrapht.alg.spanning.PrimMinimumSpanningTree;
 import org.jgrapht.graph.SimpleGraph;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateXYZM;
 import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.Vertex;
 import org.tinspin.index.IndexConfig;
@@ -344,8 +343,8 @@ public final class PGS_PointSet {
 	 */
 	public static PVector weightedMedian(Collection<PVector> points) {
 		boolean allZero = points.stream().allMatch(p -> p.z == 0);
-		Point4d[] wp = points.stream().map(p -> new Point4d(p.x, p.y, 0, allZero ? 1 : p.z)).toArray(Point4d[]::new);
-		Point3d median = GeometricMedian.median(wp, 1e-3, 50);
+		CoordinateXYZM[] wp = points.stream().map(p -> new CoordinateXYZM(p.x, p.y, 0, allZero ? 1 : p.z)).toArray(CoordinateXYZM[]::new);
+		Coordinate median = GeometricMedian.median(wp, 1e-3, 50);
 		return new PVector((float) median.x, (float) median.y);
 	}
 

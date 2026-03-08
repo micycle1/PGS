@@ -120,7 +120,7 @@ class PGS_ShapePredicatesTests {
 	@Test
 	void testIsClockwise() {
 		assertTrue(PGS_ShapePredicates.isClockwise(square));
-		List<PVector> ccw = PGS_Conversion.toPVector(square);// .reversed();
+		List<PVector> ccw = PGS_Conversion.toPVector(square);
 		Collections.reverse(ccw);
 		ccw.add(ccw.get(0)); // close
 		assertFalse(PGS_ShapePredicates.isClockwise(PGS_Conversion.fromPVector(ccw)));
@@ -137,6 +137,13 @@ class PGS_ShapePredicatesTests {
 	void testMinimumInteriorAngle() {
 		assertEquals(Math.PI / 2, PGS_ShapePredicates.minimumInteriorAngle(rect), EPSILON);
 		assertEquals(Math.PI / 3, PGS_ShapePredicates.minimumInteriorAngle(triangle), EPSILON);
+	}
+
+	@Test
+	void testMedian() {
+		PVector median = PGS_ShapePredicates.median(square);
+		assertEquals(5, median.x, EPSILON);
+		assertEquals(5, median.y, EPSILON);
 	}
 
 }

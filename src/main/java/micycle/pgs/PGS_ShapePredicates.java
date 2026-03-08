@@ -9,9 +9,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.vecmath.Point3d;
-import javax.vecmath.Point4d;
-
 import org.locationtech.jts.algorithm.Angle;
 import org.locationtech.jts.algorithm.MinimumBoundingCircle;
 import org.locationtech.jts.algorithm.MinimumDiameter;
@@ -22,6 +19,7 @@ import org.locationtech.jts.algorithm.match.HausdorffSimilarityMeasure;
 import org.locationtech.jts.coverage.CoverageUnion;
 import org.locationtech.jts.coverage.CoverageValidator;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateXYZM;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LinearRing;
@@ -286,8 +284,8 @@ public final class PGS_ShapePredicates {
 	 */
 	public static PVector median(PShape shape) {
 		List<PVector> points = PGS_Conversion.toPVector(shape);
-		Point4d[] wp = points.stream().map(p -> new Point4d(p.x, p.y, 0, 1)).toArray(Point4d[]::new);
-		Point3d median = GeometricMedian.median(wp, 1e-3, 50);
+		CoordinateXYZM[] wp = points.stream().map(p -> new CoordinateXYZM(p.x, p.y, 0, 1)).toArray(CoordinateXYZM[]::new);
+		Coordinate median = GeometricMedian.median(wp, 1e-3, 50);
 		return new PVector((float) median.x, (float) median.y);
 	}
 
