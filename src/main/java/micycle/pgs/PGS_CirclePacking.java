@@ -18,13 +18,10 @@ import org.locationtech.jts.operation.distance.IndexedFacetDistance;
 import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
-import org.tinspin.index.Index.PointEntryKnn;
-import org.tinspin.index.PointDistance;
-import org.tinspin.index.PointMap;
-import org.tinspin.index.covertree.CoverTree;
-
+import com.github.micycle1.geoblitz.PointDistanceIndex;
 import com.github.micycle1.geoblitz.YStripesPointInAreaLocator;
 
+import micycle.pgs.commons.CircleCoverTree;
 import micycle.pgs.commons.FrontChainPacker;
 import micycle.pgs.commons.LargestEmptyCircles;
 import micycle.pgs.commons.RepulsionCirclePack;
@@ -194,47 +191,41 @@ public final class PGS_CirclePacking {
 	 *         the center point, and .z represents the radius.
 	 */
 	public static List<PVector> stochasticPack(final PShape shape, final int points, final double minRadius, boolean triangulatePoints, long seed) {
-
-		final PointMap<PVector> tree = CoverTree.create(3, 2, circleDistanceMetric);
+		CircleCoverTree<PVector> tree = new CircleCoverTree<>();
 
 		List<PVector> steinerPoints = PGS_Processing.generateRandomPoints(shape, points, seed);
 		if (triangulatePoints) {
 			final IIncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape, steinerPoints, true, 1, true);
-			steinerPoints = StreamSupport.stream(tin.triangles().spliterator(), false).filter(filterBorderTriangles).map(PGS_CirclePacking::centroid)
-					.collect(Collectors.toList());
+			steinerPoints = StreamSupport.stream(tin.triangles().spliterator(), false).filter(filterBorderTriangles).map(PGS_CirclePacking::centroid).toList();
 		}
 
-		IndexedFacetDistance indexedFacetDistance = new IndexedFacetDistance(fromPShape(shape));
-		var alpha = shape.getVertex(0); // seed the tree
-		tree.insert(new double[] { alpha.x, alpha.y, 0 }, alpha);
+		var indexedBoundaryDistance = new PointDistanceIndex(null, fromPShape(shape));
 
-		/*
-		 * "To find the circle nearest to a center (x, y), do a proximity search at (x,
-		 * y, R), where R is greater than or equal to the maximum radius of a circle."
-		 */
-		double largestR = 0; // the radius of the largest circle in the tree
-		final List<PVector> out = new ArrayList<>();
+		var alpha = shape.getVertexCount() > 0 ? shape.getVertex(0) : PGS_Conversion.toPVector(shape).get(0); // catch group shape
+		tree.insert(alpha.x, alpha.y, 0.0, alpha);
+
+		final List<PVector> out = new ArrayList<>(steinerPoints.size());
+
 		for (PVector p : steinerPoints) {
-			final PointEntryKnn<PVector> nn = tree.query1nn(new double[] { p.x, p.y, largestR }); // find nearest-neighbour circle
+			// if point is inside any existing circle, skip immediately.
+			if (tree.existsInside(p.x, p.y)) {
+				continue;
+			}
 
-			/*
-			 * nn.dist() does not return the radius (since it's a distance metric used to
-			 * find nearest circle), so now calculate maximum radius for candidate circle
-			 * using 2d euclidean distance between center points minus radius of nearest
-			 * circle.
-			 */
-			final float dx = p.x - nn.value().x;
-			final float dy = p.y - nn.value().y;
-			final double distanceToNN = (Math.sqrt(dx * dx + dy * dy) - nn.value().z);
-			final double distanceToBoundary = indexedFacetDistance.distance(PGS.pointFromPVector(p));
-			final double packedDistance = Math.min(distanceToNN, distanceToBoundary);
+			// nearest circle by clearance (min hypot(q-c)-r)
+			var nn = tree.nearest(p.x, p.y);
+			double distanceToNN = nn.clearance;
+
+			double distanceToBoundary = indexedBoundaryDistance.distance(p.x, p.y);
+
+			double packedDistance = Math.min(distanceToNN, distanceToBoundary);
 			if (packedDistance > minRadius) {
-				largestR = (packedDistance >= largestR) ? packedDistance : largestR;
 				p.z = (float) packedDistance;
-				tree.insert(new double[] { p.x, p.y, packedDistance }, p); // insert circle into tree
+				tree.insert(p.x, p.y, packedDistance, p);
 				out.add(p);
 			}
 		}
+
 		return out;
 	}
 
@@ -630,36 +621,6 @@ public final class PGS_CirclePacking {
 		y /= 3;
 		return new PVector((float) x, (float) y);
 	}
-
-	/**
-	 * Calculate the distance between two points in 3D space, where each point
-	 * represents a circle with (x, y, r) coordinates. This custom metric considers
-	 * both the Euclidean distance between the centers of the circles and the
-	 * absolute difference of their radii.
-	 * <p>
-	 * The metric is defined as follows: Given two points A and B, representing
-	 * circles centered at (x1, y1) and (x2, y2) with radii r1 and r2 respectively,
-	 * the distance is calculated as sqrt((x1 - x2)^2 + (y1 - y2)^2) + |r1 - r2|.
-	 * <p>
-	 * This metric can be used to find the nearest circle to a given center (x, y)
-	 * in a proximity search. To perform the search, use a point (x, y, R) where R
-	 * is greater than or equal to the maximum radius of a circle in the proximity
-	 * structure.
-	 *
-	 * @param p1 3D point representing the first circle (x1, y1, r1)
-	 * @param p2 3D point representing the second circle (x2, y2, r2)
-	 * @return The distance between the two points based on the custom metric.
-	 */
-	private static final PointDistance circleDistanceMetric = (p1, p2) -> {
-		// from https://stackoverflow.com/a/21975136/
-		final double dx = p1[0] - p2[0];
-		final double dy = p1[1] - p2[1];
-		final double dz = p1[2] - p2[2];
-
-		double euclideanDistance = Math.sqrt(dx * dx + dy * dy);
-		double absZDifference = Math.abs(dz);
-		return euclideanDistance + absZDifference; // negative if inside
-	};
 
 	/**
 	 * A streams filter to remove triangulation triangles that share at least one

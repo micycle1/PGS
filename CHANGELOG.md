@@ -57,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Renamed `shapeIntersection(a, b)` in `PGS_Processing` to `intersectionPoints()`.
 * Reimplemented `PGS_Morphology.distanceField()` with a better quality approach, and added an additional method signature that accepts a 'pole' parameter to compute the distance field with respect to a specific point.
 * `largestEmptyCircles()`, `maximumInscribedPack()` and `obstaclePack()` are slightly faster.
+* Reimplemented `PGS_CirclePacking.stochasticPack()`. New approach is twice as fast.
 
 ### Fixed
 * `PGS_Optimisation.closestPoint()` now returns the nearest location on the shape's **boundary** for queries inside a polygonal shape (previously returned the query point itself).
