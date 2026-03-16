@@ -25,6 +25,32 @@ import com.github.micycle1.betterbeziers.CubicBezier;
 public final class SchneiderBezierFitter {
 
 	private static final int MAX_FIT_ITERS = 4;
+	private static final double DET_EPS = 1e-12;
+	private static final double U_EPS = 1e-12;
+	private static final double POINT_EPS2 = 1e-24;
+	/**
+	 * Upper bound on the distance of each inner Bezier control point from its
+	 * corresponding endpoint, expressed as a multiple of the endpoint chord length.
+	 *
+	 * <p>
+	 * Used as a stability clamp in {@code generateBezier(...)} to prevent
+	 * near-singular least-squares solves from producing extremely long control
+	 * handles, which can create large overshoots, self-intersections, or wild
+	 * looping segments even when pointwise fitting error appears small.
+	 *
+	 * <p>
+	 * For a segment with endpoints {@code v1} and {@code v4}, the solved handle
+	 * lengths {@code alphaL} and {@code alphaR} are limited to at most
+	 * {@code MAX_HANDLE_SCALE * |v4 - v1|}. If either handle exceeds this bound,
+	 * the solver falls back to the standard heuristic placing control points at
+	 * one-third of the chord length along the endpoint tangents.
+	 *
+	 * <p>
+	 * Smaller values are more conservative and reduce overshoot at the cost of
+	 * potentially splitting the input into more Bezier segments. Larger values
+	 * allow looser fits but increase the risk of pathological curves.
+	 */
+	private static final double MAX_HANDLE_SCALE = 2.0;
 
 	private SchneiderBezierFitter() {
 	}
@@ -117,33 +143,38 @@ public final class SchneiderBezierFitter {
 		if (!(interSampleDistance > 0)) {
 			throw new IllegalArgumentException("interSampleDistance must be > 0");
 		}
+		if (!(error > 0)) {
+			throw new IllegalArgumentException("error must be > 0");
+		}
 
 		// Detect closed ring by duplicate last==first
 		final boolean closed = points.size() >= 4 && points.get(0) != null && points.get(points.size() - 1) != null
 				&& points.get(0).equals2D(points.get(points.size() - 1));
 
-		List<Vector2D> pts = new ArrayList<>(points.size());
-		for (Coordinate c : points) {
-			if (c == null) {
-				throw new IllegalArgumentException("points contains null Coordinate");
-			}
-			pts.add(new Vector2D(c.x, c.y));
+		// Remove consecutive duplicate points; they cause zero-length tangents and bad
+		// u values.
+		List<Vector2D> pts = sanitizePoints(points, closed);
+
+		if (!closed && pts.size() < 2) {
+			throw new IllegalArgumentException("Need at least 2 distinct points");
+		}
+		if (closed && pts.size() < 4) {
+			// Degenerate closed input after sanitization; just return the original
+			// geometry.
+			return gf.createLineString(points.toArray(new Coordinate[0]));
 		}
 
-		// Use wrap-around to define a seam-consistent tangent at p0 == plast,
-		// so the closing edge gets smoothed and the join is less kinky.
 		final Vector2D leftTangent;
 		final Vector2D rightTangent;
+
 		if (closed) {
 			int n = pts.size();
 			Vector2D pPrev = pts.get(n - 2); // last unique vertex
-			Vector2D p0 = pts.get(0); // unused
 			Vector2D pNext = pts.get(1);
 
 			Vector2D t = safeNormalize(pNext.subtract(pPrev));
-
-			leftTangent = t; // tangent leaving p0 toward p1
-			rightTangent = t.negate(); // tangent leaving last point (also p0) toward pPrev
+			leftTangent = t;
+			rightTangent = t.negate();
 		} else {
 			leftTangent = computeLeftTangent(pts);
 			rightTangent = computeRightTangent(pts);
@@ -160,7 +191,7 @@ public final class SchneiderBezierFitter {
 
 			for (int i = 0; i < samples.length; i++) {
 				if (!firstSeg && i == 0) {
-					continue; // avoid duplicate join vertex between segments
+					continue;
 				}
 				out.add(new Coordinate(samples[i][0], samples[i][1]));
 			}
@@ -178,7 +209,10 @@ public final class SchneiderBezierFitter {
 
 	private static MultiBezierCurve fitCurves(int first, int last, double error, MultiBezierCurve curve, Vector2D leftTangent, Vector2D rightTangent,
 			List<Vector2D> points) {
-		if (last - first + 1 == 2) {
+
+		int nPts = last - first + 1;
+
+		if (nPts == 2) {
 			double distance = dist(points.get(first), points.get(last)) / 3.0;
 			BezierSeg bez = new BezierSeg();
 			bez.v1 = points.get(first);
@@ -189,10 +223,21 @@ public final class SchneiderBezierFitter {
 			return curve;
 		}
 
+		// Important: don't try to fit a single cubic across coincident endpoints.
+		// This is common at the top of closed rings and can generate pathological
+		// loops.
+		if (samePoint(points.get(first), points.get(last))) {
+			int split = findSplitForCoincidentEnds(points, first, last);
+			Vector2D centerTangent = computeCenterTangent(points, split);
+			fitCurves(first, split, error, curve, leftTangent, centerTangent, points);
+			fitCurves(split, last, error, curve, centerTangent.negate(), rightTangent, points);
+			return curve;
+		}
+
 		double[] u = chordLengthParameterize(points, first, last);
 		BezierSeg bezier = generateBezier(points, first, last, u, leftTangent, rightTangent);
 
-		int[] splitIndex = new int[] { 0 };
+		int[] splitIndex = new int[] { (first + last) >>> 1 };
 		double maxError = computeMaxError(points, first, last, bezier, u, splitIndex);
 
 		if (maxError < error) {
@@ -200,17 +245,39 @@ public final class SchneiderBezierFitter {
 			return curve;
 		}
 
+		// Try reparameterization only when we're already somewhat close.
 		double iterationError = error * 4.0;
 		if (maxError < iterationError) {
+			double prevError = maxError;
+
 			for (int i = 0; i < MAX_FIT_ITERS; i++) {
 				double[] uPrime = reparameterize(points, first, last, u, bezier);
-				bezier = generateBezier(points, first, last, uPrime, leftTangent, rightTangent);
-				maxError = computeMaxError(points, first, last, bezier, uPrime, splitIndex);
-				if (maxError < error) {
-					curve.segments.add(bezier);
+
+				// Critical stability check: if parameters are not strictly increasing,
+				// the fit can double back and form loops.
+				if (!isStrictlyIncreasing(uPrime)) {
+					break;
+				}
+
+				BezierSeg candidate = generateBezier(points, first, last, uPrime, leftTangent, rightTangent);
+
+				int[] candidateSplit = new int[] { splitIndex[0] };
+				double candidateError = computeMaxError(points, first, last, candidate, uPrime, candidateSplit);
+
+				if (candidateError < error) {
+					curve.segments.add(candidate);
 					return curve;
 				}
+
+				// If the iteration is no longer improving, stop and split instead.
+				if (!(candidateError + 1e-15 < prevError)) {
+					break;
+				}
+
+				bezier = candidate;
 				u = uPrime;
+				prevError = candidateError;
+				splitIndex[0] = candidateSplit[0];
 			}
 		}
 
@@ -241,8 +308,8 @@ public final class SchneiderBezierFitter {
 			C[1][0] = C[0][1];
 			C[1][1] += A[i][1].dot(A[i][1]);
 
-			Vector2D tmp = points.get(first + i).subtract(
-					firstPoint.multiply(B0(u[i])).add(firstPoint.multiply(B1(u[i]))).add(lastPoint.multiply(B2(u[i]))).add(lastPoint.multiply(B3(u[i]))));
+			double ui = u[i];
+			Vector2D tmp = points.get(first + i).subtract(firstPoint.multiply(B0(ui) + B1(ui)).add(lastPoint.multiply(B2(ui) + B3(ui))));
 
 			X[0] += A[i][0].dot(tmp);
 			X[1] += A[i][1].dot(tmp);
@@ -252,23 +319,37 @@ public final class SchneiderBezierFitter {
 		double detC0X = C[0][0] * X[1] - C[1][0] * X[0];
 		double detXC1 = X[0] * C[1][1] - X[1] * C[0][1];
 
-		double alphaL, alphaR;
-		if (detC0C1 == 0.0) {
-			alphaL = 0.0;
-			alphaR = 0.0;
-		} else {
-			alphaL = detXC1 / detC0C1;
-			alphaR = detC0X / detC0C1;
-		}
-
 		double segLength = dist(firstPoint, lastPoint);
-		double epsilon = 1.0e-6 * segLength;
+		double epsilon = 1.0e-6 * Math.max(segLength, 1.0);
+		double maxHandle = MAX_HANDLE_SCALE * segLength;
 
 		BezierSeg bez = new BezierSeg();
 		bez.v1 = firstPoint;
 		bez.v4 = lastPoint;
 
-		if (alphaL < epsilon || alphaR < epsilon) {
+		boolean fallback = (segLength == 0.0);
+
+		// Treat near-singular systems as singular; exact == 0.0 is not enough.
+		double detTol = DET_EPS * (Math.abs(C[0][0] * C[1][1]) + Math.abs(C[0][1] * C[1][0]) + 1.0);
+
+		double alphaL = 0.0;
+		double alphaR = 0.0;
+
+		if (!fallback) {
+			if (Math.abs(detC0C1) <= detTol) {
+				fallback = true;
+			} else {
+				alphaL = detXC1 / detC0C1;
+				alphaR = detC0X / detC0C1;
+
+				// Reject bad handle lengths; giant handles are what create the "crazy loops".
+				if (!Double.isFinite(alphaL) || !Double.isFinite(alphaR) || alphaL < epsilon || alphaR < epsilon || alphaL > maxHandle || alphaR > maxHandle) {
+					fallback = true;
+				}
+			}
+		}
+
+		if (fallback) {
 			double d = segLength / 3.0;
 			bez.v2 = bez.v1.add(leftVector.multiply(d));
 			bez.v3 = bez.v4.add(rightVector.multiply(d));
@@ -281,8 +362,8 @@ public final class SchneiderBezierFitter {
 	}
 
 	private static double computeMaxError(List<Vector2D> points, int first, int last, BezierSeg bezier, double[] u, int[] splitIndex) {
-		splitIndex[0] = (last - first + 1) / 2;
-		double maxDist2 = -Double.MAX_VALUE;
+		splitIndex[0] = (first + last) >>> 1;
+		double maxDist2 = -1.0;
 
 		CubicBezier cb = bezier.toBetterBezier();
 
@@ -303,9 +384,15 @@ public final class SchneiderBezierFitter {
 	}
 
 	private static double[] reparameterize(List<Vector2D> points, int first, int last, double[] u, BezierSeg bezier) {
-		double[] out = new double[last - first + 1];
+		int n = last - first + 1;
+		double[] out = new double[n];
 		CubicBezier cb = bezier.toBetterBezier();
-		for (int i = first; i <= last; i++) {
+
+		// Keep endpoints fixed. Refining them is unnecessary and can introduce drift.
+		out[0] = 0.0;
+		out[n - 1] = 1.0;
+
+		for (int i = first + 1; i < last; i++) {
 			out[i - first] = newtonRaphsonRootFind(cb, points.get(i), u[i - first]);
 		}
 		return out;
@@ -397,6 +484,69 @@ public final class SchneiderBezierFitter {
 
 	private static double dist(Vector2D a, Vector2D b) {
 		return a.distance(b);
+	}
+
+	private static List<Vector2D> sanitizePoints(List<Coordinate> points, boolean closed) {
+		List<Vector2D> pts = new ArrayList<>(points.size());
+
+		int limit = closed ? points.size() - 1 : points.size();
+		Coordinate prev = null;
+
+		for (int i = 0; i < limit; i++) {
+			Coordinate c = points.get(i);
+			if (c == null) {
+				throw new IllegalArgumentException("points contains null Coordinate");
+			}
+			if (prev == null || !prev.equals2D(c)) {
+				pts.add(new Vector2D(c.x, c.y));
+				prev = c;
+			}
+		}
+
+		if (closed && !pts.isEmpty()) {
+			Vector2D p0 = pts.get(0);
+			pts.add(new Vector2D(p0.getX(), p0.getY()));
+		}
+
+		return pts;
+	}
+
+	private static boolean isStrictlyIncreasing(double[] u) {
+		for (int i = 1; i < u.length; i++) {
+			if (!(u[i] > u[i - 1] + U_EPS)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private static boolean samePoint(Vector2D a, Vector2D b) {
+		double dx = a.getX() - b.getX();
+		double dy = a.getY() - b.getY();
+		return dx * dx + dy * dy <= POINT_EPS2;
+	}
+
+	private static int findSplitForCoincidentEnds(List<Vector2D> points, int first, int last) {
+		Vector2D a = points.get(first);
+
+		int split = (first + last) >>> 1;
+		double maxD2 = -1.0;
+
+		for (int i = first + 1; i < last; i++) {
+			double dx = points.get(i).getX() - a.getX();
+			double dy = points.get(i).getY() - a.getY();
+			double d2 = dx * dx + dy * dy;
+			if (d2 > maxD2) {
+				maxD2 = d2;
+				split = i;
+			}
+		}
+
+		if (split <= first)
+			split = first + 1;
+		if (split >= last)
+			split = last - 1;
+		return split;
 	}
 
 	private static double B0(double t) {
