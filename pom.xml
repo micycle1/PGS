@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>micycle</groupId>
 	<artifactId>PGS</artifactId>
-	<version>2.2-SNAPSHOT</version>
+	<version>2.2</version>
 	<name>Processing Geometry Suite</name>
 	<description>Geometric algorithms for Processing</description>
 	<url>https://github.com/micycle1/PGS</url>
@@ -27,12 +27,12 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.13.0</version>
+				<version>3.15.0</version>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
-				<version>3.3.1</version>
+				<version>3.4.0</version>
 				<executions>
 					<execution>
 						<id>attach-sources</id>
@@ -216,7 +216,7 @@
 		<dependency>
 			<groupId>org.processing</groupId>
 			<artifactId>core</artifactId>
-			<version>4.5.0</version>
+			<version>4.5.2</version>
 			<scope>provided</scope> <!-- don't package into uber jar -->
 			<optional>true</optional> <!-- user artifact should override when provided -->
 			<exclusions>
@@ -242,9 +242,9 @@
 			<version>1.5.2</version>
 		</dependency>
 		<dependency>
-			<groupId>com.github.micycle1</groupId>
+			<groupId>com.github.gwlucastrig</groupId>
 			<artifactId>Tinfour</artifactId>
-			<version>8357a9ba6c</version>
+			<version>c9d7d923fa</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
