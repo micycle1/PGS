@@ -48,6 +48,7 @@ import org.tinfour.utils.SmoothingFilter;
 import com.github.micycle1.geoblitz.SegmentVoronoiIndex;
 import com.github.micycle1.geoblitz.YStripesPointInAreaLocator;
 import com.github.micycle1.grassfire4j.Grassfire;
+import com.github.micycle1.grassfire4j.model.Model.Skeleton;
 import com.google.common.collect.Lists;
 
 import micycle.medialAxis.MedialAxis;
@@ -268,32 +269,37 @@ public final class PGS_Contour {
 	}
 
 	private static PShape straightSkeleton(Polygon polygon) {
-		var skeleton = Grassfire.computeSkeleton(polygon);
+		Skeleton skeleton = null;
+		try {
+			skeleton = Grassfire.computeSkeleton(polygon);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return null; // filtered by caller flatten()
+		}
 
 		final PShape out = new PShape(PConstants.GROUP);
-		var faces = skeleton.asPolygonFaces(polygon);
+		var faces = skeleton.asPolygonFaces();
 		var branches = PGS.prepareLinesPShape(ColorUtils.composeColor(40, 235, 180), null, null);
-		var bones = PGS.prepareLinesPShape(null, null, null);		
-		
+		var bones = PGS.prepareLinesPShape(null, null, null);
+
 		skeleton.segments().forEach(segment -> {
 			if (segment.info1() != null || segment.info2() != null) {
 				branches.vertex((float) segment.p1().x, (float) segment.p1().y);
 				branches.vertex((float) segment.p2().x, (float) segment.p2().y);
-			}
-			else {
+			} else {
 				bones.vertex((float) segment.p1().x, (float) segment.p1().y);
-				bones.vertex((float) segment.p2().x, (float) segment.p2().y);				
+				bones.vertex((float) segment.p2().x, (float) segment.p2().y);
 			}
 		});
 		branches.endShape();
 		bones.endShape();
 
 		var facesShape = toPShape(faces);
-		facesShape  = PGS_Conversion.setAllStrokeColor(facesShape, Colors.PINK, 1);
+		facesShape = PGS_Conversion.setAllStrokeColor(facesShape, Colors.PINK, 1);
 		out.addChild(facesShape);
 		out.addChild(branches);
 		out.addChild(bones);
-		
+
 		return out;
 	}
 

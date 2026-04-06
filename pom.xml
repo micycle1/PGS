@@ -234,7 +234,7 @@
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>grassfire4j</artifactId>
-			<version>b50e08b133</version>
+			<version>1.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.jgrapht</groupId>
