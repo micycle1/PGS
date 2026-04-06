@@ -243,12 +243,12 @@ class PGS_MorphologyGroupShapeTests {
 	void testRegularise() {
 		assertGroupInGroupOut(s -> PGS_Morphology.regularise(s, 0.5));
 	}
-	
+
 	@Test
 	void testSmoothBezierFit() {
 		assertGroupInGroupOut(s -> PGS_Morphology.smoothBezierFit(s, 1));
 	}
-	
+
 	@Test
 	void testReducePrecision() {
 		assertGroupInGroupOut(s -> PGS_Morphology.reducePrecision(s, 1));

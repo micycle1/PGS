@@ -220,8 +220,7 @@ public final class OcclusionSubtract {
 	 */
 	private Geometry subtractIterativePrepared(Geometry target, List<OccItem> candidates) {
 		Geometry rem = target;
-		for (int i = 0; i < candidates.size(); i++) {
-			OccItem occ = candidates.get(i);
+		for (OccItem occ : candidates) {
 			if (!occ.env.intersects(rem.getEnvelopeInternal())) {
 				continue;
 			}

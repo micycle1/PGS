@@ -883,8 +883,9 @@ public final class PGS_Voronoi {
 	 * uniformly.
 	 */
 	private static void collectVertexGroups(Geometry geom, List<List<Vertex>> groups, List<Vertex> allVertices) {
-		if (geom == null || geom.isEmpty())
+		if (geom == null || geom.isEmpty()) {
 			return;
+		}
 
 		// GeometryCollection covers MultiPoint/MultiLineString/MultiPolygon and more.
 		if (geom instanceof GeometryCollection gc) {

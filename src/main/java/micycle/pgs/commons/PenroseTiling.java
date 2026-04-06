@@ -83,10 +83,8 @@ public class PenroseTiling {
 	 */
 	private void makeWheel(PVector origin, double r) {
 		for (int i = 0; i < 10; i++) {
-			PVector b = new PVector((float) (origin.x + r * Math.cos((2 * i - 1) * PI / 10)),
-					(float) (origin.y + r * Math.sin((2 * i - 1) * PI / 10)));
-			PVector c = new PVector((float) (origin.x + r * Math.cos((2 * i + 1) * PI / 10)),
-					(float) (origin.y + r * Math.sin((2 * i + 1) * PI / 10)));
+			PVector b = new PVector((float) (origin.x + r * Math.cos((2 * i - 1) * PI / 10)), (float) (origin.y + r * Math.sin((2 * i - 1) * PI / 10)));
+			PVector c = new PVector((float) (origin.x + r * Math.cos((2 * i + 1) * PI / 10)), (float) (origin.y + r * Math.sin((2 * i + 1) * PI / 10)));
 			if (i % 2 == 0) { // mirror every second triangle
 				PVector temp = b;
 				b = c;
@@ -106,8 +104,7 @@ public class PenroseTiling {
 				result.add(new Triangle(true, t.v[2], p, t.v[1]));
 				result.add(new Triangle(false, p, t.v[2], t.v[0]));
 			} else {
-				PVector q = new PVector(t.v[0].x - (1 - 1 / PHI) * s * (t.v[0].x - t.v[1].x),
-						t.v[0].y - (1 - 1 / PHI) * s * (t.v[0].y - t.v[1].y));
+				PVector q = new PVector(t.v[0].x - (1 - 1 / PHI) * s * (t.v[0].x - t.v[1].x), t.v[0].y - (1 - 1 / PHI) * s * (t.v[0].y - t.v[1].y));
 				PVector r = new PVector(t.v[1].x + (t.v[2].x - t.v[1].x) / PHI, t.v[1].y + (t.v[2].y - t.v[1].y) / PHI);
 				result.add(new Triangle(false, r, t.v[2], t.v[0]));
 				result.add(new Triangle(false, q, r, t.v[1]));

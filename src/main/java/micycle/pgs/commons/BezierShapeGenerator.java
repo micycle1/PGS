@@ -83,7 +83,7 @@ public class BezierShapeGenerator {
 	 * @return An array of Coordinates representing the generated shape's vertices.
 	 */
 	public Coordinate[] generate(boolean centering, boolean cylinder, double scale, long seed) {
-		
+
 		if (nControlPts < 3) {
 			return new Coordinate[] {};
 		}
@@ -171,8 +171,8 @@ public class BezierShapeGenerator {
 			final double[] ptCurr = controlPts[i];
 			final double[] ptNext = controlPts[next];
 
-			double[][] localCurve = generateBezierCurve(ptCurr, ptNext, delta[i], delta[next], deltaB[i], deltaB[next], radii[i][1],
-					radii[next][0], spikiness[i], spikiness[next]);
+			double[][] localCurve = generateBezierCurve(ptCurr, ptNext, delta[i], delta[next], deltaB[i], deltaB[next], radii[i][1], radii[next][0],
+					spikiness[i], spikiness[next]);
 
 			localCurves.add(localCurve);
 
@@ -247,8 +247,7 @@ public class BezierShapeGenerator {
 	}
 
 	// Compute ccwise ordering
-	private static void ccwSort(double[][] pts, double[] radius, double[] edgy, double[][] sortedPts, double[] sortedRadius,
-			double[] sortedEdgy) {
+	private static void ccwSort(double[][] pts, double[] radius, double[] edgy, double[][] sortedPts, double[] sortedRadius, double[] sortedEdgy) {
 
 		// Compute geometric center
 		double[] center = mean(pts);
@@ -283,8 +282,8 @@ public class BezierShapeGenerator {
 	}
 
 	// Generate bezier curve
-	private double[][] generateBezierCurve(double[] p1, double[] p2, double[] delta1, double[] delta2, double[] deltaB1, double[] deltaB2,
-			double radius1, double radius2, double edgy1, double edgy2) {
+	private double[][] generateBezierCurve(double[] p1, double[] p2, double[] delta1, double[] delta2, double[] deltaB1, double[] deltaB2, double radius1,
+			double radius2, double edgy1, double edgy2) {
 
 		// Control points
 		double[][] controlPts = new double[4][2];

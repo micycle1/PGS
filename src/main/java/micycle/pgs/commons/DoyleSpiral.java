@@ -113,10 +113,8 @@ public class DoyleSpiral {
 		double na = a[0] * a[0] + a[1] * a[1];
 		double nb = b[0] * b[0] + b[1] * b[1];
 		double nc = c[0] * c[0] + c[1] * c[1];
-		double y = ((a[0] - b[0]) * (nb - nc) - (b[0] - c[0]) * (na - nb))
-				/ (2 * (b[1] - a[1]) * (b[0] - c[0]) - 2 * (a[0] - b[0]) * (c[1] - b[1])),
-				x = (na - nb + 2 * (b[1] - a[1]) * y) / (2 * (a[0] - b[0])),
-				r = Math.sqrt((x - a[0]) * (x - a[0]) + (y - a[1]) * (y - a[1]));
+		double y = ((a[0] - b[0]) * (nb - nc) - (b[0] - c[0]) * (na - nb)) / (2 * (b[1] - a[1]) * (b[0] - c[0]) - 2 * (a[0] - b[0]) * (c[1] - b[1])),
+				x = (na - nb + 2 * (b[1] - a[1]) * y) / (2 * (a[0] - b[0])), r = Math.sqrt((x - a[0]) * (x - a[0]) + (y - a[1]) * (y - a[1]));
 		return new double[] { x, y, r };
 	}
 
@@ -147,8 +145,7 @@ public class DoyleSpiral {
 	private static double ddt_d(double z, double t, double p, double q) {
 		// The partial derivative of _d with respect to t.
 		double w = pow(z, p / q), s = (p * t + 2 * PI) / q, dds_t = (p / q);
-		return (2 * (z * cos(t) - w * cos(s)) * (-z * sin(t) + w * sin(s) * dds_t)
-				+ 2 * (z * sin(t) - w * sin(s)) * (z * cos(t) - w * cos(s) * dds_t));
+		return (2 * (z * cos(t) - w * cos(s)) * (-z * sin(t) + w * sin(s) * dds_t) + 2 * (z * sin(t) - w * sin(s)) * (z * cos(t) - w * cos(s) * dds_t));
 	}
 
 	private static double _s(double z, double t, double p, double q) {

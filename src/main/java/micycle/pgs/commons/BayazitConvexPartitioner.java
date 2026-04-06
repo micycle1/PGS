@@ -24,8 +24,9 @@ import org.locationtech.jts.geom.PrecisionModel;
  * @see <a href= "https://mpen.ca/406/bayazit">Mark Bayazits Algorithm </a>
  * @deprecated
  */
+@Deprecated
 public class BayazitConvexPartitioner {
-	
+
 	// algorithm described in https://mpen.ca/406/bayazit
 
 	private static final GeometryFactory GEOM_FACTORY = new GeometryFactory(new PrecisionModel(PrecisionModel.FLOATING_SINGLE));

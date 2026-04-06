@@ -64,7 +64,7 @@ public class ConcaveHull {
 	/**
 	 * 
 	 * @param thresholdHeuristic
-	 * @param alpha 0...1
+	 * @param alpha              0...1
 	 */
 	public ConcaveHull(ThresholdHeuristic thresholdHeuristic, double alpha) {
 		super();
@@ -348,7 +348,7 @@ public class ConcaveHull {
 	}
 
 	private class Perimeter {
-		
+
 		int numExposed;
 		DirectedEdge startEdge;
 

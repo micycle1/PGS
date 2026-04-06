@@ -95,7 +95,7 @@ public class FastOverlapRegions {
 			Geometry a = igA.geom;
 
 			@SuppressWarnings("unchecked")
-			List<IndexedGeom> candidates = (List<IndexedGeom>) spatialIndex.query(a.getEnvelopeInternal());
+			List<IndexedGeom> candidates = spatialIndex.query(a.getEnvelopeInternal());
 
 			for (IndexedGeom igB : candidates) {
 				// skip self‐pair and duplicates
@@ -128,7 +128,7 @@ public class FastOverlapRegions {
 	 */
 	private Geometry fastUnion(List<Geometry> geoms) {
 		int n = geoms.size();
-		sort(geoms, HilbertCode.level(n)); // sort according to center point of MBR 
+		sort(geoms, HilbertCode.level(n)); // sort according to center point of MBR
 
 		return geoms.parallelStream().reduce((g1, g2) -> {
 			var result = g1.union(g2);
@@ -188,8 +188,9 @@ public class FastOverlapRegions {
 	 */
 	private static void sort(List<Geometry> geoms, int level) {
 		int n = geoms.size();
-		if (n < 2)
+		if (n < 2) {
 			return;
+		}
 
 		Envelope globalExtent = new Envelope();
 		for (Geometry g : geoms) {
@@ -218,8 +219,9 @@ public class FastOverlapRegions {
 		// so that both arrays are sorted according to hilbert order key.
 		boolean[] seen = new boolean[n];
 		for (int i = 0; i < n; i++) {
-			if (seen[i] || idx[i] == i)
+			if (seen[i] || idx[i] == i) {
 				continue;
+			}
 
 			int cycleStart = i;
 			int j = i;
@@ -277,8 +279,9 @@ public class FastOverlapRegions {
 
 		public void union(int a, int b) {
 			int ra = find(a), rb = find(b);
-			if (ra == rb)
+			if (ra == rb) {
 				return;
+			}
 			if (size[ra] < size[rb]) {
 				parent[ra] = rb;
 				size[rb] += size[ra];

@@ -6,8 +6,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.locationtech.jts.algorithm.ConvexHull;
@@ -22,8 +20,6 @@ import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.Triangle;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
-
-import micycle.pgs.commons.FarthestPointVoronoi.DCELVertex;
 
 /**
  * Farthest-Point Voronoi Diagram
@@ -91,8 +87,7 @@ public class FarthestPointVoronoi {
 		getDCEL();
 
 		var clipPoly = ((Polygon) gf.toGeometry(env)).getExteriorRing();
-		var segs = dcel.getEdges().stream().map(e -> gf.createLineString(new Coordinate[] { e.origVertex, e.destVertex }))
-				.collect(Collectors.toList());
+		var segs = dcel.getEdges().stream().map(e -> gf.createLineString(new Coordinate[] { e.origVertex, e.destVertex })).collect(Collectors.toList());
 		var segsGeom = gf.createMultiLineString(segs.toArray(new LineString[0]));
 		var geom = segsGeom.union(clipPoly); // node
 
@@ -254,8 +249,9 @@ public class FarthestPointVoronoi {
 		// Squared twice-area (safer than uu*vv - uv*uv)
 		double cross = abx * acy - aby * acx;
 		double cross2 = cross * cross;
-		if (cross2 == 0.0) // collinear or degenerate
+		if (cross2 == 0.0) { // collinear or degenerate
 			return Double.POSITIVE_INFINITY;
+		}
 
 		// metric ∝ R² (the constant 4 is dropped)
 		return ab2 * bc2 * ca2 / cross2;
@@ -293,10 +289,12 @@ public class FarthestPointVoronoi {
 
 		@Override
 		public boolean equals(Object obj) {
-			if (this == obj)
+			if (this == obj) {
 				return true;
-			if (obj == null || getClass() != obj.getClass())
+			}
+			if (obj == null || getClass() != obj.getClass()) {
 				return false;
+			}
 			DCELEdge other = (DCELEdge) obj;
 
 			// Direction-agnostic comparison

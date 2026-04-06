@@ -55,8 +55,9 @@ public class LaneRiesenfeldSmoothing {
 	 * @return A new subdivided geometry (LineString or LinearRing).
 	 */
 	public static LineString subdivide(LineString geometry, int degree, int subdivisions, double antiContractionFactor) {
-		if (geometry == null)
+		if (geometry == null) {
 			return null;
+		}
 
 		Coordinate[] coords = geometry.getCoordinates();
 		boolean closed = geometry.isClosed();
@@ -84,8 +85,9 @@ public class LaneRiesenfeldSmoothing {
 	}
 
 	private static LineString createGeometry(GeometryFactory factory, Coordinate[] coords, boolean closed) {
-		if (coords == null)
+		if (coords == null) {
 			coords = new Coordinate[0];
+		}
 
 		if (closed) {
 			// Ensure closure by appending first coordinate at the end

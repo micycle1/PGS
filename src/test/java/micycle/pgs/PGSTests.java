@@ -19,7 +19,6 @@ import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.MultiPolygon;
 import org.locationtech.jts.geom.Polygon;
 
-import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 

@@ -199,8 +199,9 @@ public final class ContourRegularization {
 
 		@Override
 		public void orient(int edgeIndex, LineSegment segment) {
-			if (!initialized)
+			if (!initialized) {
 				throw new IllegalStateException("Not initialized; call init() first");
+			}
 			double segOri = Geometry2D.orientationDeg(segment);
 			double rot = Geometry2D.mod90AngleDifferenceDeg(segOri, refOrientationDeg);
 			Geometry2D.rotateSegmentCCWAroundMidpointInPlace(segment, rot);
@@ -392,8 +393,9 @@ public final class ContourRegularization {
 			}
 
 			Integer[] idx = new Integer[edgeCount];
-			for (int i = 0; i < edgeCount; i++)
+			for (int i = 0; i < edgeCount; i++) {
 				idx[i] = i;
+			}
 			Arrays.sort(idx, (a, b) -> Double.compare(edgeLen[b], edgeLen[a]));
 
 			int[] assigned = new int[edgeCount];
@@ -411,8 +413,9 @@ public final class ContourRegularization {
 						break;
 					}
 				}
-				if (seed == -1)
+				if (seed == -1) {
 					break;
+				}
 
 				double axis = edgeOri[seed];
 				axes.add(axis);
@@ -420,8 +423,9 @@ public final class ContourRegularization {
 				used[seed] = true;
 
 				for (int e = 0; e < edgeCount; e++) {
-					if (e == seed || used[e] || !valid[e])
+					if (e == seed || used[e] || !valid[e]) {
 						continue;
+					}
 					if (satisfiesAxisCondition(edgeOri[seed], edgeOri[e], opt.maximumAngleDeg)) {
 						assigned[e] = groupIndex;
 						used[e] = true;
@@ -433,9 +437,11 @@ public final class ContourRegularization {
 			if (axes.size() <= 1) {
 				// fallback to longest
 				int longest = 0;
-				for (int e = 1; e < edgeCount; e++)
-					if (edgeLen[e] > edgeLen[longest])
+				for (int e = 1; e < edgeCount; e++) {
+					if (edgeLen[e] > edgeLen[longest]) {
 						longest = e;
+					}
+				}
 				double[] ax = new double[] { normalize180(edgeOri[longest]) };
 				int[] as = new int[edgeCount];
 				Arrays.fill(as, 0);
@@ -445,24 +451,27 @@ public final class ContourRegularization {
 			unifyAndCorrectAssignments(assigned, closed);
 
 			double[] axesDeg = new double[axes.size()];
-			for (int i = 0; i < axesDeg.length; i++)
+			for (int i = 0; i < axesDeg.length; i++) {
 				axesDeg[i] = normalize180(axes.get(i));
+			}
 
 			if (opt.adjustDirections) {
 				double[] sum = new double[axesDeg.length];
 				double[] cnt = new double[axesDeg.length];
 
 				for (int e = 0; e < edgeCount; e++) {
-					if (!valid[e])
+					if (!valid[e]) {
 						continue;
+					}
 					int a = assigned[e];
 					double resid = Geometry2D.mod90AngleDifferenceDeg(edgeOri[e], axesDeg[a]);
 					sum[a] += resid;
 					cnt[a] += 1.0;
 				}
 				for (int a = 0; a < axesDeg.length; a++) {
-					if (cnt[a] == 0.0)
+					if (cnt[a] == 0.0) {
 						continue;
+					}
 					axesDeg[a] = normalize180(axesDeg[a] + sum[a] / cnt[a]);
 				}
 			}
@@ -472,8 +481,9 @@ public final class ContourRegularization {
 
 		@Override
 		public void orient(int edgeIndex, LineSegment segment) {
-			if (!initialized)
+			if (!initialized) {
 				throw new IllegalStateException("Not initialized; call init() first");
+			}
 			int a = assigned[edgeIndex];
 			double segOri = Geometry2D.orientationDeg(segment);
 			double rot = Geometry2D.mod90AngleDifferenceDeg(segOri, axesDeg[a]);
@@ -566,8 +576,9 @@ public final class ContourRegularization {
 		public UserDefinedDirections(double maxSnapAngleDeg, double... axesDeg) {
 			this.maxSnapAngleDeg = maxSnapAngleDeg;
 			this.axesDeg = new double[axesDeg.length];
-			for (int i = 0; i < axesDeg.length; i++)
+			for (int i = 0; i < axesDeg.length; i++) {
 				this.axesDeg[i] = normalize180(axesDeg[i]);
+			}
 
 			this.assigned = null;
 			this.initialized = false;
@@ -612,8 +623,9 @@ public final class ContourRegularization {
 
 		@Override
 		public void orient(int edgeIndex, LineSegment segment) {
-			if (!initialized)
+			if (!initialized) {
 				throw new IllegalStateException("Not initialized; call init() first");
+			}
 			int d = assigned[edgeIndex];
 			double segOri = Geometry2D.orientationDeg(segment);
 			double rot = Geometry2D.mod90AngleDifferenceDeg(segOri, axesDeg[d]);
@@ -626,9 +638,11 @@ public final class ContourRegularization {
 		}
 
 		private static boolean allUnassigned(int[] a) {
-			for (int v : a)
-				if (v != -1)
+			for (int v : a) {
+				if (v != -1) {
 					return false;
+				}
+			}
 			return true;
 		}
 	}
@@ -951,8 +965,9 @@ public final class ContourRegularization {
 
 	private static double normalize180(double ang) {
 		ang %= 180.0;
-		if (ang < 0)
+		if (ang < 0) {
 			ang += 180.0;
+		}
 		return ang;
 	}
 
@@ -975,8 +990,9 @@ public final class ContourRegularization {
 	 * in-place on {@code assigned}, where -1 indicates unassigned.
 	 */
 	private static void unifyAndCorrectAssignments(int[] assigned, boolean closed) {
-		if (assigned.length == 0)
+		if (assigned.length == 0) {
 			return;
+		}
 
 		if (closed) {
 			unifyClosed(assigned);
@@ -990,8 +1006,9 @@ public final class ContourRegularization {
 	private static void unifyClosed(int[] assigned) {
 		int n = assigned.length;
 		for (int i = 0; i < n; i++) {
-			if (assigned[i] != -1)
+			if (assigned[i] != -1) {
 				continue;
+			}
 
 			int im = (i + n - 1) % n;
 			int ip = (i + 1) % n;
@@ -1010,12 +1027,14 @@ public final class ContourRegularization {
 
 				im = (im + n - 1) % n;
 				ip = (ip + 1) % n;
-				if (im == i || ip == i)
+				if (im == i || ip == i) {
 					stop = true;
+				}
 				steps++;
 			}
-			if (assigned[i] == -1)
+			if (assigned[i] == -1) {
 				assigned[i] = 0;
+			}
 		}
 	}
 
@@ -1036,8 +1055,9 @@ public final class ContourRegularization {
 	private static void unifyOpen(int[] assigned) {
 		int n = assigned.length;
 		for (int i = 0; i < n; i++) {
-			if (assigned[i] != -1)
+			if (assigned[i] != -1) {
 				continue;
+			}
 
 			int im = (i > 0) ? i - 1 : -1;
 			int ip = (i < n - 1) ? i + 1 : -1;
@@ -1054,26 +1074,32 @@ public final class ContourRegularization {
 					break;
 				}
 
-				if (stop)
+				if (stop) {
 					break;
-				if (im > 0)
+				}
+				if (im > 0) {
 					im--;
-				if (ip != -1 && ip < n - 1)
+				}
+				if (ip != -1 && ip < n - 1) {
 					ip++;
+				}
 
-				if (im == 0 || ip == n - 1)
+				if (im == 0 || ip == n - 1) {
 					stop = true;
+				}
 				steps++;
 			}
-			if (assigned[i] == -1)
+			if (assigned[i] == -1) {
 				assigned[i] = 0;
+			}
 		}
 	}
 
 	private static void correctOpen(int[] assigned) {
 		int n = assigned.length;
-		if (n == 1)
+		if (n == 1) {
 			return;
+		}
 
 		int[] clean = new int[n];
 

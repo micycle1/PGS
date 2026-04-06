@@ -1,7 +1,6 @@
 package micycle.pgs;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -20,10 +19,10 @@ class PGS_ProcessingTests {
 		var r = PGS_Construction.createRect(0, 0, 1, 1, 0);
 		var b1 = PGS_Processing.extractPerimeter(r, 0, 0.5);
 		assertEquals(2, PGS_ShapePredicates.length(b1), 1e-6);
-		
+
 		var b2 = PGS_Processing.extractPerimeter(r, 0, 2);
 		assertEquals(4, PGS_ShapePredicates.length(b2), 1e-6);
-		
+
 		// todo
 //		var b3 = PGS_Processing.extractPerimeter(r, 1, 0);
 //		assertEquals(4, PGS_ShapePredicates.length(b3), 1e-6);

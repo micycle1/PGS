@@ -96,10 +96,11 @@ public final class ShapeRandomPointSampler {
 			double w = areas.get(i) / sumArea;
 			double p = w * n;
 			scaled[i] = p;
-			if (p < 1.0)
+			if (p < 1.0) {
 				small.add(i);
-			else
+			} else {
 				large.add(i);
+			}
 		}
 
 		while (!small.isEmpty() && !large.isEmpty()) {
@@ -108,17 +109,20 @@ public final class ShapeRandomPointSampler {
 			prob[s] = scaled[s];
 			alias[s] = l;
 			scaled[l] = (scaled[l] + scaled[s]) - 1.0;
-			if (scaled[l] < 1.0)
+			if (scaled[l] < 1.0) {
 				small.add(l);
-			else
+			} else {
 				large.add(l);
+			}
 		}
 
 		// Any leftover get prob=1
-		while (!large.isEmpty())
+		while (!large.isEmpty()) {
 			prob[large.removeLast()] = 1.0;
-		while (!small.isEmpty())
+		}
+		while (!small.isEmpty()) {
 			prob[small.removeLast()] = 1.0;
+		}
 	}
 
 	public void reseed(long seed) {

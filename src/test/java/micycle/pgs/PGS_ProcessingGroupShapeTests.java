@@ -53,14 +53,14 @@ class PGS_ProcessingGroupShapeTests {
 		PShape out = PGS_Processing.densify(GROUP_SHAPE, 1);
 		assertEquals(2, out.getChildCount());
 	}
-	
+
 	@Test
 	void test_PGS_Processing_removeSmallHoles() {
 		assumeTrue(GROUP_SHAPE.getChildCount() == 2);
 		PShape out = PGS_Processing.removeSmallHoles(GROUP_SHAPE, 10);
 		assertEquals(2, out.getChildCount());
 	}
-	
+
 	@Test
 	void test_PGS_Processing_convexPartition() {
 		assumeTrue(GROUP_SHAPE.getChildCount() == 2);

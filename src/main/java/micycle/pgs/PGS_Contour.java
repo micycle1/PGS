@@ -716,7 +716,7 @@ public final class PGS_Contour {
 				return null;
 			}
 			var dist = voidDistance(distIndex.distance(point), p, reference);
-			return new PVector((float) c.x, (float) c.y, (float) dist);
+			return new PVector((float) c.x, (float) c.y, dist);
 		}).filter(Objects::nonNull).toList();
 
 		var isolines = isolines(fieldPoints, Math.max(1, intervals), 11);

@@ -103,8 +103,7 @@ class PGS_ShapePredicatesTests {
 			assertEquals(expectedAngleRadians, angle, 1e-6, "Interior angle should be approximately 90 degrees");
 			actualAngleSumRadians += angle;
 		}
-		assertEquals(expectedAngleSumRadians, actualAngleSumRadians, 1e-6,
-				"Sum of square interior angles should be approximately 360 degrees");
+		assertEquals(expectedAngleSumRadians, actualAngleSumRadians, 1e-6, "Sum of square interior angles should be approximately 360 degrees");
 
 	}
 
@@ -119,8 +118,7 @@ class PGS_ShapePredicatesTests {
 		for (double angle : angles.values()) {
 			actualAngleSumRadians += angle;
 		}
-		assertEquals(expectedAngleSumRadians, actualAngleSumRadians, 1e-6,
-				"Sum of triangle interior angles should be approximately 180 degrees");
+		assertEquals(expectedAngleSumRadians, actualAngleSumRadians, 1e-6, "Sum of triangle interior angles should be approximately 180 degrees");
 	}
 
 	@Test
@@ -204,22 +202,19 @@ class PGS_ShapePredicatesTests {
 	@Test
 	void testContainsAllPoints() {
 		assertTrue(PGS_ShapePredicates.containsAllPoints(square, Arrays.asList(new PVector(5, 5), new PVector(2, 2))));
-		assertFalse(
-				PGS_ShapePredicates.containsAllPoints(square, Arrays.asList(new PVector(5, 5), new PVector(15, 15))));
+		assertFalse(PGS_ShapePredicates.containsAllPoints(square, Arrays.asList(new PVector(5, 5), new PVector(15, 15))));
 	}
 
 	@Test
 	void testContainsPoints() {
-		List<Boolean> contained = PGS_ShapePredicates.containsPoints(square,
-				Arrays.asList(new PVector(5, 5), new PVector(15, 15)));
+		List<Boolean> contained = PGS_ShapePredicates.containsPoints(square, Arrays.asList(new PVector(5, 5), new PVector(15, 15)));
 		assertTrue(contained.get(0));
 		assertFalse(contained.get(1));
 	}
 
 	@Test
 	void testFindContainedPoints() {
-		List<PVector> contained = PGS_ShapePredicates.findContainedPoints(square,
-				Arrays.asList(new PVector(5, 5), new PVector(15, 15)));
+		List<PVector> contained = PGS_ShapePredicates.findContainedPoints(square, Arrays.asList(new PVector(5, 5), new PVector(15, 15)));
 		assertEquals(1, contained.size());
 		assertEquals(new PVector(5, 5), contained.get(0));
 	}

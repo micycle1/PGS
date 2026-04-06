@@ -115,8 +115,7 @@ class FastPolygonizerTests {
 			final Polygonizer polygonizerJTS = new Polygonizer();
 			polygonizerJTS.setCheckRingsValid(false);
 			nodedEdgesSet.forEach(e -> {
-				final LineString l = PGS.GEOM_FACTORY
-						.createLineString(new Coordinate[] { PGS.coordFromPVector(e.a), PGS.coordFromPVector(e.b) });
+				final LineString l = PGS.GEOM_FACTORY.createLineString(new Coordinate[] { PGS.coordFromPVector(e.a), PGS.coordFromPVector(e.b) });
 				polygonizerJTS.add(l);
 			});
 

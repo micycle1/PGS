@@ -167,6 +167,7 @@ public class MaximumInscribedRectangle {
 	private double[] refineCandidate(double[] candidate) {
 		// We want to maximize the fitness, so we minimize negative fitness.
 		MultivariateFunction objective = new MultivariateFunction() {
+			@Override
 			public double value(double[] point) {
 				// Return the negative fitness
 				return -fitnessFunction.evaluate(point);

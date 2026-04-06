@@ -45,8 +45,7 @@ public class ProcrustesAlignment {
 		final Coordinate[] coordsB = transformPolygon.getExteriorRing().getCoordinates();
 
 		if (coordsA.length != coordsB.length) {
-			throw new IllegalArgumentException(
-					"Polygon exterior rings are different lengths (" + coordsA.length + ", " + coordsB.length + ")!");
+			throw new IllegalArgumentException("Polygon exterior rings are different lengths (" + coordsA.length + ", " + coordsB.length + ")!");
 		}
 
 		// Find optimal translation

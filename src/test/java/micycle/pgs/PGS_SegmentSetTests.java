@@ -30,13 +30,13 @@ class PGS_SegmentSetTests {
 		PShape dissolved = PGS_SegmentSet.dissolve(edges);
 		assertEquals(0, dissolved.getChildCount());
 		assertEquals(3, dissolved.getVertexCount());
-		
+
 		PEdge c = new PEdge(p3, p4);
 		edges.add(c);
 		dissolved = PGS_SegmentSet.dissolve(edges);
 		assertEquals(0, dissolved.getChildCount());
 		assertEquals(4, dissolved.getVertexCount()); // a merged line of p1,p2,p3,p4
-		
+
 		PEdge d = new PEdge(p2, p4);
 		edges.add(d); // add a branch to existing linestring
 		dissolved = PGS_SegmentSet.dissolve(edges);

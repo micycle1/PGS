@@ -536,10 +536,12 @@ public class EdgePrunedFaces {
 	// Triangle record with oriented half-edges (triangle on left)
 	private static record TriRec(IQuadEdge[] e) {
 		public TriRec {
-			if (e == null)
+			if (e == null) {
 				throw new NullPointerException("e");
-			if (e.length != 3)
+			}
+			if (e.length != 3) {
 				throw new IllegalArgumentException("array must be length 3");
+			}
 			e = e.clone(); // defensive copy before assignment
 		}
 

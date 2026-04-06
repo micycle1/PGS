@@ -968,8 +968,9 @@ public final class PGS_Morphology {
 
 		for (PShape child : copy.getChildren()) {
 			int vCount = child.getVertexCount();
-			if (vCount == 0)
+			if (vCount == 0) {
 				continue;
+			}
 
 			// Determine if the shape is closed.
 			boolean isClosed = child.isClosed() || (vCount > 1 && child.getVertex(0).equals(child.getVertex(vCount - 1)));
@@ -1301,7 +1302,7 @@ public final class PGS_Morphology {
 	 */
 	public static PShape reducePrecision(PShape shape, double precision) {
 		var pm = new PrecisionModel(-Math.max(Math.abs(precision), 1e-10));
-		if (shape.getFamily() == PShape.GROUP) {
+		if (shape.getFamily() == PConstants.GROUP) {
 			// pointwise preserves polygon faces (doesn't merge)
 			return toPShape(GeometryPrecisionReducer.reducePointwise(fromPShape(shape), pm));
 		} else {

@@ -102,13 +102,15 @@ public final class SchneiderBezierFitter {
 		line = (LineString) line.norm();
 
 		Coordinate[] coords = line.getCoordinates();
-		if (coords.length < 2)
+		if (coords.length < 2) {
 			throw new IllegalArgumentException("LineString must have at least 2 coordinates");
+		}
 
 		// if closed, keep the duplicate last coordinate so the closing edge is fitted
 		List<Coordinate> pts = new ArrayList<>(coords.length);
-		for (Coordinate coord : coords)
+		for (Coordinate coord : coords) {
 			pts.add(coord);
+		}
 
 		// Fit+sample directly; if input is closed, output will already end where it
 		// starts
@@ -542,10 +544,12 @@ public final class SchneiderBezierFitter {
 			}
 		}
 
-		if (split <= first)
+		if (split <= first) {
 			split = first + 1;
-		if (split >= last)
+		}
+		if (split >= last) {
 			split = last - 1;
+		}
 		return split;
 	}
 

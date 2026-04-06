@@ -147,7 +147,7 @@ public class PGS_Polygonisation {
 	 * @since 2.2
 	 */
 	public static PShape hilbert(Collection<PVector> points) {
-		var seq = PGS_PointSet.hilbertSort(new ArrayList<PVector>(points));
+		var seq = PGS_PointSet.hilbertSort(new ArrayList<>(points));
 		Uncrossing2Opt.uncross(seq);
 		return toPolygon(seq);
 	}
@@ -177,8 +177,9 @@ public class PGS_Polygonisation {
 			return new PShape();
 		}
 		final int n = points.size();
-		if (n < 3)
+		if (n < 3) {
 			return PGS_Conversion.fromPVector(new ArrayList<>(points));
+		}
 
 		// center = centroid
 		double cx = 0, cy = 0;
@@ -199,8 +200,9 @@ public class PGS_Polygonisation {
 		Collections.sort(info, (a, b) -> Double.compare(a.r, b.r));
 		int numRings = Math.max(1, (int) Math.round(Math.sqrt(n))); // heuristic
 		List<List<Info>> rings = new ArrayList<>(numRings);
-		for (int i = 0; i < numRings; i++)
+		for (int i = 0; i < numRings; i++) {
 			rings.add(new ArrayList<>());
+		}
 
 		for (int i = 0; i < n; i++) {
 			int bucket = (int) ((long) i * numRings / n); // maps 0..n-1 into 0..numRings-1
@@ -217,14 +219,17 @@ public class PGS_Polygonisation {
 		List<PVector> seq = new ArrayList<>(n);
 		boolean forward = true;
 		for (List<Info> ring : rings) {
-			if (ring.isEmpty())
+			if (ring.isEmpty()) {
 				continue;
+			}
 			if (seq.isEmpty()) {
 				// first ring: optionally start at smallest theta, and maybe reverse for parity
-				if (!forward)
+				if (!forward) {
 					Collections.reverse(ring);
-				for (Info it : ring)
+				}
+				for (Info it : ring) {
 					seq.add(it.p);
+				}
 			} else {
 				// find index in ring nearest to last appended point
 				PVector last = seq.get(seq.size() - 1);
@@ -247,8 +252,9 @@ public class PGS_Polygonisation {
 				} else {
 					for (int k = 0; k < ring.size(); k++) {
 						int idx = (start - k) % ring.size();
-						if (idx < 0)
+						if (idx < 0) {
 							idx += ring.size();
+						}
 						seq.add(ring.get(idx).p);
 					}
 				}
@@ -310,8 +316,9 @@ public class PGS_Polygonisation {
 		// sort by angle, tie-break by radius (closer first)
 		Collections.sort(info, (a, b) -> {
 			int c = Double.compare(a.theta, b.theta);
-			if (c != 0)
+			if (c != 0) {
 				return c;
+			}
 			return Double.compare(a.r, b.r);
 		});
 
@@ -346,11 +353,13 @@ public class PGS_Polygonisation {
 	 * @since 2.2
 	 */
 	public static PShape onion(Collection<PVector> points) {
-		if (points == null)
+		if (points == null) {
 			return new PShape();
+		}
 		int n0 = points.size();
-		if (n0 < 3)
+		if (n0 < 3) {
 			return PGS_Conversion.fromPVector(new ArrayList<>(points));
+		}
 
 		// mutable working set
 		List<PVector> remaining = new ArrayList<>(points);
@@ -359,8 +368,9 @@ public class PGS_Polygonisation {
 		List<List<PVector>> layers = new ArrayList<>();
 		while (remaining.size() >= 3) {
 			List<PVector> hull = convexHullMonotoneChain(remaining);
-			if (hull.size() < 3)
+			if (hull.size() < 3) {
 				break; // degenerate (collinear etc.)
+			}
 			layers.add(hull);
 
 			// remove hull points (identity-based)
@@ -374,18 +384,21 @@ public class PGS_Polygonisation {
 		boolean forward = true;
 
 		for (List<PVector> layer : layers) {
-			if (layer.isEmpty())
+			if (layer.isEmpty()) {
 				continue;
+			}
 
 			if (seq.isEmpty()) {
-				if (!forward)
+				if (!forward) {
 					java.util.Collections.reverse(layer);
+				}
 				seq.addAll(layer);
 			} else {
 				PVector last = seq.get(seq.size() - 1);
 				List<PVector> rotated = rotateToNearest(layer, last);
-				if (!forward)
+				if (!forward) {
 					Collections.reverse(rotated);
+				}
 				seq.addAll(rotated);
 			}
 			forward = !forward;
@@ -448,15 +461,17 @@ public class PGS_Polygonisation {
 	private static List<PVector> convexHullMonotoneChain(List<PVector> pts) {
 		// returns CCW hull without repeating the first point
 		int n = pts.size();
-		if (n < 3)
+		if (n < 3) {
 			return new ArrayList<>();
+		}
 
 		// sort by x then y
 		List<PVector> p = new ArrayList<>(pts);
 		p.sort((a, b) -> {
 			int cx = Float.compare(a.x, b.x);
-			if (cx != 0)
+			if (cx != 0) {
 				return cx;
+			}
 			return Float.compare(a.y, b.y);
 		});
 
@@ -493,8 +508,9 @@ public class PGS_Polygonisation {
 
 	private static List<PVector> rotateToNearest(List<PVector> ring, PVector target) {
 		int m = ring.size();
-		if (m == 0)
+		if (m == 0) {
 			return new ArrayList<>();
+		}
 
 		int best = 0;
 		double bestD2 = Double.POSITIVE_INFINITY;
@@ -510,8 +526,9 @@ public class PGS_Polygonisation {
 		}
 
 		List<PVector> out = new ArrayList<>(m);
-		for (int k = 0; k < m; k++)
+		for (int k = 0; k < m; k++) {
 			out.add(ring.get((best + k) % m));
+		}
 		return out;
 	}
 

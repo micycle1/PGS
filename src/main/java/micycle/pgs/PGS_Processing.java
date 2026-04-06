@@ -591,14 +591,16 @@ public final class PGS_Processing {
 
 		final SegmentIntersector intersector = (e0, i0, e1, i1) -> {
 			// Skip identical segment
-			if (e0 == e1 && i0 == i1)
+			if (e0 == e1 && i0 == i1) {
 				return;
+			}
 
 			// For self-comparisons, avoid double-reporting, and (optionally) skip adjacent
 			// segments
 			if (e0 == e1) {
-				if (i1 <= i0)
+				if (i1 <= i0) {
 					return; // process each pair once
+				}
 
 				if (!countEndpointTouches) {
 					final int nSegs = e0.size() - 1; // number of segments in this SegmentString
@@ -606,8 +608,9 @@ public final class PGS_Processing {
 					// Adjacent by index, including wrap-around (last segment adjacent to first)
 					final boolean adjacent = Math.abs(i0 - i1) == 1 || (i0 == 0 && i1 == nSegs - 1) || (i1 == 0 && i0 == nSegs - 1);
 
-					if (adjacent)
+					if (adjacent) {
 						return;
+					}
 				}
 			}
 
@@ -617,8 +620,9 @@ public final class PGS_Processing {
 			final Coordinate q1 = e1.getCoordinate(i1 + 1);
 
 			li.computeIntersection(p0, p1, q0, q1);
-			if (!li.hasIntersection())
+			if (!li.hasIntersection()) {
 				return;
+			}
 
 			final boolean collinear = li.getIntersectionNum() == LineIntersector.COLLINEAR;
 

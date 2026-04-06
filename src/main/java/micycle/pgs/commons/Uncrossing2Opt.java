@@ -95,8 +95,9 @@ public final class Uncrossing2Opt {
 
 	public static void uncross(List<PVector> seq) {
 		final int n = seq.size();
-		if (n < 4)
+		if (n < 4) {
 			return;
+		}
 
 		// Work on arrays (fast) and write back at end
 		final PVector[] arr = seq.toArray(new PVector[n]);
@@ -109,15 +110,17 @@ public final class Uncrossing2Opt {
 
 		// Dirty-edge stack: indices of edge-starts i (edge is i -> i+1, and n-1 -> 0)
 		final IntStack stack = new IntStack(n * 2);
-		for (int i = 0; i < n; i++)
+		for (int i = 0; i < n; i++) {
 			stack.push(i);
+		}
 
 		while (!stack.isEmpty()) {
 			final int i = stack.pop();
 
 			final int j = findAnyCrossingPartner(i, x, y, n);
-			if (j < 0)
+			if (j < 0) {
 				continue;
+			}
 
 			// Apply the 2-opt reversal in the appropriate contiguous range
 			// and mark ONLY the two new boundary edges dirty.
@@ -155,8 +158,9 @@ public final class Uncrossing2Opt {
 		}
 
 		// write back reordered points (fast)
-		for (int i = 0; i < n; i++)
+		for (int i = 0; i < n; i++) {
 			seq.set(i, arr[i]);
+		}
 	}
 
 	/**
@@ -195,8 +199,9 @@ public final class Uncrossing2Opt {
 			// Edge (0->1): skip adjacent edges (n-1->0) and (1->2).
 			for (int k = 2; k <= n - 2; k++) {
 				final int k1 = k + 1;
-				if (segmentsCrossFast(ax, ay, bx, by, abx, aby, minAx, maxAx, minAy, maxAy, x[k], y[k], x[k1], y[k1]))
+				if (segmentsCrossFast(ax, ay, bx, by, abx, aby, minAx, maxAx, minAy, maxAy, x[k], y[k], x[k1], y[k1])) {
 					return k;
+				}
 			}
 			return -1;
 		}
@@ -205,8 +210,9 @@ public final class Uncrossing2Opt {
 			// Closing edge (n-1->0): skip adjacent edges (n-2->n-1) and (0->1).
 			for (int k = 1; k <= n - 3; k++) {
 				final int k1 = k + 1;
-				if (segmentsCrossFast(ax, ay, bx, by, abx, aby, minAx, maxAx, minAy, maxAy, x[k], y[k], x[k1], y[k1]))
+				if (segmentsCrossFast(ax, ay, bx, by, abx, aby, minAx, maxAx, minAy, maxAy, x[k], y[k], x[k1], y[k1])) {
 					return k;
+				}
 			}
 			return -1;
 		}
@@ -216,21 +222,24 @@ public final class Uncrossing2Opt {
 		// adjacent.
 		for (int k = 0; k <= i - 2; k++) {
 			final int k1 = k + 1;
-			if (segmentsCrossFast(ax, ay, bx, by, abx, aby, minAx, maxAx, minAy, maxAy, x[k], y[k], x[k1], y[k1]))
+			if (segmentsCrossFast(ax, ay, bx, by, abx, aby, minAx, maxAx, minAy, maxAy, x[k], y[k], x[k1], y[k1])) {
 				return k;
+			}
 		}
 
 		for (int k = i + 2; k <= n - 2; k++) {
 			final int k1 = k + 1;
-			if (segmentsCrossFast(ax, ay, bx, by, abx, aby, minAx, maxAx, minAy, maxAy, x[k], y[k], x[k1], y[k1]))
+			if (segmentsCrossFast(ax, ay, bx, by, abx, aby, minAx, maxAx, minAy, maxAy, x[k], y[k], x[k1], y[k1])) {
 				return k;
+			}
 		}
 
 		// Check closing edge k = n-1 (n-1 -> 0) unless adjacent (only adjacent when i
 		// == n-2)
 		if (i != n - 2) {
-			if (segmentsCrossFast(ax, ay, bx, by, abx, aby, minAx, maxAx, minAy, maxAy, x[n - 1], y[n - 1], x[0], y[0]))
+			if (segmentsCrossFast(ax, ay, bx, by, abx, aby, minAx, maxAx, minAy, maxAy, x[n - 1], y[n - 1], x[0], y[0])) {
 				return n - 1;
+			}
 		}
 
 		return -1;
@@ -242,13 +251,15 @@ public final class Uncrossing2Opt {
 		if (USE_AABB) {
 			final float minCx = (cx < dx) ? cx : dx;
 			final float maxCx = (cx > dx) ? cx : dx;
-			if (maxAx < minCx || maxCx < minAx)
+			if (maxAx < minCx || maxCx < minAx) {
 				return false;
+			}
 
 			final float minCy = (cy < dy) ? cy : dy;
 			final float maxCy = (cy > dy) ? cy : dy;
-			if (maxAy < minCy || maxCy < minAy)
+			if (maxAy < minCy || maxCy < minAy) {
 				return false;
+			}
 		}
 
 		// o1 and o2: C and D on opposite sides of AB?
@@ -259,8 +270,9 @@ public final class Uncrossing2Opt {
 		final float o2 = abx * ady - aby * adx;
 
 		// strict opposite sign (o1==0 or o2==0 => reject)
-		if (!((o1 > 0) ^ (o2 > 0)))
+		if (!((o1 > 0) ^ (o2 > 0))) {
 			return false;
+		}
 
 		// o3 and o4: A and B on opposite sides of CD?
 		final float cdx = dx - cx, cdy = dy - cy;

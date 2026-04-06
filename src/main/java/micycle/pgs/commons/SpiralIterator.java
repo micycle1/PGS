@@ -87,11 +87,13 @@ public class SpiralIterator implements Iterator<PShape> {
 		this.faces = allFaces;
 		this.F = allFaces.size();
 		Map<PShape, Integer> fidx = new HashMap<>(F);
-		for (int i = 0; i < F; i++)
+		for (int i = 0; i < F; i++) {
 			fidx.put(allFaces.get(i), i);
+		}
 		Integer startIdx = fidx.get(startFace);
-		if (startIdx == null)
+		if (startIdx == null) {
 			throw new IllegalArgumentException("startFace not in allFaces");
+		}
 
 		// 1) build per‐face vertex‐lists + global vertex‐ID map
 		Map<VertexKey, Integer> vmap = new HashMap<>();
@@ -142,8 +144,9 @@ public class SpiralIterator implements Iterator<PShape> {
 			for (int i = 0; i < vids.length; i++) {
 				EdgeKey ek = new EdgeKey(vids[i], vids[(i + 1) % vids.length]);
 				for (int g : e2f.get(ek)) {
-					if (g != f)
+					if (g != f) {
 						nb.add(g);
+					}
 				}
 			}
 			edgeNbrs[f] = nb.stream().mapToInt(x -> x).toArray();
@@ -196,8 +199,9 @@ public class SpiralIterator implements Iterator<PShape> {
 
 	@Override
 	public PShape next() {
-		if (!hasNext())
+		if (!hasNext()) {
 			throw new NoSuchElementException();
+		}
 		int f = ringIter.next();
 		lastEmitted = f;
 		return faces.get(f);
@@ -218,7 +222,7 @@ public class SpiralIterator implements Iterator<PShape> {
 		// 2) extract edge‐connected components in ringSorted order
 		Set<Integer> seen = new HashSet<>();
 		List<List<Integer>> comps = new ArrayList<>();
-		for (int f : ringSorted)
+		for (int f : ringSorted) {
 			if (!seen.contains(f)) {
 				// flood‐fill
 				List<Integer> comp = new ArrayList<>();
@@ -237,12 +241,14 @@ public class SpiralIterator implements Iterator<PShape> {
 				}
 				comps.add(comp);
 			}
+		}
 
 		// 3) find which component touches seedFace by an edge
 		Set<Integer> seedNbrs = new HashSet<>();
 		for (int g : edgeNbrs[seedFace]) {
-			if (Rset.contains(g))
+			if (Rset.contains(g)) {
 				seedNbrs.add(g);
+			}
 		}
 		int firstIdx = 0;
 		for (int i = 0; i < comps.size(); i++) {
@@ -293,8 +299,9 @@ public class SpiralIterator implements Iterator<PShape> {
 	/** CW‐distance from angle a1 to a2, in [0,2π). */
 	private double cwDist(double a1, double a2) {
 		double d = a1 - a2;
-		if (d < 0)
+		if (d < 0) {
 			d += Math.PI * 2;
+		}
 		return d;
 	}
 
@@ -327,8 +334,9 @@ public class SpiralIterator implements Iterator<PShape> {
 
 		@Override
 		public boolean equals(Object o) {
-			if (!(o instanceof VertexKey))
+			if (!(o instanceof VertexKey)) {
 				return false;
+			}
 			VertexKey k = (VertexKey) o;
 			return xh == k.xh && yh == k.yh && zh == k.zh;
 		}
@@ -354,8 +362,9 @@ public class SpiralIterator implements Iterator<PShape> {
 
 		@Override
 		public boolean equals(Object o) {
-			if (!(o instanceof EdgeKey))
+			if (!(o instanceof EdgeKey)) {
 				return false;
+			}
 			EdgeKey e = (EdgeKey) o;
 			return a == e.a && b == e.b;
 		}

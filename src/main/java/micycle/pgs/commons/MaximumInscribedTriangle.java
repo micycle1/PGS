@@ -271,8 +271,7 @@ public class MaximumInscribedTriangle {
 				}
 			} else {
 				// 1. Check that all three vertices are strictly inside the polygon.
-				if (!pointInPolygon(x0, y0, polyX, polyY) || !pointInPolygon(x1, y1, polyX, polyY)
-						|| !pointInPolygon(x2, y2, polyX, polyY)) {
+				if (!pointInPolygon(x0, y0, polyX, polyY) || !pointInPolygon(x1, y1, polyX, polyY) || !pointInPolygon(x2, y2, polyX, polyY)) {
 					return 0;
 				}
 

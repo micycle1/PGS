@@ -48,8 +48,9 @@ public class TouchScale {
 		 * a shape edge (scaled). Solve these two cases in closed form for all
 		 * vertex–edge pairs; take the minimal positive s.
 		 */
-		if (shape.isEmpty() || boundary.isEmpty())
+		if (shape.isEmpty() || boundary.isEmpty()) {
 			return shape;
+		}
 
 		final Coordinate c = shape.getCentroid().getCoordinate();
 		final double EPS = 1e-12;
@@ -70,28 +71,33 @@ public class TouchScale {
 		// 1) shape-vertex -> boundary-edge
 		for (Coordinate v : shapeVerts) {
 			double dvx = v.x - c.x, dvy = v.y - c.y;
-			if (Math.abs(dvx) + Math.abs(dvy) < EPS)
+			if (Math.abs(dvx) + Math.abs(dvy) < EPS) {
 				continue;
+			}
 
 			for (LineSegment seg : edgesB) {
 				double ex = seg.p1.x - seg.p0.x, ey = seg.p1.y - seg.p0.y;
 				double denom = cross(dvx, dvy, ex, ey);
-				if (Math.abs(denom) < EPS)
+				if (Math.abs(denom) < EPS) {
 					continue;
+				}
 
 				double s = -cross(c.x - seg.p0.x, c.y - seg.p0.y, ex, ey) / denom;
-				if (!(s > 0))
+				if (!(s > 0)) {
 					continue;
+				}
 
 				double yx = c.x + s * dvx, yy = c.y + s * dvy;
 				double txNum = ((yx - seg.p0.x) * ex + (yy - seg.p0.y) * ey);
 				double txDen = ex * ex + ey * ey;
-				if (txDen <= EPS)
+				if (txDen <= EPS) {
 					continue;
+				}
 				double t = txNum / txDen;
 				if (t >= -1e-9 && t <= 1 + 1e-9) {
-					if (s < sBest)
+					if (s < sBest) {
 						sBest = s;
+					}
 				}
 			}
 		}
@@ -106,18 +112,21 @@ public class TouchScale {
 				double mx = rbx - rax, my = rby - ray;
 
 				double denom = cross(rax, ray, mx, my);
-				if (Math.abs(denom) < EPS)
+				if (Math.abs(denom) < EPS) {
 					continue;
+				}
 
 				double s1 = cross(wcx, wcy, mx, my) / denom;
-				if (!(s1 > 0))
+				if (!(s1 > 0)) {
 					continue;
+				}
 
 				double s2 = cross(rax, ray, wcx, wcy) / denom;
 				double u = s2 / s1;
 				if (u >= -1e-9 && u <= 1 + 1e-9) {
-					if (s1 < sBest)
+					if (s1 < sBest) {
 						sBest = s1;
+					}
 				}
 			}
 		}
@@ -127,17 +136,19 @@ public class TouchScale {
 			Coordinate nb = nearestPointOnBoundary(boundary, c);
 			double ux = nb.x - c.x, uy = nb.y - c.y;
 			double ulen = Math.hypot(ux, uy);
-			if (ulen < EPS)
+			if (ulen < EPS) {
 				return shape;
+			}
 			ux /= ulen;
 			uy /= ulen;
 
 			double rB = firstRayHitDistance(c.x, c.y, ux, uy, edgesB);
 			double rS = maxDotAlong(shapeVerts, c, ux, uy);
-			if (rB > 0 && rS > EPS)
+			if (rB > 0 && rS > EPS) {
 				sBest = rB / rS;
-			else
+			} else {
 				return shape;
+			}
 		}
 
 		// Tiny relative backoff
@@ -173,14 +184,16 @@ public class TouchScale {
 		for (LineSegment seg : edges) {
 			double ex = seg.p1.x - seg.p0.x, ey = seg.p1.y - seg.p0.y;
 			double denom = cross(rx, ry, ex, ey);
-			if (Math.abs(denom) < EPS)
+			if (Math.abs(denom) < EPS) {
 				continue;
+			}
 			double dx = seg.p0.x - cx, dy = seg.p0.y - cy;
 			double t = cross(dx, dy, ex, ey) / denom; // along ray
 			double u = cross(dx, dy, rx, ry) / denom; // along segment
 			if (t > 0 && u >= -1e-9 && u <= 1 + 1e-9) {
-				if (t < best)
+				if (t < best) {
 					best = t;
+				}
 			}
 		}
 		return best;
@@ -191,8 +204,9 @@ public class TouchScale {
 		for (Coordinate v : verts) {
 			double dx = v.x - c.x, dy = v.y - c.y;
 			double d = dx * ux + dy * uy;
-			if (d > best)
+			if (d > best) {
 				best = d;
+			}
 		}
 		return best;
 	}

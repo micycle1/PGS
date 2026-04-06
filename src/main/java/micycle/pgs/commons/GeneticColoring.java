@@ -91,8 +91,9 @@ public class GeneticColoring<V, E> implements VertexColoringAlgorithm<V> {
 
 		// Neighbor cache indexed by ID
 		this.neighborCache = new ArrayList<>(vertexCount);
-		for (int k = 0; k < vertexCount; k++)
+		for (int k = 0; k < vertexCount; k++) {
 			neighborCache.add(null);
+		}
 		final NeighborCache<V, E> nc = new NeighborCache<>(graph);
 		for (V v : graph.vertexSet()) {
 			int id = vertexIds.get(v);
@@ -102,16 +103,19 @@ public class GeneticColoring<V, E> implements VertexColoringAlgorithm<V> {
 
 		// Degrees and degree-descending order for greedy seeding
 		this.degrees = new int[vertexCount];
-		for (int v = 0; v < vertexCount; v++)
+		for (int v = 0; v < vertexCount; v++) {
 			degrees[v] = neighborCache.get(v).length;
+		}
 		this.degreeOrder = new int[vertexCount];
 		{
 			Integer[] idx = new Integer[vertexCount];
-			for (int v = 0; v < vertexCount; v++)
+			for (int v = 0; v < vertexCount; v++) {
 				idx[v] = v;
+			}
 			Arrays.sort(idx, (a, b) -> Integer.compare(degrees[b], degrees[a]));
-			for (int k = 0; k < vertexCount; k++)
+			for (int k = 0; k < vertexCount; k++) {
 				degreeOrder[k] = idx[k];
+			}
 		}
 	}
 
@@ -150,13 +154,16 @@ public class GeneticColoring<V, E> implements VertexColoringAlgorithm<V> {
 			Arrays.fill(used, false);
 			for (int u : neighborsOf(v)) {
 				int cu = chrom[u];
-				if (cu >= 0)
+				if (cu >= 0) {
 					used[cu] = true;
+				}
 			}
 			int n = 0;
-			for (int c = 0; c < colorsCount; c++)
-				if (!used[c])
+			for (int c = 0; c < colorsCount; c++) {
+				if (!used[c]) {
 					candidates[n++] = c;
+				}
+			}
 			chrom[v] = (n > 0) ? candidates[rand.nextInt(n)] : rand.nextInt(colorsCount);
 		}
 		return chrom;
@@ -174,8 +181,9 @@ public class GeneticColoring<V, E> implements VertexColoringAlgorithm<V> {
 		for (int colored = 0; colored < vertexCount; colored++) {
 			int v = -1, bestSat = -1, bestDeg = -1;
 			for (int u = 0; u < vertexCount; u++) {
-				if (color[u] != -1)
+				if (color[u] != -1) {
 					continue;
+				}
 				int s = sat[u];
 				int d = degrees[u];
 				if (s > bestSat || (s == bestSat && d > bestDeg)) {
@@ -185,15 +193,19 @@ public class GeneticColoring<V, E> implements VertexColoringAlgorithm<V> {
 				}
 			}
 			Arrays.fill(neighborColors[v], false);
-			for (int w : neighborsOf(v))
-				if (color[w] >= 0)
+			for (int w : neighborsOf(v)) {
+				if (color[w] >= 0) {
 					neighborColors[v][color[w]] = true;
+				}
+			}
 			int pick = -1, bestConf = Integer.MAX_VALUE;
 			for (int c = 0; c < colorsCount; c++) {
 				int conf = 0;
-				for (int w : neighborsOf(v))
-					if (color[w] == c)
+				for (int w : neighborsOf(v)) {
+					if (color[w] == c) {
 						conf++;
+					}
+				}
 				if (!neighborColors[v][c]) {
 					pick = c;
 					break;
@@ -253,8 +265,9 @@ public class GeneticColoring<V, E> implements VertexColoringAlgorithm<V> {
 				population.add(new Individual(greedyColoringByOrder(order)));
 			}
 
-			while (population.size() < populationSize)
+			while (population.size() < populationSize) {
 				population.add(new Individual());
+			}
 
 			sort();
 			bestSoFar = bestFitness();
@@ -263,8 +276,9 @@ public class GeneticColoring<V, E> implements VertexColoringAlgorithm<V> {
 		public void nextGeneration() {
 			// Elitism: keep top eliteCount
 			List<Individual> next = new ArrayList<>(populationSize);
-			for (int i = 0; i < eliteCount; i++)
+			for (int i = 0; i < eliteCount; i++) {
 				next.add(population.get(i));
+			}
 
 			// Fill the rest with children
 			while (next.size() < populationSize) {
@@ -298,8 +312,9 @@ public class GeneticColoring<V, E> implements VertexColoringAlgorithm<V> {
 			Individual best = null;
 			for (int i = 0; i < tournamentK; i++) {
 				Individual cand = population.get(rand.nextInt(populationSize));
-				if (best == null || cand.fitness < best.fitness)
+				if (best == null || cand.fitness < best.fitness) {
 					best = cand;
+				}
 			}
 			return best;
 		}
@@ -327,10 +342,11 @@ public class GeneticColoring<V, E> implements VertexColoringAlgorithm<V> {
 				if (rand.nextDouble() < 0.5) {
 					population.set(i, new Individual());
 				} else {
-					if (rand.nextBoolean())
+					if (rand.nextBoolean()) {
 						population.set(i, new Individual(dsaturColoring()));
-					else
+					} else {
 						population.set(i, new Individual(greedyColoringByOrder(shuffledOrderFrom(degreeOrder))));
+					}
 				}
 			}
 			sort();
@@ -358,8 +374,9 @@ public class GeneticColoring<V, E> implements VertexColoringAlgorithm<V> {
 
 			Individual() {
 				chromosome = new int[vertexCount];
-				for (int i = 0; i < vertexCount; i++)
+				for (int i = 0; i < vertexCount; i++) {
 					chromosome[i] = rand.nextInt(colorsCount);
+				}
 				scoreFitness();
 			}
 
@@ -397,17 +414,21 @@ public class GeneticColoring<V, E> implements VertexColoringAlgorithm<V> {
 								break;
 							}
 						}
-						if (!conflict)
+						if (!conflict) {
 							continue;
+						}
 
 						// try best color for v
 						Arrays.fill(used, false);
-						for (int u : neighborsOf(v))
+						for (int u : neighborsOf(v)) {
 							used[chromosome[u]] = true;
+						}
 						int n = 0;
-						for (int c = 0; c < colorsCount; c++)
-							if (!used[c])
+						for (int c = 0; c < colorsCount; c++) {
+							if (!used[c]) {
 								candidates[n++] = c;
+							}
+						}
 						if (n > 0) {
 							chromosome[v] = candidates[rand.nextInt(n)];
 						} else {
@@ -415,9 +436,11 @@ public class GeneticColoring<V, E> implements VertexColoringAlgorithm<V> {
 							int bestC = cv, bestConf = Integer.MAX_VALUE;
 							for (int c = 0; c < colorsCount; c++) {
 								int conf = 0;
-								for (int u : neighborsOf(v))
-									if (chromosome[u] == c)
+								for (int u : neighborsOf(v)) {
+									if (chromosome[u] == c) {
 										conf++;
+									}
+								}
 								if (conf < bestConf) {
 									bestConf = conf;
 									bestC = c;
@@ -446,15 +469,19 @@ public class GeneticColoring<V, E> implements VertexColoringAlgorithm<V> {
 						int cv = chromosome[v];
 
 						int currentConf = 0;
-						for (int w : neighborsOf(v))
-							if (chromosome[w] == cv)
+						for (int w : neighborsOf(v)) {
+							if (chromosome[w] == cv) {
 								currentConf++;
-						if (currentConf == 0)
+							}
+						}
+						if (currentConf == 0) {
 							continue;
+						}
 
 						Arrays.fill(colorCounts, 0);
-						for (int w : neighborsOf(v))
+						for (int w : neighborsOf(v)) {
 							colorCounts[chromosome[w]]++;
+						}
 
 						int bestC = cv;
 						int bestScore = currentConf;
@@ -469,8 +496,9 @@ public class GeneticColoring<V, E> implements VertexColoringAlgorithm<V> {
 							chromosome[v] = bestC;
 							moves++;
 							// Recompute fitness lazily after a batch; here recompute fully occasionally
-							if ((moves & 15) == 0)
+							if ((moves & 15) == 0) {
 								scoreFitness();
+							}
 							improved = true;
 						}
 					}
@@ -483,9 +511,11 @@ public class GeneticColoring<V, E> implements VertexColoringAlgorithm<V> {
 				int f = 0;
 				for (int v = 0; v < vertexCount; v++) {
 					int cv = chromosome[v];
-					for (int w : neighborsOf(v))
-						if (w > v && cv == chromosome[w])
+					for (int w : neighborsOf(v)) {
+						if (w > v && cv == chromosome[w]) {
 							f++;
+						}
+					}
 				}
 				fitness = f;
 			}

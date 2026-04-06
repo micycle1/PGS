@@ -141,8 +141,9 @@ public class AreaMerge {
 			initialFaceMap.put(face, g);
 			groupsGraph.addVertex(g);
 
-			if (area < areaThreshold)
+			if (area < areaThreshold) {
 				smallGroups.add(g);
+			}
 		}
 
 		// add edges in deterministic order
@@ -157,8 +158,9 @@ public class AreaMerge {
 			int max2 = Math.max(faceId.get(a2), faceId.get(b2));
 
 			int c = Integer.compare(min1, min2);
-			if (c != 0)
+			if (c != 0) {
 				return c;
+			}
 			return Integer.compare(max1, max2);
 		});
 
@@ -170,14 +172,16 @@ public class AreaMerge {
 
 		while (!smallGroups.isEmpty()) {
 			FaceGroup toMerge = smallGroups.pollFirst();
-			if (!groupsGraph.containsVertex(toMerge))
+			if (!groupsGraph.containsVertex(toMerge)) {
 				continue;
+			}
 
 			// deterministic neighbor selection (area, then id)
 			List<FaceGroup> neighbors = Graphs.neighborListOf(groupsGraph, toMerge);
 			FaceGroup smallestNeighbor = neighbors.stream().min(groupOrder).orElse(null);
-			if (smallestNeighbor == null)
+			if (smallestNeighbor == null) {
 				break;
+			}
 
 			// TreeSet invariant: remove before changing area
 			smallGroups.remove(smallestNeighbor);

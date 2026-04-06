@@ -142,8 +142,9 @@ public final class AztecDiamond {
 	 * @throws NullPointerException     if {@code gf} or {@code rnd} is null.
 	 */
 	public AztecDiamond(int order, GeometryFactory gf, Random rnd) {
-		if (order <= 0)
+		if (order <= 0) {
 			throw new IllegalArgumentException("order must be > 0");
+		}
 		this.gf = Objects.requireNonNull(gf, "gf");
 		this.rnd = Objects.requireNonNull(rnd, "rnd");
 
@@ -321,20 +322,24 @@ public final class AztecDiamond {
 		int size = 2 * order;
 		for (int r = 0; r < size; r++) {
 			for (int c = 0; c < size; c++) {
-				if (!mask[r][c])
+				if (!mask[r][c]) {
 					continue;
+				}
 				Domino d = grid[r][c];
-				if (d == null || removed.contains(d))
+				if (d == null || removed.contains(d)) {
 					continue;
+				}
 
 				int r2 = r + dr(d.o);
 				int c2 = c + dc(d.o);
-				if (r2 < 0 || r2 >= size || c2 < 0 || c2 >= size)
+				if (r2 < 0 || r2 >= size || c2 < 0 || c2 >= size) {
 					continue;
+				}
 
 				Domino d2 = grid[r2][c2];
-				if (d2 == null || removed.contains(d2))
+				if (d2 == null || removed.contains(d2)) {
 					continue;
+				}
 
 				if (d2.o == conflict(d.o)) {
 					removed.add(d);
@@ -364,12 +369,14 @@ public final class AztecDiamond {
 
 		if (d.isVerticalShape()) {
 			int r2 = br + 1, c2 = bc;
-			if (0 <= r2 && r2 < grid.length && grid[r2][c2] == d)
+			if (0 <= r2 && r2 < grid.length && grid[r2][c2] == d) {
 				grid[r2][c2] = null;
+			}
 		} else {
 			int r2 = br, c2 = bc + 1;
-			if (0 <= c2 && c2 < grid.length && grid[r2][c2] == d)
+			if (0 <= c2 && c2 < grid.length && grid[r2][c2] == d) {
 				grid[r2][c2] = null;
+			}
 		}
 	}
 
@@ -439,8 +446,9 @@ public final class AztecDiamond {
 					}
 				}
 			}
-			if (rr < 0)
+			if (rr < 0) {
 				break;
+			}
 
 			// The shuffling algorithm ensures holes come in 2x2 blocks. Keep a safety
 			// check.

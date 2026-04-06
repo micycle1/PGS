@@ -114,8 +114,7 @@ public class MultiOperationOverlayNG {
 
 		if (!isAreaResultOnly) {
 			// handle lines (don't don't handle points)
-			boolean allowResultLines = !hasResultAreaComponents || isAllowMixedIntResult || opCode == OverlayNG.SYMDIFFERENCE
-					|| opCode == OverlayNG.UNION;
+			boolean allowResultLines = !hasResultAreaComponents || isAllowMixedIntResult || opCode == OverlayNG.SYMDIFFERENCE || opCode == OverlayNG.UNION;
 			if (allowResultLines) {
 				LineBuilder lineBuilder = new LineBuilder(inputGeom, graph, hasResultAreaComponents, opCode, geomFact);
 				lineBuilder.setStrictMode(isStrictMode);

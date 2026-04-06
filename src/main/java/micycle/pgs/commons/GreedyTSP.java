@@ -346,8 +346,7 @@ public final class GreedyTSP<V> {
 			}
 
 			final int d = next[c];
-			if (d == a || d == b)
-			 {
+			if (d == a || d == b) {
 				continue; // edges share an endpoint -> invalid 2-opt
 			}
 
@@ -417,8 +416,7 @@ public final class GreedyTSP<V> {
 			}
 
 			final int b = next[a];
-			if (b == x || b == q)
-			 {
+			if (b == x || b == q) {
 				continue; // would reinsert into same place / adjacent issues
 			}
 

@@ -323,8 +323,9 @@ public final class MarchingSquares {
 
 		for (int cell = 0; cell < cellCount; cell++) {
 			int code = codes[cell] & 0xFF;
-			if (code == 0 || code == 15)
+			if (code == 0 || code == 15) {
 				continue;
+			}
 
 			int edgesMask = edgesUsedMask(code);
 			int unvisited = edgesMask & (~visited[cell] & 0x0F);
@@ -808,8 +809,9 @@ public final class MarchingSquares {
 		}
 
 		void snapClosed(float eps) {
-			if (sizePairs() < 3)
+			if (sizePairs() < 3) {
 				return;
+			}
 			float x0 = firstX(), y0 = firstY();
 			float xn = lastX(), yn = lastY();
 			if (Math.abs(x0 - xn) <= eps && Math.abs(y0 - yn) <= eps) {

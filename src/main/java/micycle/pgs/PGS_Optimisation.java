@@ -288,7 +288,7 @@ public final class PGS_Optimisation {
 		Geometry buffer = p.getExteriorRing().buffer(tolerance * 0.5, 4);
 		Envelope env = buffer.getEnvelopeInternal();
 		buffer = DouglasPeuckerSimplifier.simplify(buffer, tolerance * 0.5);
-		var index = new YStripesPointInAreaLocator((Polygon) buffer);
+		var index = new YStripesPointInAreaLocator(buffer);
 
 		shape = PGS_Processing.densify(shape, Math.max(0.5, tolerance));
 		List<PVector> points = PGS_Conversion.toPVector(shape);

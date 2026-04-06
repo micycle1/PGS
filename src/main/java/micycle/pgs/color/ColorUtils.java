@@ -80,7 +80,7 @@ public class ColorUtils {
 	static int composeclr(double[] RGBA) {
 		return (int) (RGBA[3] * 255) << 24 | (int) (RGBA[0] * 255) << 16 | (int) (RGBA[1] * 255) << 8 | (int) (RGBA[2] * 255);
 	}
-	
+
 	static int composeclr(float[] RGBA) {
 		return (int) (RGBA[3] * 255) << 24 | (int) (RGBA[0] * 255) << 16 | (int) (RGBA[1] * 255) << 8 | (int) (RGBA[2] * 255);
 	}
@@ -93,8 +93,7 @@ public class ColorUtils {
 	 */
 	static float[] decomposeclr(int clr) {
 		final float alpha = (clr >> 24 & 0xff) == 255 ? 1 : (clr >> 24 & 0xff) * INV_255;
-		return new float[] { (clr >> 16 & 0xff) * INV_255 * alpha, (clr >> 8 & 0xff) * INV_255 * alpha, (clr & 0xff) * INV_255 * alpha,
-				alpha };
+		return new float[] { (clr >> 16 & 0xff) * INV_255 * alpha, (clr >> 8 & 0xff) * INV_255 * alpha, (clr & 0xff) * INV_255 * alpha, alpha };
 	}
 
 	/**

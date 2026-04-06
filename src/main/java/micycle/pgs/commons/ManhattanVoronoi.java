@@ -445,8 +445,7 @@ public final class ManhattanVoronoi {
 
 			// find closest hopTo that traps the starting bisector
 			List<Bisector> wb = w.bisectors;
-			for (int i = 0; i < wb.size(); i++) {
-				Bisector b = wb.get(i);
+			for (Bisector b : wb) {
 				Site hopTo = findHopTo(b, w);
 
 				if (isBisectorTrapped(hopTo, startingBisector)) {
@@ -471,9 +470,7 @@ public final class ManhattanVoronoi {
 		double bestExtreme = goUp ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
 
 		List<Bisector> tb = trapped.bisectors;
-		for (int i = 0; i < tb.size(); i++) {
-			Bisector b = tb.get(i);
-
+		for (Bisector b : tb) {
 			Site hopTo = findHopTo(b, trapped);
 			boolean directionOk = (goUp == (hopTo.site.y < trapped.site.y));
 			if (!directionOk) {

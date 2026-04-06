@@ -26,7 +26,7 @@ public class ChaikinCut {
 
 	private ChaikinCut() {
 	}
-	
+
 	public static PShape chaikin(PShape shape, float ratio, int iterations) {
 		if (shape.getChildCount() > 1) {
 			PShape groupCut = new PShape(PConstants.GROUP);
@@ -34,8 +34,7 @@ public class ChaikinCut {
 				groupCut.addChild(cut(child, ratio, iterations));
 			}
 			return groupCut;
-		}
-		else {
+		} else {
 			return cut(shape, ratio, iterations);
 		}
 	}

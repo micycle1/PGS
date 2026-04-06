@@ -173,16 +173,13 @@ public class SquareTriangleTiling {
 			if (fourth.getSweep() == 3) {
 				third = verts.get(fourth.first);
 			} else {
-				third = new Vert(base.x + scos.get(ang), base.y + ssin.get(ang), (ang + 3) % 12, new ArrayList<>(), root.first, root.last,
-						12);
+				third = new Vert(base.x + scos.get(ang), base.y + ssin.get(ang), (ang + 3) % 12, new ArrayList<>(), root.first, root.last, 12);
 				verts.add(third);
 			}
 		} else { // create third and fourth vert
-			third = new Vert(base.x + scos.get(ang), base.y + ssin.get(ang), (ang + 3) % 12, new ArrayList<>(), verts.size() + 1, root.last,
-					12);
+			third = new Vert(base.x + scos.get(ang), base.y + ssin.get(ang), (ang + 3) % 12, new ArrayList<>(), verts.size() + 1, root.last, 12);
 			verts.add(third);
-			fourth = new Vert(root.x + scos.get(ang), root.y + ssin.get(ang), (root.startAngle + 9) % 12, new ArrayList<>(), root.id,
-					third.id, 12);
+			fourth = new Vert(root.x + scos.get(ang), root.y + ssin.get(ang), (root.startAngle + 9) % 12, new ArrayList<>(), root.id, third.id, 12);
 			verts.add(fourth);
 		}
 		drawSquare(root.id, base.id, third.id, fourth.id);

@@ -74,7 +74,7 @@ public class MultiplicativelyWeightedVoronoi {
 		}
 
 		Envelope extent = new Envelope(bounds[0], bounds[2], bounds[1], bounds[3]); // NOTE x,x,y,y
-		return getMWVDFast(sites, extent);
+		return getMWVD(sites, extent);
 	}
 
 	/**
@@ -87,7 +87,7 @@ public class MultiplicativelyWeightedVoronoi {
 	 * all Apollonius circles that contain site \ union(all Apollonius circles that
 	 * exclude site)
 	 */
-	private static List<Geometry> getMWVDFast(List<Coordinate> sites, Envelope extent) {
+	private static List<Geometry> getMWVD(List<Coordinate> sites, Envelope extent) {
 		sites.sort((s1, s2) -> Double.compare(s1.z, s2.z));
 
 		final Geometry extentGeometry = geometryFactory.toGeometry(extent);
