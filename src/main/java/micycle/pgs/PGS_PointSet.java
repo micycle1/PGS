@@ -59,7 +59,6 @@ import processing.core.PVector;
  * <li>For 100,000 points, this results in ~300 expected collisions in the
  * x-coordinate, even when using a high-quality random number generator.</li>
  * </ul>
- * </p>
  * 
  * @author Michael Carleton
  * @since 1.2.0
@@ -145,7 +144,7 @@ public final class PGS_PointSet {
 	 *
 	 * @param points      collection of PVector points
 	 * @param removeCount number of points to remove (must be >= 0)
-	 * @return new List<PVector> containing the remaining points
+	 * @return new List&lt;PVector&gt; containing the remaining points
 	 * @since 2.1
 	 */
 	public static List<PVector> pruneRandomRemoveN(Collection<PVector> points, int removeCount) {
@@ -159,7 +158,7 @@ public final class PGS_PointSet {
 	 * @param points      collection of PVector points
 	 * @param removeCount number of points to remove (must be >= 0)
 	 * @param seed        RNG seed for reproducibility
-	 * @return new List<PVector> containing the remaining points
+	 * @return new List&lt;PVector&gt; containing the remaining points
 	 * @since 2.1
 	 */
 	public static List<PVector> pruneRandomRemoveN(Collection<PVector> points, int removeCount, long seed) {
@@ -208,7 +207,7 @@ public final class PGS_PointSet {
 	 *
 	 * @param points    collection of PVector points
 	 * @param keepCount number of points to keep (must be >= 0)
-	 * @return new List<PVector> containing the kept points
+	 * @return new List&lt;PVector&gt; containing the kept points
 	 * @since 2.1
 	 */
 	public static List<PVector> pruneRandomToN(Collection<PVector> points, int keepCount) {
@@ -222,7 +221,7 @@ public final class PGS_PointSet {
 	 * @param points    collection of PVector points
 	 * @param keepCount number of points to keep (must be >= 0)
 	 * @param seed      RNG seed for reproducibility
-	 * @return new List<PVector> containing the kept points
+	 * @return new List&lt;PVector&gt; containing the kept points
 	 * @since 2.1
 	 */
 	public static List<PVector> pruneRandomToN(Collection<PVector> points, int keepCount, long seed) {

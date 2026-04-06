@@ -70,6 +70,7 @@ import processing.core.PVector;
  * angle (in the unconstrained case), producing generally “well-shaped”
  * triangles. When used with a boundary shape, results are typically
  * clipped/filtered to the shape and may be optionally refined.</li>
+ * </ul>
  *
  * @author Michael Carleton
  */
