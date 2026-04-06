@@ -4,7 +4,6 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
-import org.jgrapht.alg.color.ColorRefinementAlgorithm;
 import org.jgrapht.alg.color.LargestDegreeFirstColoring;
 import org.jgrapht.alg.color.RandomGreedyColoring;
 import org.jgrapht.alg.color.SaturationDegreeColoring;
@@ -16,6 +15,7 @@ import org.jgrapht.graph.DefaultEdge;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import micycle.pgs.color.ColorUtils;
 import micycle.pgs.color.Colors;
+import micycle.pgs.commons.DBLACColoring;
 import micycle.pgs.commons.GeneticColoring;
 import micycle.pgs.commons.RLFColoring;
 import processing.core.PShape;
@@ -43,7 +43,7 @@ import processing.core.PShape;
  * @since 1.2.0
  */
 public final class PGS_Coloring {
-	
+
 	public static long SEED = 1337;
 
 	private PGS_Coloring() {
@@ -82,11 +82,7 @@ public final class PGS_Coloring {
 		 */
 		DSATUR,
 		/**
-		 * Finds the coarsest coloring of a graph.
-		 */
-		COARSE,
-		/**
-		 * Recursive largest-first coloring (recommended).
+		 * Recursive largest-first coloring.
 		 */
 		RLF,
 		/**
@@ -101,7 +97,22 @@ public final class PGS_Coloring {
 		 * specifically targets a chromaticity of 4 (falls back to 5 if no solution is
 		 * found).
 		 */
-		GENETIC
+		GENETIC,
+		/**
+		 * Degree-Based Largest Adjacency Count coloring.
+		 * 
+		 * <p>
+		 * Fast with good chromaticity (recommended).
+		 *
+		 * <p>
+		 * Repeatedly selects an uncolored vertex that maximizes <code>LAC(v)</code> =
+		 * number of already-colored neighbors. Ties are broken by larger static degree,
+		 * then by the shuffled index. Each selected vertex is colored using first-fit
+		 * (smallest feasible color).
+		 * 
+		 * @since 2.2
+		 */
+		DBLAC,
 	}
 
 	/**
@@ -134,6 +145,50 @@ public final class PGS_Coloring {
 	}
 
 	/**
+	 * Computes a coloring of the given mesh shape using the default coloring
+	 * algorithm ({@link ColoringAlgorithm#DBLAC DBLAC}) and applies the provided
+	 * palette to its faces.
+	 * <p>
+	 * This method mutates the fill colour of the input {@code meshShape} by setting
+	 * the fill of each child face {@link PShape}. If the computed number of
+	 * required colors exceeds the palette length.
+	 *
+	 * @param meshShape    a GROUP {@link PShape} whose children constitute the
+	 *                     faces of a <b>conforming</b> mesh
+	 * @param colorPalette the colors with which to color the mesh
+	 * @return the input {@code meshShape} (whose faces have now been colored)
+	 * @see #colorMesh(PShape, ColoringAlgorithm, int[])
+	 */
+	public static PShape colorMesh(PShape meshShape, int[] colorPalette) {
+		return colorMesh(meshShape, ColoringAlgorithm.DBLAC, colorPalette);
+	}
+
+	/**
+	 * Colors a <em>non-conforming</em> mesh-like {@link PShape} using the default
+	 * coloring algorithm ({@link ColoringAlgorithm#DBLAC DBLAC}) and the provided
+	 * palette.
+	 * <p>
+	 * Unlike {@link #colorMesh(PShape, int[]) colorMesh()}, this method is intended
+	 * for inputs whose faces do not form a conforming planar mesh (e.g., adjacent
+	 * faces may overlap, have T-junctions, or otherwise fail to share fully noded
+	 * boundaries). The input is first converted to a noded (conforming)
+	 * representation and the resulting faces are then colored.
+	 *
+	 * @param meshShape    a GROUP {@link PShape} whose children are faces of a
+	 *                     <b>non-conforming</b> mesh-like planar subdivision
+	 * @param colorPalette palette of colors used to fill the resulting noded faces
+	 * @return a noded (conforming) GROUP {@code PShape} derived from
+	 *         {@code meshShape}, with its faces colored
+	 * @since 2.2
+	 * @see #colorNonMesh(PShape, ColoringAlgorithm, int[])
+	 * @see #colorMesh(PShape, int[])
+	 * @see PGS_Meshing#nodeNonMesh(PShape)
+	 */
+	public static PShape colorNonMesh(PShape meshShape, int[] colorPalette) {
+		return colorNonMesh(meshShape, ColoringAlgorithm.DBLAC, colorPalette);
+	}
+
+	/**
 	 * Computes a coloring of the given mesh shape and colors its faces using the
 	 * colors provided. This method mutates the fill colour of the input shape.
 	 * 
@@ -146,8 +201,8 @@ public final class PGS_Coloring {
 	public static PShape colorMesh(PShape shape, ColoringAlgorithm coloringAlgorithm, int[] colorPalette) {
 		final Coloring<PShape> coloring = findColoring(shape, coloringAlgorithm);
 		if (coloring.getNumberColors() > colorPalette.length) {
-			System.err.format("WARNING: Number of mesh colors (%s) exceeds those provided in palette (%s)%s", coloring.getNumberColors(),
-					colorPalette.length, System.lineSeparator());
+			System.err.format("WARNING: Number of mesh colors (%s) exceeds those provided in palette (%s)%s", coloring.getNumberColors(), colorPalette.length,
+					System.lineSeparator());
 		}
 		coloring.getColors().forEach((face, color) -> {
 			int c = colorPalette[color % colorPalette.length]; // NOTE use modulo to avoid OOB exception
@@ -250,11 +305,11 @@ public final class PGS_Coloring {
 			case DSATUR :
 				coloring = new SaturationDegreeColoring<>(graph).getColoring();
 				break;
-			case COARSE :
-				coloring = new ColorRefinementAlgorithm<>(graph).getColoring();
-				break;
 			case GENETIC :
-				coloring = new GeneticColoring<>(graph).getColoring();
+				coloring = new GeneticColoring<>(graph, SEED).getColoring();
+				break;
+			case DBLAC :
+				coloring = new DBLACColoring<>(graph, SEED).getColoring();
 				break;
 			case RLF_BRUTE_FORCE_4COLOR :
 				int iterations = 0;

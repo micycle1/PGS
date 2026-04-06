@@ -16,15 +16,17 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Various geometric and affine transformations for PShapes that affect vertex
- * coordinates.
- * <p>
- * Notably, these transformation methods affect the vertex coordinates of
- * PShapes, unlike Processing's transform methods that affect the affine matrix
- * of shapes only (and thereby leave vertex coordinates in-tact).
- * 
- * @author Michael Carleton
+ * Geometric (mostly affine) transformations for {@link PShape}s that explicitly
+ * modify vertex coordinates.
  *
+ * <p>
+ * These methods <em>bake</em> transforms into the geometry: vertices are
+ * rewritten in-place (conceptually), and the returned {@code PShape} contains
+ * the transformed coordinates. This differs from Processing’s
+ * {@code translate()/rotate()/scale()} which modify a {@code PShape}'s internal
+ * vertex transform matrix without necessarily changing stored vertex positions.
+ *
+ * @author Michael Carleton
  */
 public final class PGS_Transformation {
 
@@ -35,11 +37,15 @@ public final class PGS_Transformation {
 	 * Scales the dimensions of the shape by a scaling factor relative to its
 	 * centroid.
 	 * 
-	 * @param shape
+	 * @param shape the PShape to scale
 	 * @param scale X and Y axis scale factor
+	 * @return A new copy of {@code shape} scaled relative to its centroid.
 	 */
 	public static PShape scale(PShape shape, double scale) {
 		Geometry g = fromPShape(shape);
+		if (g.isEmpty()) {
+			return shape;
+		}
 		Coordinate c = g.getCentroid().getCoordinate();
 		AffineTransformation t = AffineTransformation.scaleInstance(scale, scale, c.x, c.y);
 		return toPShape(t.transform(g));
@@ -48,12 +54,16 @@ public final class PGS_Transformation {
 	/**
 	 * Scales the shape relative to its centroid.
 	 * 
-	 * @param shape
+	 * @param shape  the PShape to scale
 	 * @param scaleX X-axis scale factor
 	 * @param scaleY Y-axis scale factor
+	 * @return A new copy of {@code shape} scaled relative to its centroid.
 	 */
 	public static PShape scale(PShape shape, double scaleX, double scaleY) {
 		Geometry g = fromPShape(shape);
+		if (g.isEmpty()) {
+			return shape;
+		}
 		Point c = g.getCentroid();
 		AffineTransformation t = AffineTransformation.scaleInstance(scaleX, scaleY, c.getX(), c.getY());
 		return toPShape(t.transform(g));
@@ -63,6 +73,7 @@ public final class PGS_Transformation {
 	 * Scale a shape around a point.
 	 * 
 	 * @since 2.0
+	 * @return A new copy of {@code shape} scaled around {@code point}.
 	 */
 	public static PShape scale(PShape shape, double scaleX, double scaleY, PVector point) {
 		Geometry g = fromPShape(shape);
@@ -74,6 +85,7 @@ public final class PGS_Transformation {
 	 * Scale a shape around a point.
 	 * 
 	 * @since 2.0
+	 * @return A new copy of {@code shape} scaled around the supplied point.
 	 */
 	public static PShape scale(PShape shape, double scale, double x, double y) {
 		Geometry g = fromPShape(shape);
@@ -87,6 +99,7 @@ public final class PGS_Transformation {
 	 * @param shape
 	 * @param scale scale factor
 	 * @since 1.3.0
+	 * @return A new copy of {@code shape} scaled relative to the origin.
 	 */
 	public static PShape originScale(PShape shape, double scale) {
 		Geometry g = fromPShape(shape);
@@ -106,6 +119,9 @@ public final class PGS_Transformation {
 	 */
 	public static PShape scaleArea(PShape shape, double scale) {
 		Geometry geometry = fromPShape(shape);
+		if (geometry.isEmpty()) {
+			return shape;
+		}
 		double scalingFactor = Math.sqrt(scale);
 		Coordinate c = geometry.getCentroid().getCoordinate();
 		AffineTransformation t = AffineTransformation.scaleInstance(scalingFactor, scalingFactor, c.x, c.y);
@@ -122,6 +138,9 @@ public final class PGS_Transformation {
 	 */
 	public static PShape scaleAreaTo(PShape shape, double targetArea) {
 		Geometry geometry = fromPShape(shape);
+		if (geometry.isEmpty()) {
+			return shape;
+		}
 		double area = geometry.getArea();
 		double scalingFactor = Math.sqrt(targetArea / area);
 		Coordinate c = geometry.getCentroid().getCoordinate();
@@ -133,7 +152,7 @@ public final class PGS_Transformation {
 	 * Resizes a shape (based on its envelope) to the given dimensions, relative to
 	 * its centroid.
 	 * 
-	 * @param shape
+	 * @param shape        the PShape to resize
 	 * @param targetWidth  width of the output copy
 	 * @param targetHeight height of the output copy
 	 * @return resized copy of input shape
@@ -142,6 +161,9 @@ public final class PGS_Transformation {
 		targetWidth = Math.max(targetWidth, 0.001);
 		targetHeight = Math.max(targetHeight, 0.001);
 		Geometry geometry = fromPShape(shape);
+		if (geometry.isEmpty()) {
+			return shape;
+		}
 		Envelope e = geometry.getEnvelopeInternal();
 		Point c = geometry.getCentroid();
 
@@ -165,11 +187,16 @@ public final class PGS_Transformation {
 		targetWidth = Math.max(targetWidth, 1e-5);
 
 		Geometry geometry = fromPShape(shape);
+		if (geometry.isEmpty()) {
+			return shape;
+		}
 		Envelope e = geometry.getEnvelopeInternal();
 		Point c = geometry.getCentroid();
 
 		AffineTransformation t = AffineTransformation.scaleInstance(targetWidth / e.getWidth(), targetWidth / e.getWidth(), c.getX(), c.getY());
-		return toPShape(t.transform(geometry));
+		var result = t.transform(geometry);
+		result.setUserData(geometry.getUserData()); // preserve shape style (if any)
+		return toPShape(result);
 	}
 
 	/**
@@ -188,11 +215,16 @@ public final class PGS_Transformation {
 		targetHeight = Math.max(targetHeight, 1e-5);
 
 		Geometry geometry = fromPShape(shape);
+		if (geometry.isEmpty()) {
+			return shape;
+		}
 		Envelope e = geometry.getEnvelopeInternal();
 		Point c = geometry.getCentroid();
 
 		AffineTransformation t = AffineTransformation.scaleInstance(targetHeight / e.getHeight(), targetHeight / e.getHeight(), c.getX(), c.getY());
-		return toPShape(t.transform(geometry));
+		var result = t.transform(geometry);
+		result.setUserData(geometry.getUserData()); // preserve shape style (if any)
+		return toPShape(result);
 	}
 
 	/**
@@ -290,7 +322,7 @@ public final class PGS_Transformation {
 	 */
 	public static PShape translateCentroidTo(PShape shape, double x, double y) {
 		Geometry g = fromPShape(shape);
-		if (g.getNumPoints() == 0) {
+		if (g.isEmpty()) {
 			return shape;
 		}
 		Point c = g.getCentroid();
@@ -317,7 +349,7 @@ public final class PGS_Transformation {
 	 */
 	public static PShape translateEnvelopeTo(PShape shape, double x, double y) {
 		Geometry g = fromPShape(shape);
-		if (g.getNumPoints() == 0) {
+		if (g.isEmpty()) {
 			return shape;
 		}
 		Point c = g.getEnvelope().getCentroid();
@@ -397,7 +429,7 @@ public final class PGS_Transformation {
 			Coordinate[] hole_coord = geom.getInteriorRingN(j).getCoordinates();
 			Coordinate[] hole_coord_ = new Coordinate[hole_coord.length];
 			for (int i = 0; i < hole_coord.length; i++) {
-				hole_coord_[i] = new Coordinate(center.x + scaleY * (hole_coord[i].x - center.x), center.y + scaleY * (hole_coord[i].y - center.y));
+				hole_coord_[i] = new Coordinate(center.x + scaleX * (hole_coord[i].x - center.x), center.y + scaleY * (hole_coord[i].y - center.y));
 			}
 			holes[j] = geom.getFactory().createLinearRing(hole_coord_);
 		}
@@ -513,6 +545,7 @@ public final class PGS_Transformation {
 	 * @param shape the shape to tranform/rotate
 	 * @param point rotation point
 	 * @param angle the rotation angle, in radians
+	 * @return A new copy of {@code shape} rotated around {@code point}.
 	 * @see #rotateAroundCenter(PShape, double)
 	 */
 	public static PShape rotate(PShape shape, PVector point, double angle) {
@@ -526,11 +559,14 @@ public final class PGS_Transformation {
 	 * 
 	 * @param shape
 	 * @param angle the rotation angle, in radians
-	 * @return
+	 * @return A new copy of {@code shape} rotated around its centroid.
 	 * @see #rotate(PShape, PVector, double)
 	 */
 	public static PShape rotateAroundCenter(PShape shape, double angle) {
 		Geometry g = fromPShape(shape);
+		if (g.isEmpty()) {
+			return shape;
+		}
 		Point center = g.getCentroid();
 		AffineTransformation t = AffineTransformation.rotationInstance(angle, center.getX(), center.getY());
 		return toPShape(t.transform(g));
@@ -539,9 +575,14 @@ public final class PGS_Transformation {
 	/**
 	 * Flips the shape horizontally based on its centre point (mirror over the
 	 * x-axis passing through its centroid).
+	 * 
+	 * @return A new {@code PShape} mirrored horizontally across its centroid.
 	 */
 	public static PShape flipHorizontal(PShape shape) {
 		Geometry g = fromPShape(shape);
+		if (g.isEmpty()) {
+			return shape;
+		}
 		Point c = g.getCentroid();
 		AffineTransformation t = AffineTransformation.reflectionInstance(-1, c.getY(), 1, c.getY());
 		return toPShape(t.transform(g));
@@ -552,7 +593,8 @@ public final class PGS_Transformation {
 	 * 
 	 * @param shape
 	 * @param y     y-coordinate of horizontal reflection line
-	 * @return
+	 * @return A new {@code PShape} mirrored across the horizontal line at
+	 *         {@code y}.
 	 */
 	public static PShape flipHorizontal(PShape shape, double y) {
 		AffineTransformation t = AffineTransformation.reflectionInstance(-1, y, 1, y);
@@ -562,9 +604,14 @@ public final class PGS_Transformation {
 	/**
 	 * Flips the shape vertically based on its centre point (mirror over the y-axis
 	 * passing through its centroid).
+	 * 
+	 * @return A new {@code PShape} mirrored vertically across its centroid.
 	 */
 	public static PShape flipVertical(PShape shape) {
 		Geometry g = fromPShape(shape);
+		if (g.isEmpty()) {
+			return shape;
+		}
 		Point c = g.getCentroid();
 		AffineTransformation t = AffineTransformation.reflectionInstance(c.getX(), -1, c.getX(), 1);
 		return toPShape(t.transform(g));
@@ -575,7 +622,7 @@ public final class PGS_Transformation {
 	 * 
 	 * @param shape
 	 * @param x     x-coordinate of vertical reflection line
-	 * @return
+	 * @return A new {@code PShape} mirrored across the vertical line at {@code x}.
 	 */
 	public static PShape flipVertical(PShape shape, double x) {
 		AffineTransformation t = AffineTransformation.reflectionInstance(x, -1, x, 1);

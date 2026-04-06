@@ -2,9 +2,12 @@ package micycle.pgs;
 
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
-import java.util.ArrayList;
+import static micycle.pgs.PGS.GEOM_FACTORY;
+
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiFunction;
+import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
 import org.locationtech.jts.densify.Densifier;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateList;
@@ -17,42 +20,58 @@ import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.Polygonal;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.locationtech.jts.geom.util.GeometryFixer;
+import org.locationtech.jts.geom.util.LineStringExtracter;
+import org.locationtech.jts.geom.util.PolygonExtracter;
 import org.locationtech.jts.linearref.LengthIndexedLine;
 import org.locationtech.jts.operation.buffer.BufferOp;
 import org.locationtech.jts.operation.buffer.BufferParameters;
-import org.locationtech.jts.operation.buffer.VariableBuffer;
 import org.locationtech.jts.precision.GeometryPrecisionReducer;
 import org.locationtech.jts.shape.CubicBezierCurve;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.locationtech.jts.simplify.VWSimplifier;
 
+import com.gihub.micycle1.malleo.Malleo;
+import com.github.micycle1.geoblitz.FastVariableBuffer;
+
 import micycle.pgs.PGS_Contour.OffsetStyle;
 import micycle.pgs.commons.ChaikinCut;
+import micycle.pgs.commons.ContourRegularization;
+import micycle.pgs.commons.ContourRegularization.RegParameters;
 import micycle.pgs.commons.CornerRounding;
 import micycle.pgs.commons.CornerRounding.RoundingStyle;
 import micycle.pgs.commons.DiscreteCurveEvolution;
 import micycle.pgs.commons.DiscreteCurveEvolution.DCETerminationCallback;
 import micycle.pgs.commons.EllipticFourierDesc;
+import micycle.pgs.commons.FastAtan2;
 import micycle.pgs.commons.GaussianLineSmoothing;
+import micycle.pgs.commons.HausdorffInterpolator;
 import micycle.pgs.commons.LaneRiesenfeldSmoothing;
-import micycle.pgs.commons.ShapeInterpolation;
+import micycle.pgs.commons.NewtonThieleRingMorpher;
+import micycle.pgs.commons.SchneiderBezierFitter;
+import micycle.pgs.commons.VoronoiInterpolator;
 import micycle.uniformnoise.UniformNoise;
+import net.jafama.FastMath;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 import uk.osgb.algorithm.minkowski_sum.MinkowskiSum;
 
 /**
- * Methods that affect the geometry or topology of shapes.
- * 
- * @author Michael Carleton
+ * Morphological editing operations for {@link PShape} polygons.
  *
+ * <p>
+ * This class hosts algorithms that <em>reshape</em> geometry, typically by
+ * offsetting, simplifying, smoothing, warping, or deforming outlines; often
+ * changing vertex count and sometimes changing topology (splitting/merging
+ * parts, creating/removing holes).
+ *
+ * @author Michael Carleton
  */
 public final class PGS_Morphology {
 
 	static {
-		MinkowskiSum.setGeometryFactory(PGS.GEOM_FACTORY);
+		MinkowskiSum.setGeometryFactory(GEOM_FACTORY);
 	}
 
 	private PGS_Morphology() {
@@ -127,26 +146,39 @@ public final class PGS_Morphology {
 	/**
 	 * Buffers a shape with a varying buffer distance (interpolated between a start
 	 * distance and an end distance) along the shape's perimeter.
+	 * <p>
+	 * For polygons, only the <em>exterior ring</em> (perimeter) is buffered;
+	 * interior rings (holes) are ignored.
 	 * 
-	 * @param shape         a single polygon or lineal shape
+	 * @param shape         a polygon, lineal shape, or GROUP containing such shapes
 	 * @param startDistance the starting buffer amount
 	 * @param endDistance   the terminating buffer amount
 	 * @return a polygonal shape representing the variable buffer region (which may
 	 *         be empty)
 	 * @since 1.3.0
 	 */
+	@SuppressWarnings("unchecked")
 	public static PShape variableBuffer(PShape shape, double startDistance, double endDistance) {
-		Geometry g = fromPShape(shape);
-		if (!g.getGeometryType().equals(Geometry.TYPENAME_LINEARRING) && !g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
-			g = ((Polygon) g).getExteriorRing(); // variable buffer applies to linestrings only
-		}
-		return toPShape(VariableBuffer.buffer(g, startDistance, endDistance));
+		var g = fromPShape(shape);
+		List<LineString> lines = LineStringExtracter.getLines(g);
+		List<Polygon> polys = PolygonExtracter.getPolygons(g);
+		polys.forEach(p -> {
+			// not defined for polygons
+			lines.add(p.getExteriorRing());
+		});
+
+		var buffered = lines.stream().map(line -> FastVariableBuffer.buffer(line, startDistance, endDistance)).toList();
+
+		return toPShape(buffered);
 	}
 
 	/**
 	 * Applies a variable buffer to a shape. The buffer width at each vertex is
 	 * determined by a callback function that considers the vertex's properties and
 	 * its relative position along the shape's boundary.
+	 * <p>
+	 * For polygons, only the <em>exterior ring</em> (perimeter) is buffered;
+	 * interior rings (holes) are ignored.
 	 * <p>
 	 * Example usage:
 	 * 
@@ -160,9 +192,10 @@ public final class PGS_Morphology {
 	 * }
 	 * </pre>
 	 *
-	 * @param shape          A single polygon or lineal shape
+	 * @param shape          A single polygon, lineal shape, or GROUP containing
+	 *                       such shapes
 	 * @param bufferCallback A callback function that receives the vertex coordinate
-	 *                       and a double representing tractional distance (0...1)
+	 *                       and a double representing fractional distance (0...1)
 	 *                       of the vertex along the shape's boundary. The function
 	 *                       may use properties of the vertex, or its position, to
 	 *                       determine the buffer width at that point.
@@ -171,28 +204,82 @@ public final class PGS_Morphology {
 	 *         vertex is calculated independently.
 	 * @since 2.0
 	 */
+	@SuppressWarnings("unchecked")
 	public static PShape variableBuffer(PShape shape, BiFunction<Coordinate, Double, Double> bufferCallback) {
-		final Geometry inputGeometry = fromPShape(shape);
-		if (!(inputGeometry instanceof Lineal || inputGeometry instanceof Polygon)) {
-			throw new IllegalArgumentException("The geometry must be linear or a non-multi polygonal shape.");
-		}
-		var coords = inputGeometry.getCoordinates();
-		double[] bufferDistances = new double[coords.length];
-		double totalLength = inputGeometry.getLength();
-		double running_length = 0;
-		Coordinate previousCoordinate = coords[0];
+		var g = fromPShape(shape);
+		List<LineString> lines = LineStringExtracter.getLines(g);
+		List<Polygon> polys = PolygonExtracter.getPolygons(g);
+		polys.forEach(p -> {
+			// not defined for polygons
+			lines.add(p.getExteriorRing());
+		});
 
-		for (int i = 1; i < coords.length; i++) {
-			running_length += previousCoordinate.distance(coords[i]);
-			double fractionalDistance = running_length / totalLength; // 0...1
-			bufferDistances[i] = bufferCallback.apply(coords[i], fractionalDistance);
-			previousCoordinate = coords[i];
-		}
+		var buffered = lines.stream().map(line -> {
+			final Coordinate[] coords = line.getCoordinates();
+			if (coords.length == 0) {
+				// return an "empty buffer" geometry consistent with VariableBuffer expectations
+				return null;
+			}
 
-		bufferDistances[0] = bufferCallback.apply(coords[0], 0.0);
+			final double totalLength = line.getLength();
+			final double[] bufferDistances = new double[coords.length];
 
-		VariableBuffer variableBuffer = new VariableBuffer(inputGeometry, bufferDistances);
-		return toPShape(variableBuffer.getResult());
+			// Guard against degenerate/zero-length lines (all points same).
+			if (totalLength == 0) {
+				final double d0 = bufferCallback.apply(coords[0], 0.0);
+				for (int i = 0; i < bufferDistances.length; i++) {
+					bufferDistances[i] = d0;
+				}
+			} else {
+				bufferDistances[0] = bufferCallback.apply(coords[0], 0.0);
+
+				double runningLength = 0;
+				Coordinate prev = coords[0];
+
+				for (int i = 1; i < coords.length; i++) {
+					runningLength += prev.distance(coords[i]);
+					final double fractionalDistance = runningLength / totalLength; // 0..1
+					bufferDistances[i] = bufferCallback.apply(coords[i], fractionalDistance);
+					prev = coords[i];
+				}
+			}
+
+			final var vb = new FastVariableBuffer(line, bufferDistances);
+			return vb.getResult();
+		}).toList();
+
+		return toPShape(buffered);
+	}
+
+	/**
+	 * Erodes (a negative buffer) a shape by a normalised amount (scaled to shape
+	 * size).
+	 * <p>
+	 * {@code amount} is dimensionless: {@code amount == 1} corresponds to a full
+	 * erosion (approximately to the maximum inscribed radius), often collapsing
+	 * polygons to empty. {@code shape} may be a {@code GROUP}; each polygonal
+	 * element is processed independently. The sign of {@code amount} is ignored
+	 * (always erodes).
+	 *
+	 * @param shape  the source shape (polygonal or {@code GROUP})
+	 * @param amount normalised erosion amount (dimensionless)
+	 * @return a polygonal {@code PShape} of the eroded geometry (may be empty)
+	 * @since 2.2
+	 */
+	public static PShape normalisedErosion(PShape shape, double amount) {
+		double amt = -Math.abs(amount); // force erosion
+		var polys = PGS.extractPolygons(fromPShape(shape));
+		var buffered = polys.parallelStream().map(p -> {
+			var mic = new MaximumInscribedCircle(p, 0.5);
+			var r = mic.getRadiusLine().getLength() * (1 + 1e-3);
+			var buffer = amt * r;
+			var bufParams = createBufferParams(buffer, 0.5, OffsetStyle.ROUND, CapStyle.ROUND);
+			BufferOp b = new BufferOp(p, bufParams);
+			var out = b.getResultGeometry(buffer);
+			return out;
+		}).toList();
+
+		return toPShape(buffered);
 	}
 
 	/**
@@ -204,7 +291,7 @@ public final class PGS_Morphology {
 	 * 
 	 * @param shape  polygonal shape
 	 * @param buffer a positive number
-	 * @return
+	 * @return a polygonal {@code PShape} of the dilated geometry (may be empty)
 	 * @see #dilationErosion(PShape, double)
 	 */
 	public static PShape erosionDilation(PShape shape, double buffer) {
@@ -260,7 +347,7 @@ public final class PGS_Morphology {
 	 * 
 	 * @param shape
 	 * @param distanceTolerance the tolerance to use
-	 * @return simplifed copy of the shape
+	 * @return simplified copy of the shape
 	 * @see #simplifyVW(PShape, double) simplifyVW()
 	 * @see #simplifyTopology(PShape, double) simplifyTopology()
 	 * @see {@link PGS_Meshing#simplifyMesh(PShape, double, boolean) simplifyMesh()}
@@ -275,9 +362,9 @@ public final class PGS_Morphology {
 	 * 
 	 * @param shape
 	 * @param distanceTolerance The simplification tolerance is specified as a
-	 *                          distance.This is converted to an area tolerance by
+	 *                          distance. This is converted to an area tolerance by
 	 *                          squaring it.
-	 * @return simplifed copy of the shape
+	 * @return simplified copy of the shape
 	 * @see #simplify(PShape, double) simplify()
 	 * @see #simplifyTopology(PShape, double) simplifyTopology()
 	 */
@@ -291,7 +378,7 @@ public final class PGS_Morphology {
 	 * 
 	 * @param shape
 	 * @param distanceTolerance the tolerance to use
-	 * @return simplifed copy of the shape
+	 * @return simplified copy of the shape
 	 * @see #simplify(PShape, double) simplify()
 	 * @see #simplifyVW(PShape, double) simplifyVW()
 	 */
@@ -330,8 +417,7 @@ public final class PGS_Morphology {
 	 */
 	public static PShape simplifyDCE(PShape shape, DCETerminationCallback terminationCallback) {
 		return PGS.applyToLinealGeometries(shape, ring -> {
-			var coords = DiscreteCurveEvolution.process(ring, terminationCallback);
-			return PGS.GEOM_FACTORY.createLineString(coords);
+			return DiscreteCurveEvolution.process(ring, terminationCallback);
 		});
 	}
 
@@ -340,7 +426,9 @@ public final class PGS_Morphology {
 	 * 
 	 * @param shape              the input shape
 	 * @param relevanceThreshold the relevance threshold; only vertices with
-	 *                           relevance >= the threshold will be kept
+	 *                           relevance >= the threshold will be kept. 20 is a
+	 *                           good starting value for generally imperceptible
+	 *                           simplification.
 	 * @return the simplified PShape
 	 * @since 2.1
 	 */
@@ -429,6 +517,13 @@ public final class PGS_Morphology {
 	 * Smoothes a shape. The smoothing algorithm inserts new vertices which are
 	 * positioned using Bezier splines. The output shape tends to be a little larger
 	 * than the input.
+	 * <p>
+	 * Note: this method effectively constructs a Bezier curve through the existing
+	 * vertices. As a result, if the input geometry already has very dense / closely
+	 * spaced vertices, the smoothing may have little or no perceptual effect. This
+	 * differs from other smoothing approaches (e.g. Gaussian) that operate at a
+	 * spatial scale and are therefore largely invariant to vertex density.
+	 * </p>
 	 * 
 	 * @param shape shape to smooth
 	 * @param alpha curvedness parameter (0 is linear, 1 is round, >1 is
@@ -442,6 +537,47 @@ public final class PGS_Morphology {
 	}
 
 	/**
+	 * Smoothes a shape by <em>fitting</em> one or more cubic Bezier curve segments
+	 * to each lineal component (polylines and polygon rings), then
+	 * <em>resampling</em> the fitted Beziers to produce a new vertex sequence.
+	 * <p>
+	 * This method uses Philip J. Schneider’s curve fitting algorithm. Unlike
+	 * {@link #smooth(PShape, double) smooth()}, which constructs a Bezier curve
+	 * <em>through</em> the existing vertices, this method approximates the input
+	 * within a user-specified tolerance and can substantially simplify noisy or
+	 * densely-vertexed input while producing a visually smoother result.
+	 * </p>
+	 * <p>
+	 * The {@code maxDeviation} parameter controls how closely the fitted Bezier(s)
+	 * must follow the original polyline/ring: smaller values preserve the original
+	 * shape more strictly (often producing more Bezier segments and/or more output
+	 * vertices), while larger values allow a smoother, more generalised result.
+	 * </p>
+	 * <p>
+	 * Implementation note: the fitted Bezier segments are sampled at a fixed
+	 * spacing (currently 2 units in the coordinate system of the input geometry) to
+	 * create the returned JTS geometry, which is then converted back to a
+	 * {@link PShape}.
+	 * </p>
+	 *
+	 * @param shape        shape whose lineal geometry (LineStrings and polygon
+	 *                     rings) will be Bezier-fit and resampled
+	 * @param maxDeviation maximum allowed deviation (error tolerance) between the
+	 *                     input vertices and the fitted Bezier curve(s); must be
+	 *                     {@code > 0}
+	 * @return a smoothed copy of {@code shape} produced by piecewise cubic Bezier
+	 *         fitting and resampling
+	 *
+	 * @since 2.2
+	 * @see SchneiderBezierFitter
+	 */
+	public static PShape smoothBezierFit(PShape shape, double maxDeviation) {
+		return PGS.applyToLinealGeometries(shape, ring -> {
+			return SchneiderBezierFitter.fitAndSample(ring, maxDeviation, PGS_Conversion.BEZIER_SAMPLE_DISTANCE);
+		});
+	}
+
+	/**
 	 * Smoothes a shape by applying a gaussian filter to vertex coordinates. At
 	 * larger values, this morphs the input shape much more visually than
 	 * {@link #smooth(PShape, double) smooth()}.
@@ -450,10 +586,27 @@ public final class PGS_Morphology {
 	 * @param sigma The standard deviation of the gaussian kernel. Larger values
 	 *              provide more smoothing.
 	 * @return smoothed copy of the shape
+	 * @see #smoothGaussianNormalised(PShape, double)
 	 * @see #smooth(PShape, double)
 	 */
 	public static PShape smoothGaussian(PShape shape, double sigma) {
 		return PGS.applyToLinealGeometries(shape, ring -> GaussianLineSmoothing.get(ring, sigma));
+	}
+
+	/**
+	 * Applies Gaussian smoothing to each lineal geometry in a {@link PShape} using
+	 * a normalised amount in [0..1], intended to be scale-invariant across children
+	 * of different sizes. {@code amount=0} leaves geometry unchanged;
+	 * {@code amount=1} collapses (per geometry) using the extreme-sigma fallback.
+	 *
+	 * @param shape  input shape
+	 * @param amount normalised smoothing amount in [0..1]
+	 * @return new shape with smoothed lineal components
+	 * @see #smoothGaussian(PShape, double)
+	 * @since 2.2
+	 */
+	public static PShape smoothGaussianNormalised(PShape shape, double amount) {
+		return PGS.applyToLinealGeometries(shape, ring -> GaussianLineSmoothing.getNormalised(ring, amount));
 	}
 
 	/**
@@ -489,7 +642,7 @@ public final class PGS_Morphology {
 			if (ring.isClosed()) {
 				final EllipticFourierDesc efd = new EllipticFourierDesc((LinearRing) ring, descriptorz);
 				Coordinate[] coords = efd.createPolygon();
-				return PGS.GEOM_FACTORY.createLinearRing(coords);
+				return GEOM_FACTORY.createLinearRing(coords);
 			} else {
 				return null; // open linestrings not supported
 			}
@@ -608,19 +761,30 @@ public final class PGS_Morphology {
 	}
 
 	/**
-	 * Distorts a polygonal shape by radially displacing its vertices along the line
-	 * connecting each vertex with the shape's centroid, creating a warping or
+	 * Radially warps a polygon by moving each boundary vertex inward/outward along
+	 * the ray from the polygon centroid to that vertex, creating a warping or
 	 * perturbing effect.
 	 * <p>
-	 * The shape's input vertices can optionally be densified prior to the warping
-	 * operation.
+	 * Optionally, the input boundary can be densified before warping by inserting
+	 * additional vertices at a spacing of ~1 unit. This causes long edges to warp
+	 * smoothly along their full length rather than only at the original corner
+	 * vertices.
 	 * 
-	 * @param shape      A polygonal PShape object to be distorted.
-	 * @param magnitude  The degree of the displacement, which determines the
-	 *                   maximum Euclidean distance a vertex will be moved in
-	 *                   relation to the shape's centroid.
-	 * @param warpOffset An offset angle, which establishes the starting angle for
-	 *                   the displacement process.
+	 * @param shape      A polygonal {@link PShape} (or GROUP of polygons) to be
+	 *                   distorted. The warp is applied to each polygon ring
+	 *                   independently.
+	 * @param magnitude  Controls the strength of the warp. Larger values produce
+	 *                   larger radial displacements from the original boundary
+	 *                   (i.e., larger inward/outward movement). A value of
+	 *                   {@code 0} produces an unchanged shape.
+	 * @param warpOffset An angular phase offset (in radians) added to each vertex's
+	 *                   polar angle before sampling the noise field. Changing
+	 *                   {@code warpOffset} does not change the warp magnitude; it
+	 *                   rotates the noise pattern around the centroid (i.e., shifts
+	 *                   where bulges/indentations occur along the boundary). This
+	 *                   is useful for animation by incrementing {@code warpOffset}
+	 *                   over time. The warp has a period of 2π. A typical/useful
+	 *                   domain is {@code [0, 2*Math.PI)}.
 	 * @param densify    A boolean parameter determining whether the shape should be
 	 *                   densified (by inserting additional vertices at a distance
 	 *                   of 1) before warping. If true, shapes with long edges will
@@ -630,39 +794,69 @@ public final class PGS_Morphology {
 	 *         specified parameters.
 	 */
 	public static PShape radialWarp(PShape shape, double magnitude, double warpOffset, boolean densify) {
-		Geometry g = fromPShape(shape);
-		if (!g.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
-			System.err.println("radialWarp() expects (single) polygon input. The geometry resolved to a " + g.getGeometryType());
-			return shape;
-		}
-
-		final Point point = g.getCentroid();
-		final PVector c = new PVector((float) point.getX(), (float) point.getY());
-
-		final List<PVector> coords;
-
-		if (densify) {
-			final Densifier d = new Densifier(fromPShape(shape));
-			d.setDistanceTolerance(1);
-			d.setValidate(false);
-			coords = PGS_Conversion.toPVector(toPShape(d.getResultGeometry()));
-		} else {
-			coords = PGS_Conversion.toPVector(shape);
-		}
-
 		final UniformNoise noise = new UniformNoise(1337);
-		coords.forEach(coord -> {
-			PVector heading = PVector.sub(coord, c); // vector from center to each vertex
-			final double angle = heading.heading() + warpOffset;
-			float perturbation = noise.uniformNoise(Math.cos(angle), Math.sin(angle));
-			perturbation -= 0.5f; // [0...1] -> [-0.5...0.5]
-			perturbation *= magnitude * 2;
-			coord.add(heading.normalize().mult(perturbation)); // add perturbation to vertex
+
+		return PGS.applyToLinealGeometries(shape, line -> {
+
+			// radialWarp is defined for polygon rings; if we get an open line, just return
+			// it unchanged
+			if (!line.isClosed()) {
+				return line;
+			}
+			final Point centroid = line.getCentroid();
+			final PVector c = new PVector((float) centroid.getX(), (float) centroid.getY());
+
+			Geometry working = line;
+			if (densify) {
+				final Densifier d = new Densifier(line);
+				d.setDistanceTolerance(1);
+				d.setValidate(false);
+				working = d.getResultGeometry();
+			}
+
+			final Coordinate[] coords = working.getCoordinates();
+			if (coords.length == 0) {
+				return line;
+			}
+
+			// Warp all unique vertices; then explicitly re-close
+			final int n = coords.length;
+			for (int i = 0; i < n - 1; i++) { // ignore last coordinate (closure); we re-close after warping
+				final double x = coords[i].x;
+				final double y = coords[i].y;
+
+				double dx = x - c.x;
+				double dy = y - c.y;
+
+				final double len = Math.sqrt(dx * dx + dy * dy);
+				if (len == 0) {
+					continue; // vertex at centroid
+				}
+
+				final double angle = FastAtan2.atan2(dy, dx) + warpOffset;
+
+				float perturbation = noise.uniformNoise(FastMath.cos(angle), FastMath.sin(angle));
+				perturbation -= 0.5f; // [0..1] -> [-0.5..0.5]
+				perturbation *= (float) (magnitude * 2.0);
+
+				// normalize heading and displace
+				dx /= len;
+				dy /= len;
+
+				coords[i].x = x + dx * perturbation;
+				coords[i].y = y + dy * perturbation;
+			}
+
+			// ensure exact closure
+			coords[n - 1].x = coords[0].x;
+			coords[n - 1].y = coords[0].y;
+
+			// preserve ring-ness if possible
+			if (line instanceof LinearRing) {
+				return GEOM_FACTORY.createLinearRing(coords);
+			}
+			return GEOM_FACTORY.createLineString(coords);
 		});
-		if (!coords.get(0).equals(coords.get(coords.size() - 1))) {
-			coords.add(coords.get(0));
-		}
-		return PGS_Conversion.fromPVector(coords);
 	}
 
 	/**
@@ -697,7 +891,7 @@ public final class PGS_Morphology {
 		}
 		coords.closeRing();
 
-		Geometry out = GeometryFixer.fix(PGS.GEOM_FACTORY.createPolygon(coords.toCoordinateArray()));
+		Geometry out = GeometryFixer.fix(GEOM_FACTORY.createPolygon(coords.toCoordinateArray()));
 		return PGS_Conversion.toPShape(out);
 	}
 
@@ -772,18 +966,31 @@ public final class PGS_Morphology {
 			copy.addChild(copy);
 		}
 
-		/*
-		 * TODO preserveEnds arg, that scales the noise offset towards 0 for vertices
-		 * near the end (so we don't large jump between end point and warped next
-		 * vertex).
-		 */
 		for (PShape child : copy.getChildren()) {
-			int offset = 0; // child.isClosed() ? 0 : 1
-			for (int i = offset; i < child.getVertexCount() - offset; i++) {
+			int vCount = child.getVertexCount();
+			if (vCount == 0) {
+				continue;
+			}
+
+			// Determine if the shape is closed.
+			boolean isClosed = child.isClosed() || (vCount > 1 && child.getVertex(0).equals(child.getVertex(vCount - 1)));
+
+			// If closed, we iterate up to N-1 and handle the last vertex separately to
+			// ensure closure.
+			int limit = isClosed ? vCount - 1 : vCount;
+
+			for (int i = 0; i < limit; i++) {
 				final PVector coord = child.getVertex(i);
 				float dx = noise.uniformNoise(coord.x / scale, coord.y / scale + time) - 0.5f;
 				float dy = noise.uniformNoise(coord.x / scale + (101 + time), coord.y / scale + (101 + time)) - 0.5f;
 				child.setVertex(i, coord.x + (dx * (float) magnitude * 2), coord.y + (dy * (float) magnitude * 2));
+			}
+
+			// If the shape was closed, sync the last vertex with the newly warped first
+			// vertex.
+			if (isClosed && vCount > 1) {
+				PVector firstV = child.getVertex(0);
+				child.setVertex(vCount - 1, firstV.x, firstV.y);
 			}
 		}
 
@@ -791,10 +998,11 @@ public final class PGS_Morphology {
 			return copy;
 		} else {
 			if (copy.getChildCount() == 1) {
+				// Fix self-intersections or invalid geometries caused by warping
 				return toPShape(GeometryFixer.fix(fromPShape(copy.getChild(0))));
 			} else {
-				// don't apply geometryFixer to GROUP shape, since fixing a multigeometry
-				// appears to merge shapes. TODO apply .fix() to shapes individually
+				// Return group as-is (fixing individual children would be safer but requires a
+				// loop)
 				return copy;
 			}
 		}
@@ -816,32 +1024,51 @@ public final class PGS_Morphology {
 	 * @since 2.0
 	 */
 	public static PShape pinchWarp(PShape shape, PVector pinchPoint, double weight) {
-		List<PVector> vertices = new ArrayList<>(shape.getVertexCount());
-		for (int i = 0; i < shape.getVertexCount(); i++) {
-			PVector vertex = shape.getVertex(i).copy();
-			float distance = PVector.dist(vertex, pinchPoint);
-			float w = (float) (weight / (distance + 1));
-			PVector direction = PVector.sub(pinchPoint, vertex);
-			direction.mult(w);
-			vertex.add(direction);
-			vertices.add(vertex);
-		}
-		if (shape.isClosed()) {
-			vertices.add(vertices.get(0));
-		}
-		return PGS_Conversion.fromPVector(vertices);
+		return PGS.applyToLinealGeometries(shape, line -> {
+			final var gf = line.getFactory();
+			final var coords = line.getCoordinates();
+
+			if (coords.length == 0) {
+				return line;
+			}
+
+			final boolean closed = line.isClosed();
+
+			for (int i = 0; i < coords.length; i++) {
+				// if closed, we'll re-close explicitly after warping to avoid drift
+				if (closed && i == coords.length - 1) {
+					break;
+				}
+
+				final double x = coords[i].x;
+				final double y = coords[i].y;
+
+				final double dx = pinchPoint.x - x;
+				final double dy = pinchPoint.y - y;
+
+				final double distance = Math.sqrt(dx * dx + dy * dy);
+				final double w = weight / (distance + 1.0);
+
+				coords[i].x = x + dx * w;
+				coords[i].y = y + dy * w;
+			}
+
+			if (closed) {
+				coords[coords.length - 1].x = coords[0].x;
+				coords[coords.length - 1].y = coords[0].y;
+			}
+
+			return gf.createLineString(coords);
+		});
 	}
 
 	/**
 	 * Generates an intermediate shape between two shapes by interpolating between
-	 * them. This process has many names: shape morphing / blending / averaging /
-	 * tweening / interpolation.
+	 * their exterior rings. This process has many names: shape morphing / blending
+	 * / averaging / tweening / interpolation.
 	 * <p>
-	 * The underlying technique rotates one of the shapes to minimise the total
-	 * distance between each shape's vertices, then performs linear interpolation
-	 * between vertices. This performs well in practice but the outcome worsens as
-	 * shapes become more concave; more sophisticated techniques would employ some
-	 * level of rigidity preservation.
+	 * Note the interpolated shape may self-intersect (this implementation is not
+	 * "rigid").
 	 * 
 	 * @param from                a single polygon; the shape we want to morph from
 	 * @param to                  a single polygon; the shape we want to morph
@@ -850,53 +1077,215 @@ public final class PGS_Morphology {
 	 * @return a polygonal PShape
 	 * @since 1.2.0
 	 * @see #interpolate(PShape, PShape, int)
+	 * @implNote Uses {@link NewtonThieleRingMorpher} for higher-quality
+	 *           interpolation.
 	 */
 	public static PShape interpolate(PShape from, PShape to, double interpolationFactor) {
-		final Geometry fromGeom = fromPShape(from);
-		final Geometry toGeom = fromPShape(to);
-		if (toGeom.getGeometryType().equals(Geometry.TYPENAME_POLYGON) && fromGeom.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
-			final ShapeInterpolation tween = new ShapeInterpolation(fromGeom, toGeom);
-			return toPShape(PGS.GEOM_FACTORY.createPolygon(tween.tween(interpolationFactor)));
-		} else {
-			System.err.println("interpolate() accepts holeless single polygons only (for now).");
-			return from;
-		}
+		return interpolate(List.of(from, to), interpolationFactor);
 	}
 
 	/**
-	 * Generates intermediate shapes (frames) between two shapes by interpolating
-	 * between them. This process has many names: shape morphing / blending /
+	 * Generates an intermediate shape from a sequence of input shapes by
+	 * interpolating (morphing) between their exterior rings.
+	 * <p>
+	 * This is a generalisation of {@link #interpolate(PShape, PShape, double)} to
+	 * more than two shapes. The interpolation follows the order of {@code shapes}.
+	 * <p>
+	 * Note the interpolated shape may self-intersect (this implementation is not
+	 * "rigid").
+	 *
+	 * @param shapes              a list of single-polygon {@link PShape}s; only the
+	 *                            exterior ring is used.
+	 * @param interpolationFactor interpolation parameter in the range
+	 *                            {@code [0..1]}
+	 * @return a polygonal {@link PShape} representing the interpolated shape
+	 * @since 2.2.0
+	 * @see #interpolate(PShape, PShape, double)
+	 * @implNote Uses {@link NewtonThieleRingMorpher} for higher-quality
+	 *           interpolation.
+	 */
+	public static PShape interpolate(List<PShape> shapes, double interpolationFactor) {
+		var rings = shapes.stream().map(s -> ((Polygon) fromPShape(s)).getExteriorRing()).toArray(LinearRing[]::new);
+		NewtonThieleRingMorpher m = new NewtonThieleRingMorpher(rings);
+		var tween = m.interpolate(interpolationFactor);
+		return toPShape(tween);
+	}
+
+	/**
+	 * Generates intermediate shapes (frames) by interpolating (morphing) through a
+	 * sequence of shapes. This process has many names: shape morphing / blending /
 	 * averaging / tweening / interpolation.
 	 * <p>
-	 * This method is faster than calling
-	 * {@link #interpolate(PShape, PShape, double) interpolate()} repeatedly for
-	 * different interpolation factors.
-	 * 
-	 * @param from   a single polygon; the shape we want to morph from
-	 * @param to     a single polygon; the shape we want to morph <code>from</code>
-	 *               into
-	 * @param frames the number of frames (including first and last) to generate. >=
-	 *               2
-	 * @return a GROUP PShape, where each child shape is a frame from the
-	 *         interpolation
-	 * @since 1.3.0
+	 * The returned frames include both endpoints: the first frame corresponds to
+	 * {@code t = 0} (the first shape in {@code shapes}) and the last frame
+	 * corresponds to {@code t = 1} (the last shape in {@code shapes}). Intermediate
+	 * frames are evenly spaced in {@code [0..1]} using {@code t = i/(frames-1)}.
+	 * <p>
+	 * This method is faster than calling {@link #interpolate(List, double)} (or
+	 * {@link #interpolate(PShape, PShape, double)}) repeatedly for different
+	 * interpolation factors.
+	 *
+	 * @param shapes a list of single-polygon {@link PShape}s, in the order they
+	 *               should be morphed through; only the exterior ring is used.
+	 * @param frames the number of frames (including first and last) to generate;
+	 *               must be {@code >= 2}
+	 * @return a GROUP {@link PShape} whose children are the generated frames
+	 * @since 2.2.0
+	 * @see #interpolate(List, double)
 	 * @see #interpolate(PShape, PShape, double)
 	 */
-	public static PShape interpolate(PShape from, PShape to, int frames) {
-		final Geometry fromGeom = fromPShape(from);
-		final Geometry toGeom = fromPShape(to);
-		if (toGeom.getGeometryType().equals(Geometry.TYPENAME_POLYGON) && fromGeom.getGeometryType().equals(Geometry.TYPENAME_POLYGON)) {
-			final ShapeInterpolation tween = new ShapeInterpolation(fromGeom, toGeom);
-			final float fraction = 1f / (frames - 1);
-			PShape out = new PShape();
-			for (int i = 0; i < frames; i++) {
-				out.addChild(toPShape(PGS.GEOM_FACTORY.createPolygon(tween.tween(fraction * i))));
-			}
-			return out;
-		} else {
-			System.err.println("interpolate() accepts holeless single polygons only (for now).");
-			return from;
+	public static PShape interpolate(List<PShape> shapes, int frames) {
+		var rings = shapes.stream().map(s -> ((Polygon) fromPShape(s)).getExteriorRing()).toArray(LinearRing[]::new);
+		NewtonThieleRingMorpher m = new NewtonThieleRingMorpher(rings);
+
+		final double fraction = 1d / (frames - 1);
+		PShape out = new PShape();
+		for (int i = 0; i < frames; i++) {
+			out.addChild(toPShape(GEOM_FACTORY.createPolygon(m.interpolate(fraction * i))));
 		}
+
+		return out;
+	}
+
+	/**
+	 * Interpolates ("morphs") between two shapes using a Hausdorff-distance based
+	 * <em>dilation</em> approach.
+	 * <p>
+	 * The intermediate shape is computed by buffering each input by a complementary
+	 * amount (based on the estimated Hausdorff distance between the shapes) and
+	 * intersecting the two buffers. This provides a correspondence-free morph that
+	 * works even when the inputs have different vertex counts, components, or
+	 * holes.
+	 *
+	 * @param from        the starting shape (α = 0)
+	 * @param to          the ending shape (α = 1)
+	 * @param morphFactor the interpolation parameter α (in {@code [0,1]})
+	 * @return a new {@code PShape} representing the Hausdorff morph between
+	 *         {@code from} and {@code to}
+	 * @since 2.2
+	 */
+	public static PShape dilationMorph(PShape from, PShape to, double morphFactor) {
+		var gFrom = fromPShape(from);
+		var gTo = fromPShape(to);
+		var i = HausdorffInterpolator.interpolateUsingEstimatedHausdorff(gFrom, gTo, morphFactor, 1, 15);
+		return toPShape(i);
+	}
+
+	/**
+	 * Computes the Voronoi-based Hausdorff morph between two shapes.
+	 * <p>
+	 * Convenience overload for
+	 * {@link #voronoiMorph(PShape, PShape, double, double, boolean)} using default
+	 * parameters.
+	 * <p>
+	 * Uses {@code maxSegmentLength = 0} (no boundary densification) and
+	 * {@code unionResult = true} (returns a cleaned area geometry).
+	 *
+	 * @param from        the starting shape (α = 0)
+	 * @param to          the ending shape (α = 1)
+	 * @param morphFactor the morph parameter α, in {@code [0,1]}
+	 * @return a new {@code PShape} representing the Voronoi Hausdorff morph between
+	 *         {@code from} and {@code to}
+	 * @see #voronoiMorph(PShape, PShape, double, double, boolean)
+	 * @since 2.2
+	 */
+	public static PShape voronoiMorph(PShape from, PShape to, double morphFactor) {
+		return voronoiMorph(from, to, morphFactor, 0, true);
+	}
+
+	/**
+	 * Interpolates ("morphs") between two shapes using a <em>Voronoi partition</em>
+	 * approach.
+	 * <p>
+	 * The non-overlapping parts of each input are partitioned by Voronoi cells
+	 * induced by sampled boundary sites of the other shape; each partition piece is
+	 * then moved toward its closest site:
+	 * <ul>
+	 * <li>closest <em>vertex</em>: uniform scaling toward that vertex,</li>
+	 * <li>closest <em>edge</em>: scaling perpendicular to the edge’s supporting
+	 * line.</li>
+	 * </ul>
+	 * The result is the union of transformed pieces from {@code from} using
+	 * fraction {@code α} and transformed pieces from {@code to} using fraction
+	 * {@code 1-α}, plus their overlap.
+	 * <p>
+	 * This method supports polygons with holes and groups with disconnected
+	 * components, and does not require any explicit correspondence between the
+	 * inputs.
+	 *
+	 * @param from             the starting shape (α = 0)
+	 * @param to               the ending shape (α = 1)
+	 * @param morphFactor      the morph parameter α, in {@code [0,1]}
+	 * @param maxSegmentLength maximum segment length used to densify boundaries
+	 *                         when sampling Voronoi sites; {@code <= 0} disables
+	 *                         densification
+	 * @param unionResult      if {@code true}, unions the result into a clean area
+	 *                         geometry (slower); if {@code false}, returns a
+	 *                         combined multi/collection geometry (faster) that may
+	 *                         retain overlaps/seams
+	 * @return a new {@code PShape} representing the Voronoi-partition morph between
+	 *         {@code from} and {@code to}
+	 * @see #voronoiMorph(PShape, PShape, double)
+	 * @since 2.2
+	 */
+	public static PShape voronoiMorph(PShape from, PShape to, double morphFactor, double maxSegmentLength, boolean unionResult) {
+		var gFrom = fromPShape(from);
+		var gTo = fromPShape(to);
+		var pvp = VoronoiInterpolator.prepareVoronoiPartition(gFrom, gTo, maxSegmentLength, 0);
+		var g = VoronoiInterpolator.interpolateVoronoi(pvp, morphFactor, unionResult);
+		return toPShape(g);
+	}
+
+	/**
+	 * As-rigid-as-possible (ARAP) 2D deformation of a polygon {@link PShape} using
+	 * point handles.
+	 * <h2>Handle semantics</h2>
+	 * <ul>
+	 * <li>{@code handles} are points in the <em>rest</em> (original) shape's
+	 * coordinate space.</li>
+	 * <li>{@code handleTargets} are the desired positions for those same handles in
+	 * the <em>deformed</em> shape.</li>
+	 * <li>Both lists must have the same size and matching order (i.e., index
+	 * {@code i} in {@code handles} maps to index {@code i} in
+	 * {@code handleTargets}).</li>
+	 * <li>ARAP typically requires at least 2 handles for a stable solve.</li>
+	 * </ul>
+	 *
+	 * <h2>Performance notes</h2>
+	 * <p>
+	 * This method rebuilds and refines a triangulation on every call. For
+	 * interactive dragging (re-solving every frame), prefer using {@link Malleo}
+	 * directly: build the triangulation and call
+	 * {@link Malleo#prepareHandles(List)} once, then repeatedly call
+	 * {@link Malleo#solve(Malleo.CompiledHandles, List)} with updated targets.
+	 *
+	 * <h2>Output</h2>
+	 * <p>
+	 * Returns the deformed polygon boundary. The result may self-intersect
+	 * depending on handle motion and mesh quality.
+	 *
+	 * @param shape         the rest shape to deform (expected to be a single
+	 *                      polygon {@code PShape})
+	 * @param handles       handle locations in rest-space
+	 * @param handleTargets target locations for each handle, in the same order as
+	 *                      {@code handles}
+	 * @return a new {@code PShape} representing the deformed shape
+	 * @since 2.2
+	 */
+	public static PShape arapDeform(PShape shape, List<PVector> handles, List<PVector> handleTargets) {
+		var t = PGS_Triangulation.delaunayTriangulationMesh(shape);
+		PGS_Triangulation.refine(t, 15, 50); // refine
+		var g = PGS_Triangulation.toGeometry(t);
+
+		Malleo m = new Malleo(g);
+		var mHandles = Arrays.asList(PGS.toCoords(handles));
+		var mTargets = Arrays.asList(PGS.toCoords(handleTargets));
+
+		var compiledHandles = m.prepareHandles(mHandles);
+
+		var deformed = m.solve(compiledHandles, mTargets);
+
+		return toPShape(deformed);
 	}
 
 	/**
@@ -912,7 +1301,63 @@ public final class PGS_Morphology {
 	 * @since 1.3.0
 	 */
 	public static PShape reducePrecision(PShape shape, double precision) {
-		return toPShape(GeometryPrecisionReducer.reduce(fromPShape(shape), new PrecisionModel(-Math.max(Math.abs(precision), 1e-10))));
+		var pm = new PrecisionModel(-Math.max(Math.abs(precision), 1e-10));
+		if (shape.getFamily() == PConstants.GROUP) {
+			// pointwise preserves polygon faces (doesn't merge)
+			return toPShape(GeometryPrecisionReducer.reducePointwise(fromPShape(shape), pm));
+		} else {
+			return toPShape(GeometryPrecisionReducer.reduce(fromPShape(shape), pm));
+		}
+	}
+
+	/**
+	 * Regularises (straightens) the contour of a lineal {@link PShape} by snapping
+	 * edges toward a small set of principal directions and simplifying the result.
+	 * The prinicipal direction is derived from the shape's longest edge.
+	 *
+	 * @param shape     a lineal {@code PShape} to regularise (or a group containing
+	 *                  lineal children)
+	 * @param maxOffset maximum allowed offset. Used to constrain how far the
+	 *                  regularised contour may deviate from the input; must be
+	 *                  &gt;= 0
+	 * @return a new {@code PShape} whose linework has been regularised
+	 * @see #regularise(PShape, double, double)
+	 * @since 2.2
+	 */
+	public static PShape regularise(PShape shape, double maxOffset) {
+		var params = RegParameters.builder().maximumOffset(maxOffset);
+		return PGS.applyToLinealGeometries(shape, l -> {
+			return ContourRegularization.regularize(l, params.build());
+		});
+	}
+
+	/**
+	 * Regularises (straightens) the contour of a lineal {@link PShape} by snapping
+	 * edges toward principal directions and simplifying the result.
+	 * <p>
+	 * This overload lets you provide an explicit <em>principal axis
+	 * orientation</em> (in degrees). Edges are snapped to be parallel to that axis
+	 * or to its orthogonal (axis + 90°), subject to the {@code maxOffset}
+	 * constraint.
+	 *
+	 * @param shape           a lineal {@code PShape} to regularize (or a group
+	 *                        containing lineal children)
+	 * @param maxOffset       maximum allowed offset used to constrain how far the
+	 *                        regularised contour may deviate from the input; must
+	 *                        be &gt;= 0
+	 * @param axisOrientation principal axis direction, in degrees, expected in the
+	 *                        range {@code [0,180)} (values outside this range are
+	 *                        normalised)
+	 * @return a new {@code PShape} whose linework has been regularised
+	 * @see #regularise(PShape, double)
+	 * @since 2.2
+	 */
+	public static PShape regularise(PShape shape, double maxOffset, double axisOrientation) {
+		var d = new ContourRegularization.UserDefinedDirections(5, axisOrientation);
+		var params = RegParameters.builder().maximumOffset(maxOffset).directions(d);
+		return PGS.applyToLinealGeometries(shape, l -> {
+			return ContourRegularization.regularize(l, params.build());
+		});
 	}
 
 	/**

@@ -51,7 +51,7 @@ public class ClosestPointPair {
 
 	private List<PVector> pointsOrderedByXCoordinate;
 	private List<PVector> pointsOrderedByYCoordinate;
-	
+
 	/**
 	 * Construct an instance of the algorithm for the specified point Collection.
 	 * 
@@ -115,15 +115,14 @@ public class ClosestPointPair {
 	private PairStructure closestPair(int low, int high, List<PVector> localPointsOrderedByYCoordinate) {
 		int size = high - low;
 		if (size == 3) {
-			return closestPair(pointsOrderedByXCoordinate.get(low), pointsOrderedByXCoordinate.get(low + 1),
-					pointsOrderedByXCoordinate.get(low + 2));
+			return closestPair(pointsOrderedByXCoordinate.get(low), pointsOrderedByXCoordinate.get(low + 1), pointsOrderedByXCoordinate.get(low + 2));
 		} else if (size == 2) {
 			PVector p1 = pointsOrderedByXCoordinate.get(low);
 			PVector p2 = pointsOrderedByXCoordinate.get(low + 1);
 			return new PairStructure(p1, p2, distanceSq(p1, p2));
 		}
 
-		int mid = (low + high) >> 1;  // (low + high) / 2
+		int mid = (low + high) >> 1; // (low + high) / 2
 		Set<PVector> leftSubtreeMemberSet = new HashSet<>(mid - low);
 		for (int j = low; j < mid; j++) {
 			leftSubtreeMemberSet.add(pointsOrderedByXCoordinate.get(j));

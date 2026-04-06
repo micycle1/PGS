@@ -64,8 +64,7 @@ public class ThomasPointProcess {
 	 * @return a list of PVector objects representing the generated points within
 	 *         the boundary.
 	 */
-	public List<PVector> sample(double xMin, double yMin, double xMax, double yMax, double parentsDensity, double meanChildPoints,
-			double childSpread) {
+	public List<PVector> sample(double xMin, double yMin, double xMax, double yMax, double parentsDensity, double meanChildPoints, double childSpread) {
 		random = new XoRoShiRo128PlusRandomGenerator(seed);
 		final double boundaryBuffer = 0; // 6 * childSpread;
 		final double xMinExt = xMin - boundaryBuffer;

@@ -40,7 +40,7 @@ import micycle.spacefillingcurves.SierpinskiFourSteps;
 import micycle.spacefillingcurves.SierpinskiTenSteps;
 import micycle.spacefillingcurves.SierpinskiThreeSteps;
 import micycle.spacefillingcurves.SpaceFillingCurve;
-import micycle.srpg.SRPolygonGenerator;
+import com.github.micycle1.srpg.SRPolygonGenerator;
 import net.jafama.FastMath;
 import processing.core.PConstants;
 import processing.core.PShape;
@@ -128,9 +128,10 @@ public class PGS_Construction {
 	 * @param centerX centre point X
 	 * @param centerY centre point Y
 	 * @param width   polygon width
+	 * @return a PShape representing a regular polygon
 	 * @since 2.0
 	 */
-	public static PShape createRegularPolyon(int n, double centerX, double centerY, double width) {
+	public static PShape createRegularPolygon(int n, double centerX, double centerY, double width) {
 		final GeometricShapeFactory shapeFactory = new GeometricShapeFactory();
 		shapeFactory.setNumPoints(n);
 		shapeFactory.setCentre(new Coordinate(centerX, centerY));
@@ -234,7 +235,7 @@ public class PGS_Construction {
 			r = Math.pow(t1 + t2, 1 / n1);
 			if (Math.abs(r) != 0) {
 				r *= radius; // multiply r (0...1) by (max) radius
-//				r = radius/r;
+				// r = radius/r;
 				shape.vertex((float) (centerX + r * FastMath.cos(angle)), (float) (centerY + r * FastMath.sin(angle)));
 			}
 
@@ -376,7 +377,7 @@ public class PGS_Construction {
 	 * @param outerRadius The outer radius of the star
 	 * @param roundness   A roundness value between 0.0 and 1.0, for the inner and
 	 *                    outer corners of the star.
-	 * @return The star shape
+	 * @return The star shape as a PShape
 	 */
 	public static PShape createStar(double centerX, double centerY, int numRays, double innerRadius, double outerRadius, double roundness) {
 		roundness = Math.max(Math.min(1, roundness), 0);
@@ -418,8 +419,8 @@ public class PGS_Construction {
 	 */
 	public static PShape createBlobbie(double centerX, double centerY, double maxWidth, double a, double b, double c, double d) {
 		// http://paulbourke.net/geometry/blobbie/
-		final double cirumference = 2 * Math.PI * maxWidth / 2;
-		final int samples = (int) (cirumference / 2); // 1 point every 2 distance
+		final double circumference = 2 * Math.PI * maxWidth / 2;
+		final int samples = (int) (circumference / 2); // 1 point every 2 distance
 		double dt = Math.PI * 2 / samples;
 
 		final CoordinateList blobbieCoords = new CoordinateList();
@@ -472,7 +473,7 @@ public class PGS_Construction {
 		PShape heart = new PShape(PShape.PATH);
 		heart.setFill(true);
 		heart.setFill(Colors.WHITE);
-		heart.beginShape();
+		heart.beginShape(PConstants.POLYGON);
 
 		final double length = 6.3855 * width; // Arc length of parametric curve from wolfram alpha
 		final int points = (int) length / 2; // sample every 2 units along curve (roughly)
@@ -554,8 +555,8 @@ public class PGS_Construction {
 		curve.setFill(Colors.WHITE);
 		curve.beginShape();
 
-		final double cirumference = 2 * Math.PI * radius;
-		final int samples = (int) (cirumference / 5); // 1 point every 5 distance
+		final double circumference = 2 * Math.PI * radius;
+		final int samples = (int) (circumference / 5); // 1 point every 5 distance
 		final double angleInc = Math.PI * 2 / samples;
 		double angle = 0;
 
@@ -642,8 +643,7 @@ public class PGS_Construction {
 	 * @param generators the number of generator points for the underlying Voronoi
 	 *                   tessellation. Should be >5.
 	 * @param thickness  thickness of sponge structure walls
-	 * @param smoothing  the cell smoothing factor which determines how rounded the
-	 *                   cells are. a value of 6 is a good starting point.
+	 * @param smoothing  level of gaussian smoothing to apply to the structure
 	 * @param classes    the number of classes to use for the cell merging process,
 	 *                   where lower results in more merging (or larger "blob-like"
 	 *                   shapes).
@@ -980,7 +980,7 @@ public class PGS_Construction {
 		final PShape curve = new PShape(PShape.PATH);
 		curve.setFill(true);
 		curve.setFill(Colors.WHITE);
-		curve.beginShape();
+		curve.beginShape(PConstants.POLYGON);
 		half1.forEach(p -> curve.vertex((float) p[0], (float) p[1]));
 		curve.endShape(PConstants.CLOSE);
 
@@ -1072,7 +1072,7 @@ public class PGS_Construction {
 			return PGS_Conversion.toPVector(bezierShape).stream(); // to stream (for flattening)
 		}).toList();
 
-		return PGS_Conversion.fromPVector(curveVertices);
+		return PGS_Conversion.toPathPShape(curveVertices);
 	}
 
 	/**
@@ -1156,7 +1156,7 @@ public class PGS_Construction {
 		CoordinateList list = new CoordinateList(path.getCoordinates());
 		list.closeRing();
 
-		PShape out = toPShape(PGS.GEOM_FACTORY.createLinearRing(list.toCoordinateArray()));
+		PShape out = toPShape(PGS.GEOM_FACTORY.createPolygon(list.toCoordinateArray()));
 		out.setStroke(false);
 		out = PGS_Transformation.resizeByWidth(out, width);
 		out = PGS_Transformation.translateToOrigin(out);
@@ -1271,6 +1271,7 @@ public class PGS_Construction {
 
 	private static PShape rectImpl(float x1, float y1, float x2, float y2, float tl, float tr, float br, float bl) {
 		PShape sh = new PShape(PShape.PATH);
+		sh.setKind(PConstants.POLYGON);
 		sh.setFill(true);
 		sh.setFill(Colors.WHITE);
 		sh.beginShape();
@@ -1365,7 +1366,7 @@ public class PGS_Construction {
 		int nPts = (int) Math.ceil(2 * Math.PI / Math.acos(1 - maxDeviation / r));
 		nPts = Math.max(nPts, 21); // min of 21 points for tiny circles
 		final int circumference = (int) (Math.PI * r * 2);
-		if (nPts > circumference * 2) {
+		if (nPts > circumference * 2 && circumference > 0) {
 			// AT MOST 1 point every half pixel
 			nPts = circumference * 2;
 		}

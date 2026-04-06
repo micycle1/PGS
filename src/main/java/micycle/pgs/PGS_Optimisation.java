@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.tuple.Triple;
 import org.locationtech.jts.algorithm.MinimumAreaRectangle;
 import org.locationtech.jts.algorithm.MinimumBoundingCircle;
+import org.locationtech.jts.algorithm.MinimumBoundingTriangle;
 import org.locationtech.jts.algorithm.MinimumDiameter;
 import org.locationtech.jts.algorithm.construct.LargestEmptyCircle;
 import org.locationtech.jts.algorithm.construct.MaximumInscribedCircle;
@@ -27,6 +28,7 @@ import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Location;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.Polygonal;
 import org.locationtech.jts.operation.distance.DistanceOp;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
 import org.locationtech.jts.util.GeometricShapeFactory;
@@ -46,10 +48,10 @@ import micycle.pgs.commons.MaximumInscribedAARectangle;
 import micycle.pgs.commons.MaximumInscribedRectangle;
 import micycle.pgs.commons.MaximumInscribedTriangle;
 import micycle.pgs.commons.MinimumBoundingEllipse;
-import micycle.pgs.commons.MinimumBoundingTriangle;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.SpiralIterator;
 import micycle.pgs.commons.VisibilityPolygon;
+import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 import whitegreen.dalsoo.DalsooPack;
@@ -234,7 +236,8 @@ public final class PGS_Optimisation {
 
 	/**
 	 * Finds the rectangle with a maximum area whose sides are parallel to the
-	 * x-axis and y-axis ("axis-aligned"), contained/insribed within a convex shape.
+	 * x-axis and y-axis ("axis-aligned"), contained/inscribed within a convex
+	 * shape.
 	 * <p>
 	 * This method computes the MIR for convex shapes only; if a concave shape is
 	 * passed in, the resulting rectangle will be computed based on its convex hull.
@@ -285,7 +288,7 @@ public final class PGS_Optimisation {
 		Geometry buffer = p.getExteriorRing().buffer(tolerance * 0.5, 4);
 		Envelope env = buffer.getEnvelopeInternal();
 		buffer = DouglasPeuckerSimplifier.simplify(buffer, tolerance * 0.5);
-		var index = new YStripesPointInAreaLocator((Polygon) buffer);
+		var index = new YStripesPointInAreaLocator(buffer);
 
 		shape = PGS_Processing.densify(shape, Math.max(0.5, tolerance));
 		List<PVector> points = PGS_Conversion.toPVector(shape);
@@ -507,7 +510,7 @@ public final class PGS_Optimisation {
 		final PShape ellipse = new PShape(PShape.PATH);
 		ellipse.setFill(true);
 		ellipse.setFill(Colors.WHITE);
-		ellipse.beginShape();
+		ellipse.beginShape(PConstants.POLYGON);
 		for (double[] eEoord : eEoords) {
 			ellipse.vertex((float) eEoord[0], (float) eEoord[1]);
 		}
@@ -522,7 +525,7 @@ public final class PGS_Optimisation {
 	 * @param shape
 	 */
 	public static PShape minimumBoundingTriangle(PShape shape) {
-		MinimumBoundingTriangle mbt = new MinimumBoundingTriangle(fromPShape(shape));
+		var mbt = new MinimumBoundingTriangle(fromPShape(shape));
 		return toPShape(mbt.getTriangle());
 	}
 
@@ -686,8 +689,9 @@ public final class PGS_Optimisation {
 	 */
 	public static List<PVector> largestEmptyCircles(PShape obstacles, @Nullable PShape boundary, int n, double tolerance) {
 		tolerance = Math.max(0.01, tolerance);
-		LargestEmptyCircles lecs = new LargestEmptyCircles(obstacles == null ? null : fromPShape(obstacles), boundary == null ? null : fromPShape(boundary),
-				tolerance);
+		var boundaryG = boundary == null ? null : fromPShape(boundary);
+		var obstaclesG = obstacles == null ? null : fromPShape(obstacles);
+		var lecs = new LargestEmptyCircles(boundaryG, obstaclesG, tolerance);
 
 		final List<PVector> out = new ArrayList<>();
 		for (int i = 0; i < n; i++) {
@@ -875,10 +879,10 @@ public final class PGS_Optimisation {
 		if (vertices.isEmpty()) {
 			return null;
 		}
-		float minDistSq = Float.POSITIVE_INFINITY;
+		double minDistSq = Double.POSITIVE_INFINITY;
 		PVector closest = null;
 		for (PVector v : vertices) {
-			float distSq = PVector.dist(v, queryPoint);
+			double distSq = PGS.distanceSq(v, queryPoint);
 			if (distSq < minDistSq) {
 				minDistSq = distSq;
 				closest = v;
@@ -910,6 +914,9 @@ public final class PGS_Optimisation {
 	 */
 	public static PVector closestPoint(PShape shape, PVector point) {
 		Geometry g = fromPShape(shape);
+		if (g instanceof Polygonal) {
+			g = g.getBoundary();
+		}
 		Coordinate coord = DistanceOp.nearestPoints(g, PGS.pointFromPVector(point))[0];
 		return new PVector((float) coord.x, (float) coord.y);
 	}
@@ -956,9 +963,9 @@ public final class PGS_Optimisation {
 	 */
 	public static List<PVector> closestPoints(PShape shape, PVector point) {
 		Geometry g = fromPShape(shape);
-		ArrayList<PVector> points = new ArrayList<>();
+		List<PVector> points = new ArrayList<>();
 		for (int i = 0; i < g.getNumGeometries(); i++) {
-			final Coordinate coord = DistanceOp.nearestPoints(g.getGeometryN(i), PGS.pointFromPVector(point))[0];
+			final Coordinate coord = DistanceOp.nearestPoints(g.getGeometryN(i).getBoundary(), PGS.pointFromPVector(point))[0];
 			points.add(PGS.toPVector(coord));
 		}
 		return points;
@@ -1272,22 +1279,30 @@ public final class PGS_Optimisation {
 	}
 
 	/**
-	 * Computes a visibility polygon / isovist, the area visible from a given point
-	 * in a space, considering occlusions caused by obstacles. In this case,
-	 * obstacles comprise the line segments of input shape.
+	 * Computes the visibility polygon (isovist): the region visible from a given
+	 * viewpoint, with occlusions caused by the edges of the supplied shape.
 	 * 
-	 * @param obstacles shape representing obstacles, which may have any manner of
-	 *                  polygon and line geometries.
-	 * @param viewPoint view point from which to compute visibility. If the input if
-	 *                  polygonal, the viewpoint may lie outside the polygon.
-	 * @return a polygonal shape representing the visibility polygon.
+	 * @param obstacles a PShape whose edges serve as occluding obstacles; may
+	 *                  contain polygons and/or lines.
+	 * @param viewPoint the viewpoint from which visibility is computed. If the
+	 *                  input if polygonal, the viewpoint may lie outside the
+	 *                  polygon.
+	 * @return a polygon representing the visible region from {@code viewPoint}
 	 * @since 1.4.0
 	 * @see #visibilityPolygon(PShape, Collection)
 	 */
 	public static PShape visibilityPolygon(PShape obstacles, PVector viewPoint) {
+		var g = fromPShape(obstacles);
+		var p = PGS.pointFromPVector(viewPoint);
+
 		VisibilityPolygon vp = new VisibilityPolygon();
-		vp.addGeometry(fromPShape(obstacles));
-		return toPShape(vp.getIsovist(PGS.coordFromPVector(viewPoint), true));
+		vp.addGeometry(g);
+
+		/*
+		 * Skip adding envelope only when viewpoint is in a polygon.
+		 */
+		var isovist = vp.getIsovist(p.getCoordinate(), (g instanceof Polygonal) ? !g.contains(p) : true);
+		return toPShape(isovist);
 	}
 
 	/**

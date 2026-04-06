@@ -5,6 +5,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import org.locationtech.jts.algorithm.Angle;
+import org.locationtech.jts.algorithm.LineIntersector;
 import org.locationtech.jts.algorithm.RobustLineIntersector;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
@@ -23,11 +25,14 @@ import org.locationtech.jts.util.GeometricShapeFactory;
 import net.jafama.FastMath;
 
 /**
+ * 
  * This class computes an isovist, which is the volume of space visible from a
  * specific point in space, based on a given set of original segments.
+ * 
  * <p>
  * The code in this class is adapted from Byron Knoll's javascript library,
  * available at https://github.com/byronknoll/visibility-polygon-js
+ * 
  * <p>
  * <ul>
  * <li>Sort all vertices based on their angle to the observer.</li>
@@ -57,30 +62,39 @@ import net.jafama.FastMath;
  * </ul>
  * 
  * @author Nicolas Fortin of Ifsttar UMRAE
- * @author Small changes by Michael Carleton
+ * @author Changes by Michael Carleton
  */
 public class VisibilityPolygon {
 
-	// from h2gis-utilities
-
-	private static final double M_2PI = Math.PI * 2.;
 	private static final Coordinate NAN_COORDINATE = new Coordinate(Coordinate.NULL_ORDINATE, Coordinate.NULL_ORDINATE);
 	// maintain the list of limits sorted by angle
 	private double maxDistance;
 	private List<SegmentString> originalSegments = new ArrayList<>();
 	private double epsilon = 1e-8; // epsilon to help avoid degeneracies
-	private int numPoints = 96;
 
 	/**
-	 * @param maxDistance maximum distance (from the view point) constraint for the
-	 *                    visibility polygon
+	 * Creates a visibility-polygon (isovist) builder with a user-defined range
+	 * limit.
+	 * <p>
+	 * When getIsovist(..., true) is called, maxDistance defines the half-size of
+	 * the axis-aligned bounding square centered on the view point (the square’s
+	 * side length is 2*maxDistance). This bounds the result in otherwise unbounded
+	 * scenes.
+	 *
+	 * @param maxDistance positive half-size of the optional bounding square, in the
+	 *                    same units as the input coordinates
 	 */
 	public VisibilityPolygon(double maxDistance) {
 		this.maxDistance = maxDistance;
 	}
 
+	/**
+	 * Creates a visibility-polygon (isovist) builder with a default range limit.
+	 * <p>
+	 * Equivalent to new VisibilityPolygon(2500).
+	 */
 	public VisibilityPolygon() {
-		this(2000);
+		this(2500);
 	}
 
 	/**
@@ -90,7 +104,7 @@ public class VisibilityPolygon {
 	 * 
 	 * @param viewPoints  the collection of view points from which the isovist is
 	 *                    computed.
-	 * @param addEnvelope a boolean flag indicating whether to include a circle
+	 * @param addEnvelope a boolean flag indicating whether to include a square
 	 *                    bounding box in the resulting geometry.
 	 * @return a polygonal geometry representing the isovist. The geometry returned
 	 *         may be a single polygon or a multipolygon comprising multiple
@@ -109,17 +123,20 @@ public class VisibilityPolygon {
 
 	/**
 	 * Computes an isovist, the area of the input visible from a given point in
+	 * 
 	 * space.
-	 *
+	 * 
 	 * @param viewPoint   View coordinate
-	 * @param addEnvelope If true add circle bounding box. This function does not
+	 * 
+	 * @param addEnvelope If true add square bounding box. This function does not
+	 * 
 	 *                    work properly if the view point is not enclosed by
 	 *                    segments
 	 * @return visibility polygon
 	 */
 	public Polygon getIsovist(Coordinate viewPoint, boolean addEnvelope) {
-		// Add bounding circle
-		List<SegmentString> bounded = new ArrayList<>(originalSegments.size() + numPoints);
+		// Add bounding square
+		List<SegmentString> bounded = new ArrayList<>(originalSegments.size() + 4);
 
 		// Compute envelope
 		Envelope env = new Envelope();
@@ -130,27 +147,24 @@ public class VisibilityPolygon {
 		if (addEnvelope) {
 			// Add bounding geom in envelope
 			env.expandToInclude(new Coordinate(viewPoint.x - maxDistance, viewPoint.y - maxDistance));
-			env.expandToInclude(new Coordinate(viewPoint.x + maxDistance, viewPoint.y + viewPoint.x));
+			env.expandToInclude(new Coordinate(viewPoint.x + maxDistance, viewPoint.y + maxDistance));
 			GeometricShapeFactory geometricShapeFactory = new GeometricShapeFactory();
 			geometricShapeFactory.setCentre(new Coordinate(viewPoint.x - env.getMinX(), viewPoint.y - env.getMinY()));
 			geometricShapeFactory.setWidth(maxDistance * 2);
 			geometricShapeFactory.setHeight(maxDistance * 2);
-			geometricShapeFactory.setNumPoints(numPoints);
-			addPolygon(bounded, geometricShapeFactory.createEllipse());
+			addPolygon(bounded, geometricShapeFactory.createRectangle());
 			for (SegmentString segment : originalSegments) {
 				final Coordinate a = segment.getCoordinate(0);
 				final Coordinate b = segment.getCoordinate(1);
-				addSegment(bounded, new Coordinate(a.x - env.getMinX(), a.y - env.getMinY()),
-						new Coordinate(b.x - env.getMinX(), b.y - env.getMinY()));
+				addSegment(bounded, new Coordinate(a.x - env.getMinX(), a.y - env.getMinY()), new Coordinate(b.x - env.getMinX(), b.y - env.getMinY()));
 			}
-			// Intersection with bounding circle
+			// Intersection with bounding square
 			bounded = fixSegments(bounded);
 		} else {
 			for (SegmentString segment : originalSegments) {
 				final Coordinate a = segment.getCoordinate(0);
 				final Coordinate b = segment.getCoordinate(1);
-				addSegment(bounded, new Coordinate(a.x - env.getMinX(), a.y - env.getMinY()),
-						new Coordinate(b.x - env.getMinX(), b.y - env.getMinY()));
+				addSegment(bounded, new Coordinate(a.x - env.getMinX(), a.y - env.getMinY()), new Coordinate(b.x - env.getMinX(), b.y - env.getMinY()));
 			}
 		}
 
@@ -250,7 +264,7 @@ public class VisibilityPolygon {
 	 */
 	private static List<SegmentString> fixSegments(List<SegmentString> segments) {
 		MCIndexNoder mCIndexNoder = new MCIndexNoder();
-		RobustLineIntersector robustLineIntersector = new RobustLineIntersector();
+		LineIntersector robustLineIntersector = new RobustLineIntersector();
 		mCIndexNoder.setSegmentIntersector(new IntersectionAdder(robustLineIntersector));
 		mCIndexNoder.computeNodes(segments);
 		Collection<?> nodedSubstring = mCIndexNoder.getNodedSubstrings();
@@ -259,14 +273,6 @@ public class VisibilityPolygon {
 			ret.add((SegmentString) aNodedSubstring);
 		}
 		return ret;
-	}
-
-	/**
-	 * @param numPoints Number of points of the bounding circle polygon. Default =
-	 *                  96.
-	 */
-	public void setNumPoints(int numPoints) {
-		this.numPoints = numPoints;
 	}
 
 	private static double angle(Coordinate a, Coordinate b) {
@@ -301,14 +307,7 @@ public class VisibilityPolygon {
 	private double angle2(Coordinate a, Coordinate b, Coordinate c) {
 		double a1 = angle(a, b);
 		double a2 = angle(b, c);
-		double a3 = a1 - a2;
-		if (a3 < 0) {
-			a3 += M_2PI;
-		}
-		if (a3 > M_2PI) {
-			a3 -= M_2PI;
-		}
-		return a3;
+		return Angle.normalizePositive(a1 - a2);
 	}
 
 	private boolean lessThan(int index1, int index2, Coordinate position, List<SegmentString> segments, Coordinate destination) {
@@ -335,15 +334,14 @@ public class VisibilityPolygon {
 			return a1 < a2;
 		}
 	}
-	
+
 	private static double distSquared(Coordinate p, Coordinate q) {
 		double dx = q.x - p.x;
 		double dy = q.y - p.y;
 		return dx * dx + dy * dy;
 	}
 
-	private void remove(int index, List<Integer> heap, Coordinate position, List<SegmentString> segments, Coordinate destination,
-			List<Integer> map) {
+	private void remove(int index, List<Integer> heap, Coordinate position, List<SegmentString> segments, Coordinate destination, List<Integer> map) {
 		map.set(heap.get(index), -1);
 		if (index == heap.size() - 1) {
 			heap.remove(heap.size() - 1);
@@ -391,8 +389,7 @@ public class VisibilityPolygon {
 		}
 	}
 
-	private void insert(int index, List<Integer> heap, Coordinate position, List<SegmentString> segments, Coordinate destination,
-			List<Integer> map) {
+	private void insert(int index, List<Integer> heap, Coordinate position, List<SegmentString> segments, Coordinate destination, List<Integer> map) {
 		Coordinate inter = intersectLines(segments.get(index), position, destination);
 		if (NAN_COORDINATE.equals2D(inter, epsilon)) {
 			return;
@@ -423,32 +420,62 @@ public class VisibilityPolygon {
 	}
 
 	/**
+	 * 
 	 * Explode geometry and add occlusion segments in isovist
-	 *
+	 * 
 	 * @param geometry Geometry collection, LineString or Polygon instance
 	 */
 	public void addGeometry(Geometry geometry) {
 		if (geometry instanceof LineString) {
-			addLineString(originalSegments, (LineString) geometry);
+			addLineString((LineString) geometry);
 		} else if (geometry instanceof Polygon) {
-			addPolygon(originalSegments, (Polygon) geometry);
+			addPolygon((Polygon) geometry);
 		} else if (geometry instanceof GeometryCollection) {
-			addGeometry(originalSegments, (GeometryCollection) geometry);
+			addGeometry((GeometryCollection) geometry);
 		}
 	}
 
-	private static void addGeometry(List<SegmentString> segments, GeometryCollection geometry) {
+	private void addGeometry(GeometryCollection geometry) {
 		int geoCount = geometry.getNumGeometries();
 		for (int n = 0; n < geoCount; n++) {
 			Geometry simpleGeom = geometry.getGeometryN(n);
 			if (simpleGeom instanceof LineString) {
-				addLineString(segments, (LineString) simpleGeom);
+				addLineString((LineString) simpleGeom);
 			} else if (simpleGeom instanceof Polygon) {
-				addPolygon(segments, (Polygon) simpleGeom);
+				addPolygon((Polygon) simpleGeom);
 			} else if (simpleGeom instanceof GeometryCollection) {
-				addGeometry(segments, (GeometryCollection) simpleGeom);
+				addGeometry((GeometryCollection) simpleGeom);
 			}
 		}
+	}
+
+	private void addPolygon(Polygon poly) {
+		addLineString(poly.getExteriorRing());
+		final int ringCount = poly.getNumInteriorRing();
+		// Keep interior ring if the viewpoint is inside the polygon
+		for (int nr = 0; nr < ringCount; nr++) {
+			addLineString(poly.getInteriorRingN(nr));
+		}
+	}
+
+	public void addLineString(LineString lineString) {
+		int nPoint = lineString.getNumPoints();
+		for (int idPoint = 0; idPoint < nPoint - 1; idPoint++) {
+			addSegment(lineString.getCoordinateN(idPoint), lineString.getCoordinateN(idPoint + 1));
+		}
+	}
+
+	/**
+	 * Add an occlusion segment to the isovist.
+	 * 
+	 * @param p0 segment origin
+	 * @param p1 segment destination
+	 */
+	public void addSegment(Coordinate p0, Coordinate p1) {
+		if (p0.distance(p1) < epsilon) {
+			return;
+		}
+		originalSegments.add(new NodedSegmentString(new Coordinate[] { p0, p1 }, originalSegments.size() + 1));
 	}
 
 	private static void addPolygon(List<SegmentString> segments, Polygon poly) {
@@ -460,10 +487,6 @@ public class VisibilityPolygon {
 		}
 	}
 
-	public void addLineString(LineString lineString) {
-		addLineString(originalSegments, lineString);
-	}
-
 	private static void addLineString(List<SegmentString> segments, LineString lineString) {
 		int nPoint = lineString.getNumPoints();
 		for (int idPoint = 0; idPoint < nPoint - 1; idPoint++) {
@@ -471,24 +494,12 @@ public class VisibilityPolygon {
 		}
 	}
 
-	/**
-	 * Add an occlusion segment to the isovist.
-	 *
-	 * @param p0 segment origin
-	 * @param p1 segment destination
-	 */
-	public void addSegment(Coordinate p0, Coordinate p1) {
-		if (p0.distance(p1) < epsilon) {
-			return;
-		}
-		addSegment(originalSegments, p0, p1);
-	}
-
 	private static void addSegment(List<SegmentString> segments, Coordinate p0, Coordinate p1) {
 		segments.add(new NodedSegmentString(new Coordinate[] { p0, p1 }, segments.size() + 1));
 	}
 
 	/**
+	 * 
 	 * Defines segment vertices.
 	 */
 	private static final class Vertex implements Comparable<Vertex> {

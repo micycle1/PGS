@@ -3,6 +3,7 @@ package micycle.pgs.commons;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.locationtech.jts.algorithm.Area;
 import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateSequence;
@@ -38,9 +39,9 @@ public class GaussianLineSmoothing {
 	 * of its neighbors, weighted by a gaussian kernel. For non-closed lines, the
 	 * initial and final points are preserved.
 	 *
-	 * @param line The input line
+	 * @param line   The input line
 	 * @param sigmaM The standard deviation of the gaussian kernel. The larger, the
-	 *              more smoothed.
+	 *               more smoothed.
 	 */
 	public static LineString get(LineString line, double sigmaM) {
 		if (line == null) {
@@ -169,6 +170,78 @@ public class GaussianLineSmoothing {
 			out[M - 1] = new Coordinate(samples[n - 1]);
 		}
 		return line.getFactory().createLineString(out);
+	}
+
+	/**
+	 * Smooths a line using Gaussian convolution with a normalised amount in [0..1].
+	 * <p>
+	 * {@code amount=0} returns a copy of the input. {@code amount=1} forces the
+	 * same collapse behavior as the internal extreme-sigma fallback. For values in
+	 * (0,1), the mapping is scale-aware (closed rings use a thickness-based
+	 * characteristic length) so the perceived smoothing level is more consistent
+	 * across different-sized shapes.
+	 *
+	 * @param line   input line/ring
+	 * @param amount normalised smoothing amount in [0..1]
+	 * @return smoothed line (new geometry)
+	 */
+	public static LineString getNormalised(LineString line, double amount) {
+		if (line == null) {
+			return null;
+		}
+
+		amount = Math.max(0.0, Math.min(1.0, amount));
+		if (amount == 0.0) {
+			return (LineString) line.copy();
+		}
+
+		final double length = line.getLength();
+		if (length <= 0) {
+			return (LineString) line.copy();
+		}
+
+		final boolean isClosed = line.isClosed();
+
+		// Collapse threshold used by get(...)
+		final double sigmaCollapse = length / 3.0;
+
+		// Characteristic "small-sigma" scale:
+		// - closed ring: hydraulic radius (thickness-aware)
+		// - open line: fall back to a fraction of length (no area available)
+		double L0;
+		if (isClosed && line instanceof LinearRing) {
+			Coordinate[] coords = line.getCoordinates();
+			double A = Area.ofRing(coords);
+			double P = length;
+			if (A <= 0 || P <= 0) {
+				return (LineString) line.copy();
+			}
+			L0 = (2.0 * A) / P;
+		} else {
+			// reasonable default for open lines; tweak if you have a better width estimate
+			L0 = 0.05 * length;
+		}
+
+		// Normalized mapping: sigmaM in [0..sigmaCollapse), hits sigmaCollapse only at
+		// s=1
+		double s = amount;
+		double a = L0 / sigmaCollapse;
+
+		// sigmaM = sigmaCollapse * (a*s) / ((1-s) + a*s)
+		double denom = (1.0 - s) + a * s;
+
+		double sigmaM;
+		if (amount >= 1.0) {
+			sigmaM = sigmaCollapse * 1.000001; // force ">" to trigger collapse branch
+		} else if (denom <= 0) {
+			sigmaM = sigmaCollapse * 0.999999;
+		} else {
+			sigmaM = sigmaCollapse * (a * s) / denom;
+			// strictly keep below collapse for s<1
+			sigmaM = Math.min(sigmaM, sigmaCollapse * 0.999999);
+		}
+
+		return GaussianLineSmoothing.get(line, sigmaM);
 	}
 
 	// Stable resampling:

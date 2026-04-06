@@ -2,48 +2,71 @@ package micycle.pgs;
 
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
+import static micycle.pgs.PGS.GEOM_FACTORY;
 
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
+import org.locationtech.jts.coverage.CoverageSimplifier;
+import org.locationtech.jts.coverage.CoverageUnion;
 import org.locationtech.jts.densify.Densifier;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryCollection;
+import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.Polygonal;
+import org.locationtech.jts.geom.TopologyException;
+import org.locationtech.jts.geom.util.GeometryFixer;
 import org.locationtech.jts.operation.overlay.snap.GeometrySnapper;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.locationtech.jts.operation.relateng.RelateNG;
 import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.Vertex;
-import org.tinfour.standard.IncrementalTin;
 import org.tinfour.utils.HilbertSort;
 import org.tinfour.voronoi.BoundedVoronoiBuildOptions;
 import org.tinfour.voronoi.BoundedVoronoiDiagram;
 import org.tinfour.voronoi.ThiessenPolygon;
 
+import com.github.micycle1.geoblitz.HilbertParallelPolygonUnion;
+import com.github.quickhull3d.PowerDiagram2D;
+import com.github.quickhull3d.PowerDiagram2D.Rect;
+
 import micycle.pgs.color.Colors;
+import micycle.pgs.commons.AdditivelyWeightedVoronoi;
+import micycle.pgs.commons.DiscreteCurveEvolution;
+import micycle.pgs.commons.DiscreteCurveEvolution.DCETerminationCallback;
 import micycle.pgs.commons.FarthestPointVoronoi;
+import micycle.pgs.commons.ManhattanVoronoi;
 import micycle.pgs.commons.MultiplicativelyWeightedVoronoi;
 import micycle.pgs.commons.Nullable;
 import micycle.pgs.commons.PEdge;
-import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Voronoi Diagrams of shapes and point sets. Supports polygonal constraining
- * and relaxation to generate centroidal Voronoi.
- * 
- * @author Michael Carleton
+ * Voronoi diagram utilities for 2D point sets and {@link PShape} polygons.
  *
+ * <p>
+ * This class generates several variants of Voronoi diagrams, including:
+ * standard (unweighted) diagrams, additively/multiplicatively weighted
+ * diagrams, farthest-point Voronoi, and polygon-constrained (“inner”) Voronoi.
+ *
+ * <h2>Centroidal Voronoi (relaxation)</h2>
+ * <p>
+ * Several {@code innerVoronoi(...)} overloads support Lloyd-style relaxation by
+ * repeatedly rebuilding the diagram and moving sites toward cell centroids,
+ * producing centroidal Voronoi tessellations (CVTs) inside a boundary polygon.
+ *
+ * @author Michael Carleton
  */
-@SuppressWarnings("squid:S3776")
 public final class PGS_Voronoi {
 
 	private PGS_Voronoi() {
@@ -403,66 +426,28 @@ public final class PGS_Voronoi {
 		Geometry g = fromPShape(shape);
 		Geometry densified = Densifier.densify(g, 2);
 
-		List<Vertex> vertices = new ArrayList<>();
-		final List<List<Vertex>> segmentVertexGroups = new ArrayList<>();
+		List<Vertex> vertices = new ArrayList<>(Math.max(16, densified.getNumPoints()));
+		List<List<Vertex>> segmentVertexGroups = new ArrayList<>(Math.max(16, densified.getNumGeometries()));
 
-		for (int i = 0; i < densified.getNumGeometries(); i++) {
-			Geometry geometry = densified.getGeometryN(i);
-			List<Vertex> featureVertices;
-			switch (geometry.getGeometryType()) {
-				case Geometry.TYPENAME_LINEARRING :
-				case Geometry.TYPENAME_POLYGON :
-				case Geometry.TYPENAME_LINESTRING :
-				case Geometry.TYPENAME_POINT :
-					featureVertices = toVertex(geometry.getCoordinates());
-					if (!featureVertices.isEmpty()) {
-						segmentVertexGroups.add(featureVertices);
-						vertices.addAll(featureVertices);
-					}
-					break;
-				case Geometry.TYPENAME_MULTILINESTRING :
-				case Geometry.TYPENAME_MULTIPOINT :
-				case Geometry.TYPENAME_MULTIPOLYGON : // nested multi polygon
-					for (int j = 0; j < geometry.getNumGeometries(); j++) {
-						featureVertices = toVertex(geometry.getGeometryN(j).getCoordinates());
-						if (!featureVertices.isEmpty()) {
-							segmentVertexGroups.add(featureVertices);
-							vertices.addAll(featureVertices);
-						}
-					}
-					break;
-				default :
-					break;
-			}
-		}
+		collectVertexGroups(densified, segmentVertexGroups, vertices);
 
 		if (vertices.size() > 2500) {
 			HilbertSort hs = new HilbertSort();
 			hs.sort(vertices);
 		}
-		final IncrementalTin tin = new IncrementalTin(2);
-		tin.add(vertices, null); // initial triangulation
-		if (!tin.isBootstrapped()) {
-			return new PShape(); // shape probably empty
-		}
 
 		final BoundedVoronoiBuildOptions options = new BoundedVoronoiBuildOptions();
-		final double x, y, w, h;
+		final Rectangle2D boundsRect;
 		if (bounds == null) {
-			final Envelope envelope = g.getEnvelopeInternal();
-			x = envelope.getMinX();
-			y = envelope.getMinY();
-			w = envelope.getMaxX() - envelope.getMinX();
-			h = envelope.getMaxY() - envelope.getMinY();
+			final Envelope e = g.getEnvelopeInternal();
+			boundsRect = new Rectangle2D.Double(e.getMinX(), e.getMinY(), e.getWidth(), e.getHeight());
 		} else {
-			x = bounds[0];
-			y = bounds[1];
-			w = bounds[2] - bounds[0];
-			h = bounds[3] - bounds[1];
+			boundsRect = new Rectangle2D.Double(bounds[0], bounds[1], bounds[2] - bounds[0], bounds[3] - bounds[1]);
 		}
-		options.setBounds(new Rectangle2D.Double(x, y, w, h));
+		options.setBounds(boundsRect);
+		options.enableAutomaticColorAssignment(false);
 
-		final BoundedVoronoiDiagram voronoi = new BoundedVoronoiDiagram(tin);
+		final BoundedVoronoiDiagram voronoi = new BoundedVoronoiDiagram(vertices, options);
 
 		// Map densified vertices to the voronoi cell they define.
 		final HashMap<Vertex, ThiessenPolygon> vertexCellMap = new HashMap<>();
@@ -473,51 +458,137 @@ public final class PGS_Voronoi {
 		 * vertices by their source geometry and then union/dissolve the cells belonging
 		 * to each vertex group.
 		 */
-		final List<PShape> faces = segmentVertexGroups.parallelStream().map(vertexGroup -> {
-			PShape cellSegments = new PShape(PConstants.GROUP);
+		final List<Geometry> faces = segmentVertexGroups.parallelStream().map(vertexGroup -> {
+			var cells = new ArrayList<Geometry>(vertexGroup.size());
 			vertexGroup.forEach(segmentVertex -> {
 				ThiessenPolygon thiessenCell = vertexCellMap.get(segmentVertex);
 				if (thiessenCell != null) { // null if degenerate input
-					PShape cellSegment = new PShape(PShape.PATH);
-					cellSegment.beginShape();
-					for (IQuadEdge e : thiessenCell.getEdges()) {
-						cellSegment.vertex((float) e.getA().x, (float) e.getA().y);
-					}
-					cellSegment.endShape(PConstants.CLOSE);
-					cellSegments.addChild(cellSegment);
+					cells.add(toPolygon(thiessenCell));
 				}
 			});
-			return PGS_ShapeBoolean.unionMesh(cellSegments);
-		}).collect(Collectors.toList());
 
-		PShape voronoiCells = PGS_Conversion.flatten(faces);
+			try {
+				return CoverageUnion.union(cells.toArray(new Geometry[0]));
+			} catch (TopologyException e) {
+				var gf = cells.get(0).getFactory();
+				var valid = GeometryFixer.fix(gf.createGeometryCollection(cells.toArray(new Geometry[0])));
+				return HilbertParallelPolygonUnion.union(valid);
+			}
+
+		}).toList();
+
+		PShape voronoiCells = toPShape(faces);
 		PGS_Conversion.setAllFillColor(voronoiCells, Colors.WHITE);
 		PGS_Conversion.setAllStrokeColor(voronoiCells, Colors.PINK, 2);
-
 		return voronoiCells;
 	}
 
 	/**
-	 * Generates a Multiplicatively Weighted Voronoi Diagrams diagram for a set of
-	 * weighted sites.
+	 * Generates an <b>additively weighted Voronoi diagram</b> (AWVD) for a set of
+	 * weighted point sites, clipped to the provided bounding rectangle.
 	 * <p>
-	 * MWVDs are a generalisation of Voronoi diagrams where each site has a weight
-	 * associated with it. These weights influence the boundaries between cells in
-	 * the diagram. Instead of being equidistant from generator points, the
-	 * boundaries are defined by the <b>ratio</b> of distances to the weighted
-	 * generator points. This results in characteristically curved cell boundaries,
-	 * unlike the straight line boundaries seen in standard Voronoi diagrams.
+	 * AWVDs are a generalisation of standard Voronoi diagrams where each site has
+	 * an additive weight. Distances are compared using an adjusted metric of the
+	 * form:
 	 * 
-	 * @param sites  A list of PVectors, each representing one site:
-	 *               <code>(.x, .y)</code> represent the coordinate and
-	 *               <b><code>.z</code> represents weight</b>.
-	 * @param bounds an array of the form [minX, minY, maxX, maxY] representing the
-	 *               bounds of the diagram. The boundary must cover all points.
-	 * @return a GROUP PShape, where each child shape is a Voronoi cell
-	 * @since 2.0
+	 * <pre>
+	 *   d(p, s) = ||p - s|| - w
+	 * </pre>
+	 * 
+	 * where {@code s} is the site location and {@code w} is its weight. Increasing
+	 * a site's weight tends to expand its cell; decreasing it tends to shrink the
+	 * cell. Unlike standard Voronoi diagrams, AWVD cell boundaries are generally
+	 * <i>curved</i> (hyperbolic arcs), and some sites may end up with empty cells
+	 * depending on weights and configuration.
+	 * <p>
+	 * Each input {@link PVector} encodes one site where:
+	 * <ul>
+	 * <li>{@code (.x, .y)} is the site coordinate</li>
+	 * <li>{@code .z} is the site's weight (in the same units as {@code x/y})</li>
+	 * </ul>
+	 *
+	 * @param weightedSites a collection of weighted sites encoded as PVectors:
+	 *                      {@code (.x, .y)} position and {@code .z} weight
+	 * @param bounds        an array of the form {@code [minX, minY, maxX, maxY]}
+	 *                      defining the clipping bounds of the diagram; must fully
+	 *                      contain all sites
+	 * @return a GROUP {@link PShape} where each child shape is a (possibly curved)
+	 *         AWVD cell polygon clipped to {@code bounds}
+	 * @since 2.2
 	 */
-	public static PShape multiplicativelyWeightedVoronoi(Collection<PVector> sites, double[] bounds) {
-		return multiplicativelyWeightedVoronoi(sites, bounds, false);
+	public static PShape additivelyWeightedVoronoi(Collection<PVector> weightedSites, double[] bounds) {
+		return additivelyWeightedVoronoi(weightedSites, bounds, false);
+	}
+
+	/**
+	 * Generates an <b>additively weighted Voronoi diagram</b> (AWVD) for a set of
+	 * weighted point sites, clipped to the provided bounding rectangle.
+	 * <p>
+	 * AWVDs are a generalisation of standard Voronoi diagrams where each site has
+	 * an additive weight. Distances are compared using an adjusted metric of the
+	 * form:
+	 * 
+	 * <pre>
+	 *   d(p, s) = ||p - s|| - w
+	 * </pre>
+	 * 
+	 * where {@code s} is the site location and {@code w} is its weight. Increasing
+	 * a site's weight tends to expand its cell; decreasing it tends to shrink the
+	 * cell. Unlike standard Voronoi diagrams, AWVD cell boundaries are generally
+	 * <i>curved</i> (hyperbolic arcs), and some sites may end up with empty cells
+	 * depending on weights and configuration.
+	 * <p>
+	 * Each input {@link PVector} encodes one site where:
+	 * <ul>
+	 * <li>{@code (.x, .y)} is the site coordinate</li>
+	 * <li>{@code .z} is the site's weight (in the same units as {@code x/y})</li>
+	 * </ul>
+	 * <p>
+	 * Post-processing:
+	 * <ul>
+	 * <li>If {@code forceConforming} is {@code true}, additional meshing/coverage
+	 * operations are applied to remove tiny gaps between adjacent cells and
+	 * simplify the interior boundaries.</li>
+	 * </ul>
+	 *
+	 * @param weightedSites   a collection of weighted sites encoded as PVectors:
+	 *                        {@code (.x, .y)} position and {@code .z} weight
+	 * @param bounds          an array of the form {@code [minX, minY, maxX, maxY]}
+	 *                        defining the clipping bounds of the diagram; must
+	 *                        fully contain all sites
+	 * @param forceConforming whether to apply additional processing to try to
+	 *                        ensure adjacent cells form a conforming coverage
+	 *                        (i.e., no tiny gaps between cells)
+	 * @return a GROUP {@link PShape} where each child shape is a (possibly curved)
+	 *         AWVD cell polygon clipped to {@code bounds}
+	 * @since 2.2
+	 */
+	public static PShape additivelyWeightedVoronoi(Collection<PVector> weightedSites, double[] bounds, boolean forceConforming) {
+		var sites = weightedSites.stream().map(s -> PGS.coordFromPVector(s)).toList();
+		var e = new Envelope(bounds[0], bounds[2], bounds[1], bounds[3]); // x,x,y,y
+
+		AdditivelyWeightedVoronoi vd = new AdditivelyWeightedVoronoi(GEOM_FACTORY, 0.2);
+		List<? extends Geometry> cells = vd.computeCells(sites, e);
+
+		if (forceConforming) {
+			cells = PGS_Meshing.fixBreaks(cells, 1); // gapWidth==1 suits errTol==0.2
+			var simple = CoverageSimplifier.simplifyInner(cells.toArray(Geometry[]::new), 1);
+			cells = Arrays.asList(simple);
+		} else {
+			// Produces rather dense output, so simplify using conservative DCE relevance.
+			final DCETerminationCallback dceCallback = (currentVertex, relevance, verticesRemaining) -> relevance >= 15;
+
+			cells = cells.stream().map(cell -> {
+				var ring = DiscreteCurveEvolution.process((LineString) cell.getBoundary(), dceCallback);
+				return ring;
+			}).toList();
+		}
+
+		var awvd = toPShape(cells);
+		PGS_Conversion.setAllFillColor(awvd, Colors.WHITE);
+		PGS_Conversion.setAllStrokeColor(awvd, Colors.PINK, 2);
+
+		return awvd;
 	}
 
 	/**
@@ -531,7 +602,31 @@ public final class PGS_Voronoi {
 	 * generator points. This results in characteristically curved cell boundaries,
 	 * unlike the straight line boundaries seen in standard Voronoi diagrams.
 	 * 
-	 * @param sites           A list of PVectors, each representing one site:
+	 * @param weightedSites A list of PVectors, each representing one site:
+	 *                      <code>(.x, .y)</code> represent the coordinate and
+	 *                      <b><code>.z</code> represents weight</b>.
+	 * @param bounds        an array of the form [minX, minY, maxX, maxY]
+	 *                      representing the bounds of the diagram. The boundary
+	 *                      must cover all points.
+	 * @return a GROUP PShape, where each child shape is a Voronoi cell
+	 * @since 2.0
+	 */
+	public static PShape multiplicativelyWeightedVoronoi(Collection<PVector> weightedSites, double[] bounds) {
+		return multiplicativelyWeightedVoronoi(weightedSites, bounds, false);
+	}
+
+	/**
+	 * Generates a Multiplicatively Weighted Voronoi Diagrams diagram for a set of
+	 * weighted sites.
+	 * <p>
+	 * MWVDs are a generalisation of Voronoi diagrams where each site has a weight
+	 * associated with it. These weights influence the boundaries between cells in
+	 * the diagram. Instead of being equidistant from generator points, the
+	 * boundaries are defined by the <b>ratio</b> of distances to the weighted
+	 * generator points. This results in characteristically curved cell boundaries,
+	 * unlike the straight line boundaries seen in standard Voronoi diagrams.
+	 * 
+	 * @param weightedSites   A list of PVectors, each representing one site:
 	 *                        <code>(.x, .y)</code> represent the coordinate and
 	 *                        <b><code>.z</code> represents weight</b>.
 	 * @param bounds          an array of the form [minX, minY, maxX, maxY]
@@ -543,14 +638,16 @@ public final class PGS_Voronoi {
 	 * @return a GROUP PShape, where each child shape is a Voronoi cell
 	 * @since 2.0
 	 */
-	public static PShape multiplicativelyWeightedVoronoi(Collection<PVector> sites, double[] bounds, boolean forceConforming) {
-		var faces = MultiplicativelyWeightedVoronoi.getMWVFromPVectors(sites.stream().toList(), bounds);
-		Geometry geoms = PGS.GEOM_FACTORY.createGeometryCollection(faces.toArray(new Geometry[] {}));
+	public static PShape multiplicativelyWeightedVoronoi(Collection<PVector> weightedSites, double[] bounds, boolean forceConforming) {
+		var faces = MultiplicativelyWeightedVoronoi.getMWVFromPVectors(weightedSites.stream().toList(), bounds);
+		Geometry geoms = GEOM_FACTORY.createGeometryCollection(faces.toArray(new Geometry[] {}));
 		if (forceConforming) {
-			geoms = GeometrySnapper.snapToSelf(geoms, 1e-6, true); // slow
+			geoms = GeometrySnapper.snapToSelf(geoms, 1e-5, true); // slow
 		}
 		var s = PGS_Conversion.toPShape(geoms);
-//		s = PGS_Meshing.fixBreaks(s, 1e-4, 10); // faster than GeometrySnapper, less robust
+//		if (forceConforming) {
+//			s = PGS_Meshing.fixBreaks(s, 1e-4); // faster than GeometrySnapper, less robust
+//		}
 		return s;
 	}
 
@@ -628,6 +725,124 @@ public final class PGS_Voronoi {
 		return toPShape(fpvd.getDiagram());
 	}
 
+	/**
+	 * Computes a <b>power diagram</b> (a.k.a. <i>Laguerre–Voronoi</i> diagram) for
+	 * a set of <b>weighted</b> sites, with no clipping bounds.
+	 * <p>
+	 * Each site is given as a {@link PVector} where {@code (.x, .y)} is the site
+	 * location and {@code .z} is its weight.
+	 * <h3>Intuition</h3> A power diagram is the weighted analogue of a standard
+	 * Voronoi diagram, but it still produces <b>straight-edged (polygonal)
+	 * cells</b>. Increasing a site's weight can allow it to “win” territory even
+	 * when it is farther away in ordinary Euclidean distance.
+	 * <p>
+	 * Unlike an <b>additively-weighted Voronoi diagram</b> (Apollonius diagram),
+	 * which typically yields <b>curved</b> boundaries, power diagrams use <i>power
+	 * distance</i> (squared distance with a weight offset), which keeps boundaries
+	 * <b>linear</b>.
+	 *
+	 * @param weightedSites collection of sites encoded as PVectors:
+	 *                      {@code (.x, .y)} = position, {@code .z} = weight
+	 * @return a GROUP {@link PShape} whose children are the (closed) polygonal
+	 *         cells of the power diagram; empty/degenerate cells are omitted
+	 * @see #powerDiagram(Collection, double[])
+	 * @since 2.2
+	 */
+	public static PShape powerDiagram(Collection<PVector> weightedSites) {
+		return powerDiagram(weightedSites, null);
+	}
+
+	/**
+	 * Computes a <b>power diagram</b> (a.k.a. <i>Laguerre–Voronoi</i> diagram) for
+	 * a set of <b>weighted</b> sites.
+	 * <p>
+	 * Each site is given as a {@link PVector} where {@code (.x, .y)} is the site
+	 * location and {@code .z} is its weight.
+	 * <h3>Intuition</h3> A power diagram is the weighted analogue of a standard
+	 * Voronoi diagram, but it still produces <b>straight-edged (polygonal)
+	 * cells</b>. Conceptually, each site has an associated “strength” (its weight)
+	 * that offsets distance: a site with a larger weight can “win” territory even
+	 * if it is farther away in ordinary Euclidean terms. Power cells may be empty
+	 * (i.e. fewer cells than sites) and may not contain the site.
+	 * <p>
+	 * Unlike an <b>additively-weighted Voronoi diagram</b> (a.k.a. Apollonius
+	 * diagram), where distance is modified by <i>subtracting</i> a radius/weight
+	 * and cell boundaries are typically <b>curved</b> (circular arcs), the power
+	 * diagram uses <i>power distance</i> (squared distance with a weight offset),
+	 * which keeps boundaries <b>linear</b> and cells convex.
+	 * <p>
+	 * Note: in practice, weights often need to differ substantially in magnitude
+	 * (roughly on the order of ~100×) before the effect is visually obvious.
+	 *
+	 * @param weightedSites collection of sites encoded as PVectors:
+	 *                      {@code (.x, .y)} = position, {@code .z} = weight
+	 * @param bounds        optional clipping bounds as
+	 *                      {@code [minX, minY, maxX, maxY]}. If {@code null}, the
+	 *                      diagram is left unclipped.
+	 * @return a GROUP {@link PShape} whose children are the (closed) polygonal
+	 *         cells of the power diagram; empty/degenerate cells are omitted
+	 * @since 2.2
+	 * @see #powerDiagram(Collection)
+	 */
+	public static PShape powerDiagram(Collection<PVector> weightedSites, @Nullable double[] bounds) {
+		// NOTE r^2
+		var sites = weightedSites.stream().map(z -> new PowerDiagram2D.Site(z.x, z.y, z.z * z.z)).toList();
+		final Rect r = bounds == null ? null : new Rect(bounds[0], bounds[1], bounds[2], bounds[3]);
+		var cells = PowerDiagram2D.computeCells(sites, r);
+		var faces = cells.stream().map(cell -> {
+			var points = cell.polygon().stream().map(q -> new PVector((float) q.x(), (float) q.y())).collect(Collectors.toList());
+			if (!points.get(0).equals(points.get(points.size() - 1))) {
+				points.add(points.get(0)); // unclosed by default, so close
+			}
+			return PGS_Conversion.fromPVector(points);
+		}).filter(Objects::nonNull).toList();
+
+		return PGS_Conversion.flatten(faces);
+	}
+
+	/**
+	 * Computes a <b>Manhattan (L1) Voronoi diagram</b> for a set of sites,
+	 * optionally clipped to an axis-aligned bounding box.
+	 * <p>
+	 * In a Manhattan Voronoi diagram, distance is measured using the <i>L1</i>
+	 * (a.k.a. “city-block” or “taxicab”) metric. Each output cell contains the
+	 * points for which a given site is the <b>nearest</b> site under this metric
+	 * (ties may occur along cell boundaries).
+	 * <p>
+	 * If {@code bounds} is {@code null}, clipping bounds are computed automatically
+	 * from the input sites using their axis-aligned envelope (i.e. the min/max of
+	 * {@code x} and {@code y}). Note that this envelope is often a tight fit; if
+	 * you want visible “infinite” outer cells, pass an expanded bounding box.
+	 * <p>
+	 * Compared to a standard (Euclidean/L2) Voronoi diagram, Manhattan Voronoi
+	 * cells tend to align with the coordinate axes and produce characteristic
+	 * 45°/axis- aligned edges.
+	 *
+	 * @param sites  collection of {@link PVector} sites (only {@code x} and
+	 *               {@code y} are used)
+	 * @param bounds optional clipping bounds as {@code [minX, minY, maxX, maxY]}
+	 *               defining the axis-aligned rectangle to which the diagram is
+	 *               restricted. If {@code null}, bounds are derived from the sites'
+	 *               envelope.
+	 * @return a {@link PShape} representing the (optionally clipped) Manhattan
+	 *         Voronoi cells (a GROUP shape whose children are polygonal regions)
+	 * @since 2.2
+	 */
+	public static PShape manhattanVoronoi(Collection<PVector> sites, @Nullable double[] bounds) {
+		var coords = sites.stream().map(PGS::coordFromPVector).toList();
+		Envelope e;
+		if (bounds == null) {
+			var mp = GEOM_FACTORY.createMultiPointFromCoords(coords.toArray(Coordinate[]::new));
+			e = mp.getEnvelopeInternal();
+		} else {
+			e = new Envelope(bounds[0], bounds[2], bounds[1], bounds[3]);
+		}
+		var vSites = ManhattanVoronoi.generate(coords, e, false);
+
+		var cells = vSites.stream().map(s -> s.toPolygon(GEOM_FACTORY)).toList();
+		return toPShape(cells);
+	}
+
 	static Polygon toPolygon(ThiessenPolygon polygon) {
 		Coordinate[] coords = new Coordinate[polygon.getEdges().size() + 1];
 		int i = 0;
@@ -636,7 +851,7 @@ public final class PGS_Voronoi {
 		}
 		coords[i] = new Coordinate(polygon.getEdges().get(0).getA().x, polygon.getEdges().get(0).getA().y); // close polygon
 
-		Polygon p = PGS.GEOM_FACTORY.createPolygon(coords);
+		Polygon p = GEOM_FACTORY.createPolygon(coords);
 		p.setUserData(polygon.getIndex()); // preserve polygon index
 		return p;
 	}
@@ -661,5 +876,30 @@ public final class PGS_Voronoi {
 			vertices.add(new Vertex(coord.x, coord.y, 0));
 		}
 		return vertices;
+	}
+
+	/**
+	 * Collects coordinate sets into groups, handling nested GeometryCollections
+	 * uniformly.
+	 */
+	private static void collectVertexGroups(Geometry geom, List<List<Vertex>> groups, List<Vertex> allVertices) {
+		if (geom == null || geom.isEmpty()) {
+			return;
+		}
+
+		// GeometryCollection covers MultiPoint/MultiLineString/MultiPolygon and more.
+		if (geom instanceof GeometryCollection gc) {
+			for (int i = 0; i < gc.getNumGeometries(); i++) {
+				collectVertexGroups(gc.getGeometryN(i), groups, allVertices);
+			}
+			return;
+		}
+
+		// For Polygon/LineString/LinearRing/Point etc.
+		List<Vertex> featureVertices = toVertex(geom.getCoordinates());
+		if (!featureVertices.isEmpty()) {
+			groups.add(featureVertices);
+			allVertices.addAll(featureVertices);
+		}
 	}
 }

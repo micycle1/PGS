@@ -1,11 +1,10 @@
 package micycle.pgs.commons;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.SplittableRandom;
 
 import org.jgrapht.Graph;
@@ -14,56 +13,63 @@ import org.jgrapht.alg.util.NeighborCache;
 import org.jgrapht.util.CollectionUtil;
 
 /**
- * Finds a solution to a graph coloring using a genetic algorithm.
+ * Memetic (GA + local search) solver for the k-Coloring problem on a JGraphT
+ * graph.
  * <p>
- * This class implements the technique described in <i>Genetic Algorithm Applied
- * to the Graph Coloring Problem</i> by <i>Musa M. Hindi and Roman V.
- * Yampolskiy</i>.
- * <p>
- * The genetic algorithm process continues until it either finds a solution
- * (i.e. 0 conflicts between adjacent vertices) or the algorithm has been run
- * for the predefined number of generations.
- * <p>
- * The goal of the algorithm is to improve the fitness of the population (a
- * coloring) by mating its fittest individuals to produce superior offspring
- * that offer a better solution to the problem. This process continues until a
- * terminating condition is reached which could be simply that the total number
- * of generations has been run or any other parameter like non-improvement of
- * fitness over a certain number of generations or that a solution for the
- * problem has been found.
- * 
- * @author Soroush Javadi
- * @author Refactored for JGraphT by Michael Carleton
+ * The algorithm searches for a proper coloring by minimizing the number of
+ * conflicting edges (adjacent vertices with the same color). It targets a
+ * 4-coloring first; if unsuccessful within the generation limit, it repairs the
+ * best found assignment into a proper coloring using up to 5 colors.
  *
- * @param <V> the graph vertex type
- * @param <E> the graph edge type
+ * <p>
+ * Approach (concise):
+ * <ul>
+ * <li>Representation: int chromosome of length |V|; gene = color in [0,
+ * k-1].</li>
+ * <li>Fitness: number of conflicting edges (counted once per edge).</li>
+ * <li>Initialization: strong seeds via DSATUR and degree-ordered greedy, plus
+ * random individuals.</li>
+ * <li>Selection: tournament; elitism preserves the best individuals each
+ * generation.</li>
+ * <li>Crossover: uniform (favoring agreement) and occasional 2-point
+ * crossover.</li>
+ * <li>Mutation: conflict-directed; for conflicted vertices choose a valid color
+ * using a boolean mask (micro-optimized); otherwise minimize conflicts.</li>
+ * <li>Local search: steepest-descent conflict repair applied to each child
+ * (memetic step).</li>
+ * <li>Diversification: partial re-seeding on stagnation to escape local
+ * minima.</li>
+ * <li>Precomputation: integer vertex IDs and neighbor arrays for fast inner
+ * loops.</li>
+ * <li>Termination: success when fitness = 0 or after maxGenerations; fallback
+ * repair guarantees a proper coloring.</li>
+ * </ul>
+ *
+ * @param <V> graph vertex type
+ * @param <E> graph edge type
  */
 public class GeneticColoring<V, E> implements VertexColoringAlgorithm<V> {
 
 	private final int vertexCount;
 	private final int maxGenerations;
 	private final int populationSize;
-	// fitness threshold for choosing a parent selection and mutation algorithm
 	private final int fitnessThreshold;
 	private SplittableRandom rand;
 	private int colorsCount;
 
-	final Map<V, Integer> colors;
+	final java.util.Map<V, Integer> colors;
 	private final List<int[]> neighborCache;
-	final Map<V, Integer> vertexIds;
+	final java.util.Map<V, Integer> vertexIds;
 
-	/**
-	 * Creates with a population size of 50; "the value was chosen after testing a
-	 * number of different population sizes. The value 50 was the least value that
-	 * produced the desired results".
-	 * 
-	 * @param graph
-	 */
-	public GeneticColoring(Graph<V, E> graph) {
-		this(graph, 100, 50, 4);
+	// Precomputed degrees and degree order
+	private final int[] degrees;
+	private final int[] degreeOrder;
+
+	public GeneticColoring(Graph<V, E> graph, long seed) {
+		this(graph, 200, 100, 4, seed); // larger defaults to give memetic search room
 	}
 
-	public GeneticColoring(Graph<V, E> graph, int maxGenerations, int populationSize, int fitnessThreshold) {
+	public GeneticColoring(Graph<V, E> graph, int maxGenerations, int populationSize, int fitnessThreshold, long seed) {
 		if (graph == null || maxGenerations < 1 || populationSize < 2) {
 			throw new IllegalArgumentException();
 		}
@@ -72,32 +78,49 @@ public class GeneticColoring<V, E> implements VertexColoringAlgorithm<V> {
 		this.maxGenerations = maxGenerations;
 		this.populationSize = populationSize;
 		this.fitnessThreshold = fitnessThreshold;
-		this.rand = new SplittableRandom(); // NOTE unseeded
+		this.rand = new SplittableRandom(seed);
 
 		this.colors = CollectionUtil.newHashMapWithExpectedSize(graph.vertexSet().size());
 
+		// Vertex IDs 0..n-1
 		this.vertexIds = new HashMap<>();
 		int i = 0;
 		for (V v : graph.vertexSet()) {
-			vertexIds.put(v, i);
+			vertexIds.put(v, i++);
 		}
 
-		this.neighborCache = new ArrayList<>();
-		final NeighborCache<V, E> neighborCacheJT = new NeighborCache<>(graph);
+		// Neighbor cache indexed by ID
+		this.neighborCache = new ArrayList<>(vertexCount);
+		for (int k = 0; k < vertexCount; k++) {
+			neighborCache.add(null);
+		}
+		final NeighborCache<V, E> nc = new NeighborCache<>(graph);
 		for (V v : graph.vertexSet()) {
-			neighborCache.add(neighborCacheJT.neighborsOf(v).stream().map(vertexIds::get) // map vertex objects to Integer ID
-					.mapToInt(Integer::intValue) // Integer -> int
-					.toArray());
+			int id = vertexIds.get(v);
+			int[] neigh = nc.neighborsOf(v).stream().map(vertexIds::get).mapToInt(Integer::intValue).toArray();
+			neighborCache.set(id, neigh);
+		}
+
+		// Degrees and degree-descending order for greedy seeding
+		this.degrees = new int[vertexCount];
+		for (int v = 0; v < vertexCount; v++) {
+			degrees[v] = neighborCache.get(v).length;
+		}
+		this.degreeOrder = new int[vertexCount];
+		{
+			Integer[] idx = new Integer[vertexCount];
+			for (int v = 0; v < vertexCount; v++) {
+				idx[v] = v;
+			}
+			Arrays.sort(idx, (a, b) -> Integer.compare(degrees[b], degrees[a]));
+			for (int k = 0; k < vertexCount; k++) {
+				degreeOrder[k] = idx[k];
+			}
 		}
 	}
 
 	@Override
 	public Coloring<V> getColoring() {
-		/*
-		 * For PGS, attempt to find a 4-color (optimal) solution within the
-		 * maxGenerations threshold. If a solution is not found, find a 5-color solution
-		 * instead (much more attainable/faster).
-		 */
 		if (!getSolution(4)) {
 			getSolution(5);
 		}
@@ -121,43 +144,214 @@ public class GeneticColoring<V, E> implements VertexColoringAlgorithm<V> {
 		return neighborCache.get(v);
 	}
 
+	private int[] greedyColoringByOrder(int[] order) {
+		int[] chrom = new int[vertexCount];
+		Arrays.fill(chrom, -1);
+		boolean[] used = new boolean[colorsCount];
+		int[] candidates = new int[colorsCount];
+		for (int idx = 0; idx < vertexCount; idx++) {
+			int v = order[idx];
+			Arrays.fill(used, false);
+			for (int u : neighborsOf(v)) {
+				int cu = chrom[u];
+				if (cu >= 0) {
+					used[cu] = true;
+				}
+			}
+			int n = 0;
+			for (int c = 0; c < colorsCount; c++) {
+				if (!used[c]) {
+					candidates[n++] = c;
+				}
+			}
+			chrom[v] = (n > 0) ? candidates[rand.nextInt(n)] : rand.nextInt(colorsCount);
+		}
+		return chrom;
+	}
+
+	// DSATUR seeding (bounded to colorsCount; if blocked, choose least-conflicting
+	// color)
+	private int[] dsaturColoring() {
+		int[] color = new int[vertexCount];
+		Arrays.fill(color, -1);
+		int[] sat = new int[vertexCount]; // saturation degree
+		int[] usedCounts = new int[vertexCount]; // temporary reuse per vertex
+		boolean[][] neighborColors = new boolean[vertexCount][colorsCount];
+
+		for (int colored = 0; colored < vertexCount; colored++) {
+			int v = -1, bestSat = -1, bestDeg = -1;
+			for (int u = 0; u < vertexCount; u++) {
+				if (color[u] != -1) {
+					continue;
+				}
+				int s = sat[u];
+				int d = degrees[u];
+				if (s > bestSat || (s == bestSat && d > bestDeg)) {
+					bestSat = s;
+					bestDeg = d;
+					v = u;
+				}
+			}
+			Arrays.fill(neighborColors[v], false);
+			for (int w : neighborsOf(v)) {
+				if (color[w] >= 0) {
+					neighborColors[v][color[w]] = true;
+				}
+			}
+			int pick = -1, bestConf = Integer.MAX_VALUE;
+			for (int c = 0; c < colorsCount; c++) {
+				int conf = 0;
+				for (int w : neighborsOf(v)) {
+					if (color[w] == c) {
+						conf++;
+					}
+				}
+				if (!neighborColors[v][c]) {
+					pick = c;
+					break;
+				} // conflict-free available
+				if (conf < bestConf) {
+					bestConf = conf;
+					pick = c;
+				}
+			}
+			color[v] = pick;
+			// update saturation of neighbors
+			for (int w : neighborsOf(v)) {
+				if (color[w] == -1) {
+					if (!neighborColors[w][pick]) {
+						neighborColors[w][pick] = true;
+						sat[w]++;
+					}
+				}
+			}
+		}
+		return color;
+	}
+
+	private int[] shuffledOrderFrom(int[] base) {
+		int[] order = base.clone();
+		for (int i = order.length - 1; i > 0; i--) {
+			int j = rand.nextInt(i + 1);
+			int t = order[i];
+			order[i] = order[j];
+			order[j] = t;
+		}
+		return order;
+	}
+
 	private class Population {
 
-		private List<Individual> population; // NOTE heap suitable?
+		private List<Individual> population;
 		private int generation = 0;
+		private int bestSoFar = Integer.MAX_VALUE;
+		private int stagnantGens = 0;
+
+		// memetic parameters
+		private final int eliteCount = Math.max(2, populationSize / 5);
+		private final int tournamentK = 3;
+		private final int localSearchCap = Math.max(200, vertexCount * 10);
 
 		Population() {
 			population = new ArrayList<>(populationSize);
-			for (int i = 0; i < populationSize; i++) {
+
+			// Strong seeds
+			population.add(new Individual(dsaturColoring()));
+			population.add(new Individual(greedyColoringByOrder(degreeOrder)));
+
+			int greedySeeds = Math.max(2, populationSize / 10);
+			for (int s = 2; s < greedySeeds; s++) {
+				int[] order = shuffledOrderFrom(degreeOrder);
+				population.add(new Individual(greedyColoringByOrder(order)));
+			}
+
+			while (population.size() < populationSize) {
 				population.add(new Individual());
 			}
+
 			sort();
+			bestSoFar = bestFitness();
 		}
 
-		/**
-		 * With each generation the bottom performing half of the population is removed
-		 * and new randomly generated chromosomes are added.
-		 */
 		public void nextGeneration() {
-			final int halfSize = populationSize / 2;
-			List<Individual> children = new ArrayList<>(halfSize);
-			for (int i = 0; i < halfSize; i++) {
-				Parents parents = selectParents();
-				Individual child = new Individual(parents);
+			// Elitism: keep top eliteCount
+			List<Individual> next = new ArrayList<>(populationSize);
+			for (int i = 0; i < eliteCount; i++) {
+				next.add(population.get(i));
+			}
+
+			// Fill the rest with children
+			while (next.size() < populationSize) {
+				Individual p1 = tournamentSelect();
+				Individual p2 = tournamentSelect();
+				Individual child = rand.nextBoolean() ? new Individual(new Parents(p1, p2)) : new Individual(twoPointCrossover(p1, p2));
 				child.mutate();
-				children.add(child);
+				child.localSearch(localSearchCap); // memetic step
+				next.add(child);
 			}
-			for (int i = 0; i < halfSize; i++) {
-				population.set(populationSize - i - 1, children.get(i));
-			}
+
+			population = next;
 			sort();
 			generation++;
+
+			int best = bestFitness();
+			if (best < bestSoFar) {
+				bestSoFar = best;
+				stagnantGens = 0;
+			} else {
+				stagnantGens++;
+				if (stagnantGens >= 20 && best > 0) {
+					diversify();
+					stagnantGens = 0;
+					bestSoFar = bestFitness();
+				}
+			}
 		}
 
-		/**
-		 * 
-		 * @return the best/fittest color assignment
-		 */
+		private Individual tournamentSelect() {
+			Individual best = null;
+			for (int i = 0; i < tournamentK; i++) {
+				Individual cand = population.get(rand.nextInt(populationSize));
+				if (best == null || cand.fitness < best.fitness) {
+					best = cand;
+				}
+			}
+			return best;
+		}
+
+		private Parents twoPointCrossover(Individual a, Individual b) {
+			int i = rand.nextInt(vertexCount);
+			int j = rand.nextInt(vertexCount);
+			if (i > j) {
+				int t = i;
+				i = j;
+				j = t;
+			}
+			int[] child = new int[vertexCount];
+			System.arraycopy(a.chromosome, 0, child, 0, i);
+			System.arraycopy(b.chromosome, i, child, i, j - i);
+			System.arraycopy(a.chromosome, j, child, j, vertexCount - j);
+			Individual wrapped = new Individual(child);
+			return new Parents(wrapped, wrapped); // reuse Individual(Parents) signature via a wrapper
+		}
+
+		private void diversify() {
+			// re-seed the weakest third
+			int start = (int) (populationSize * 0.67);
+			for (int i = start; i < populationSize; i++) {
+				if (rand.nextDouble() < 0.5) {
+					population.set(i, new Individual());
+				} else {
+					if (rand.nextBoolean()) {
+						population.set(i, new Individual(dsaturColoring()));
+					} else {
+						population.set(i, new Individual(greedyColoringByOrder(shuffledOrderFrom(degreeOrder))));
+					}
+				}
+			}
+			sort();
+		}
+
 		public int[] bestIndividual() {
 			return population.get(0).chromosome;
 		}
@@ -170,65 +364,14 @@ public class GeneticColoring<V, E> implements VertexColoringAlgorithm<V> {
 			return generation;
 		}
 
-		/**
-		 * Choosing a parent selection and mutation method depends on the state of the
-		 * population and how close it is to finding a solution.
-		 * <p>
-		 * If the best fitness is greater than {@code fitnessThreshold} then
-		 * parentSelection1 and mutation1 are used. Otherwise, parentSelection2 and
-		 * mutation2 are used. This alteration is the result of experimenting with the
-		 * different data sets. It was observed that when the best fitness score is low
-		 * (i.e. approaching an optimum) the usage of parent selection 2 (which copies
-		 * the best chromosome as the new child) along with mutation2 (which randomly
-		 * selects a color for the violating vertex) results in a solution more often
-		 * and more quickly than using the other two respective methods.
-		 */
-		private Parents selectParents() {
-			return bestFitness() > fitnessThreshold ? selectParents1() : selectParents2();
-		}
-
-		private Parents selectParents1() {
-			Individual tempParent1, tempParent2, parent1, parent2;
-			tempParent1 = population.get(rand.nextInt(populationSize));
-			do {
-				tempParent2 = population.get(rand.nextInt(populationSize));
-			} while (tempParent1 == tempParent2);
-			parent1 = (tempParent1.fitness > tempParent2.fitness ? tempParent2 : tempParent1);
-			do {
-				tempParent1 = population.get(rand.nextInt(populationSize));
-				do {
-					tempParent2 = population.get(rand.nextInt(populationSize));
-				} while (tempParent1 == tempParent2);
-				parent2 = (tempParent1.fitness > tempParent2.fitness ? tempParent2 : tempParent1);
-			} while (parent1 == parent2);
-			return new Parents(parent1, parent2);
-		}
-
-		private Parents selectParents2() {
-			return new Parents(population.get(0), population.get(1));
-		}
-
 		private void sort() {
 			population.sort(Comparator.comparingInt(m -> m.fitness));
 		}
 
-		/**
-		 * A candidate graph coloring.
-		 */
 		private class Individual {
-			/**
-			 * each element of chromosome represents a color of a vertex
-			 */
 			private int[] chromosome;
-			/**
-			 * fitness is defined as the number of 'bad' edges, i.e., edges connecting two
-			 * vertices with the same color
-			 */
 			private int fitness;
 
-			/**
-			 * Instantiate a random individual.
-			 */
 			Individual() {
 				chromosome = new int[vertexCount];
 				for (int i = 0; i < vertexCount; i++) {
@@ -237,75 +380,144 @@ public class GeneticColoring<V, E> implements VertexColoringAlgorithm<V> {
 				scoreFitness();
 			}
 
-			// crossover
+			Individual(int[] chromosome) {
+				this.chromosome = chromosome.clone();
+				scoreFitness();
+			}
+
+			// Uniform crossover favoring agreement
 			Individual(Parents parents) {
 				chromosome = new int[vertexCount];
-				final int crosspoint = rand.nextInt(vertexCount);
-				System.arraycopy(parents.parent1.chromosome, 0, chromosome, 0, crosspoint);
-				System.arraycopy(parents.parent2.chromosome, crosspoint, chromosome, crosspoint, vertexCount - crosspoint);
+				final int[] p1 = parents.parent1.chromosome;
+				final int[] p2 = parents.parent2.chromosome;
+				for (int i = 0; i < vertexCount; i++) {
+					int c1 = p1[i], c2 = p2[i];
+					chromosome[i] = (c1 == c2) ? c1 : (rand.nextBoolean() ? c1 : c2);
+				}
 				scoreFitness();
 			}
 
 			public void mutate() {
-				if (bestFitness() > fitnessThreshold) {
-					mutate1();
-				} else {
-					mutate2();
-				}
-			}
+				// Conflict-directed mutation
+				boolean[] used = new boolean[colorsCount];
+				int[] candidates = new int[colorsCount];
 
-			private void mutate1() {
-				for (int v = 0; v < vertexCount; v++) {
-					for (int w : neighborsOf(v)) {
-						if (chromosome[v] == chromosome[w]) {
-							HashSet<Integer> validColors = new HashSet<>();
+				// early phase vs late phase adapts intensity
+				int passes = (bestFitness() > fitnessThreshold) ? 2 : 1;
+				for (int pass = 0; pass < passes; pass++) {
+					for (int v = 0; v < vertexCount; v++) {
+						int cv = chromosome[v];
+						boolean conflict = false;
+						for (int w : neighborsOf(v)) {
+							if (cv == chromosome[w]) {
+								conflict = true;
+								break;
+							}
+						}
+						if (!conflict) {
+							continue;
+						}
+
+						// try best color for v
+						Arrays.fill(used, false);
+						for (int u : neighborsOf(v)) {
+							used[chromosome[u]] = true;
+						}
+						int n = 0;
+						for (int c = 0; c < colorsCount; c++) {
+							if (!used[c]) {
+								candidates[n++] = c;
+							}
+						}
+						if (n > 0) {
+							chromosome[v] = candidates[rand.nextInt(n)];
+						} else {
+							// pick color minimizing conflicts
+							int bestC = cv, bestConf = Integer.MAX_VALUE;
 							for (int c = 0; c < colorsCount; c++) {
-								validColors.add(c);
+								int conf = 0;
+								for (int u : neighborsOf(v)) {
+									if (chromosome[u] == c) {
+										conf++;
+									}
+								}
+								if (conf < bestConf) {
+									bestConf = conf;
+									bestC = c;
+								}
 							}
-							for (int u : neighborsOf(v)) {
-								validColors.remove(chromosome[u]);
-							}
-							if (!validColors.isEmpty()) {
-								chromosome[v] = (int) validColors.toArray()[rand.nextInt(validColors.size())];
-							}
-							break;
+							chromosome[v] = bestC;
 						}
 					}
 				}
 				scoreFitness();
 			}
 
-			private void mutate2() {
-				for (int v = 0; v < vertexCount; v++) {
-					for (int w : neighborsOf(v)) {
-						if (chromosome[v] == chromosome[w]) {
-							chromosome[v] = rand.nextInt(colorsCount);
-							break;
+			// Local search: steepest-descent conflict repair with cap
+			void localSearch(int cap) {
+				int moves = 0;
+				boolean improved = true;
+				int[] colorCounts = new int[colorsCount];
+
+				while (improved && moves < cap && fitness > 0) {
+					improved = false;
+
+					// Build a random permutation of vertices to reduce bias
+					int[] order = shuffledOrderFrom(degreeOrder);
+					for (int idx = 0; idx < vertexCount && moves < cap; idx++) {
+						int v = order[idx];
+						int cv = chromosome[v];
+
+						int currentConf = 0;
+						for (int w : neighborsOf(v)) {
+							if (chromosome[w] == cv) {
+								currentConf++;
+							}
+						}
+						if (currentConf == 0) {
+							continue;
+						}
+
+						Arrays.fill(colorCounts, 0);
+						for (int w : neighborsOf(v)) {
+							colorCounts[chromosome[w]]++;
+						}
+
+						int bestC = cv;
+						int bestScore = currentConf;
+						for (int c = 0; c < colorsCount; c++) {
+							int score = colorCounts[c];
+							if (score < bestScore || (score == bestScore && c < bestC)) {
+								bestScore = score;
+								bestC = c;
+							}
+						}
+						if (bestC != cv) {
+							chromosome[v] = bestC;
+							moves++;
+							// Recompute fitness lazily after a batch; here recompute fully occasionally
+							if ((moves & 15) == 0) {
+								scoreFitness();
+							}
+							improved = true;
 						}
 					}
+					// finalize fitness recompute
+					scoreFitness();
 				}
-				scoreFitness();
 			}
 
-			/**
-			 * A bad edge is defined as an edge connecting two vertices that have the same
-			 * color. The number of bad edges is the fitness score for the chromosome
-			 * (higher number is worse fitness).
-			 */
 			private void scoreFitness() {
 				int f = 0;
 				for (int v = 0; v < vertexCount; v++) {
+					int cv = chromosome[v];
 					for (int w : neighborsOf(v)) {
-						if (chromosome[v] == chromosome[w]) {
+						if (w > v && cv == chromosome[w]) {
 							f++;
 						}
 					}
 				}
-				/*
-				 * Divide by 2 to account for double counting. Doesn't really matter if we're
-				 * simply using fitness score to sort individuals.
-				 */
-				fitness = f / 2;
+				fitness = f;
 			}
 		}
 

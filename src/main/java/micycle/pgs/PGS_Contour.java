@@ -1,29 +1,23 @@
 package micycle.pgs;
 
 import static micycle.pgs.PGS.GEOM_FACTORY;
-import static micycle.pgs.PGS.prepareLinesPShape;
 import static micycle.pgs.PGS_Conversion.fromPShape;
 import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
+import java.util.function.DoubleBinaryOperator;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import javax.vecmath.Point3d;
 
 import org.jgrapht.alg.interfaces.ShortestPathAlgorithm;
 import org.jgrapht.alg.shortestpath.BFSShortestPath;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 import org.locationtech.jts.algorithm.Angle;
-import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.dissolve.LineDissolver;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
@@ -38,7 +32,9 @@ import org.locationtech.jts.operation.buffer.BufferOp;
 import org.locationtech.jts.operation.buffer.BufferParameters;
 import org.locationtech.jts.operation.buffer.OffsetCurve;
 import org.locationtech.jts.operation.distance.IndexedFacetDistance;
+import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.locationtech.jts.simplify.DouglasPeuckerSimplifier;
+import org.locationtech.jts.simplify.TopologyPreservingSimplifier;
 import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.IQuadEdge;
 import org.tinfour.common.SimpleTriangle;
@@ -48,14 +44,11 @@ import org.tinfour.contour.ContourBuilderForTin;
 import org.tinfour.standard.IncrementalTin;
 import org.tinfour.utils.HilbertSort;
 import org.tinfour.utils.SmoothingFilter;
-import org.twak.camp.Corner;
-import org.twak.camp.Edge;
-import org.twak.camp.Machine;
-import org.twak.camp.Skeleton;
-import org.twak.utils.collections.Loop;
-import org.twak.utils.collections.LoopL;
 
+import com.github.micycle1.geoblitz.SegmentVoronoiIndex;
 import com.github.micycle1.geoblitz.YStripesPointInAreaLocator;
+import com.github.micycle1.grassfire4j.Grassfire;
+import com.github.micycle1.grassfire4j.model.Model.Skeleton;
 import com.google.common.collect.Lists;
 
 import micycle.medialAxis.MedialAxis;
@@ -63,6 +56,7 @@ import micycle.medialAxis.MedialAxis.MedialDisk;
 import micycle.pgs.PGS.LinearRingIterator;
 import micycle.pgs.color.ColorUtils;
 import micycle.pgs.color.Colors;
+import micycle.pgs.commons.MarchingSquares;
 import micycle.pgs.commons.PEdge;
 import net.jafama.FastMath;
 import processing.core.PConstants;
@@ -70,16 +64,22 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Methods for producing different kinds of shape contours. *
+ * Methods for producing interior contour structures from shapes.
+ *
  * <p>
- * Contours produced by this class are always computed within the interior of
- * shapes. Contour lines and features (such as isolines, medial axes, and
- * fields) are extracted as vector linework following the topology or scalar
- * properties of the enclosed shape area, rather than operations that modify the
- * shape boundary.
+ * The algorithms in this class extract <em>derived linework</em>—such as
+ * medial/chordal axes, straight skeletons, isolines, and field-derived
+ * curves—computed from within the interior of a polygonal {@link PShape}. These
+ * results describe the shape’s internal topology or scalar fields (e.g.,
+ * distance-to-boundary), rather than directly editing the original boundary.
+ *
+ * <p>
+ * <b>Note:</b> Outputs are typically vector linework (polylines) and may be
+ * returned as GROUP {@code PShape}s. Depending on geometry complexity, some
+ * methods may produce branching networks, multiple disjoint components, or
+ * degenerate segments.
  *
  * @author Michael Carleton
- *
  */
 public final class PGS_Contour {
 
@@ -140,7 +140,7 @@ public final class PGS_Contour {
 	 * <p>
 	 * In its primitive form, the chordal axis is constructed by joining the
 	 * midpoints of the chords and the centroids of junction and terminal triangles
-	 * of the delaunay trianglution of a shape.
+	 * of the delaunay triangulation of a shape.
 	 * <p>
 	 * It can be considered a more useful alternative to the medial axis for
 	 * obtaining skeletons of discrete shapes.
@@ -150,7 +150,6 @@ public final class PGS_Contour {
 	 *         segment (possibly >2 vertices)
 	 * @since 1.3.0
 	 */
-	@SuppressWarnings("unchecked")
 	public static PShape chordalAxis(PShape shape) {
 		/*-
 		 * See 'Rectification of the Chordal Axis Transform and a New Criterion for
@@ -262,123 +261,46 @@ public final class PGS_Contour {
 	 * @return PShape based on the input polygon structure, either as a single or
 	 *         multi-polygon skeleton representation.
 	 */
-	public static PShape straightSkeleton(PShape shape) {
-		return straightSkeleton(shape, Integer.MAX_VALUE);
-	}
-
-	/**
-	 * Computes the straight skeleton for a shape. This method signature accepts an
-	 * integer to control the number of nearest neighboring edges considered during
-	 * collision detection. In practice this can speed up computation considerably.
-	 * <p>
-	 * A straight skeleton is a skeletal structure similar to the medial axis,
-	 * consisting of straight-line segments only. Roughly, it is the geometric graph
-	 * whose edges are the traces of vertices of shrinking mitered offset curves of
-	 * the polygon.
-	 * <p>
-	 * For a single polygon, this method returns a GROUP PShape containing three
-	 * children:
-	 * <ul>
-	 * <li>Child 0: GROUP PShape consisting of skeleton faces.</li>
-	 * <li>Child 1: LINES PShape representing branches, which are lines connecting
-	 * the skeleton to the polygon's edge.</li>
-	 * <li>Child 2: LINES PShape composed of bones, depicting the pure straight
-	 * skeleton of the polygon.</li>
-	 * </ul>
-	 * <p>
-	 * For multi-polygons, the method returns a master GROUP PShape. This master
-	 * shape includes multiple skeleton GROUP shapes, each corresponding to a single
-	 * polygon and structured as described above.
-	 * 
-	 * @param shape a single polygon (that can contain holes), or a multi polygon
-	 *              (whose polygons can contain holes)
-	 * @param k     The number of nearest neighboring edges to consider when
-	 *              searching for collisions using the spatial index. This parameter
-	 *              balances performance and correctness: too few neighbors may miss
-	 *              collisions, while too many may reduce the performance benefits
-	 *              of the spatial index.
-	 * @return PShape based on the input polygon structure, either as a single or
-	 *         multi-polygon skeleton representation.
-	 * @since 2.1
-	 */
 	@SuppressWarnings("unchecked")
-	public static PShape straightSkeleton(PShape shape, int k) {
+	public static PShape straightSkeleton(PShape shape) {
 		final Geometry g = fromPShape(shape);
-		var skeletons = GeometryExtracter.extract(g, Geometry.TYPENAME_POLYGON).parallelStream().map(p -> straightSkeleton((Polygon) p, k)).toList();
+		var skeletons = GeometryExtracter.extract(g, Geometry.TYPENAME_POLYGON).parallelStream().map(p -> straightSkeleton((Polygon) p)).toList();
 		return PGS_Conversion.flatten(skeletons);
 	}
 
-	private static PShape straightSkeleton(Polygon polygon, int k) {
-		final Set<Coordinate> edgeCoordsSet = new HashSet<>();
-		final Skeleton skeleton;
-		final LoopL<Edge> loops = new LoopL<>(); // list of loops
-		final Machine speed = new Machine(1); // every edge same speed
-
-		final LinearRing[] rings = new LinearRingIterator(polygon).getLinearRings();
-		for (int i = 0; i < rings.length; i++) {
-			loops.add(ringToLoop(rings[i], i > 0, edgeCoordsSet, speed));
-		}
-
-		final PShape lines = new PShape(PConstants.GROUP);
-		final PShape faces = new PShape(PConstants.GROUP);
-		/*
-		 * Create PEdges first to prevent lines being duplicated in output shapes since
-		 * faces share branches and bones.
-		 */
-		final Set<PEdge> branchEdges = new HashSet<>();
-		final Set<PEdge> boneEdges = new HashSet<>();
+	private static PShape straightSkeleton(Polygon polygon) {
+		Skeleton skeleton = null;
 		try {
-			skeleton = new Skeleton(loops, k);
-			skeleton.skeleton(); // compute skeleton
-
-			skeleton.output.faces.values().forEach(f -> {
-				List<Point3d> vertices = f.getLoopL().iterator().next().stream().toList();
-				List<PVector> faceVertices = new ArrayList<>();
-
-				for (int i = 0; i < vertices.size(); i++) {
-					final Point3d p1 = vertices.get(i);
-					final Point3d p2 = vertices.get((i + 1) % vertices.size());
-					faceVertices.add(new PVector((float) p1.x, (float) p1.y));
-					final boolean a = edgeCoordsSet.contains(new Coordinate(p1.x, p1.y)); // NOTE Coordinate()
-					final boolean b = edgeCoordsSet.contains(new Coordinate(p2.x, p2.y));
-					if (a ^ b) { // branch (xor)
-						branchEdges.add(new PEdge(p1.x, p1.y, p2.x, p2.y));
-					} else {
-						if (!a) { // bone
-							boneEdges.add(new PEdge(p1.x, p1.y, p2.x, p2.y));
-						}
-					}
-				}
-
-				PShape face = PGS_Conversion.fromPVector(faceVertices);
-				face.setStroke(true);
-				face.setStrokeWeight(1);
-				face.setStroke(ColorUtils.composeColor(147, 112, 219));
-				faces.addChild(face);
-			});
-		} catch (Exception ignore) {
-			// hide init or collision errors from console
+			skeleton = Grassfire.computeSkeleton(polygon);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return null; // filtered by caller flatten()
 		}
 
-		final PShape bones = prepareLinesPShape(null, null, 2);
-		boneEdges.forEach(e -> {
-			bones.vertex(e.a.x, e.a.y);
-			bones.vertex(e.b.x, e.b.y);
-		});
-		bones.endShape();
+		final PShape out = new PShape(PConstants.GROUP);
+		var faces = skeleton.asPolygonFaces();
+		var branches = PGS.prepareLinesPShape(ColorUtils.composeColor(40, 235, 180), null, null);
+		var bones = PGS.prepareLinesPShape(null, null, null);
 
-		final PShape branches = prepareLinesPShape(ColorUtils.composeColor(40, 235, 180), null, null);
-		branchEdges.forEach(e -> {
-			branches.vertex(e.a.x, e.a.y);
-			branches.vertex(e.b.x, e.b.y);
+		skeleton.segments().forEach(segment -> {
+			if (segment.info1() != null || segment.info2() != null) {
+				branches.vertex((float) segment.p1().x, (float) segment.p1().y);
+				branches.vertex((float) segment.p2().x, (float) segment.p2().y);
+			} else {
+				bones.vertex((float) segment.p1().x, (float) segment.p1().y);
+				bones.vertex((float) segment.p2().x, (float) segment.p2().y);
+			}
 		});
 		branches.endShape();
+		bones.endShape();
 
-		lines.addChild(faces);
-		lines.addChild(branches);
-		lines.addChild(bones);
+		var facesShape = toPShape(faces);
+		facesShape = PGS_Conversion.setAllStrokeColor(facesShape, Colors.PINK, 1);
+		out.addChild(facesShape);
+		out.addChild(branches);
+		out.addChild(bones);
 
-		return lines;
+		return out;
 	}
 
 	/**
@@ -445,7 +367,7 @@ public final class PGS_Contour {
 
 		PShape out = toPShape(DouglasPeuckerSimplifier.simplify(contourGeom, 0.25).intersection(g));
 		PGS_Conversion.disableAllFill(out);
-		PGS_Conversion.setAllStrokeColor(out, micycle.pgs.color.Colors.PINK, 4, PConstants.SQUARE);
+		PGS_Conversion.setAllStrokeColor(out, Colors.PINK, 4, PConstants.SQUARE);
 
 		return out;
 	}
@@ -533,7 +455,7 @@ public final class PGS_Contour {
 	 *                             requirements of the application. Values in the
 	 *                             range 5 to 40 are good candidates for
 	 *                             investigation.
-	 * @return a map of {isoline -> height of the isoline}
+	 * @return a map of {isoline (path) -> height of the isoline}
 	 */
 	public static Map<PShape, Float> isolines(Collection<PVector> points, double intervalValueSpacing, double isolineMin, double isolineMax, int smoothing) {
 		final IncrementalTin tin = new IncrementalTin(intervalValueSpacing / 10);
@@ -563,7 +485,7 @@ public final class PGS_Contour {
 			isoline.setStroke(Colors.PINK);
 
 			PVector last = new PVector(Float.NaN, Float.NaN);
-			isoline.beginShape();
+			isoline.beginShape(PConstants.PATH);
 			for (int i = 0; i < coords.length; i += 2) {
 				float vx = (float) coords[i];
 				float vy = (float) coords[i + 1];
@@ -585,42 +507,176 @@ public final class PGS_Contour {
 	}
 
 	/**
-	 * Generates vector contour lines representing a distance field derived from a
-	 * shape.
+	 * Extracts contour lines (isolines) from a user-defined 2D “height map” over a
+	 * rectangular region.
 	 * <p>
-	 * The distance field for a shape assigns each interior point a value equal to
-	 * the shortest Euclidean distance from that point to the shape boundary. This
-	 * method computes a series of contour lines (isolines), where each line
-	 * connects points with the same distance value, effectively visualizing the
-	 * "levels" of the distance field like elevation contours on a topographic map.
+	 * You provide a function {@code f(x,y)} that returns a numeric value for every
+	 * point. This method samples that function on a regular grid over
+	 * {@code bounds}, then traces contour lines that connect points with the same
+	 * value (like elevation contours on a map) using the Marching Squares
+	 * algorithm.
+	 * <p>
+	 * This is a very versatile way to turn simple math functions into computational
+	 * patterns—ripples, bands, interference fields, cellular textures, etc.—without
+	 * manually constructing geometry. The contour value range is determined
+	 * automatically from the sampled minimum/maximum values.
 	 *
-	 * @param shape   A polygonal shape for which to calculate the distance field
-	 *                contours.
-	 * @param spacing The interval between successive contour lines, i.e., the
-	 *                distance value difference between each contour.
-	 * @return A GROUP PShape. Each child of the group is a closed contour line or a
-	 *         section (partition) of a contour line, collectively forming the
-	 *         contour map.
+	 * @param bounds          Sampling bounds as {@code [xmin, ymin, xmax, ymax]}.
+	 * @param sampleSpacing   Grid spacing in coordinate units (smaller yields finer
+	 *                        detail but is slower). 5 is sufficient for very high
+	 *                        quality.
+	 * @param contourInterval The value step between successive contour lines.
+	 * @param valueFunction   Function that returns the value at {@code (x,y)}.
+	 * @return A map of isoline shapes to their corresponding contour (height)
+	 *         value.
+	 * @since 2.2
+	 */
+	public static PShape isolinesFromFunction(double[] bounds, double sampleSpacing, double contourInterval, DoubleBinaryOperator valueFunction) {
+		return isolinesFromFunction(bounds, sampleSpacing, contourInterval, valueFunction, Double.NaN, Double.NaN);
+	}
+
+	/**
+	 * Extracts contour lines (isolines) from a user-defined 2D “height map” over a
+	 * rectangular region, within a specified value range.
+	 * <p>
+	 * You provide a function {@code f(x,y)} that returns a numeric value for every
+	 * point. This method samples that function on a regular grid over
+	 * {@code bounds}, then traces contour lines that connect points with the same
+	 * value (like elevation contours on a map) using the Marching Squares
+	 * algorithm.
+	 * <p>
+	 * This is a very versatile way to turn simple math functions into computational
+	 * patterns. Only contour lines with values in {@code [isolineMin, isolineMax]}
+	 * are produced.
+	 *
+	 * @param bounds          Sampling bounds as {@code [xmin, ymin, xmax, ymax]}.
+	 * @param sampleSpacing   Grid spacing in coordinate units (smaller yields finer
+	 *                        detail but is slower). 5 is sufficient for very high
+	 *                        quality.
+	 * @param contourInterval The value step between successive contour lines.
+	 * @param valueFunction   Function that returns the value at {@code (x,y)}.
+	 * @param isolineMin      Minimum contour value (inclusive).
+	 * @param isolineMax      Maximum contour value (inclusive).
+	 * @return A map of isoline shapes to their corresponding contour (height)
+	 *         value.
+	 * @since 2.2
+	 */
+	public static PShape isolinesFromFunction(double[] bounds, double sampleSpacing, double contourInterval, DoubleBinaryOperator valueFunction,
+			double isolineMin, double isolineMax) {
+		var isolines = MarchingSquares.isolines(bounds, sampleSpacing, contourInterval, isolineMin, isolineMax, valueFunction).keySet();
+
+		var out = PGS_Conversion.flatten(isolines);
+		PGS_Conversion.setAllStrokeColor(out, Colors.PINK, 4, PConstants.SQUARE);
+
+		return out;
+	}
+
+	/**
+	 * Extracts the <em>zero</em> contour (the 0-level set) from a user-defined 2D
+	 * “height map” over a rectangular region.
+	 * <p>
+	 * You provide a function {@code f(x,y)} that returns a numeric value for every
+	 * point. This method samples that function on a regular grid over
+	 * {@code bounds}, then traces the isoline where {@code f(x,y) = 0} using the
+	 * Marching Squares algorithm.
+	 * <p>
+	 * The resulting contour follows the boundary between positive and negative
+	 * values of {@code f} (i.e., where the function crosses zero). This is useful
+	 * for extracting implicit curves such as circles, signed-distance fields, and
+	 * other zero-crossing patterns.
+	 *
+	 * @param bounds        Sampling bounds as {@code [xmin, ymin, xmax, ymax]}.
+	 * @param sampleSpacing Grid spacing in coordinate units (smaller yields finer
+	 *                      detail but is slower). 5 is sufficient for very high
+	 *                      quality.
+	 * @param valueFunction Function that returns the value at {@code (x,y)}.
+	 * @return A {@link PShape} containing all extracted zero-value isoline
+	 *         polylines within {@code bounds}.
+	 * @since 2.2
+	 */
+	public static PShape isolineZeroFromFunction(double[] bounds, double sampleSpacing, DoubleBinaryOperator valueFunction) {
+		var isolines = MarchingSquares.isolineZero(bounds, sampleSpacing, valueFunction).keySet();
+
+		var out = PGS_Conversion.flatten(isolines);
+		PGS_Conversion.setAllStrokeColor(out, Colors.PINK, 4, PConstants.SQUARE);
+
+		return out;
+	}
+
+	/**
+	 * Generates interior contour lines (isolines) that radiate from a shape
+	 * “center”.
+	 * <p>
+	 * The result resembles offset curves (inward parallels), but the underlying
+	 * metric is not a pure boundary offset. Instead, contours are derived from a
+	 * distance-like field that balances distance to the boundary with distance to
+	 * an interior pole (chosen automatically), producing characteristic
+	 * rings/levels emanating from the shape’s interior.
+	 *
+	 * @param shape   A polygonal {@link PShape} to generate contours for.
+	 * @param spacing The contour interval between successive lines.
+	 * @return A {@code GROUP} {@link PShape} whose children form the contour set
+	 *         inside {@code shape}.
 	 * @since 1.3.0
+	 * @see #distanceField(PShape, double, PVector)
 	 */
 	public static PShape distanceField(PShape shape, double spacing) {
-		Geometry g = fromPShape(shape);
-		MedialAxis m = new MedialAxis(g);
+		PVector mic = new PVector();
+		PGS_Optimisation.maximumInscribedCircle(shape, 1, mic);
+		return distanceField(shape, spacing, mic);
+	}
 
-		List<PVector> disks = new ArrayList<>();
-		double min = Double.POSITIVE_INFINITY;
-		double max = Double.NEGATIVE_INFINITY;
-		for (MedialDisk d : m.getDisks()) {
-			disks.add(new PVector((float) d.position.x, (float) d.position.y, (float) d.distance));
-			min = Math.min(d.distance, min);
-			max = Math.max(d.distance, max);
-		}
+	/**
+	 * Generates interior contour lines (isolines) that radiate from a specified
+	 * pole point within a polygon.
+	 * <p>
+	 * The result is similar in spirit to inward offset curves, but governed by a
+	 * distance-like field that blends proximity to the boundary with proximity to
+	 * the given {@code pole}. This tends to produce characteristic “rings”/levels
+	 * centred on {@code pole}, clipped to the shape interior.
+	 *
+	 * @param shape   A polygonal {@link PShape} to generate contours for.
+	 * @param spacing The contour interval between successive lines.
+	 * @param pole    The point that the contours are oriented around (need not lie
+	 *                inside {@code shape}).
+	 * @return A {@code GROUP} {@link PShape} whose children form the contour set
+	 *         inside {@code shape}.
+	 * @since 2.2
+	 */
+	public static PShape distanceField(PShape shape, double spacing, PVector pole) {
+		final Geometry g = fromPShape(shape);
+		final var svi = new SegmentVoronoiIndex((Polygon) g, Math.max(spacing / 5.0, 4));
 
-		PShape out = PGS_Conversion.flatten(PGS_Contour.isolines(disks, spacing, min, max, 1).keySet());
-		PShape i = PGS_ShapeBoolean.intersect(shape, out);
-		PGS_Conversion.disableAllFill(i); // since some shapes may be polygons
-		PGS_Conversion.setAllStrokeColor(i, micycle.pgs.color.Colors.PINK, 4, PConstants.SQUARE);
-		return i;
+		DoubleBinaryOperator fn = (x, y) -> {
+			Coordinate c = new Coordinate(x, y);
+			double dGeo = svi.distanceToNearestSegment(c);
+			double dPoint = Math.sqrt((x - pole.x) * (x - pole.x) + (y - pole.y) * (y - pole.y));
+			return dGeo - dPoint; // no abs() as abs produces cusp where dGeo==dPoint
+		};
+
+		var env = g.getEnvelopeInternal();
+		env.expandBy(1);
+		double[] bounds = { env.getMinX(), env.getMinY(), env.getMaxX(), env.getMaxY() };
+
+		double sampleSpacing = Math.max(spacing / 10.0, 4); // heuristic
+		var contourMap = isolinesFromFunction(bounds, sampleSpacing, spacing, fn);
+
+		/*
+		 * Experienced 'Overlay input is mixed-dimension' issue when intersecting
+		 * geometry collection of isolines with g - so force to MultiLineString.
+		 */
+
+		var contours = PGS_Conversion.getChildren(contourMap).stream().map(c -> {
+			var cg = fromPShape(c);
+			return cg.getGeometryType().equals(Geometry.TYPENAME_POLYGON) ? cg.getBoundary() : cg;
+		}).toArray(LineString[]::new);
+
+		var contourStrings = PGS.GEOM_FACTORY.createMultiLineString(contours);
+		var out = toPShape(OverlayNG.overlay(contourStrings, g, OverlayNG.INTERSECTION));
+
+		PGS_Conversion.setAllStrokeColor(out, Colors.PINK, 4, PConstants.SQUARE);
+
+		return out;
 	}
 
 	/**
@@ -648,7 +704,7 @@ public final class PGS_Contour {
 		final double[] b = new double[4];
 		PGS_Hull.boundingBox(shape, b); // write to bounding box
 		final var g = fromPShape(shape);
-		final var pointLocator = new YStripesPointInAreaLocator((Polygon) g.buffer(10));
+		final var pointLocator = new YStripesPointInAreaLocator(g.buffer(10));
 		final IndexedFacetDistance distIndex = new IndexedFacetDistance(g);
 		double adjustedArea = g.getArea() / PGS_ShapePredicates.density(shape);
 
@@ -660,7 +716,7 @@ public final class PGS_Contour {
 				return null;
 			}
 			var dist = voidDistance(distIndex.distance(point), p, reference);
-			return new PVector((float) c.x, (float) c.y, (float) dist);
+			return new PVector((float) c.x, (float) c.y, dist);
 		}).filter(Objects::nonNull).toList();
 
 		var isolines = isolines(fieldPoints, Math.max(1, intervals), 11);
@@ -668,7 +724,7 @@ public final class PGS_Contour {
 
 		PShape contours = PGS_ShapeBoolean.intersect(shape, lines);
 		contours = PGS_Conversion.disableAllFill(contours); // since some shapes may be polygons
-		PGS_Conversion.setAllStrokeColor(contours, micycle.pgs.color.Colors.PINK, 4, PConstants.SQUARE);
+		PGS_Conversion.setAllStrokeColor(contours, Colors.PINK, 4, PConstants.SQUARE);
 
 		return contours;
 	}
@@ -931,11 +987,11 @@ public final class PGS_Contour {
 		}
 
 		if (g.getCoordinates().length > 2000) {
-			g = DouglasPeuckerSimplifier.simplify(g, 0.25);
+			g = TopologyPreservingSimplifier.simplify(g, 0.25);
 		}
 
 		final BufferParameters bufParams = new BufferParameters(8, BufferParameters.CAP_FLAT, style.style, BufferParameters.DEFAULT_MITRE_LIMIT);
-//		bufParams.setSimplifyFactor(5); // can produce "poor" yet interesting results
+		// bufParams.setSimplifyFactor(5); // can produce "poor" yet interesting results
 
 		spacing = Math.max(1, Math.abs(spacing)); // ensure positive and >=1
 		spacing = outwards ? spacing : -spacing;
@@ -1009,8 +1065,8 @@ public final class PGS_Contour {
 	 * @param spacingY
 	 * @return
 	 */
-	private static ArrayList<PVector> generateGrid(double minX, double minY, double maxX, double maxY, double spacingX, double spacingY) {
-		ArrayList<PVector> grid = new ArrayList<>();
+	private static List<PVector> generateGrid(double minX, double minY, double maxX, double maxY, double spacingX, double spacingY) {
+		List<PVector> grid = new ArrayList<>();
 		double[] y = generateDoubleSequence(minY, maxY, spacingY);
 		double[] x = generateDoubleSequence(minX, maxX, spacingX);
 
@@ -1047,32 +1103,6 @@ public final class PGS_Contour {
 			coords[i / 2] = new Coordinate(vx, vy);
 		}
 		return GEOM_FACTORY.createLineString(coords);
-	}
-
-	private static Loop<Edge> ringToLoop(LinearRing ring, boolean hole, Set<Coordinate> edgeCoordsSet, Machine speed) {
-		Coordinate[] coords = ring.getCoordinates();
-		if (!hole && !Orientation.isCCW(coords)) {
-			reverse(coords); // exterior should be CCW
-		}
-		if (hole && Orientation.isCCW(coords)) {
-			reverse(coords); // holes should be CW
-		}
-
-		List<Corner> corners = new ArrayList<>();
-		Loop<Edge> loop = new Loop<>();
-
-		for (Coordinate coord : coords) {
-			corners.add(new Corner(coord.x, coord.y));
-			edgeCoordsSet.add(coord);
-		}
-
-		for (int j = 0; j < corners.size() - 1; j++) {
-			Edge edge = new Edge(corners.get(j), corners.get((j + 1) % (corners.size() - 1)));
-			edge.machine = speed;
-			loop.append(edge);
-		}
-
-		return loop;
 	}
 
 }

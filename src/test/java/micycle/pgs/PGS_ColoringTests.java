@@ -1,11 +1,11 @@
 package micycle.pgs;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -56,10 +56,14 @@ class PGS_ColoringTests {
 
 	@Test
 	void testMeshColoring() {
-		Map<PShape, Integer> coloring = PGS_Coloring.colorMesh(GROUP_SHAPE, ColoringAlgorithm.RLF);
-		assertEquals(2, coloring.size());
-		List<Integer> colorClasses = new ArrayList<>(coloring.values());
-		assertNotSame(colorClasses.get(0), colorClasses.get(1));
+		for (ColoringAlgorithm alg : ColoringAlgorithm.values()) {
+			var coloring = PGS_Coloring.colorMesh(GROUP_SHAPE, alg);
+
+			assertEquals(2, coloring.size(), "Unexpected size for algorithm: " + alg);
+
+			var colorClasses = new ArrayList<>(coloring.values());
+			assertNotEquals(colorClasses.get(0), colorClasses.get(1), "Expected different colors for algorithm: " + alg);
+		}
 	}
 
 	@Test

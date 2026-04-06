@@ -124,7 +124,7 @@ public class MaximumInscribedAARectangle {
 				bottomEdge = findEdge(x, false, edgeList);
 			}
 		}
-		
+
 		return r;
 	}
 
@@ -219,7 +219,7 @@ public class MaximumInscribedAARectangle {
 	}
 
 	private class Edge {
-		
+
 		int xmin, xmax; /* horiz, +x is right */
 		int ymin, ymax; /* vertical, +y is down */
 		Double m, b; /* y = mx + b */

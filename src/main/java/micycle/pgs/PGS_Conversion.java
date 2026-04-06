@@ -10,7 +10,6 @@ import static processing.core.PConstants.QUADRATIC_VERTEX;
 import java.awt.Shape;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.PathIterator;
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -18,6 +17,9 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,7 +34,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.apache.commons.io.FileUtils;
 import org.jgrapht.alg.drawing.IndexedFRLayoutAlgorithm2D;
 import org.jgrapht.alg.drawing.LayoutAlgorithm2D;
 import org.jgrapht.alg.drawing.model.Box2D;
@@ -59,8 +60,8 @@ import org.locationtech.jts.io.WKBReader;
 import org.locationtech.jts.io.WKBWriter;
 import org.locationtech.jts.io.WKTReader;
 import org.locationtech.jts.io.WKTWriter;
-import org.locationtech.jts.io.geojson.GeoJsonReader;
-import org.locationtech.jts.io.geojson.GeoJsonWriter;
+import org.locationtech.jts.operation.polygonize.Polygonizer;
+import org.locationtech.jts.precision.GeometryPrecisionReducer;
 import org.locationtech.jts.util.GeometricShapeFactory;
 import org.scoutant.polyline.PolylineDecoder;
 
@@ -87,6 +88,25 @@ import processing.core.PVector;
  * Though certain conversion methods are utilised internally by the library,
  * they have been kept public to cater to more complex user requirements.
  * <p>
+ * <b>Closed-path semantics:</b> Processing {@code PShape}s can be closed
+ * without unambiguously indicating whether they represent <i>linework</i> (a
+ * closed {@code LineString}) or an <i>areal</i> region (a {@code Polygon}). PGS
+ * resolves this ambiguity using the shape's {@code kind}:
+ * <ul>
+ * <li>A closed {@code PShape} with {@code kind == PConstants.POLYGON} is
+ * treated as polygonal and converts to a JTS {@code Polygon} (holes via
+ * contours are supported).</li>
+ * <li>A {@code PShape} with {@code kind == PConstants.PATH} is treated as
+ * lineal and converts to a JTS {@code LineString}, even if closed.</li>
+ * <li>If a shape is <i>not</i> closed, it is always treated as lineal and
+ * converts to a JTS {@code LineString}, regardless of {@code kind} (an unclosed
+ * {@code POLYGON} kind cannot form a valid JTS {@code Polygon}).</li>
+ * </ul>
+ * When converting from JTS to {@code PShape}, {@link #toPShape(Geometry)}
+ * encodes these semantics by setting the output {@code PShape}'s {@code kind}
+ * to {@code POLYGON} for polygonal JTS geometries and {@code PATH} for lineal
+ * JTS geometries, ensuring round-trip stability.
+ * <p>
  * Note: JTS {@code Geometries} do not provide support for bezier curves. As
  * such, bezier curves are linearised/divided into straight line segments during
  * the conversion process from {@code PShape} to JTS {@code Geometry}.
@@ -96,14 +116,13 @@ import processing.core.PVector;
  * {@link #PRESERVE_STYLE} (set to true by default), and
  * {@link #HANDLE_MULTICONTOUR} (set to false by default). Users are encouraged
  * to review these flags as part of more complicated workflows with this class.
- * 
+ *
  * @author Michael Carleton
  */
 public final class PGS_Conversion {
 
 	/** Approximate distance between successive sample points on bezier curves */
 	static final float BEZIER_SAMPLE_DISTANCE = 2;
-	private static Field MATRIX_FIELD, PSHAPE_FILL_FIELD;
 	/**
 	 * A boolean flag that affects whether a PShape's style (fillColor, strokeColor,
 	 * strokeWidth) is preserved during <code>PShape->Geometry->PShape</code>
@@ -129,7 +148,41 @@ public final class PGS_Conversion {
 	 * <a href="https://github.com/micycle1/PGS/issues/67">GitHub</a>.
 	 */
 	public static boolean HANDLE_MULTICONTOUR = false;
+	/**
+	 * When converting JTS {@link org.locationtech.jts.geom.Geometry Geometry} to a
+	 * Processing {@link processing.core.PShape PShape} (inside
+	 * {@link #toPShape(Geometry) toPShape()}), this flag controls whether PGS
+	 * performs an <b>explicit</b> precision reduction step <em>before</em> writing
+	 * vertices as floats.
+	 * <p>
+	 * Processing {@code PShape} vertices are stored as 32-bit floats, so a
+	 * <code>double-&gt;float</code> cast always introduces rounding. If this flag
+	 * is <code>false</code> (default), PGS relies on that implicit rounding only.
+	 * <p>
+	 * If this flag is <code>true</code>, PGS first snap-rounds each component
+	 * geometry to a fixed grid of <code>1/1024</code> and then casts to float. This
+	 * can reduce the (very rare) chance that float rounding breaks tight
+	 * topological relationships (e.g. a conforming mesh where vertices/edges must
+	 * match exactly), at the cost of intentionally coarsening coordinates even in
+	 * cases where the float cast alone might have preserved more detail.
+	 * <p>
+	 * <b>Scope:</b> This is currently applied <b>only</b> when converting
+	 * multi-geometries / collections (i.e. {@code GeometryCollection},
+	 * {@code MultiPolygon}, {@code MultiLineString}) containing more than one
+	 * component geometry. These cases are more susceptible to float rounding
+	 * causing adjacent components to no longer share identical boundary vertices
+	 * after conversion.
+	 * <p>
+	 * See {@link org.locationtech.jts.precision.GeometryPrecisionReducer
+	 * GeometryPrecisionReducer} for more information.
+	 * <p>
+	 * Default = <code>false</code>.
+	 */
+	public static boolean FLOAT_SAFE_MESH_CONVERSION = false;
 
+	private static GeometryPrecisionReducer reducer = new GeometryPrecisionReducer(PGS.PM);
+
+	private static Field MATRIX_FIELD, PSHAPE_FILL_FIELD;
 	static {
 		try {
 			MATRIX_FIELD = PShape.class.getDeclaredField("matrix");
@@ -202,9 +255,9 @@ public final class PGS_Conversion {
 		PShape shape = new PShape();
 		// apply PGS style by default
 		shape.setFill(true);
-		shape.setFill(micycle.pgs.color.Colors.WHITE);
+		shape.setFill(Colors.WHITE);
 		shape.setStroke(true);
-		shape.setStroke(micycle.pgs.color.Colors.PINK);
+		shape.setStroke(Colors.PINK);
 		shape.setStrokeWeight(4);
 		shape.setStrokeJoin(PConstants.ROUND);
 		shape.setStrokeCap(PConstants.ROUND);
@@ -218,40 +271,68 @@ public final class PGS_Conversion {
 				} else {
 					shape.setFamily(GROUP);
 					for (int i = 0; i < g.getNumGeometries(); i++) {
-						shape.addChild(toPShape(g.getGeometryN(i)));
+						Geometry child = g.getGeometryN(i);
+						if (FLOAT_SAFE_MESH_CONVERSION) {
+							Geometry reducedChild = reducer.reduce(child);
+							reducedChild.setUserData(child.getUserData());
+							child = reducedChild;
+						}
+						shape.addChild(toPShape(child));
 					}
 				}
 				break;
-			// TODO treat closed linestrings as unfilled & unclosed paths?
-			case Geometry.TYPENAME_LINEARRING : // LinearRings are closed by definition
-			case Geometry.TYPENAME_LINESTRING : // LineStrings may be open
-				final LineString l = (LineString) g;
-				final boolean closed = l.isClosed();
+			case Geometry.TYPENAME_LINEARRING : {
+				// LinearRings are closed by definition
+				// treat as lineal
+				final LineString ring = (LineString) g;
 				shape.setFamily(PShape.PATH);
-				shape.beginShape();
-				Coordinate[] coords = l.getCoordinates();
-				for (int i = 0; i < coords.length - (closed ? 1 : 0); i++) {
+				shape.setFill(false);
+
+				shape.beginShape(PConstants.PATH); // encode polygonness
+				Coordinate[] coords = ring.getCoordinates();
+				// Skip the closing coordinate (same as first)
+				for (int i = 0; i < coords.length - 1; i++) {
 					shape.vertex((float) coords[i].x, (float) coords[i].y);
 				}
-				if (closed) { // closed vertex was skipped, so close the path
-					shape.endShape(PConstants.CLOSE);
+				shape.endShape(PConstants.CLOSE);
+				break;
+			}
+
+			case Geometry.TYPENAME_LINESTRING : {
+				// LineStrings may be open or closed.
+				// always treat as linear path (no fill)
+				final LineString l = (LineString) g;
+				final boolean closed = l.isClosed();
+
+				shape.setFamily(PShape.PATH);
+				shape.setFill(false); // never fill LineStrings (even if closed)
+
+				shape.beginShape(PConstants.PATH); // encode lineal
+				final Coordinate[] coords = l.getCoordinates();
+
+				// If closed, skip the duplicated closing vertex
+				final int n = coords.length - (closed ? 1 : 0);
+				for (int i = 0; i < n; i++) {
+					shape.vertex((float) coords[i].x, (float) coords[i].y);
+				}
+
+				if (closed) {
+					shape.endShape(PConstants.CLOSE); // close the path, still unfilled
 				} else {
-					// shape is more akin to an unconnected line: keep as PATH shape, but don't fill
-					// visually
 					shape.endShape();
-					shape.setFill(false);
 				}
 				break;
+			}
 			case Geometry.TYPENAME_POLYGON :
 				final Polygon polygon = (Polygon) g;
 				shape.setFamily(PShape.PATH);
-				shape.beginShape();
+				shape.beginShape(PConstants.POLYGON);
 
 				/*
 				 * Outer and inner loops are iterated up to length-1 to skip the point that
 				 * closes the JTS shape (same as the first point).
 				 */
-				coords = polygon.getExteriorRing().getCoordinates();
+				Coordinate[] coords = polygon.getExteriorRing().getCoordinates();
 				for (int i = 0; i < coords.length - 1; i++) {
 					final Coordinate coord = coords[i];
 					shape.vertex((float) coord.x, (float) coord.y);
@@ -313,9 +394,9 @@ public final class PGS_Conversion {
 	public static PShape toPShape(Collection<? extends Geometry> geometries) {
 		PShape shape = new PShape(GROUP);
 		shape.setFill(true);
-		shape.setFill(micycle.pgs.color.Colors.WHITE);
+		shape.setFill(Colors.WHITE);
 		shape.setStroke(true);
-		shape.setStroke(micycle.pgs.color.Colors.PINK);
+		shape.setStroke(Colors.PINK);
 		shape.setStrokeWeight(4);
 
 		geometries.forEach(g -> shape.addChild(toPShape(g)));
@@ -367,7 +448,7 @@ public final class PGS_Conversion {
 	 *         unsupported.
 	 */
 	public static Geometry fromPShape(PShape shape) {
-		Geometry g = GEOM_FACTORY.createEmpty(2);
+		Geometry g;
 
 		switch (shape.getFamily()) {
 			case PConstants.GROUP :
@@ -386,6 +467,8 @@ public final class PGS_Conversion {
 			case PShape.PRIMITIVE :
 				g = fromPrimitive(shape); // (no holes)
 				break;
+			default :
+				throw new IllegalArgumentException("Unrecognised (invalid) PShape family type: " + shape.getFamily());
 		}
 
 		if (PRESERVE_STYLE && g != null) {
@@ -469,9 +552,10 @@ public final class PGS_Conversion {
 
 	/**
 	 * Extracts the contours from a <code>POLYGON</code> or <code>PATH</code>
-	 * PShape, represented as lists of PVector points. It extracts both the exterior
-	 * contour (perimeter) and interior contours (holes). For such PShape types, all
-	 * contours after the first are guaranteed to be holes.
+	 * PShape, represented as lists of PVector points (having closing vertex). It
+	 * extracts both the exterior contour (perimeter) and interior contours (holes).
+	 * For such PShape types, all contours after the first are guaranteed to be
+	 * holes.
 	 * <p>
 	 * Background: The PShape data structure stores all vertices in a single array,
 	 * with contour breaks designated in a separate array of vertex codes. This
@@ -528,7 +612,7 @@ public final class PGS_Conversion {
 					continue;
 				default : // VERTEX
 					PVector v = shape.getVertex(i).copy();
-					// skip consecutive duplicate vertices
+					// NOTE skip consecutive duplicate vertices
 					if (lastVertex == null || !(v.x == lastVertex.x && v.y == lastVertex.y)) {
 						rings.get(currentGroup).add(v);
 						lastVertex = v;
@@ -568,20 +652,28 @@ public final class PGS_Conversion {
 			return GEOM_FACTORY.createPoint(outerRing[0]);
 		} else if (outerRing.length == 2) {
 			return GEOM_FACTORY.createLineString(outerRing);
-		} else if (shape.isClosed()) { // closed geometry or path
-			if (HANDLE_MULTICONTOUR) { // handle single shapes that *may* represent multiple shapes over many contours
-				return fromMultiContourShape(rings, false, false);
-			} else { // assume all contours beyond the first represent holes
-				LinearRing outer = GEOM_FACTORY.createLinearRing(outerRing); // should always be valid
-				LinearRing[] holes = new LinearRing[rings.size() - 1]; // Create linear ring for each hole in the shape
-				for (int j = 1; j < rings.size(); j++) {
-					final Coordinate[] innerCoords = rings.get(j);
-					holes[j - 1] = GEOM_FACTORY.createLinearRing(innerCoords);
+		} else {
+			final boolean closed = shape.isClosed();
+			final int kind = shape.getKind();
+			final boolean hasHoles = contours.size() > 1;
+
+			// POLYGON kind only matters when closed (or when holes exist)
+			final boolean polygonal = hasHoles || (closed && kind == PConstants.POLYGON);
+
+			if (polygonal) {
+				if (HANDLE_MULTICONTOUR) {
+					return fromMultiContourShape(rings, false, false);
+				} else {
+					final LinearRing outer = GEOM_FACTORY.createLinearRing(outerRing);
+					final LinearRing[] holes = new LinearRing[rings.size() - 1];
+					for (int j = 1; j < rings.size(); j++) {
+						holes[j - 1] = GEOM_FACTORY.createLinearRing(rings.get(j));
+					}
+					return GEOM_FACTORY.createPolygon(outer, holes);
 				}
-				return GEOM_FACTORY.createPolygon(outer, holes);
+			} else {
+				return GEOM_FACTORY.createLineString(outerRing);
 			}
-		} else { // not closed
-			return GEOM_FACTORY.createLineString(outerRing);
 		}
 	}
 
@@ -703,7 +795,7 @@ public final class PGS_Conversion {
 									"PGS_Conversion Error: Shape contour #%s was identified as a hole but no existing exterior rings contained it.", j));
 						}
 					}
-				} else { // this ring is new polygon (or explictly contour #1)
+				} else { // this ring is new polygon (or explicitly contour #1)
 					ring = GEOM_FACTORY.createLinearRing(contourCoords);
 					if (previousRingIsHole) {
 						previousRingIsHole = false;
@@ -835,10 +927,10 @@ public final class PGS_Conversion {
 	 */
 	public static final PShape toPointsPShape(Collection<PVector> points) {
 		PShape shape = new PShape();
-		shape.setFamily(PShape.GEOMETRY);
+		shape.setFamily(PShape.PATH);
 		shape.setStrokeCap(PConstants.ROUND);
 		shape.setStroke(true);
-		shape.setStroke(micycle.pgs.color.Colors.PINK);
+		shape.setStroke(Colors.PINK);
 		shape.setStrokeWeight(6);
 		shape.beginShape(PConstants.POINTS);
 		points.forEach(p -> shape.vertex(p.x, p.y));
@@ -916,17 +1008,52 @@ public final class PGS_Conversion {
 	 */
 	public static SimpleGraph<PVector, PEdge> toGraph(PShape shape) {
 		final SimpleGraph<PVector, PEdge> graph = new SimpleWeightedGraph<>(PEdge.class);
+
 		for (PShape child : getChildren(shape)) {
-			final int stride = child.getKind() == PShape.LINES ? 2 : 1;
-			// Handle other child shapes (e.g., faces)
-			for (int i = 0; i < child.getVertexCount() - (child.isClosed() ? 0 : 1); i += stride) {
+
+			final int kind = child.getKind();
+
+			// Contour-aware handling (preserves holes as separate rings)
+			if (kind == PConstants.POLYGON || kind == PShape.PATH) {
+				final List<List<PVector>> rings = toContours(child);
+
+				for (List<PVector> ring : rings) {
+					final int n = ring.size();
+					if (n < 2) {
+						continue;
+					}
+
+					for (int i = 0; i < n - 1; i++) {
+						final PVector a = ring.get(i);
+						final PVector b = ring.get((i + 1));
+						if (a.equals(b)) {
+							continue;
+						}
+
+						final PEdge e = new PEdge(a, b);
+						graph.addVertex(a);
+						graph.addVertex(b);
+						graph.addEdge(a, b, e);
+						graph.setEdgeWeight(e, e.length());
+					}
+				}
+
+				continue;
+			}
+
+			// Original behavior for LINES and other non-contour shapes
+			final int stride = (kind == PConstants.LINES) ? 2 : 1;
+			final int vc = child.getVertexCount();
+			final int end = vc - (child.isClosed() ? 0 : 1);
+
+			for (int i = 0; i < end; i += stride) {
 				final PVector a = child.getVertex(i);
-				final PVector b = child.getVertex((i + 1) % child.getVertexCount());
+				final PVector b = child.getVertex((i + 1) % vc);
 				if (a.equals(b)) {
 					continue;
 				}
-				final PEdge e = new PEdge(a, b);
 
+				final PEdge e = new PEdge(a, b);
 				graph.addVertex(a);
 				graph.addVertex(b);
 				graph.addEdge(a, b, e);
@@ -939,15 +1066,20 @@ public final class PGS_Conversion {
 
 	/**
 	 * Converts a given SimpleGraph consisting of PVectors and PEdges into a PShape
-	 * by polygonizing its edges. If the graph represented a shape with holes, these
-	 * will not be preserved during the conversion.
+	 * by polygonizing its edges. Nested rings are inferred as holes of the
+	 * enclosing polygon, rather than returned as separate overlapping polygons.
 	 * 
 	 * @param graph the graph to be converted into a PShape.
 	 * @return a PShape representing the polygonized edges of the graph.
 	 * @since 1.4.0
 	 */
 	public static PShape fromGraph(SimpleGraph<PVector, PEdge> graph) {
-		return PGS.polygonizeNodedEdges(graph.edgeSet());
+		final Polygonizer polygonizer = new Polygonizer();
+		var edges = graph.edgeSet().stream().map(e -> PGS.createLineString(e.a, e.b)).toList();
+		polygonizer.add(edges);
+		@SuppressWarnings("unchecked")
+		List<Polygon> polys = (List<Polygon>) polygonizer.getPolygons();
+		return toPShape(PGS.dropHolePolygons(polys, false));
 	}
 
 	/**
@@ -1111,6 +1243,8 @@ public final class PGS_Conversion {
 	 * Writes the <i>Well-Known Text</i> representation of a shape. The
 	 * <i>Well-Known Text</i> format is defined in the OGC Simple Features
 	 * Specification for SQL.
+	 * <p>
+	 * This variant uses single-precision floating point for output coordinates.
 	 *
 	 * @param shape shape to process
 	 * @return a Geometry Tagged Text string
@@ -1119,8 +1253,30 @@ public final class PGS_Conversion {
 	 */
 	public static String toWKT(PShape shape) {
 		WKTWriter writer = new WKTWriter(2);
-		writer.setPrecisionModel(new PrecisionModel(PrecisionModel.FIXED)); // 1 d.p.
-//		writer.setMaxCoordinatesPerLine(1);
+		var g = fromPShape(shape);
+		writer.setPrecisionModel(g.getPrecisionModel());
+		// writer.setMaxCoordinatesPerLine(1);
+		return writer.writeFormatted(g);
+	}
+
+	/**
+	 * Writes the <i>Well-Known Text</i> representation of a shape. The
+	 * <i>Well-Known Text</i> format is defined in the OGC Simple Features
+	 * Specification for SQL.
+	 * <p>
+	 * The precision of output coordinates is controlled via the
+	 * <code>decimalPlaces</code> parameter. A larger value will preserve more
+	 * digits after the decimal point.
+	 *
+	 * @param shape shape to process
+	 * @return a Geometry Tagged Text string
+	 * @since 2.2
+	 * @see #fromWKT(String)
+	 */
+	public static String toWKT(PShape shape, int decimalPlaces) {
+		decimalPlaces = Math.min(decimalPlaces, 10); // 10 max
+		WKTWriter writer = new WKTWriter(2);
+		writer.setPrecisionModel(new PrecisionModel(Math.pow(10, decimalPlaces - 1)));
 		return writer.writeFormatted(fromPShape(shape));
 	}
 
@@ -1171,8 +1327,10 @@ public final class PGS_Conversion {
 	public static void toWKB(PShape shape, String filename) {
 		WKBWriter writer = new WKBWriter();
 		byte[] bytes = writer.write(fromPShape(shape));
+
 		try {
-			FileUtils.writeByteArrayToFile(new File(filename), bytes);
+			Path path = Paths.get(filename);
+			Files.write(path, bytes); // creates/overwrites the file
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -1204,16 +1362,16 @@ public final class PGS_Conversion {
 	 * @return a PShape specified by the WKB in the file
 	 */
 	public static PShape fromWKB(String filename) {
-		byte[] shapeWKB;
 		try {
-			shapeWKB = FileUtils.readFileToByteArray(new File(filename));
+			Path path = Paths.get(filename);
+			byte[] shapeWKB = Files.readAllBytes(path);
+
 			WKBReader reader = new WKBReader();
 			return toPShape(reader.read(shapeWKB));
 		} catch (IOException | ParseException e) {
 			e.printStackTrace();
 			return new PShape();
 		}
-
 	}
 
 	/**
@@ -1282,36 +1440,17 @@ public final class PGS_Conversion {
 			coords.add(new Coordinate(x, y));
 		});
 
-		return toPShape(GEOM_FACTORY.createLineString(coords.toCoordinateArray()));
-	}
+		Coordinate[] coordArray = coords.toCoordinateArray();
+		boolean isClosed = coordArray.length > 1 && coordArray[0].equals2D(coordArray[coordArray.length - 1]);
 
-	/**
-	 * Writes a shape into the string representation of its <i>GeoJSON</i> format.
-	 * 
-	 * @param shape
-	 * @return json JSON string
-	 * @since 1.3.0
-	 */
-	public static String toGeoJSON(PShape shape) {
-		final GeoJsonWriter writer = new GeoJsonWriter(1);
-		writer.setForceCCW(true);
-		return writer.write(fromPShape(shape));
-	}
-
-	/**
-	 * Converts a GeoJSON representation of a shape into its PShape counterpart.
-	 * 
-	 * @param json GeoJSON string
-	 * @return PShape represented by the GeoJSON
-	 * @since 1.3.0
-	 */
-	public static PShape fromGeoJSON(String json) {
-		final GeoJsonReader reader = new GeoJsonReader(GEOM_FACTORY);
-		try {
-			return toPShape(reader.read(json));
-		} catch (ParseException e) {
-			System.err.println("Error occurred when converting json to shape.");
-			return new PShape();
+		/*
+		 * NOTE Inherently ambiguous (did the closed polyline represent an areal or
+		 * lineal geometry?). Treat closed polyline as polygon.
+		 */
+		if (isClosed && coordArray.length >= 4) {
+			return toPShape(GEOM_FACTORY.createPolygon(coordArray));
+		} else {
+			return toPShape(GEOM_FACTORY.createLineString(coordArray));
 		}
 	}
 
@@ -1373,7 +1512,7 @@ public final class PGS_Conversion {
 		shape.setStroke(closed ? Colors.PINK : Colors.WHITE);
 		shape.setStrokeWeight(2);
 
-		shape.beginShape();
+		shape.beginShape(closed ? PConstants.POLYGON : PConstants.PATH);
 		for (int i = 0; i < verticesList.size() - (closed ? 1 : 0); i++) {
 			PVector v = verticesList.get(i);
 			shape.vertex(v.x, v.y);
@@ -1395,6 +1534,93 @@ public final class PGS_Conversion {
 	 */
 	public static PShape fromPVector(PVector... vertices) {
 		return fromPVector(Arrays.asList(vertices));
+	}
+
+	/**
+	 * Creates a {@link PShape} whose geometry should be interpreted as
+	 * <em>areal</em> (a polygon), not merely a polyline.
+	 * <p>
+	 * This method always produces a polygonal shape by calling
+	 * {@code beginShape(PConstants.POLYGON)} and ensuring the vertex ring is
+	 * closed. If the supplied vertex sequence is not already closed (i.e. first
+	 * vertex is not equal to last vertex), the first vertex will be appended to
+	 * close it.
+	 * <p>
+	 * The distinction between {@code POLYGON} vs {@code PATH} matters for
+	 * downstream geometry processing semantics: use this method when the vertex
+	 * sequence represents an area and should be treated as a polygon.
+	 *
+	 * @param vertices polygon ring vertices; may be open or closed (will be forced
+	 *                 closed)
+	 * @return a {@code PShape} in the {@code PShape.PATH} family, begun with
+	 *         {@code PConstants.POLYGON} and ended with {@code CLOSE}
+	 * @since 2.2
+	 * @see #toPathPShape(Collection)
+	 * @see #fromContours(List, List)
+	 */
+	public static PShape toPolygonPShape(Collection<PVector> vertices) {
+		return fromPVectorImpl(vertices, PConstants.POLYGON, true);
+	}
+
+	/**
+	 * Creates a {@link PShape} whose geometry should be interpreted as
+	 * <em>lineal</em> (a path/linestring), even if the provided vertices happen to
+	 * form a closed loop.
+	 * <p>
+	 * This method calls {@code beginShape(PConstants.PATH)} and does
+	 * <strong>not</strong> force closure. If the input is closed (first vertex
+	 * equals last vertex), the returned {@code PShape} will be closed visually
+	 * (ended with {@code CLOSE}), but it is still semantically a {@code PATH}
+	 * rather than a {@code POLYGON}.
+	 * <p>
+	 * Use this method when the vertex sequence represents a line. This preserves
+	 * lineal semantics for later geometry processing.
+	 *
+	 * @param vertices path vertices; may be open or closed (closure is not forced)
+	 * @return a {@code PShape} in the {@code PShape.PATH} family, begun with
+	 *         {@code PConstants.PATH}; ended with {@code OPEN} or {@code CLOSE}
+	 *         depending on whether the input is already closed
+	 * @since 2.2
+	 * @see #toPolygonPShape(Collection)
+	 * @see #fromPVector(Collection)
+	 */
+	public static PShape toPathPShape(Collection<PVector> vertices) {
+		return fromPVectorImpl(vertices, PConstants.PATH, false);
+	}
+
+	private static PShape fromPVectorImpl(Collection<PVector> vertices, int beginKind, boolean forceClosed) {
+		List<PVector> verticesList = new ArrayList<>(vertices);
+
+		boolean closed = false;
+		if (!verticesList.isEmpty() && verticesList.get(0).equals(verticesList.get(verticesList.size() - 1))) {
+			closed = true;
+		}
+
+		if (forceClosed && !verticesList.isEmpty() && !closed) {
+			verticesList.add(verticesList.get(0));
+			closed = true;
+		}
+
+		PShape shape = new PShape();
+		shape.setFamily(PShape.PATH);
+
+		shape.setFill(Colors.WHITE);
+		shape.setFill(closed);
+
+		shape.setStroke(true);
+		shape.setStroke(closed ? Colors.PINK : Colors.WHITE);
+		shape.setStrokeWeight(2);
+
+		shape.beginShape(beginKind);
+
+		int limit = verticesList.size() - (closed ? 1 : 0); // avoid duplicating last==first when closing
+		for (int i = 0; i < limit; i++) {
+			PVector v = verticesList.get(i);
+			shape.vertex(v.x, v.y);
+		}
+
+		shape.endShape(closed ? PConstants.CLOSE : PConstants.OPEN);
+		return shape;
 	}
 
 	/**
@@ -1423,7 +1649,7 @@ public final class PGS_Conversion {
 		shape.setStroke(Colors.PINK);
 		shape.setStrokeWeight(4);
 
-		shape.beginShape();
+		shape.beginShape(PConstants.POLYGON);
 		if (!PGS.isClockwise(shell)) {
 			Collections.reverse(shell);
 		}
@@ -1809,10 +2035,15 @@ public final class PGS_Conversion {
 	public static PShape copy(PShape shape) {
 		final PShape copy = new PShape();
 		copy.setName(shape.getName());
+
+		// preserve semantic bit (POLYGON vs PATH etc.)
+		final int kind = shape.getKind();
+
 		final PShapeData style = new PShapeData(shape);
 
 		try {
 			Method method;
+
 			switch (shape.getFamily()) {
 				case GROUP :
 					copy.setFamily(GROUP);
@@ -1822,8 +2053,9 @@ public final class PGS_Conversion {
 					copy.setFamily(PShape.PRIMITIVE);
 					method = PShape.class.getDeclaredMethod("copyPrimitive", PShape.class, PShape.class);
 					break;
+
 				case PShape.GEOMETRY :
-					if (shape.getKind() == PConstants.POLYGON) { // kind = POLYGON by default
+					if (kind == PConstants.POLYGON) {
 						copy.setFamily(PShape.PATH);
 						method = PShape.class.getDeclaredMethod("copyPath", PShape.class, PShape.class);
 					} else {
@@ -1831,17 +2063,27 @@ public final class PGS_Conversion {
 						method = PShape.class.getDeclaredMethod("copyGeometry", PShape.class, PShape.class);
 					}
 					break;
+
 				case PShape.PATH :
 					copy.setFamily(PShape.PATH);
 					method = PShape.class.getDeclaredMethod("copyPath", PShape.class, PShape.class);
 					break;
+
 				default :
-					return copy;
+					copy.setKind(kind);
+					return style.applyTo(copy);
 			}
+
 			method.setAccessible(true);
 			method.invoke(null, shape, copy);
+
+			// reassert kind after internal copy methods
+			copy.setKind(kind);
+
 		} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
 			e.printStackTrace();
+			// still preserve kind/style even if reflection copy failed
+			copy.setKind(kind);
 		}
 
 		return style.applyTo(copy);
@@ -2029,12 +2271,12 @@ public final class PGS_Conversion {
 	/**
 	 * A utility class for storing and manipulating the visual properties of PShapes
 	 * from the Processing library. It encapsulates the stroke, fill, stroke color,
-	 * stroke weight, and fill color attributes by directly accessing and modifying
-	 * the corresponding fields of a given PShape using reflection.
+	 * stroke weight, fill color and name attributes by directly accessing and
+	 * modifying the corresponding fields of a given PShape using reflection.
 	 */
 	public static class PShapeData {
 
-		private static Field fillColorF, fillF, strokeColorF, strokeWeightF, strokeF;
+		private static Field fillColorF, fillF, strokeColorF, strokeWeightF, strokeF, nameF;
 
 		static {
 			try {
@@ -2048,6 +2290,8 @@ public final class PGS_Conversion {
 				strokeWeightF.setAccessible(true);
 				strokeF = PShape.class.getDeclaredField("stroke");
 				strokeF.setAccessible(true);
+				nameF = PShape.class.getDeclaredField("name");
+				nameF.setAccessible(true);
 			} catch (NoSuchFieldException | SecurityException e) {
 				e.printStackTrace();
 			}
@@ -2056,6 +2300,7 @@ public final class PGS_Conversion {
 		public int fillColor, strokeColor;
 		public float strokeWeight;
 		public boolean fill, stroke;
+		public String name;
 		private final PShape source;
 
 		PShapeData(PShape shape) {
@@ -2066,6 +2311,7 @@ public final class PGS_Conversion {
 				stroke = strokeF.getBoolean(shape);
 				strokeColor = strokeColorF.getInt(shape);
 				strokeWeight = strokeWeightF.getFloat(shape);
+				name = (String) nameF.get(shape);
 			} catch (IllegalArgumentException | IllegalAccessException e) {
 				e.printStackTrace();
 			}
@@ -2092,6 +2338,7 @@ public final class PGS_Conversion {
 			other.setStroke(stroke);
 			other.setStroke(strokeColor);
 			other.setStrokeWeight(strokeWeight);
+			other.setName(name);
 
 			return other;
 		}

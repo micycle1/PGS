@@ -5,6 +5,79 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
+## **2.2** *(2026-04-06)*
+
+### Added
+#### Classes
+* **`PGS_Polygonisation`** — generates simple polygonisations of point sets.
+
+#### Methods
+* `fixBrokenFaces()` to `PGS_Meshing`. Repairs broken faces in near-coverage linework using endpoint-only snapping, then polygonises the result.
+* `polygonize()` to `PGS_Processing`. Finds polygonal faces from the given shape's linework.
+* `softCells()` to `PGS_Tiling`. Generates a softened (curved) version of a tiling using the SoftCells edge-bending algorithm.
+* A new mesh-coloring algorithm: `DBLAC`, it's even better than RLF!
+* `smoothGaussianNormalised()` to `PGS_Processing`. Applies normalised Gaussian smoothing to all geometries in a shape, intended to be more consistent across child shapes of different sizes.
+* `normalisedErosion()` to `PGS_Morphology`. Erodes a shape by a normalised amount (scaled to shape size).
+* `refine()` to `PGS_Triangulation`. Refines an existing triangulation using Ruppert's Delaunay refinement algorithm.
+* `arapDeform()` to `PGS_Morphology`. Applies As-Rigid-As-Possible (ARAP) shape deformation using point handles.
+* `regularise()` to `PGS_Morphology`. Straightens the contour of a shape by snapping edges toward a small set of principal directions.
+* New method signature for `PGS_Conversion.toWKT()` that accepts a precision parameter to control the number of decimal places written.
+* `smoothBezierFit()` to `PGS_Morphology`. Smoothes a shape by fitting Bezier curves to its vertices.
+* `powerDiagram()` to `PGS_Voronoi`. Generates a Power Voronoi Diagram for a set of weighted sites.
+* `manhattanVoronoi()` to `PGS_Voronoi`. Generates a Manhattan Voronoi Diagram for a set of sites and a bounding box.
+* `intersectionPoints(shape)` to `PGS_Processing`. Computes all self-intersection points of the linework contained within a single shape.
+* `intersections()` to `PGS_SegmentSet`. Computes all intersection points among the supplied edges.
+* `squareGrid()` to `PGS_Tiling`. Divides the plane into a simple axis-aligned grid using square cells.
+* `aztecDiamond()` to `PGS_Tiling`. Produces a random domino tiling of the Aztec diamond of a given order.
+* `perpendicularPathSegments()` to `PGS_SegmentSet`. Extracts perpendicular segments along each linear component of shape, with each segment centered on the path/outline.
+* `dilationMorph()` to `PGS_Morphology`. Morphs between two shapes using a Hausdorff-distance based method.
+* `voronoiMorph()` to `PGS_Morphology`. Morphs between two shapes using a Voronoi-based method.
+* `isolinesFromFunction()` to `PGS_Contour`. Extracts contour lines (isolines) from a user-defined 2D “height map” over a rectangular region.
+* `kCenters()` to `PGS_PointSet`. Selects k points from the input to act as centers that are typically well distributed over the input space.
+* `extractBoundary()` to `PGS_Processing`. Extracts the topological boundary of the given shape.
+* `weaveSegments()` to `PGS_SegmentSet`. Creates a fabric-like layout of horizontal and vertical segments.
+* `auxeticTiling()` to `PGS_Tiling`. Builds a tiling of **interlocking** cells that form an auxetic structure.
+* `occlusionSubtract()` to `PGS_ShapeBoolean`. Computes the visible parts of overlapping shapes (hidden surface removal).
+* `additivelyWeightedVoronoi()` to `PGS_Voronoi`. Generates an Additively Weighted Voronoi Diagram for a set of weighted sites and a bounding box.
+* `toPolygonPShape()` to `PGS_Conversion`. Converts a polygonal (areal) PShape from a collection of PVector vertices.
+* `toPathPShape()` to `PGS_Conversion`. Converts a path (lineal) PShape from a collection of PVector vertices.
+* `unionCircles()` to `PGS_ShapeBoolean`. Efficiently unions circles defined as PVectors, using a specialised disk-union algorithm that is faster than general shape union for circular inputs.
+
+### Changes
+* `PGS_Conversion.fromPShape()` now disambiguates closed paths using the PShape’s `kind`: closed shapes with `kind == POLYGON` convert to JTS `Polygon`, while closed shapes with `kind == PATH` convert to a (closed) JTS `LineString` (previously closed paths were generally treated as polygonal).
+* `PGS_Conversion.toPShape()` now encodes polygon-vs-line semantics by setting the output PShape’s `kind` appropriately (`POLYGON` for JTS polygonal geometries; `PATH` for JTS lineal geometries), so closed linework no longer becomes ambiguous on round-trip.
+* These methods in `PGS_Meshing` are more performant and robust: `urquhartFaces()`, `gabrielFaces()`, `spannerFaces()`, `relativeNeighborFaces()`, `edgeCollapseQuadrangulation()`, `centroidQuadrangulation()`.
+* Reimplemented `PGS_Processing.convexPartition()` using the optimal *Keil & Snoeyink* partitioning algorithm.
+* Reimplemented `PGS_PointSet.findShortestTour()` TSP algorithm. Much faster (~50x) on larger inputs.
+* `PGS_Meshing.fixBreaks()` now uses a JTS implementation under the hood. The method's prior `angleTolerance` arg has been removed as it's no longer necessary.
+* A PShape's original `.name` is now included in the `PRESERVE_STYLE` routines.
+* All methods in `PGS_Morphology` now support GROUP shapes (where it makes sense to).
+* `PGS_Conversion.toWKT()` now writes coordinates in float precison by default (previously 2 decimal places).
+* Reimplemented `PGS_Morphology.interpolate()` using a more advanced approach with better quality (though interpolations can still self-intersect).
+* Renamed `shapeIntersection(a, b)` in `PGS_Processing` to `intersectionPoints()`.
+* Reimplemented `PGS_Morphology.distanceField()` with a better quality approach, and added an additional method signature that accepts a 'pole' parameter to compute the distance field with respect to a specific point.
+* `largestEmptyCircles()`, `maximumInscribedPack()` and `obstaclePack()` are slightly faster.
+* Reimplemented `PGS_CirclePacking.stochasticPack()`. New approach is twice as fast.
+* Reimplemented `PGS_Contour.straightSkeleton()` using kinetic triangulation approach. It's more robust and much faster on large inputs.
+
+### Fixed
+* `PGS_Optimisation.closestPoint()` now returns the nearest location on the shape's **boundary** for queries inside a polygonal shape (previously returned the query point itself).
+* `GENETIC` mesh-coloring algorithm now always works (and has been improved too).
+* `PGS_Morphology.reducePrecision()` now supports GROUP shapes without collapsing them.
+* `PGS_Construction.createSuperRandomPolygon()` no longer produces holes when `holes` is set to `false`.
+* `PGS_Contour.chordalAxis()` can no longer return polygonal output.
+* `PGS_Voronoi.compoundVoronoi()` now uses the given bounds (previously ignored).
+* `PGS_Processing.generateRandomPoints()` can no longer produce different outputs for the same seed on polygons with holes.
+* The `toGraph()` and `fromGraph()` methods in `PGS_Conversion` now correctly handle shapes with holes.
+
+### Removed
+* `polygonizeLines()` from `PGS_Processing`, in favour of `polygonize(PShape)`.
+* `unionMeshWithoutHoles()` from `PGS_ShapeBoolean`. Previously deprecated in favour of the more general `unionMesh()`.
+* `fromGeoJSON()` and `toGeoJSON()` from `PGS_Conversion`.
+* The `COARSE` mesh coloring algorithm, since it can color adjacent faces the same colour.
+* `lineSegmentsIntersection()` from `PGS_ShapeBoolean` in favour of `intersectionPoints(PShape)`.
+* `removeHiddenLines()` from `PGS_Processing`. This functionality has been superseded by `occlusionSubtract()` in `PGS_ShapeBoolean` (which handles generic shapes, not just lines).
+
 ## **2.1** *(2025-10-04)*
 
 ### Added
@@ -46,6 +119,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `pruneRandomRemoveN()` to `PGS_PointSet`. Randomly removes exactly N points from a list of points.
 * `pruneRandomToN()` to `PGS_PointSet`. Randomly prunes a list of points to exactly N points.
 * `convexMaximumInscribedCircle()` to `PGS_Optimisation`. Computes the largest inscribed circle of a convex polygon (faster and exact).
+* `dissolve()` to `PGS_Processing`. Dissolves the linear components of a shape into a set of unique maximal-length lines
 
 ### Changes
 * Optimised `PGS_CirclePacking.tangencyPack()`. It's now around 1.5-2x faster and has higher precision.
@@ -65,7 +139,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `PGS_Processing.pointsOnExterior()` methods now return points on all elements of a shape, not just the perimeter of the first polygon.
 * `PGS_Processing.segmentsOnExterior()` now return segments on all elements of a shape, not just the perimeter of the first polygon.
 * These methods in `PGS_Morphology` now process any and all polygon/line elements in a shape: `chaikinCut()`, `smoothGaussian()`, `simplifyDCE()`, `simplifyHobby()`, `smoothEllipticFourier()`, `round()`.
-* `dissolve()` to `PGS_Processing`. Dissolves the linear components of a shape into a set of unique maximal-length lines
 
 ### Fixed
 * `PGS_Morphology.rounding()` no longer gives invalid results.

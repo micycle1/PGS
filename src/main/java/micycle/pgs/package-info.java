@@ -14,6 +14,7 @@
  * <li>{@link micycle.pgs.PGS_Morphology Morphology}</li>
  * <li>{@link micycle.pgs.PGS_Optimisation Optimisation}</li>
  * <li>{@link micycle.pgs.PGS_PointSet Point Sets}</li>
+ * <li>{@link micycle.pgs.PGS_Polygonisation Polygonisation}</li>
  * <li>{@link micycle.pgs.PGS_Processing Processing}</li>
  * <li>{@link micycle.pgs.PGS_SegmentSet Segment Sets}</li>
  * <li>{@link micycle.pgs.PGS_ShapeBoolean Shape Boolean}</li>

@@ -166,8 +166,7 @@ public class MinimumBoundingEllipse {
 		double[] tq = linspace(-Math.PI, Math.PI, numPoints);
 
 		// U=[cos(thu) -sin(thu);sin(thu) cos(thu)]*[l1*cos(tq);l2*sin(tq)];
-		double[][] U = multiply(
-				new double[][] { new double[] { Math.cos(thu), -Math.sin(thu) }, new double[] { Math.sin(thu), Math.cos(thu) } },
+		double[][] U = multiply(new double[][] { new double[] { Math.cos(thu), -Math.sin(thu) }, new double[] { Math.sin(thu), Math.cos(thu) } },
 				new double[][] { multiply(l1, cos(tq)), multiply(l2, sin(tq)) });
 
 		double[][] coords = transpose(U);

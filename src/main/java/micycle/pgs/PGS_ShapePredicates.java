@@ -9,9 +9,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.vecmath.Point3d;
-import javax.vecmath.Point4d;
-
 import org.locationtech.jts.algorithm.Angle;
 import org.locationtech.jts.algorithm.MinimumBoundingCircle;
 import org.locationtech.jts.algorithm.MinimumDiameter;
@@ -22,6 +19,7 @@ import org.locationtech.jts.algorithm.match.HausdorffSimilarityMeasure;
 import org.locationtech.jts.coverage.CoverageUnion;
 import org.locationtech.jts.coverage.CoverageValidator;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateXYZM;
 import org.locationtech.jts.geom.CoordinateList;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LinearRing;
@@ -35,16 +33,24 @@ import com.github.micycle1.geoblitz.YStripesPointInAreaLocator;
 
 import micycle.pgs.commons.EllipticFourierDesc;
 import micycle.pgs.commons.GeometricMedian;
-import micycle.trapmap.TrapMap;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Various shape metrics, predicates and descriptors.
- * 
- * @author Michael Carleton
+ * Shape analysis utilities: metrics, predicates, and descriptive measurements
+ * for {@link PShape}s.
  *
+ * <p>
+ * This class provides read-only queries over geometry, including spatial
+ * relationships (containment, intersection, distance), scalar measurements
+ * (area, perimeter/length, diameter, width/height), and higher-level
+ * descriptors (circularity, elongation, convexity, similarity). It also
+ * includes validity and equality predicates commonly used to sanity-check
+ * shapes before downstream operations such as booleans, buffering, meshing, or
+ * tiling.
+ *
+ * @author Michael Carleton
  */
 public final class PGS_ShapePredicates {
 
@@ -80,7 +86,7 @@ public final class PGS_ShapePredicates {
 
 	/**
 	 * Determines whether a shape contains every point from a list of points. It is
-	 * faster to use method rather than than calling
+	 * faster to use this method rather than calling
 	 * {@link #containsPoint(PShape, PVector) containsPoint()} repeatedly. Any
 	 * points that lie on the boundary of the shape are considered to be contained.
 	 * 
@@ -112,7 +118,7 @@ public final class PGS_ShapePredicates {
 	 */
 	public static List<Boolean> containsPoints(PShape shape, Collection<PVector> points) {
 		final PointOnGeometryLocator pointLocator = new YStripesPointInAreaLocator(fromPShape(shape));
-		ArrayList<Boolean> bools = new ArrayList<>(points.size());
+		List<Boolean> bools = new ArrayList<>(points.size());
 		for (PVector p : points) {
 			bools.add(pointLocator.locate(new Coordinate(p.x, p.y)) != Location.EXTERIOR);
 		}
@@ -146,9 +152,6 @@ public final class PGS_ShapePredicates {
 	/**
 	 * Finds the single child shape/cell (if any) that contains the query point from
 	 * a GROUP shape input (a shape that has non-overlapping children).
-	 * <p>
-	 * This method locates the containing shape in log(n) time (after some
-	 * pre-processing overhead).
 	 * 
 	 * @param groupShape a GROUP shape
 	 * @param point      the query point
@@ -157,30 +160,7 @@ public final class PGS_ShapePredicates {
 	 * @since 1.3.0
 	 */
 	public static PShape findContainingShape(PShape groupShape, PVector point) {
-		if (groupShape.getKind() != PConstants.GROUP) { // handle non-mesh shape
-			if (containsPoint(groupShape, point)) {
-				return groupShape;
-			} else {
-				return null;
-			}
-		}
-
-		TrapMap map;
-		try {
-			map = new TrapMap(PGS_Conversion.getChildren(groupShape));
-		} catch (Exception e) {
-			/*
-			 * Handle error thrown by TrapMap on degenerate/strange inputs. Generally
-			 * shearing will fix the problem (ideally this would be done within TrapMap).
-			 */
-			try {
-				map = new TrapMap(PGS_Conversion.getChildren(PGS_Transformation.shear(groupShape, .00001, 0)));
-			} catch (Exception e2) {
-				System.err.println(e.getMessage());
-				return new PShape();
-			}
-		}
-		return map.findContainingPolygon(point.x, point.y);
+		return PGS_Meshing.findContainingFace(groupShape, point);
 	}
 
 	/**
@@ -242,7 +222,7 @@ public final class PGS_ShapePredicates {
 	}
 
 	/**
-	 * Computes the ratio (density) of the shape's area compared to the area of it's
+	 * Computes the ratio (density) of the shape's area compared to the area of its
 	 * envelope.
 	 * 
 	 * @param shape
@@ -304,8 +284,8 @@ public final class PGS_ShapePredicates {
 	 */
 	public static PVector median(PShape shape) {
 		List<PVector> points = PGS_Conversion.toPVector(shape);
-		Point4d[] wp = points.stream().map(p -> new Point4d(p.x, p.y, 0, 1)).toArray(Point4d[]::new);
-		Point3d median = GeometricMedian.median(wp, 1e-3, 50);
+		CoordinateXYZM[] wp = points.stream().map(p -> new CoordinateXYZM(p.x, p.y, 0, 1)).toArray(CoordinateXYZM[]::new);
+		Coordinate median = GeometricMedian.median(wp, 1e-3, 50);
 		return new PVector((float) median.x, (float) median.y);
 	}
 
@@ -618,6 +598,7 @@ public final class PGS_ShapePredicates {
 	 */
 	public static double efdSimilarity(PShape a, PShape b) {
 		int n = Math.min(a.getVertexCount(), b.getVertexCount()) / 2;
+		n = Math.max(n, 3); // min of 3 descriptors (indices 0,1 are skipped by distance)
 		n = Math.min(n, 50); // max of 50 descriptors
 		EllipticFourierDesc efdA = new EllipticFourierDesc(((Polygon) fromPShape(a)).getExteriorRing(), n);
 		EllipticFourierDesc efdB = new EllipticFourierDesc(((Polygon) fromPShape(b)).getExteriorRing(), n);
@@ -630,8 +611,7 @@ public final class PGS_ShapePredicates {
 	 * in the same order.
 	 * <p>
 	 * Note: If two Polygons have matching vertices, but one is arranged clockwise
-	 * while the other is counter-clockwise, then then this method will return
-	 * false.
+	 * while the other is counter-clockwise, then this method will return false.
 	 * 
 	 * @param a shape a
 	 * @param b shape b

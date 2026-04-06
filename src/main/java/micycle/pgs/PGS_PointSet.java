@@ -4,12 +4,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.SplittableRandom;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
-import javax.vecmath.Point3d;
-import javax.vecmath.Point4d;
 
 import org.apache.commons.math3.ml.clustering.Clusterable;
 import org.apache.commons.math3.ml.clustering.Clusterer;
@@ -21,6 +19,8 @@ import org.apache.commons.math3.util.Pair;
 import org.jgrapht.alg.interfaces.SpanningTreeAlgorithm;
 import org.jgrapht.alg.spanning.PrimMinimumSpanningTree;
 import org.jgrapht.graph.SimpleGraph;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateXYZM;
 import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.Vertex;
 import org.tinspin.index.IndexConfig;
@@ -30,6 +30,7 @@ import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandom;
 import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
 import micycle.pgs.commons.GeometricMedian;
+import micycle.pgs.commons.GonHeuristic;
 import micycle.pgs.commons.GreedyTSP;
 import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.PoissonDistributionJRUS;
@@ -58,7 +59,6 @@ import processing.core.PVector;
  * <li>For 100,000 points, this results in ~300 expected collisions in the
  * x-coordinate, even when using a high-quality random number generator.</li>
  * </ul>
- * </p>
  * 
  * @author Michael Carleton
  * @since 1.2.0
@@ -144,7 +144,7 @@ public final class PGS_PointSet {
 	 *
 	 * @param points      collection of PVector points
 	 * @param removeCount number of points to remove (must be >= 0)
-	 * @return new List<PVector> containing the remaining points
+	 * @return new List&lt;PVector&gt; containing the remaining points
 	 * @since 2.1
 	 */
 	public static List<PVector> pruneRandomRemoveN(Collection<PVector> points, int removeCount) {
@@ -158,7 +158,7 @@ public final class PGS_PointSet {
 	 * @param points      collection of PVector points
 	 * @param removeCount number of points to remove (must be >= 0)
 	 * @param seed        RNG seed for reproducibility
-	 * @return new List<PVector> containing the remaining points
+	 * @return new List&lt;PVector&gt; containing the remaining points
 	 * @since 2.1
 	 */
 	public static List<PVector> pruneRandomRemoveN(Collection<PVector> points, int removeCount, long seed) {
@@ -207,7 +207,7 @@ public final class PGS_PointSet {
 	 *
 	 * @param points    collection of PVector points
 	 * @param keepCount number of points to keep (must be >= 0)
-	 * @return new List<PVector> containing the kept points
+	 * @return new List&lt;PVector&gt; containing the kept points
 	 * @since 2.1
 	 */
 	public static List<PVector> pruneRandomToN(Collection<PVector> points, int keepCount) {
@@ -221,7 +221,7 @@ public final class PGS_PointSet {
 	 * @param points    collection of PVector points
 	 * @param keepCount number of points to keep (must be >= 0)
 	 * @param seed      RNG seed for reproducibility
-	 * @return new List<PVector> containing the kept points
+	 * @return new List&lt;PVector&gt; containing the kept points
 	 * @since 2.1
 	 */
 	public static List<PVector> pruneRandomToN(Collection<PVector> points, int keepCount, long seed) {
@@ -342,8 +342,8 @@ public final class PGS_PointSet {
 	 */
 	public static PVector weightedMedian(Collection<PVector> points) {
 		boolean allZero = points.stream().allMatch(p -> p.z == 0);
-		Point4d[] wp = points.stream().map(p -> new Point4d(p.x, p.y, 0, allZero ? 1 : p.z)).toArray(Point4d[]::new);
-		Point3d median = GeometricMedian.median(wp, 1e-3, 50);
+		CoordinateXYZM[] wp = points.stream().map(p -> new CoordinateXYZM(p.x, p.y, 0, allZero ? 1 : p.z)).toArray(CoordinateXYZM[]::new);
+		Coordinate median = GeometricMedian.median(wp, 1e-3, 50);
 		return new PVector((float) median.x, (float) median.y);
 	}
 
@@ -393,7 +393,7 @@ public final class PGS_PointSet {
 	 * point set is centered around the given center, given by mean coordinates.
 	 * 
 	 * @param centerX x coordinate of the center/mean of the point set
-	 * @param centerY x coordinate of the center/mean of the point set
+	 * @param centerY y coordinate of the center/mean of the point set
 	 * @param sd      standard deviation, which specifies how much the values can
 	 *                vary from the mean. 68% of point samples have a value within
 	 *                one standard deviation of the mean; three standard deviations
@@ -411,7 +411,7 @@ public final class PGS_PointSet {
 	 * by mean coordinates.
 	 * 
 	 * @param centerX x coordinate of the center/mean of the point set
-	 * @param centerY x coordinate of the center/mean of the point set
+	 * @param centerY y coordinate of the center/mean of the point set
 	 * @param sd      standard deviation, which specifies how much the values can
 	 *                vary from the mean. 68% of point samples have a value within
 	 *                one standard deviation of the mean; three standard deviations
@@ -547,7 +547,7 @@ public final class PGS_PointSet {
 	 * (annulus).
 	 * 
 	 * @param centerX     x coordinate of the center/mean of the ring
-	 * @param centerY     x coordinate of the center/mean of the ring
+	 * @param centerY     y coordinate of the center/mean of the ring
 	 * @param innerRadius radius of the ring's hole
 	 * @param outerRadius outer radius of the ring
 	 * @param maxAngle    sweep angle of the ring (in radians). Can be negative
@@ -1084,7 +1084,7 @@ public final class PGS_PointSet {
 	 * @return a LINES PShape
 	 * @since 1.3.0
 	 */
-	public static PShape minimumSpanningTree(List<PVector> points) {
+	public static PShape minimumSpanningTree(Collection<PVector> points) {
 		/*
 		 * The Euclidean minimum spanning tree in a plane is a subgraph of the Delaunay
 		 * triangulation.
@@ -1099,10 +1099,6 @@ public final class PGS_PointSet {
 	 * Computes an <i>approximate</i> Traveling Salesman path for the set of points
 	 * provided. Utilises a heuristic based TSP solver, followed by 2-opt heuristic
 	 * improvements for further tour optimisation.
-	 * <p>
-	 * Note {@link PGS_Hull#concaveHullBFS(List, double) concaveHullBFS()} produces
-	 * a similar result (somewhat longer tours, i.e. 10%) but is <b>much</b> more
-	 * performant.
 	 * 
 	 * @param points the list of points for which to compute the approximate
 	 *               shortest tour
@@ -1111,9 +1107,48 @@ public final class PGS_PointSet {
 	 *         starting point).
 	 * @since 2.0
 	 */
-	public static PShape findShortestTour(List<PVector> points) {
+	public static PShape findShortestTour(Collection<PVector> points) {
 		var tour = new GreedyTSP<>(points, (a, b) -> a.dist(b));
 		return PGS_Conversion.fromPVector(tour.getTour());
+	}
+
+	/**
+	 * Selects {@code k} points from {@code points} to act as centers that are
+	 * typically well distributed over the input set (i.e., each new center tends to
+	 * be chosen from the currently “largest uncovered” / most distant region
+	 * relative to the centers selected so far).
+	 *
+	 * @param points the input points; must be non-empty and contain at least
+	 *               {@code k} points
+	 * @param k      the number of centers to return; must be {@code >= 1}
+	 * @return a list containing {@code k} points chosen as centers (subset of
+	 *         {@code points})
+	 * @throws IllegalArgumentException if {@code k <= 0}, {@code points} is empty,
+	 *                                  or {@code points.size() < k}
+	 * @since 2.2
+	 */
+	public static List<PVector> kCenters(Collection<PVector> points, int k) {
+		return kCenters(points, k, System.nanoTime());
+	}
+
+	/**
+	 * Selects {@code k} points from {@code points} to act as centers that are
+	 * typically well distributed over the input set (i.e., each new center tends to
+	 * be chosen from the currently “largest uncovered” / most distant region
+	 * relative to the centers selected so far).
+	 *
+	 * @param points the input points; must be non-empty and contain at least
+	 *               {@code k} points
+	 * @param k      the number of centers to return; must be {@code >= 1}
+	 * @param seed   random seed used for deterministic center selection
+	 * @return a list containing {@code k} points chosen as centers (subset of
+	 *         {@code points})
+	 * @since 2.2
+	 */
+	public static List<PVector> kCenters(Collection<PVector> points, int k, long seed) {
+		GonHeuristic<PVector> gh = new GonHeuristic<>(new Random(seed));
+		var centers = gh.getCenters(points, k, (a, b) -> PGS.distanceSq(a, b));
+		return centers;
 	}
 
 	/**
@@ -1153,11 +1188,12 @@ public final class PGS_PointSet {
 	 *         with a random weight assigned to its z-coordinate
 	 * @since 2.0
 	 */
-	public static List<PVector> applyRandomWeights(List<PVector> points, double minWeight, double maxWeight, long seed) {
+	public static List<PVector> applyRandomWeights(List<PVector> points, final double minWeight, final double maxWeight, final long seed) {
 		final SplittableRandom random = new SplittableRandom(seed);
 		return points.stream().map(p -> {
 			p = p.copy();
-			p.z = (float) random.nextDouble(minWeight, maxWeight);
+			var w = minWeight == maxWeight ? minWeight : random.nextDouble(minWeight, maxWeight);
+			p.z = (float) w;
 			return p;
 		}).collect(Collectors.toList());
 	}

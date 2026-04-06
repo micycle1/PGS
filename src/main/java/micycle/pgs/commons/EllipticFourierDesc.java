@@ -114,8 +114,7 @@ public class EllipticFourierDesc {
 		final double denomA = (efd_ax[first] * efd_ax[first]) + (efd_ay[first] * efd_ay[first]);
 		final double denomB = (efd_bx[first] * efd_bx[first]) + (efd_by[first] * efd_by[first]);
 		for (int k = 0; k < nFD; k++) {
-			efd[k] = Math.sqrt((efd_ax[k] * efd_ax[k] + efd_ay[k] * efd_ay[k]) / denomA)
-					+ Math.sqrt((efd_bx[k] * efd_bx[k] + efd_by[k] * efd_by[k]) / denomB);
+			efd[k] = Math.sqrt((efd_ax[k] * efd_ax[k] + efd_ay[k] * efd_ay[k]) / denomA) + Math.sqrt((efd_bx[k] * efd_bx[k] + efd_by[k] * efd_by[k]) / denomB);
 		}
 	}
 

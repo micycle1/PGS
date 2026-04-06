@@ -13,6 +13,7 @@ import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
 import org.tinfour.utils.TriangleCollector;
 
+import micycle.pgs.PGS_Processing;
 import micycle.pgs.PGS_Triangulation;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -31,20 +32,22 @@ public final class ShapeRandomPointSampler {
 	public ShapeRandomPointSampler(final PShape shape, final long seed) {
 		reseed(seed);
 
-		// Build constrained Delaunay TIN
-		final IIncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(shape);
+		// normalise required for identical runs (on shapes with holes having different
+		// structure)
+		final IIncrementalTin tin = PGS_Triangulation.delaunayTriangulationMesh(PGS_Processing.normalise(shape));
 		final boolean constrained = !tin.getConstraints().isEmpty();
 
 		// Collect valid triangles and their areas
 		final List<double[]> tris = new ArrayList<>();
 		final List<Double> areas = new ArrayList<>();
-		final double eps = 1e-15;
+		final double eps = 1e-12;
 
 		TriangleCollector.visitSimpleTriangles(tin, (SimpleTriangle tri) -> {
 			final IConstraint region = tri.getContainingRegion();
 			final boolean inside = !constrained || (region != null && region.definesConstrainedRegion());
-			if (!inside)
+			if (!inside) {
 				return;
+			}
 
 			final Vertex A = tri.getVertexA();
 			final Vertex B = tri.getVertexB();
@@ -93,10 +96,11 @@ public final class ShapeRandomPointSampler {
 			double w = areas.get(i) / sumArea;
 			double p = w * n;
 			scaled[i] = p;
-			if (p < 1.0)
+			if (p < 1.0) {
 				small.add(i);
-			else
+			} else {
 				large.add(i);
+			}
 		}
 
 		while (!small.isEmpty() && !large.isEmpty()) {
@@ -105,17 +109,20 @@ public final class ShapeRandomPointSampler {
 			prob[s] = scaled[s];
 			alias[s] = l;
 			scaled[l] = (scaled[l] + scaled[s]) - 1.0;
-			if (scaled[l] < 1.0)
+			if (scaled[l] < 1.0) {
 				small.add(l);
-			else
+			} else {
 				large.add(l);
+			}
 		}
 
 		// Any leftover get prob=1
-		while (!large.isEmpty())
+		while (!large.isEmpty()) {
 			prob[large.removeLast()] = 1.0;
-		while (!small.isEmpty())
+		}
+		while (!small.isEmpty()) {
 			prob[small.removeLast()] = 1.0;
+		}
 	}
 
 	public void reseed(long seed) {

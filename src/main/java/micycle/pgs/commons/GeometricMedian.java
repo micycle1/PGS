@@ -1,7 +1,7 @@
 package micycle.pgs.commons;
 
-import javax.vecmath.Point3d;
-import javax.vecmath.Point4d;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateXYZM;
 
 /**
  * Computes 2D/3D weighted geometric median.
@@ -15,59 +15,61 @@ public final class GeometricMedian {
 	// https://github.com/postgis/postgis/blob/master/liblwgeom/lwgeom_median.c
 
 	private static final double DBL_EPSILON = 1E-11;
-	
-	private GeometricMedian() {}
+
+	private GeometricMedian() {
+	}
 
 	/**
 	 * Computes the median point of the input point set.
 	 * 
-	 * @param points   array of x,y,z,w where w is the weight; weights must be
-	 *                 non-negative
-	 * @param tol      tolerance
-	 * @param max_iter max iterations
+	 * @param points  array of x,y,z,w where w is the weight; weights must be
+	 *                non-negative
+	 * @param tol     tolerance
+	 * @param maxIter max iterations
 	 * @return median point of input
 	 */
-	public static Point3d median(Point4d[] points, double tol, int max_iter) {
+	public static Coordinate median(CoordinateXYZM[] points, double tol, int maxIter) {
 		/*
 		 * We need to count this ourselves so we can exclude empties and weightless
 		 * points.
 		 */
 		int npoints = points.length;
 
-		Point3d median = init_guess(points, npoints);
+		Coordinate median = initGuess(points, npoints);
 
-		iterate_4d(median, points, npoints, max_iter, tol);
+		iterate4d(median, points, npoints, maxIter, tol);
 
 		return median;
 	}
 
-	private static Point3d init_guess(Point4d[] points, int npoints) {
-		Point3d guess = new Point3d();
+	private static Coordinate initGuess(CoordinateXYZM[] points, int npoints) {
+		Coordinate guess = new Coordinate();
 		double mass = 0;
 		int i;
 		for (i = 0; i < npoints; i++) {
-			guess.x += points[i].x * points[i].w;
-			guess.y += points[i].y * points[i].w;
-			guess.z += points[i].z * points[i].w;
-			mass += points[i].w;
+			final double weight = points[i].getM();
+			guess.x += points[i].x * weight;
+			guess.y += points[i].y * weight;
+			guess.setZ(guess.getZ() + points[i].getZ() * weight);
+			mass += weight;
 		}
 		guess.x /= mass;
 		guess.y /= mass;
-		guess.z /= mass;
+		guess.setZ(guess.getZ() / mass);
 		return guess;
 	}
 
-	private static int iterate_4d(Point3d curr, final Point4d[] points, final int npoints, final int max_iter, final double tol) {
+	private static int iterate4d(Coordinate curr, final CoordinateXYZM[] points, final int npoints, final int maxIter, final double tol) {
 		int i, iter;
 		double delta;
-		double sum_curr = 0, sum_next = 0;
+		double sumCurr = 0, sumNext = 0;
 		boolean hit = false;
 		double[] distances = new double[npoints];
 
-		sum_curr = calc_weighted_distances_3d(curr, points, npoints, distances);
+		sumCurr = calcWeightedDistances3d(curr, points, npoints, distances);
 
-		for (iter = 0; iter < max_iter; iter++) {
-			Point3d next = new Point3d();
+		for (iter = 0; iter < maxIter; iter++) {
+			Coordinate next = new Coordinate();
 			double denom = 0;
 
 			/* Calculate denom to get the next point */
@@ -79,7 +81,7 @@ public final class GeometricMedian {
 				if (distances[i] > DBL_EPSILON) {
 					next.x += points[i].x / distances[i];
 					next.y += points[i].y / distances[i];
-					next.z += points[i].z / distances[i];
+					next.setZ(next.getZ() + points[i].getZ() / distances[i]);
 					denom += 1.0 / distances[i];
 				} else {
 					hit = true;
@@ -94,7 +96,7 @@ public final class GeometricMedian {
 			/* Calculate the new point */
 			next.x /= denom;
 			next.y /= denom;
-			next.z /= denom;
+			next.setZ(next.getZ() / denom);
 
 			/*
 			 * If any of the intermediate points in the calculation is found in the set of
@@ -112,61 +114,60 @@ public final class GeometricMedian {
 			 */
 			if (hit) {
 				double dx = 0, dy = 0, dz = 0;
-				double d_sqr;
+				double dSqr;
 				hit = false;
 
 				for (i = 0; i < npoints; i++) {
 					if (distances[i] > DBL_EPSILON) {
 						dx += (points[i].x - curr.x) / distances[i];
 						dy += (points[i].y - curr.y) / distances[i];
-						dz += (points[i].z - curr.z) / distances[i];
+						dz += (points[i].getZ() - curr.getZ()) / distances[i];
 					}
 				}
 
-				d_sqr = Math.sqrt(dx * dx + dy * dy + dz * dz);
-				if (d_sqr > DBL_EPSILON) {
-					double r_inv = Math.max(0, 1.0 / d_sqr); // note
-					next.x = (1.0 - r_inv) * next.x + r_inv * curr.x;
-					next.y = (1.0 - r_inv) * next.y + r_inv * curr.y;
-					next.z = (1.0 - r_inv) * next.z + r_inv * curr.z;
+				dSqr = Math.sqrt(dx * dx + dy * dy + dz * dz);
+				if (dSqr > DBL_EPSILON) {
+					double rInv = Math.max(0, 1.0 / dSqr); // note
+					next.x = (1.0 - rInv) * next.x + rInv * curr.x;
+					next.y = (1.0 - rInv) * next.y + rInv * curr.y;
+					next.setZ((1.0 - rInv) * next.getZ() + rInv * curr.getZ());
 				}
 			}
 
 			/* Check movement with next point */
-			sum_next = calc_weighted_distances_3d(next, points, npoints, distances);
-			delta = sum_curr - sum_next;
+			sumNext = calcWeightedDistances3d(next, points, npoints, distances);
+			delta = sumCurr - sumNext;
 			if (delta < tol) {
 				break;
 			} else {
 				curr.x = next.x;
 				curr.y = next.y;
-				curr.z = next.z;
-				sum_curr = sum_next;
+				curr.setZ(next.getZ());
+				sumCurr = sumNext;
 			}
 		}
 
 		return iter;
 	}
 
-	private static double calc_weighted_distances_3d(final Point3d curr, final Point4d[] points, int npoints,
-			double[] distances) {
+	private static double calcWeightedDistances3d(final Coordinate curr, final CoordinateXYZM[] points, int npoints, double[] distances) {
 		int i;
 		double weight = 0.0;
 		for (i = 0; i < npoints; i++) {
-			double dist = distance3d_pt_pt(curr, points[i]);
-			distances[i] = dist / points[i].w;
-			weight += dist * points[i].w;
+			double dist = distance3dPtPt(curr, points[i]);
+			distances[i] = dist / points[i].getM();
+			weight += dist * points[i].getM();
 		}
 
 		return weight;
 	}
 
-	private static double distance3d_pt_pt(Point3d p0, Point4d p1) {
+	private static double distance3dPtPt(Coordinate p0, CoordinateXYZM p1) {
 		double dx, dy, dz;
 
 		dx = p0.x - p1.x;
 		dy = p0.y - p1.y;
-		dz = p0.z - p1.z;
+		dz = p0.getZ() - p1.getZ();
 		return Math.sqrt(dx * dx + dy * dy + dz * dz);
 	}
 

@@ -21,6 +21,8 @@ import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Location;
+import org.locationtech.jts.geom.MultiPolygon;
+import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.geom.Polygonal;
 import org.locationtech.jts.triangulate.polygon.PolygonTriangulator;
 import org.tinfour.common.IConstraint;
@@ -30,6 +32,7 @@ import org.tinfour.common.PolygonConstraint;
 import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
 import org.tinfour.edge.QuadEdge;
+import org.tinfour.refinement.RuppertRefiner;
 import org.tinfour.standard.IncrementalTin;
 import org.tinfour.utils.HilbertSort;
 import org.tinfour.utils.TriangleCollector;
@@ -43,10 +46,33 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Delaunay and earcut triangulation of shapes and point sets.
- * 
- * @author Michael Carleton
+ * Triangulation utilities for 2D {@link PShape} polygons and point sets.
  *
+ * <p>
+ * This class provides:
+ * <ul>
+ * <li><b>Delaunay triangulation</b> of point sets (and optional polygonal
+ * constraints),</li>
+ * <li><b>Refinement</b> of an existing Delaunay TIN (adding Steiner points to
+ * improve triangle quality),</li>
+ * <li><b>Earcut triangulation</b> for fast polygon-to-triangles
+ * conversion,</li>
+ * <li>and helpers to convert triangulations to {@link PShape}, JTS
+ * {@link Geometry}, or graphs.</li>
+ * </ul>
+ *
+ * <h2>Delaunay vs. Earcut (when to use which)</h2>
+ * <ul>
+ * <li><b>Earcut</b> triangulates a polygon (including holes) into triangles
+ * that exactly cover the polygon interior. It does not attempt to optimise
+ * triangle quality.</li>
+ * <li><b>Delaunay</b> triangulates a set of points to maximise the minimum
+ * angle (in the unconstrained case), producing generally “well-shaped”
+ * triangles. When used with a boundary shape, results are typically
+ * clipped/filtered to the shape and may be optionally refined.</li>
+ * </ul>
+ *
+ * @author Michael Carleton
  */
 public final class PGS_Triangulation {
 
@@ -415,6 +441,58 @@ public final class PGS_Triangulation {
 	}
 
 	/**
+	 * Refines an existing triangulation using Ruppert's Delaunay refinement
+	 * algorithm.
+	 * <p>
+	 * Refinement inserts additional Steiner points in order to improve triangle
+	 * quality, primarily by eliminating "skinny" triangles whose minimum internal
+	 * angle is below {@code minAngleDeg}. The provided {@link IIncrementalTin} is
+	 * modified in place.
+	 * <p>
+	 * Typical values for {@code minAngleDeg} are in the range 20–33 degrees. Larger
+	 * values produce more regular triangles but may significantly increase the
+	 * number of inserted points (and runtime). Extremely large values may not be
+	 * achievable for constrained triangulations.
+	 *
+	 * @param triangulation the triangulation to refine (modified in place); must
+	 *                      not be {@code null}
+	 * @param minAngleDeg   the minimum allowed triangle angle, in degrees
+	 * @since 2.2
+	 */
+	public static void refine(IIncrementalTin triangulation, double minAngleDeg) {
+		if (minAngleDeg <= 0 || !triangulation.isBootstrapped()) {
+			return; // no-op
+		}
+		RuppertRefiner refiner = new RuppertRefiner(triangulation, minAngleDeg);
+		refiner.refine();
+	}
+
+	/**
+	 * Refines an existing triangulation using Ruppert's Delaunay refinement
+	 * algorithm, while also enforcing a minimum triangle area threshold.
+	 * <p>
+	 * Refinement inserts additional Steiner points to improve triangle quality by
+	 * removing triangles with angles below {@code minAngleDeg}. The
+	 * {@code minTriangleArea} parameter acts as a stop condition to avoid
+	 * over-refining very small triangles. The provided {@link IIncrementalTin} is
+	 * modified in place.
+	 *
+	 * @param triangulation   the triangulation to refine (modified in place); must
+	 *                        not be {@code null}
+	 * @param minAngleDeg     the minimum allowed triangle angle, in degrees
+	 * @param minTriangleArea triangles with area less than or equal to this value
+	 *                        will not be further refined
+	 * @since 2.2
+	 */
+	public static void refine(IIncrementalTin triangulation, double minAngleDeg, double minTriangleArea) {
+		if (minAngleDeg <= 0 || !triangulation.isBootstrapped()) {
+			return; // no-op
+		}
+		RuppertRefiner refiner = new RuppertRefiner(triangulation, minAngleDeg, minTriangleArea);
+		refiner.refine();
+	}
+
+	/**
 	 * Creates a Delaunay triangulation of the shape where additional steiner
 	 * points, populated by poisson sampling, are included.
 	 * 
@@ -535,6 +613,43 @@ public final class PGS_Triangulation {
 	}
 
 	/**
+	 * Converts a triangulated mesh object to a JTS MultiPolygon where each triangle
+	 * is represented as a separate Polygon.
+	 *
+	 * @param triangulation the IIncrementalTin object to convert
+	 * @param gf            geometry factory to use
+	 * @return a MultiPolygon containing one Polygon per triangle
+	 * @since 2.2
+	 */
+	static MultiPolygon toGeometry(final IIncrementalTin triangulation) {
+		final List<Polygon> triangles = new ArrayList<>();
+
+		final Consumer<Vertex[]> triangleVertexConsumer = t -> {
+			// triangle ring must be closed: p0, p1, p2, p0
+			final Coordinate c0 = new Coordinate(t[0].x, t[0].y);
+			final Coordinate c1 = new Coordinate(t[1].x, t[1].y);
+			final Coordinate c2 = new Coordinate(t[2].x, t[2].y);
+
+			final Coordinate[] coords = new Coordinate[] { c0, c1, c2, c0 };
+
+			final Polygon poly = PGS.GEOM_FACTORY.createPolygon(coords);
+
+			// Skip degenerate triangles (zero area / invalid)
+			if (!poly.isEmpty() && poly.isValid() && poly.getArea() > 0) {
+				triangles.add(poly);
+			}
+		};
+
+		if (!triangulation.getConstraints().isEmpty()) {
+			TriangleCollector.visitTrianglesConstrained(triangulation, triangleVertexConsumer);
+		} else {
+			TriangleCollector.visitTriangles(triangulation, triangleVertexConsumer);
+		}
+
+		return PGS.GEOM_FACTORY.createMultiPolygon(triangles.toArray(new Polygon[0]));
+	}
+
+	/**
 	 * Finds the graph equivalent to a triangulation. Graph vertices are
 	 * triangulation vertices; graph edges are triangulation edges.
 	 * <p>
@@ -542,7 +657,6 @@ public final class PGS_Triangulation {
 	 * weights are their euclidean length of their triangulation equivalent.
 	 * 
 	 * @param triangulation triangulation mesh
-	 * @return
 	 * @since 1.3.0
 	 * @see #toTinfourGraph(IIncrementalTin)
 	 * @see #toDualGraph(IIncrementalTin)
@@ -551,9 +665,6 @@ public final class PGS_Triangulation {
 		final SimpleGraph<PVector, PEdge> graph = new SimpleWeightedGraph<>(PEdge.class);
 		final boolean notConstrained = triangulation.getConstraints().isEmpty();
 		triangulation.edges().forEach(e -> {
-//			if (isEdgeOnPerimeter(e)) {
-//				return; // skip to next triangle
-//			}
 			if (notConstrained || e.isConstraintRegionMember()) {
 				final IQuadEdge base = e.getBaseReference();
 				PVector a = toPVector(base.getA());
@@ -572,11 +683,10 @@ public final class PGS_Triangulation {
 	 * Finds the graph equivalent to a triangulation. Graph vertices are
 	 * triangulation vertices; graph edges are triangulation edges.
 	 * <p>
-	 * The output is an undirected weighted graph of Tinfour primtives; edge weights
-	 * are their euclidean length of their triangulation equivalent.
+	 * The output is an undirected weighted graph of Tinfour primitives; edge
+	 * weights are their euclidean length of their triangulation equivalent.
 	 * 
 	 * @param triangulation triangulation mesh
-	 * @return
 	 * @since 1.3.0
 	 * @see #toGraph(IIncrementalTin)
 	 * @see #toDualGraph(IIncrementalTin)
@@ -585,9 +695,6 @@ public final class PGS_Triangulation {
 		final SimpleGraph<Vertex, IQuadEdge> graph = new SimpleWeightedGraph<>(IQuadEdge.class);
 		final boolean notConstrained = triangulation.getConstraints().isEmpty();
 		triangulation.edges().forEach(e -> {
-//			if (isEdgeOnPerimeter(e)) {
-//				return; // skip to next triangle
-//			}
 			if ((notConstrained || e.isConstraintRegionMember())) {
 				final IQuadEdge base = e.getBaseReference();
 				graph.addVertex(base.getA());
@@ -674,26 +781,6 @@ public final class PGS_Triangulation {
 
 	static PEdge toPEdge(final IQuadEdge e) {
 		return new PEdge(toPVector(e.getA()), toPVector(e.getB()));
-	}
-
-	/**
-	 * Determines whether an edge or its dual is on the perimeter.
-	 *
-	 * @param edge a valid instance
-	 * @return true if the edge is on the perimeter; otherwise, false.
-	 */
-	private static boolean isEdgeOnPerimeter(IQuadEdge edge) {
-		/*
-		 * The logic here is that each edge defines one side of a triangle with vertices
-		 * A, B, and C. Vertices A and B are the first and second vertices of the edge,
-		 * vertex C is the opposite one. Triangles lying outside the Delaunay
-		 * Triangulation have a "ghost" vertex for vertex C. Tinfour represents a ghost
-		 * vertex with a null reference. So we test both the edge and its dual to see if
-		 * their vertex C reference is null. Also note that vertex C is the second
-		 * vertex of the forward edge from our edge of interest. Thus the C =
-		 * edge.getForward().getB().
-		 */
-		return edge.getForward().getB() == null || edge.getForwardFromDual().getB() == null;
 	}
 
 	/**

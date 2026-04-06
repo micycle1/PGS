@@ -12,7 +12,7 @@ import processing.core.PVector;
  * Random Convex Polygons
  */
 public class RandomPolygon {
-	
+
 	private RandomPolygon() {
 	}
 

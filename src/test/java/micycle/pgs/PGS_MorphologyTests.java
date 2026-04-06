@@ -1,6 +1,7 @@
 package micycle.pgs;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -17,13 +18,14 @@ import org.locationtech.jts.geom.MultiPolygon;
 import org.locationtech.jts.geom.Polygon;
 
 import micycle.pgs.commons.DiscreteCurveEvolution.DCETerminationCallback;
+import processing.core.PConstants;
 import processing.core.PShape;
 
-public class PGS_MorphologyTests {
+class PGS_MorphologyTests {
 
 	private static final GeometryFactory GF = new GeometryFactory();
 
-	private PShape inShape;
+	private PShape inShape, a, b;
 	private Geometry inGeom;
 	private double[] originalAreas;
 	private int[] originalHoleCounts;
@@ -55,6 +57,22 @@ public class PGS_MorphologyTests {
 			originalHoleCounts[i] = ((Polygon) gi).getNumInteriorRing();
 			originalAreas[i] = PGS_ShapePredicates.area(inShape.getChild(i));
 		}
+
+		a = new PShape(PShape.GEOMETRY);
+		a.beginShape();
+		a.vertex(0, 0);
+		a.vertex(10, 0);
+		a.vertex(10, 10);
+		a.vertex(0, 10);
+		a.endShape(PConstants.CLOSE);
+
+		b = new PShape(PShape.GEOMETRY);
+		b.beginShape();
+		b.vertex(70, 70);
+		b.vertex(710, 70);
+		b.vertex(710, 710);
+		b.vertex(70, 710);
+		b.endShape(PConstants.CLOSE);
 	}
 
 	@Test
@@ -132,15 +150,29 @@ public class PGS_MorphologyTests {
 		assertAreasDecreased(outShape, "after smoothing");
 	}
 
+	@Test
+	public void testInterpolation() {
+		var from = a;
+		var to = b;
+
+		var morph = PGS_Morphology.interpolate(List.of(from, to), 3);
+
+		assertTrue(PGS_ShapePredicates.equalsTopo(from, morph.getChild(0)));
+		assertTrue(PGS_ShapePredicates.equalsTopo(to, morph.getChild(2)));
+
+		assertFalse(PGS_ShapePredicates.equalsTopo(to, morph.getChild(1)));
+		assertFalse(PGS_ShapePredicates.equalsTopo(from, morph.getChild(1)));
+	}
+
 	/* Helper factories and geometry builders */
 
 	private static Polygon buildPolygonWithHoles(LinearRing exterior, LinearRing[] holes) {
 		return GF.createPolygon(exterior, holes);
 	}
 
-// Build a rectangular ring with two spike points per edge.
-// For spikesOutward = true: spikes point outside the rectangle bounds.
-// For spikesOutward = false (holes): spikes point toward the rectangle center.
+	// Build a rectangular ring with two spike points per edge.
+	// For spikesOutward = true: spikes point outside the rectangle bounds.
+	// For spikesOutward = false (holes): spikes point toward the rectangle center.
 	private static LinearRing spikyRectRing(double minX, double minY, double maxX, double maxY, double amplitude, boolean spikesOutward) {
 
 		List<Coordinate> coords = new ArrayList<>();
@@ -174,8 +206,6 @@ public class PGS_MorphologyTests {
 	private static double lerp(double a, double b, double t) {
 		return a + (b - a) * t;
 	}
-
-	/* New helper assertion methods to remove duplication */
 
 	private Geometry getOutputGeom(PShape outShape) {
 		assertNotNull(outShape, "Output shape must not be null");

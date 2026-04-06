@@ -1,7 +1,9 @@
 package micycle.pgs.commons;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -117,55 +119,83 @@ public class AreaMerge {
 	public static PShape areaMerge(PShape mesh, double areaThreshold) {
 		SimpleGraph<PShape, DefaultEdge> graph = PGS_Conversion.toDualGraph(mesh);
 
-		Map<PShape, FaceGroup> initialFaceMap = new HashMap<>(graph.vertexSet().size());
-		SimpleGraph<FaceGroup, DefaultEdge> groupsGraph = new SimpleGraph<>(DefaultEdge.class);
-		TreeSet<FaceGroup> smallGroups = new TreeSet<>(); // groups having area < areaThreshold
+		// identity-based ids for deterministic tie-breaking
+		Map<PShape, Integer> faceId = new IdentityHashMap<>();
 		for (PShape face : graph.vertexSet()) {
+			faceId.put(face, System.identityHashCode(face));
+		}
+
+		Comparator<FaceGroup> groupOrder = Comparator.comparingDouble((FaceGroup g) -> g.area);
+
+		Map<PShape, FaceGroup> initialFaceMap = new IdentityHashMap<>(graph.vertexSet().size());
+		SimpleGraph<FaceGroup, DefaultEdge> groupsGraph = new SimpleGraph<>(DefaultEdge.class);
+		TreeSet<FaceGroup> smallGroups = new TreeSet<>(groupOrder);
+
+		// add faces in deterministic order
+		List<PShape> faces = new ArrayList<>(graph.vertexSet());
+		faces.sort(Comparator.comparingInt(faceId::get));
+
+		for (PShape face : faces) {
 			double area = PGS_ShapePredicates.area(face);
-			FaceGroup f = new FaceGroup(face, area);
-			initialFaceMap.put(face, f);
-			groupsGraph.addVertex(f);
+			FaceGroup g = new FaceGroup(face, area);
+			initialFaceMap.put(face, g);
+			groupsGraph.addVertex(g);
 
 			if (area < areaThreshold) {
-				smallGroups.add(f);
+				smallGroups.add(g);
 			}
 		}
 
-		graph.edgeSet().forEach(e -> {
-			PShape a = graph.getEdgeSource(e);
-			PShape b = graph.getEdgeTarget(e);
-			/*
-			 * Now add edges to the neighboring groups graph. Initially the groups have the
-			 * same topology as the faces, since each group comprises one face.
-			 */
-			groupsGraph.addEdge(initialFaceMap.get(a), initialFaceMap.get(b));
+		// add edges in deterministic order
+		List<DefaultEdge> edges = new ArrayList<>(graph.edgeSet());
+		edges.sort((e1, e2) -> {
+			PShape a1 = graph.getEdgeSource(e1), b1 = graph.getEdgeTarget(e1);
+			int min1 = Math.min(faceId.get(a1), faceId.get(b1));
+			int max1 = Math.max(faceId.get(a1), faceId.get(b1));
+
+			PShape a2 = graph.getEdgeSource(e2), b2 = graph.getEdgeTarget(e2);
+			int min2 = Math.min(faceId.get(a2), faceId.get(b2));
+			int max2 = Math.max(faceId.get(a2), faceId.get(b2));
+
+			int c = Integer.compare(min1, min2);
+			if (c != 0) {
+				return c;
+			}
+			return Integer.compare(max1, max2);
 		});
 
-		while (!smallGroups.isEmpty()) {
-			final FaceGroup toMerge = smallGroups.pollFirst();
+		for (DefaultEdge e : edges) {
+			PShape a = graph.getEdgeSource(e);
+			PShape b = graph.getEdgeTarget(e);
+			groupsGraph.addEdge(initialFaceMap.get(a), initialFaceMap.get(b));
+		}
 
-			// find smallest neighbor of the toMerge face
-			List<FaceGroup> neighboringGroups = Graphs.neighborListOf(groupsGraph, toMerge);
-			// sort neighbors by area, pick the smallest. ensures algorithm is stable on the
-			// same input
-			FaceGroup smallestNeighbor = neighboringGroups.stream().min((a, b) -> Double.compare(a.area, b.area)).orElse(null);
-//			FaceGroup smallestNeighbor = neighbors.get(0);
-			if (smallestNeighbor == null) {
-				break; // exit merging
+		while (!smallGroups.isEmpty()) {
+			FaceGroup toMerge = smallGroups.pollFirst();
+			if (!groupsGraph.containsVertex(toMerge)) {
+				continue;
 			}
 
-			smallestNeighbor.mergeWith(toMerge); // merge face groups
-			mergeVertices(groupsGraph, smallestNeighbor, toMerge); // update topology
+			// deterministic neighbor selection (area, then id)
+			List<FaceGroup> neighbors = Graphs.neighborListOf(groupsGraph, toMerge);
+			FaceGroup smallestNeighbor = neighbors.stream().min(groupOrder).orElse(null);
+			if (smallestNeighbor == null) {
+				break;
+			}
 
-			// remove outdated entry if it exists
-			if (smallestNeighbor.area > areaThreshold) {
-				smallGroups.remove(smallestNeighbor);
+			// TreeSet invariant: remove before changing area
+			smallGroups.remove(smallestNeighbor);
+
+			smallestNeighbor.mergeWith(toMerge);
+
+			mergeVertices(groupsGraph, smallestNeighbor, toMerge);
+
+			if (groupsGraph.containsVertex(smallestNeighbor) && smallestNeighbor.area < areaThreshold) {
+				smallGroups.add(smallestNeighbor);
 			}
 		}
 
-		return PGS_Conversion.flatten(groupsGraph.vertexSet().stream().map(g -> {
-			return PGS_ShapeBoolean.unionMesh(g.faces.keySet());
-		}).collect(Collectors.toList()));
+		return PGS_Conversion.flatten(groupsGraph.vertexSet().stream().map(g -> PGS_ShapeBoolean.unionMesh(g.faces.keySet())).collect(Collectors.toList()));
 	}
 
 	/**

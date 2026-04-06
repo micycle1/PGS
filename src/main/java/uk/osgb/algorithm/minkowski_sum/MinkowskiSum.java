@@ -857,8 +857,7 @@ public class MinkowskiSum {
 	 *                    polygon is convex, the computation is simplier and robust
 	 * @return
 	 */
-	private static Polygon segPlgAddition(Coordinate[] refCoords, Coordinate segSp, Coordinate segEp, boolean isRefConvex,
-			GeometryFactory gf) {
+	private static Polygon segPlgAddition(Coordinate[] refCoords, Coordinate segSp, Coordinate segEp, boolean isRefConvex, GeometryFactory gf) {
 		if (isRefConvex) {
 			int numCoord = refCoords.length;
 			Coordinate[] coords = new Coordinate[numCoord * 2];
@@ -954,8 +953,7 @@ public class MinkowskiSum {
 	 * @param isRefConvex  whether the reference polygon is convex
 	 * @return
 	 */
-	private static Geometry coordArrayVectorAddition(Coordinate[] geomCoords, Coordinate[] refPlgCoords, boolean isRefConvex,
-			GeometryFactory gf) {
+	private static Geometry coordArrayVectorAddition(Coordinate[] geomCoords, Coordinate[] refPlgCoords, boolean isRefConvex, GeometryFactory gf) {
 		List<Polygon> parts = new ArrayList<>();
 		for (int j = 0; j < geomCoords.length - 1; ++j) {
 			Coordinate segSp = geomCoords[j];

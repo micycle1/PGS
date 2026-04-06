@@ -337,7 +337,7 @@ public class ConcaveHull {
 						}
 					}
 				}
-				
+
 				if (addHull) {
 					// add hull to result
 					rltHulls.add(hull);
@@ -381,8 +381,7 @@ public class ConcaveHull {
 	 * @param keepLineSeg
 	 * @return
 	 */
-	public Collection<Geometry> getConcaveHullMetric(TriangleChecker triChecker, TriMetricLength m, boolean allowMultiParts,
-			boolean keepLineSeg) {
+	public Collection<Geometry> getConcaveHullMetric(TriangleChecker triChecker, TriMetricLength m, boolean allowMultiParts, boolean keepLineSeg) {
 		if (triChecker != null) {
 			LinkedList<DLCirList<Coordinate>> hulls = new LinkedList<>(); //
 			ArrayList<DLCirList<Coordinate>> rltHulls = new ArrayList<>(); // finished hulls
@@ -705,8 +704,8 @@ public class ConcaveHull {
 	 * @param edgeIdx
 	 * @param nodeEdgeMap
 	 */
-	private void generateHullIndices(DLCirList<Coordinate> hullCL, Map<Coordinate, DLNode<Coordinate>> coordNodeMap,
-			Set<HullEdgeCir> edgeIdx, Map<DLNode<Coordinate>, HullEdgeCir> nodeEdgeMap) {
+	private void generateHullIndices(DLCirList<Coordinate> hullCL, Map<Coordinate, DLNode<Coordinate>> coordNodeMap, Set<HullEdgeCir> edgeIdx,
+			Map<DLNode<Coordinate>, HullEdgeCir> nodeEdgeMap) {
 		DLNode<Coordinate> node = hullCL.getNode();
 		do {
 			Coordinate coord = node.getObj();

@@ -5,20 +5,16 @@ import static micycle.pgs.PGS_Conversion.toPShape;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Polygon;
-import org.locationtech.jts.geom.PrecisionModel;
 import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.locationtech.jts.geom.util.GeometryFixer;
 import org.locationtech.jts.geom.util.LinearComponentExtracter;
-import org.locationtech.jts.noding.NodedSegmentString;
 import org.locationtech.jts.noding.Noder;
 import org.locationtech.jts.noding.SegmentString;
 import org.locationtech.jts.noding.SegmentStringDissolver;
@@ -31,9 +27,11 @@ import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
+import com.github.micycle1.geoblitz.DiskUnion;
+
 import micycle.pgs.commons.FastOverlapRegions;
 import micycle.pgs.commons.Nullable;
-import micycle.pgs.commons.PEdge;
+import micycle.pgs.commons.OcclusionSubtract;
 import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
@@ -72,6 +70,29 @@ public final class PGS_ShapeBoolean {
 		Geometry result = OverlayNG.overlay(shapeA, fromPShape(b), OverlayNG.INTERSECTION);
 		result.setUserData(shapeA.getUserData()); // preserve shape style (if any)
 		return toPShape(result);
+	}
+
+	/**
+	 * Calculates the intersection of all provided shapes, producing a new shape
+	 * representing the area shared by every input.
+	 * <p>
+	 * This is equivalent to {@code shapes[0] ∩ shapes[1] ∩ ...}.
+	 *
+	 * @param shapes the shapes to intersect (must contain at least 2 shapes)
+	 * @return a new shape representing the intersection of all inputs; retains the
+	 *         style of {@code shapes[0]}
+	 * @throws IllegalArgumentException if fewer than 2 shapes are provided
+	 * @since 2.2
+	 */
+	public static PShape intersect(final PShape... shapes) {
+		if (shapes == null || shapes.length < 2) {
+			throw new IllegalArgumentException("intersect requires at least 2 shapes");
+		}
+		PShape out = shapes[0];
+		for (int i = 1; i < shapes.length; i++) {
+			out = intersect(out, shapes[i]);
+		}
+		return out;
 	}
 
 	/**
@@ -185,6 +206,37 @@ public final class PGS_ShapeBoolean {
 	}
 
 	/**
+	 * Performs a specialised union of circles represented by center/radius vectors.
+	 * <p>
+	 * This method is optimised for circular inputs and is typically much faster
+	 * than constructing circle {@code PShape}s and passing them through the
+	 * general-purpose {@link #union(Collection) union()} method. Internally, it
+	 * operates directly on disk/arc segments rather than polygonised circle
+	 * geometries.
+	 * </p>
+	 * <p>
+	 * Each input {@link PVector} is interpreted as a circle definition, where
+	 * {@code x} and {@code y} specify the circle center and {@code z} specifies the
+	 * radius. The returned shape represents the combined area of all input circles,
+	 * with overlapping regions included only once.
+	 * </p>
+	 *
+	 * @param circles a collection of circle definitions as {@code PVector}s, where
+	 *                {@code x} and {@code y} are the center coordinates and
+	 *                {@code z} is the radius
+	 * @return a new {@code PShape} representing the union of all input circles
+	 * @since 2.2
+	 * @see #union(Collection)
+	 * @see #union(PShape...)
+	 */
+	public static PShape unionCircles(Collection<PVector> circles) {
+		var disks = circles.stream().map(c -> PGS.coordFromPVector(c)).toList();
+		var union = DiskUnion.union(disks, PGS_Conversion.BEZIER_SAMPLE_DISTANCE);
+
+		return toPShape(union);
+	}
+
+	/**
 	 * Unions the <b>linework</b> of two shapes, creating polygonal faces from their
 	 * intersecting lines. This method focuses on the linework (linear components)
 	 * of the input geometries rather than their areas. It differs from a standard
@@ -195,7 +247,7 @@ public final class PGS_ShapeBoolean {
 	 * </p>
 	 *
 	 * @param a The first input geometry as a {@link PShape}.
-	 * @param b b The second input geometry as a {@link PShape}, or {@code null} to
+	 * @param b The second input geometry as a {@link PShape}, or {@code null} to
 	 *          use only {@code a}'s linework.
 	 * @return A new {@link PShape} representing the polygonal faces created by the
 	 *         union of the input geometries' linework. Returns {@code null} if the
@@ -209,7 +261,7 @@ public final class PGS_ShapeBoolean {
 		var lB = LinearComponentExtracter.getGeometry(bG);
 
 		Polygonizer polygonizer = new Polygonizer(false);
-		polygonizer.add(OverlayNG.overlay(lA, lB, OverlayOp.UNION, new PrecisionModel(-1e-3)));
+		polygonizer.add(OverlayNG.overlay(lA, lB, OverlayOp.UNION, PGS.PM));
 
 		return toPShape(polygonizer.getGeometry());
 	}
@@ -259,7 +311,7 @@ public final class PGS_ShapeBoolean {
 		d.dissolve(totalSegs);
 		var dissolvedSegs = d.getDissolved();
 
-		Noder noder = new SnapRoundingNoder(new PrecisionModel(-5e-3));
+		Noder noder = new SnapRoundingNoder(PGS.PM);
 		noder.computeNodes(dissolvedSegs);
 		var nodedSegs = noder.getNodedSubstrings();
 
@@ -301,69 +353,16 @@ public final class PGS_ShapeBoolean {
 			}
 			return mesh;
 		}
-
 		return unionMeshWithHoles(mesh);
 	}
 
 	private static PShape unionMeshWithHoles(final PShape mesh) {
 		Geometry g = PGS_Conversion.fromPShape(mesh);
 		try {
-			return toPShape(CoverageUnion.union(g));
+			return toPShape(CoverageUnion.union(g).norm());
 		} catch (Exception e) {
 			return toPShape(g.buffer(0));
 		}
-	}
-
-	/**
-	 * Unifies a collection of mesh shapes without handling holes, providing a more
-	 * faster approach than {@link #unionMesh(PShape)} if the input is known to have
-	 * no holes.
-	 * <p>
-	 * This method calculates the set of unique edges belonging to the mesh, which
-	 * is equivalent to the boundary, assuming a mesh without holes. It then
-	 * determines a sequential/winding order for the vertices of the boundary.
-	 * <p>
-	 * Note: This method does not account for meshes with holes.
-	 *
-	 * @param mesh A collection of shapes representing a mesh.
-	 * @return A new PShape representing the union of the mesh shapes.
-	 * @deprecated This method is deprecated due to the lack of support for meshes
-	 *             with holes.
-	 */
-	@Deprecated
-	public static PShape unionMeshWithoutHoles(final Collection<PShape> mesh) {
-		Map<PEdge, Integer> edges = new HashMap<>();
-
-		final List<PEdge> allEdges;
-
-		/*
-		 * Compute set of unique edges belonging to the mesh (this set is equivalent to
-		 * the boundary, assuming a holeless mesh).
-		 */
-		for (PShape child : mesh) {
-			for (int i = 0; i < child.getVertexCount(); i++) {
-				final PVector a = child.getVertex(i);
-				final PVector b = child.getVertex((i + 1) % child.getVertexCount());
-				if (!a.equals(b)) {
-					PEdge edge = new PEdge(a, b);
-					edges.merge(edge, 1, Integer::sum);
-				}
-			}
-		}
-
-		allEdges = edges.entrySet().stream().filter(e -> e.getValue() == 1).map(e -> e.getKey()).collect(Collectors.toList());
-
-		/*
-		 * Now find a sequential/winding order for the vertices of the boundary. The
-		 * vertices output fromEdges() is not closed, so close it afterwards (assumes
-		 * the input to unionMesh() was indeed closed and valid).
-		 */
-		final List<PVector> orderedVertices = PGS.fromEdges(allEdges);
-		if (!orderedVertices.get(0).equals(orderedVertices.get(orderedVertices.size() - 1))) {
-			orderedVertices.add(orderedVertices.get(0)); // close vertex list for fromPVector()
-		}
-
-		return PGS_Conversion.fromPVector(orderedVertices);
 	}
 
 	/**
@@ -409,10 +408,31 @@ public final class PGS_ShapeBoolean {
 	 * @see #simpleSubtract(PShape, PShape)
 	 */
 	public static PShape subtract(final PShape a, final PShape b) {
-		Geometry shapeA = fromPShape(a);
-		Geometry result = OverlayNG.overlay(shapeA, fromPShape(b), OverlayNG.DIFFERENCE);
-		result.setUserData(shapeA.getUserData()); // preserve shape style (if any)
+		var geomA = fromPShape(a);
+		var geomB = fromPShape(b);
+		var result = OverlayNG.overlay(geomA, geomB, OverlayNG.DIFFERENCE);
+		result.setUserData(geomA.getUserData()); // preserve shape style (if any)
 		return toPShape(result);
+	}
+
+	/**
+	 * Subtracts multiple shapes from a base shape and returns the resulting shape.
+	 * This is equivalent to subtracting the union of {@code shapes} from {@code a}:
+	 *
+	 * <pre>{@code
+	 * subtract(a, s1, s2, s3) == subtract(a, union(s1, s2, s3))
+	 * }</pre>
+	 *
+	 * @param base   the {@code PShape} from which all subsequent shapes will be
+	 *               subtracted
+	 * @param shapes zero or more {@code PShape}s to subtract from {@code a}
+	 * @return a new {@code PShape} representing {@code a \ (s1 ∪ s2 ∪ ...)}; the
+	 *         returned shape has the style of {@code a}
+	 * @since 2.2
+	 * @see #subtract(PShape, PShape)
+	 */
+	public static PShape subtract(final PShape base, PShape... shapes) {
+		return subtract(base, union(Arrays.asList(shapes)));
 	}
 
 	/**
@@ -477,13 +497,39 @@ public final class PGS_ShapeBoolean {
 					return f; // outside -- keep
 				}
 				// preserve the fill etc of the PShape during subtraction
-				Geometry boundarySubtract = OverlayNG.overlay(f, g, OverlayNG.DIFFERENCE);
+				Geometry boundarySubtract = OverlayNG.overlay(f, g, OverlayNG.DIFFERENCE, PGS.PM);
 				boundarySubtract.setUserData(f.getUserData());
 				return boundarySubtract;
 			}
-		}).collect(Collectors.toList());
+		}).toList();
 
 		return PGS_Conversion.toPShape(faces);
+	}
+
+	/**
+	 * Removes hidden areas from shapes contained in a <code>GROUP</code> shape,
+	 * preserving only the visible portions of each shape.
+	 * <p>
+	 * This method processes a <code>GROUP</code> shape, aiming to create a set of
+	 * shapes that represent only the areas visible to the viewer (a.k.a. hidden
+	 * surface removal). The resulting geometry is useful for layering effects or
+	 * limiting overdraw.
+	 * <p>
+	 * It's important to note that the order of shape layers in the input GROUP
+	 * shape is significant. The method considers the last child shape of the input
+	 * to be "on top" of all other shapes, as is the case visually. For each child,
+	 * any area overlapped by subsequent (higher) children is subtracted from it.
+	 * Only polygonal shapes act as occluders; lines and points do not occlude other
+	 * shapes.
+	 *
+	 * @param shape A GROUP shape containing child shapes.
+	 * @return A new shape (typically a {@code GROUP}) containing the visible
+	 *         portions of the input components.
+	 * @since 2.2
+	 */
+	public static PShape occlusionSubtract(PShape shape) {
+		OcclusionSubtract o = new OcclusionSubtract(fromPShape(shape));
+		return toPShape(o.subtractArealOcclusion());
 	}
 
 	/**

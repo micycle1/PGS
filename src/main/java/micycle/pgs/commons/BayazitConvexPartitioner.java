@@ -22,12 +22,16 @@ import org.locationtech.jts.geom.PrecisionModel;
  * @author William Bittle
  * @author Refactored for JTS by Michael Carleton
  * @see <a href= "https://mpen.ca/406/bayazit">Mark Bayazits Algorithm </a>
+ * @deprecated
  */
-public class PolygonDecomposition {
+@Deprecated
+public class BayazitConvexPartitioner {
+
+	// algorithm described in https://mpen.ca/406/bayazit
 
 	private static final GeometryFactory GEOM_FACTORY = new GeometryFactory(new PrecisionModel(PrecisionModel.FLOATING_SINGLE));
 
-	private PolygonDecomposition() {
+	private BayazitConvexPartitioner() {
 	}
 
 	public static List<Polygon> decompose(Polygon polygon) {

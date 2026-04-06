@@ -18,7 +18,7 @@ import uk.osgb.algorithm.concavehull.ConcaveHull;
 import uk.osgb.algorithm.concavehull.TriCheckerChi;
 
 /**
- * Generates various types of geomtric hulls (convex, concave, etc.) for
+ * Generates various types of geometric hulls (convex, concave, etc.) for
  * polygons and point sets.
  * <p>
  * A hull is the smallest enclosing shape of some nature that contains all
@@ -132,7 +132,7 @@ public class PGS_Hull {
 	 * 
 	 * @param points
 	 * @param concavity a factor value between 0 and 1, specifying how concave the
-	 *                  output is (where 1 is maximal concavity)
+	 *                  output is (where 0 is maximal concavity)
 	 * @return
 	 * @since 1.1.0
 	 * @see #concaveHullBFS(List, double)

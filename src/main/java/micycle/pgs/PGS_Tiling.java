@@ -1,10 +1,12 @@
 package micycle.pgs;
 
+import static micycle.pgs.PGS_Conversion.toPShape;
 import static micycle.pgs.PGS.GEOM_FACTORY;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.SplittableRandom;
 
 import org.locationtech.jts.geom.Coordinate;
@@ -16,11 +18,14 @@ import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
 
 import micycle.pgs.color.Colors;
+import micycle.pgs.commons.AztecDiamond;
 import micycle.pgs.commons.DoyleSpiral;
 import micycle.pgs.commons.HatchTiling;
 import micycle.pgs.commons.PEdge;
 import micycle.pgs.commons.PenroseTiling;
 import micycle.pgs.commons.RectangularSubdivision;
+import micycle.pgs.commons.SoftCells;
+import micycle.pgs.commons.SoftCells.TangentMode;
 import micycle.pgs.commons.SquareTriangleTiling;
 import micycle.pgs.commons.TriangleSubdivision;
 import processing.core.PConstants;
@@ -60,7 +65,7 @@ public final class PGS_Tiling {
 	 * @param height   height of the quad subdivision plane
 	 * @param maxDepth maximum number of subdivisions (recursion depth)
 	 * @return a GROUP PShape, where each child shape is a face of the subdivision
-	 * @see #rectSubdivision(double, double, int, long) seeded rectSubdivsion()
+	 * @see #rectSubdivision(double, double, int, long) seeded rectSubdivision()
 	 */
 	public static PShape rectSubdivision(final double width, final double height, final int maxDepth) {
 		return rectSubdivision(width, height, maxDepth, System.nanoTime());
@@ -74,7 +79,7 @@ public final class PGS_Tiling {
 	 * @param maxDepth maximum number of subdivisions (recursion depth)
 	 * @param seed     the random seed
 	 * @return a GROUP PShape, where each child shape is a face of the subdivision
-	 * @see #rectSubdivision(double, double, int) non-seeded rectSubdivsion()
+	 * @see #rectSubdivision(double, double, int) non-seeded rectSubdivision()
 	 */
 	public static PShape rectSubdivision(final double width, final double height, int maxDepth, final long seed) {
 		maxDepth++; // so that given depth==0 returns non-divided square
@@ -93,7 +98,7 @@ public final class PGS_Tiling {
 	 * @param maxDepth maximum number of subdivisions (recursion depth)
 	 * @return a GROUP PShape, where each child shape is a face of the subdivision
 	 * @see #triangleSubdivision(double, double, int, long) seeded
-	 *      triangleSubdivsion()
+	 *      triangleSubdivision()
 	 */
 	public static PShape triangleSubdivision(final double width, final double height, final int maxDepth) {
 		return triangleSubdivision(width, height, maxDepth, System.nanoTime());
@@ -164,6 +169,56 @@ public final class PGS_Tiling {
 	}
 
 	/**
+	 * Divides the plane into a simple axis-aligned grid using square cells.
+	 * <p>
+	 * Grid lines are placed every {@code cellSize} units in X and Y. If
+	 * {@code width} or {@code height} are not exact multiples of {@code cellSize},
+	 * the last row/col will be a smaller “remainder” cell band.
+	 * </p>
+	 *
+	 * @param width    the width of the plane
+	 * @param height   the height of the plane
+	 * @param cellSize the desired square cell size (must be > 0)
+	 * @return a GROUP PShape containing the grid cells
+	 * @since 2.2
+	 */
+	public static PShape squareGrid(final double width, final double height, final double cellSize) {
+		if (cellSize <= 0) {
+			throw new IllegalArgumentException("cellSize must be > 0");
+		}
+
+		final List<PEdge> cuts = new ArrayList<>();
+		final double x = 0, y = 0;
+
+		// boundary
+		final PVector A = new PVector((float) x, (float) y);
+		final PVector B = new PVector((float) (x + width), (float) y);
+		final PVector C = new PVector((float) (x + width), (float) (y + height));
+		final PVector D = new PVector((float) x, (float) (y + height));
+
+		cuts.add(new PEdge(A, B));
+		cuts.add(new PEdge(B, C));
+		cuts.add(new PEdge(C, D));
+		cuts.add(new PEdge(D, A));
+
+		// vertical grid lines
+		for (double xx = x + cellSize; xx < x + width; xx += cellSize) {
+			final PVector p1 = new PVector((float) xx, (float) y);
+			final PVector p2 = new PVector((float) xx, (float) (y + height));
+			cuts.add(new PEdge(p1, p2));
+		}
+
+		// horizontal grid lines
+		for (double yy = y + cellSize; yy < y + height; yy += cellSize) {
+			final PVector p1 = new PVector((float) x, (float) yy);
+			final PVector p2 = new PVector((float) (x + width), (float) yy);
+			cuts.add(new PEdge(p1, p2));
+		}
+
+		return PGS.polygonizeEdges(cuts);
+	}
+
+	/**
 	 * Randomly subdivides the plane into equal-width strips having varying lengths.
 	 *
 	 * @param width      width of the subdivision plane
@@ -184,11 +239,14 @@ public final class PGS_Tiling {
 	/**
 	 * Divides the plane into randomly “sliced” polygonal regions.
 	 * <p>
-	 * {@code slices} random cuts are generated across the plane (dimensions w×h, at
-	 * (0,0)). Each cut connects a random point on one side of the plane to a random
-	 * point on another side. If {@code forceOpposite} is true, each cut always
-	 * connects opposite sides; otherwise the two sides are chosen at random (but
-	 * never the same side).
+	 * {@code slices} is the number of random interior <em>cuts</em> (line segments)
+	 * to add across the plane (i.e., the number of cuts, <strong>not</strong> the
+	 * number of resulting regions/pieces). These {@code slices} cuts are generated
+	 * over a w×h rectangle at (0,0); each cut connects a random point on one side
+	 * of the rectangle to a random point on another side. If {@code forceOpposite}
+	 * is true, each cut always connects opposite sides; otherwise the two sides are
+	 * chosen at random (but never the same side). The final number of polygonal
+	 * regions depends on how the cuts intersect and partition the rectangle.
 	 * </p>
 	 * <p>
 	 * <strong>In practice:</strong>
@@ -396,16 +454,17 @@ public final class PGS_Tiling {
 	public static PShape islamicTiling(final double width, final double height, final double w, final double h) {
 		// adapted from https://openprocessing.org/sketch/320133
 		final double[] vector = { -w, 0, w, -h, w, 0, -w, h };
-		final ArrayList<PVector> segments = new ArrayList<>();
+		var s = PGS.prepareLinesPShape(null, null, null);
 		for (int x = 0; x < width; x += w * 2) {
 			for (int y = 0; y < height; y += h * 2) {
 				for (int i = 0; i <= vector.length; i++) {
-					segments.add(new PVector((float) (vector[i % vector.length] + x + w), (float) (vector[(i + 6) % vector.length] + y + h)));
-					segments.add(new PVector((float) (vector[(i + 1) % vector.length] + x + w), (float) (vector[(i + 1 + 6) % vector.length] + y + h)));
+					s.vertex((float) (vector[i % vector.length] + x + w), (float) (vector[(i + 6) % vector.length] + y + h));
+					s.vertex((float) (vector[(i + 1) % vector.length] + x + w), (float) (vector[(i + 1 + 6) % vector.length] + y + h));
 				}
 			}
 		}
-		return PGS_Processing.polygonizeLines(segments);
+		s.endShape();
+		return PGS_Processing.polygonize(s);
 	}
 
 	/**
@@ -450,6 +509,80 @@ public final class PGS_Tiling {
 	public static PShape squareTriangleTiling(final double width, final double height, final double tileSize, final long seed) {
 		final SquareTriangleTiling stt = new SquareTriangleTiling(width, height, tileSize);
 		return stt.getTiling(seed);
+	}
+
+	/**
+	 * Builds a tiling of interlocking cells that form an auxetic structure.
+	 *
+	 * <p>
+	 * An <i>auxetic structure</i> tends to widen when stretched (it can show a
+	 * negative <i>Poisson’s ratio</i>). This method builds a fabric/weave-like
+	 * layout of horizontal and vertical segments then runs a Voronoi-like
+	 * construction on those line segments. The resulting cell boundaries are made
+	 * of straight and gently curved pieces, producing an interlocking tiling (which
+	 * would have auxetic properties if physical).
+	 * </p>
+	 *
+	 * <h3>The A–B–C parameters</h3>
+	 * <p>
+	 * The A-B-C parameters affect the underlying segment generation. Each row
+	 * follows A cells with the horizontal (weft) thread on top, then B cells with
+	 * the vertical (warp) thread on top. Each next row is shifted right by C cells
+	 * (wraps around modulo P).
+	 * </p>
+	 * <h3>What features appear, and when</h3>
+	 * <p>
+	 * The Voronoi construction produces a small set of recurring unit-cell types.
+	 * Below is a short, non-technical guide to what those features look like and
+	 * the simple conditions that cause them to appear (using C' = C mod (A+B)):
+	 * </p>
+	 *
+	 * <ul>
+	 * <li><b>Quad</b> - four-armed vertex (a small “X-like” quad). Appears when the
+	 * row-shift aligns with a run boundary: typically when {@code A == C'} or
+	 * {@code B == C'}.</li>
+	 *
+	 * <li><b>Tri-adjacent</b> - the most common cell: two curved (parabolic) arcs
+	 * meeting at a vertex plus a short straight edge. This cell shows up in nearly
+	 * every weave except when the shift exactly matches a run length: it is absent
+	 * if {@code A == C'} or {@code B == C'}.</li>
+	 *
+	 * <li><b>Tri-across</b> - a rarer symmetric three-armed cell formed by two
+	 * mirrored parabolas and a straight ray across the vertex. It typically
+	 * requires both runs to be at least length 2 and the shift to fall inside the
+	 * interior of the repeat: occurs when {@code A > 1}, {@code B > 1}, and
+	 * {@code 1 < C' < A + B - 2}.</li>
+	 *
+	 * <li><b>Straight</b> - long straight edges (horizontal or vertical) with a
+	 * relatively small offset. These happen when the shift produces a significant
+	 * mismatch with a run length, e.g. when {@code |C' - A| > 1} (horizontal
+	 * straight) or {@code |C' - B| > 1} (vertical straight). Note that straight
+	 * elements by themselves are not auxetic; changing how many straight elements
+	 * occur can change the mechanical character of the cell but does not trivially
+	 * predict Poisson’s ratio.</li>
+	 * </ul>
+	 *
+	 * @param width    domain width
+	 * @param height   domain height
+	 * @param cellSize size of a grid cell (world units), must be &gt; 0
+	 * @param A        number of consecutive cells where the horizontal
+	 *                 (<i>weft</i>) thread is on top (A &gt;= 1)
+	 * @param B        number of consecutive cells where the vertical (<i>warp</i>)
+	 *                 thread is on top (B &gt;= 1)
+	 * @param C        per-row horizontal shift (in cells), applied modulo
+	 *                 {@code A + B}
+	 * @return a {@link PShape} containing the Voronoi-derived cell boundaries (a
+	 *         weave-based auxetic lattice)
+	 * @since 2.2
+	 * @see PGS_SegmentSet#weaveSegments(double, double, double, int, int, int)
+	 *      weaveSegments()
+	 * @throws IllegalArgumentException if {@code cellSize <= 0} or {@code A <= 0}
+	 *                                  or {@code B <= 0}
+	 */
+	public static PShape auxeticTiling(final double width, final double height, final double cellSize, final int A, final int B, final int C) {
+		var segs = PGS_SegmentSet.weaveSegments(width, height, cellSize, A, B, C);
+		var shape = PGS_SegmentSet.toPShape(segs);
+		return PGS_Voronoi.compoundVoronoi(shape);
 	}
 
 	/**
@@ -514,6 +647,96 @@ public final class PGS_Tiling {
 		}
 
 		return PGS_Conversion.flatten(bricks);
+	}
+
+	/**
+	 * Produces a random domino tiling of the <b>Aztec diamond</b> of the given
+	 * {@code order}.
+	 *
+	 * <p>
+	 * The generated arrangement is positioned so that {@code (originX, originY)} is
+	 * the <b>center</b> of the Aztec diamond. The tiling is generated on a unit
+	 * grid and scaled by {@code cellSize}.
+	 * </p>
+	 *
+	 * <p>
+	 * Each child shape is one domino. The child {@link PShape#getName() name}
+	 * encodes an integer “class” identifying one of four standard domino types
+	 * (horizontal/vertical orientation and checkerboard parity).
+	 * </p>
+	 *
+	 * @param originX  x-coordinate of the <b>center</b> of the generated tiling.
+	 * @param originY  y-coordinate of the <b>center</b> of the generated tiling.
+	 * @param order    Aztec diamond order {@code n}; must be {@code >= 1}.
+	 * @param cellSize width/height of underlying grid cells; must be {@code > 0}.
+	 * @param seed     seed used to initialise the RNG for reproducible tilings.
+	 * @return a flattened {@link PShape} whose child faces are axis-aligned domino
+	 *         rectangles tiling the Aztec diamond; each child’s {@code name}
+	 *         encodes one of four domino classes.
+	 * @since 2.2
+	 */
+	public static PShape aztecDiamond(double originX, double originY, int order, double cellSize, long seed) {
+		AztecDiamond a = new AztecDiamond(order, GEOM_FACTORY, new Random(seed));
+		var polys = a.toMultiPolygon(cellSize, originX, originY);
+		var out = PGS.extractPolygons(polys).stream().map(poly -> {
+			var s = toPShape(poly);
+			int id = (int) poly.getUserData();
+			s.setName(String.valueOf(id));
+			return s;
+		}).toList();
+		return PGS_Conversion.flatten(out);
+	}
+
+	/**
+	 * Generates a softened (curved) version of a tiling using the <i>SoftCells</i>
+	 * edge-bending algorithm.
+	 *
+	 * <p>
+	 * The input mesh straight edges are softened into smooth, Bezier-like curves
+	 * according to the supplied parameters. The resulting shape preserves the mesh
+	 * topology (combinatorial adjacency) while altering the geometry to produce the
+	 * characteristic "soft cell" appearance.
+	 * </p>
+	 *
+	 * <p>
+	 * The implementation samples random directions once per vertex (not per edge)
+	 * when a stochastic tangent mode is selected. The {@code seed} only influences
+	 * the following TangentMode values:
+	 * </p>
+	 * <ul>
+	 * <li>{@code RANDOM} - a random unit direction (one angle) is chosen once per
+	 * vertex;</li>
+	 * <li>{@code RANDOM_DIAGONAL} - one of the two diagonal directions (diag1 or
+	 * diag2) is chosen once per vertex;</li>
+	 * <li>{@code RANDOM_60DEG} - one of three 60° directions is selected once per
+	 * vertex.</li>
+	 * </ul>
+	 * 
+	 * @param mesh  the input PShape representing the base tiling to be softened;
+	 *              must not be null. The input is not modified — a new PShape is
+	 *              returned.
+	 * @param ratio a floating-point control for the amount of softening/edge
+	 *              bending. Typical usage treats this as a normalised factor
+	 *              (commonly in the [0,1] range) where smaller values produce
+	 *              subtler curvature and larger values produce stronger softening
+	 *              (values much larger than may lead to face self-intersection).
+	 * @param mode  the TangentMode that selects how half-tangents / edge directions
+	 *              are chosen and aligned during the edge-bending process; see
+	 *              <code>TangentMode</code> for available modes and behaviour.
+	 * @param seed  random seed used to initialise the RNG. The seed only affects
+	 *              the stochastic tangent modes listed above; using the same seed
+	 *              with the same input mesh and parameters yields deterministic,
+	 *              repeatable output.
+	 * @return a new PShape containing the softened tessellation (curved/soft cells)
+	 *         corresponding to the input mesh and parameters.
+	 * @since 2.2
+	 */
+	public static PShape softCells(PShape mesh, double ratio, TangentMode mode, long seed) {
+		SoftCells sc = new SoftCells(seed);
+		mesh = PGS_Optimisation.hilbertSortFaces(mesh);
+		var cells = sc.generate(mesh, mode, (float) ratio);
+		cells = PGS_Conversion.setAllStrokeColor(cells, Colors.PINK, 2);
+		return cells;
 	}
 
 	/**

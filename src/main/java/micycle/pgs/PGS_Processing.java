@@ -9,10 +9,8 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -32,7 +30,9 @@ import org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer;
 import org.apache.commons.math3.ml.distance.EuclideanDistance;
 import org.locationtech.jts.algorithm.Angle;
 import org.locationtech.jts.algorithm.Area;
+import org.locationtech.jts.algorithm.LineIntersector;
 import org.locationtech.jts.algorithm.Orientation;
+import org.locationtech.jts.algorithm.RobustLineIntersector;
 import org.locationtech.jts.algorithm.hull.ConcaveHullOfPolygons;
 import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.densify.Densifier;
@@ -51,8 +51,11 @@ import org.locationtech.jts.geom.prep.PreparedGeometry;
 import org.locationtech.jts.geom.prep.PreparedGeometryFactory;
 import org.locationtech.jts.geom.util.GeometryFixer;
 import org.locationtech.jts.geom.util.LineStringExtracter;
+import org.locationtech.jts.geom.util.LinearComponentExtracter;
 import org.locationtech.jts.geom.util.PolygonExtracter;
 import org.locationtech.jts.linearref.LengthIndexedLine;
+import org.locationtech.jts.noding.BasicSegmentString;
+import org.locationtech.jts.noding.MCIndexNoder;
 import org.locationtech.jts.noding.MCIndexSegmentSetMutualIntersector;
 import org.locationtech.jts.noding.NodedSegmentString;
 import org.locationtech.jts.noding.Noder;
@@ -62,7 +65,6 @@ import org.locationtech.jts.noding.SegmentString;
 import org.locationtech.jts.noding.SegmentStringUtil;
 import org.locationtech.jts.noding.snap.SnappingNoder;
 import org.locationtech.jts.operation.overlay.snap.GeometrySnapper;
-import org.locationtech.jts.operation.overlayng.MultiOperationOverlayNG;
 import org.locationtech.jts.operation.overlayng.OverlayNG;
 import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
@@ -75,12 +77,8 @@ import com.github.micycle1.geoblitz.IndexedLengthIndexedLine;
 import com.github.micycle1.geoblitz.YStripesPointInAreaLocator;
 
 import it.unimi.dsi.util.XoRoShiRo128PlusRandomGenerator;
-import micycle.balaban.BalabanSolver;
-import micycle.balaban.Point;
-import micycle.balaban.Segment;
-import micycle.pgs.color.ColorUtils;
 import micycle.pgs.color.Colors;
-import micycle.pgs.commons.PolygonDecomposition;
+import micycle.pgs.commons.KeilSnoeyinkConvexPartitioner;
 import micycle.pgs.commons.SeededRandomPointsInGridBuilder;
 import micycle.pgs.commons.ShapeRandomPointSampler;
 import micycle.trapmap.TrapMap;
@@ -89,10 +87,17 @@ import processing.core.PShape;
 import processing.core.PVector;
 
 /**
- * Methods that process shape geometry: partitioning, slicing, cleaning, etc.
+ * Shape-processing utilities for {@link PShape} geometry.
+ *
+ * <p>
+ * This class groups “workflow” operations that <em>operate on</em> shapes
+ * rather than primarily <em>reshaping</em> them: sampling and traversal,
+ * validation/repair, cleaning and filtering, intersection helpers, and
+ * partitioning/slicing/splitting into multiple parts. Methods often return
+ * derived shapes (or shape collections) suitable for downstream steps such as
+ * meshing, tiling, coloring, or boolean operations.
  * 
  * @author Michael Carleton
- *
  */
 public final class PGS_Processing {
 
@@ -138,6 +143,8 @@ public final class PGS_Processing {
 	 *                          point away from the shape (outwards); negative
 	 *                          values offset the point inwards towards its
 	 *                          interior.
+	 * @return A {@link PVector} located on the exterior of {@code shape} at the
+	 *         requested perimeter position and offset.
 	 * @see #pointsOnExterior(PShape, int, double)
 	 */
 	public static PVector pointOnExterior(PShape shape, double perimeterPosition, double offsetDistance) {
@@ -164,6 +171,8 @@ public final class PGS_Processing {
 	 *                          point away from the shape (outwards); negative
 	 *                          values offset the point inwards towards its
 	 *                          interior.
+	 * @return A {@link PVector} located at the specified distance along the
+	 *         exterior perimeter, offset by {@code offsetDistance}.
 	 * @since 1.4.0
 	 */
 	public static PVector pointOnExteriorByDistance(PShape shape, double perimeterDistance, double offsetDistance) {
@@ -335,7 +344,6 @@ public final class PGS_Processing {
 		double interLineDistanceFinal = Math.max(interLineDistance, 0.0);
 
 		PShape topGroup = new PShape(PConstants.GROUP);
-
 		// Process every linear component independently
 		PGS.applyToLinealGeometries(shape, ring -> {
 			// Normalise orientation so offsets are consistent
@@ -433,9 +441,11 @@ public final class PGS_Processing {
 	 * @since 1.2.0
 	 */
 	public static PShape extractPerimeter(PShape shape, double from, double to) {
-		from = floatMod(from, 1);
-		if (to != 1) { // so that value of 1 is not moduloed to equal 0
-			to = floatMod(to, 1);
+		if (!isWhole(from)) {
+			from = floatMod(from, 1.0);
+		}
+		if (!isWhole(to)) {
+			to = floatMod(to, 1.0);
 		}
 		Geometry g = fromPShape(shape);
 		if (!g.getGeometryType().equals(Geometry.TYPENAME_LINEARRING) && !g.getGeometryType().equals(Geometry.TYPENAME_LINESTRING)) {
@@ -451,26 +461,8 @@ public final class PGS_Processing {
 					.createLineString(Stream.concat(Arrays.stream(l1.getCoordinates()), Arrays.stream(l2.getCoordinates())).toArray(Coordinate[]::new)));
 		}
 
-		/*
-		 * The PGS toPShape() method treats a closed linestring as polygonal (having a
-		 * fill), which occurs when from==0 and to==1. We don't want the output to be
-		 * filled in, so build the PATH shape here without closing it.
-		 */
 		LineString string = (LineString) l.extractLine(length * from, length * to);
-		PShape perimeter = new PShape();
-		perimeter.setFamily(PShape.PATH);
-		perimeter.setStroke(true);
-		perimeter.setStroke(micycle.pgs.color.Colors.PINK);
-		perimeter.setStrokeWeight(4);
-
-		perimeter.beginShape();
-		Coordinate[] coords = string.getCoordinates();
-		for (Coordinate coord : coords) {
-			perimeter.vertex((float) coord.x, (float) coord.y);
-		}
-		perimeter.endShape();
-
-		return perimeter;
+		return toPShape(string);
 	}
 
 	/**
@@ -518,23 +510,148 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Computes all <b>points</b> of intersection between the <b>linework</b> of two
-	 * shapes.
+	 * Computes all self-intersection points of the linework contained within a
+	 * single shape.
+	 *
 	 * <p>
-	 * NOTE: This method shouldn't be confused with
-	 * {@link micycle.pgs.PGS_ShapeBoolean#intersect(PShape, PShape)
-	 * PGS_ShapeBoolean.intersect()}, which finds the shape made by the intersecting
-	 * shape areas.
-	 * 
-	 * @param a one shape
-	 * @param b another shape
-	 * @return list of all intersecting points (as PVectors)
+	 * This is equivalent to finding all intersection points formed by pairwise
+	 * intersections of the shape's lineal components (exterior rings, interior
+	 * rings/holes and standalone LineStrings).
+	 * <p>
+	 * Note <i>endpoint-endpoint</i> intersections ("touches") are not included.
+	 *
+	 * @param a the input shape whose linework will be tested for self-intersections
+	 * @return a List<PVector> containing self-intersection points; empty if none
+	 *         are found
+	 * @since 2.2
 	 */
-	public static List<PVector> shapeIntersection(PShape a, PShape b) {
+	public static List<PVector> intersectionPoints(PShape a) {
+		Geometry g = fromPShape(a);
+
+		@SuppressWarnings("unchecked")
+		List<LineString> strings = LinearComponentExtracter.getLines(g);
+
+		final Collection<SegmentString> segmentStringsA = new ArrayList<>(strings.size());
+
+		for (LineString ls : strings) {
+			Coordinate[] c = ls.getCoordinates();
+			if (c.length < 2) {
+				continue;
+			}
+
+			// ignore closed
+			int n = c.length;
+			if (n >= 2 && c[0].equals2D(c[n - 1])) {
+				n--; // drop duplicated closing coord
+			}
+
+			// emit one SegmentString per segment
+			for (int i = 0; i < n - 1; i++) {
+				Coordinate p0 = new Coordinate(c[i]);
+				Coordinate p1 = new Coordinate(c[i + 1]);
+				if (!p0.equals2D(p1)) {
+					segmentStringsA.add(new BasicSegmentString(new Coordinate[] { p0, p1 }, null));
+				}
+			}
+		}
+
+		return intersections(segmentStringsA, false);
+	}
+
+	/**
+	 * Computes all intersection points between the linework (edges/boundaries) of
+	 * two shapes.
+	 * <p>
+	 * This method operates on the extracted linework of the provided PShapes: that
+	 * includes polygon exteriors, polygon holes, and standalone paths (and any
+	 * lineal children of GROUP shapes). It does not compute the geometric
+	 * intersection area of filled polygons — see
+	 * {@link micycle.pgs.PGS_ShapeBoolean#intersect(PShape, PShape)
+	 * PGS_ShapeBoolean.intersect()} for area-based intersection results.
+	 * 
+	 * @param a one input shape (polygons, lines or groups containing them)
+	 * @param b the other input shape (polygons, lines or groups containing them)
+	 * @return a List<PVector> containing the intersection points between the
+	 *         linework of {@code a} and {@code b}. Returns an empty list if no
+	 *         intersections are found.
+	 */
+	public static List<PVector> intersectionPoints(PShape a, PShape b) {
 		final Collection<?> segmentStringsA = SegmentStringUtil.extractSegmentStrings(fromPShape(a));
 		final Collection<?> segmentStringsB = SegmentStringUtil.extractSegmentStrings(fromPShape(b));
 
 		return intersections(segmentStringsA, segmentStringsB);
+	}
+
+	static List<PVector> intersections(Collection<?> segments, boolean countEndpointTouches) {
+		@SuppressWarnings("unchecked")
+		final Collection<SegmentString> segStrings = (Collection<SegmentString>) segments;
+
+		final Set<Coordinate> hits = new HashSet<>();
+		final RobustLineIntersector li = new RobustLineIntersector();
+
+		final SegmentIntersector intersector = (e0, i0, e1, i1) -> {
+			// Skip identical segment
+			if (e0 == e1 && i0 == i1) {
+				return;
+			}
+
+			// For self-comparisons, avoid double-reporting, and (optionally) skip adjacent
+			// segments
+			if (e0 == e1) {
+				if (i1 <= i0) {
+					return; // process each pair once
+				}
+
+				if (!countEndpointTouches) {
+					final int nSegs = e0.size() - 1; // number of segments in this SegmentString
+
+					// Adjacent by index, including wrap-around (last segment adjacent to first)
+					final boolean adjacent = Math.abs(i0 - i1) == 1 || (i0 == 0 && i1 == nSegs - 1) || (i1 == 0 && i0 == nSegs - 1);
+
+					if (adjacent) {
+						return;
+					}
+				}
+			}
+
+			final Coordinate p0 = e0.getCoordinate(i0);
+			final Coordinate p1 = e0.getCoordinate(i0 + 1);
+			final Coordinate q0 = e1.getCoordinate(i1);
+			final Coordinate q1 = e1.getCoordinate(i1 + 1);
+
+			li.computeIntersection(p0, p1, q0, q1);
+			if (!li.hasIntersection()) {
+				return;
+			}
+
+			final boolean collinear = li.getIntersectionNum() == LineIntersector.COLLINEAR;
+
+			for (int k = 0; k < li.getIntersectionNum(); k++) {
+				final Coordinate ip = li.getIntersection(k);
+
+				if (!countEndpointTouches) {
+					// Keep "proper" crossings (interior-interior) and collinear overlaps.
+					// Otherwise drop intersections that occur at any segment endpoint (touches).
+					if (!li.isProper() && !collinear) {
+						if (ip.equals2D(p0) || ip.equals2D(p1) || ip.equals2D(q0) || ip.equals2D(q1)) {
+							continue;
+						}
+					}
+				}
+
+				hits.add(new Coordinate(ip));
+			}
+		};
+
+		MCIndexNoder noder = new MCIndexNoder();
+		noder.setSegmentIntersector(intersector);
+		noder.computeNodes(segStrings);
+
+		final List<PVector> out = new ArrayList<>(hits.size());
+		for (Coordinate c : hits) {
+			out.add(new PVector((float) c.x, (float) c.y));
+		}
+		return out;
 	}
 
 	static List<PVector> intersections(Collection<?> segmentStringsA, Collection<?> segmentStringsB) {
@@ -554,56 +671,13 @@ public final class PGS_Processing {
 		// checks if two segments actually intersect
 		final SegmentIntersectionDetector sid = new SegmentIntersectionDetector();
 
-		mci.process(smaller, new SegmentIntersector() {
-			@Override
-			public void processIntersections(SegmentString e0, int segIndex0, SegmentString e1, int segIndex1) {
-				sid.processIntersections(e0, segIndex0, e1, segIndex1);
-				if (sid.hasIntersection()) {
-					points.add(new PVector((float) sid.getIntersection().x, (float) sid.getIntersection().y));
-				}
-			}
-
-			@Override
-			public boolean isDone() {
-				return false;
+		mci.process(smaller, (e0, segIndex0, e1, segIndex1) -> {
+			sid.processIntersections(e0, segIndex0, e1, segIndex1);
+			if (sid.hasIntersection()) {
+				points.add(new PVector((float) sid.getIntersection().x, (float) sid.getIntersection().y));
 			}
 		});
 		return new ArrayList<>(points);
-	}
-
-	/**
-	 * Computes all points of intersection between segments in a set of line
-	 * segments. The input set is first processed to remove degenerate segments
-	 * (does not mutate the input).
-	 * 
-	 * @param lineSegments a list of PVectors where each pair (couplet) of PVectors
-	 *                     represent the start and end point of one line segment
-	 * @return A list of PVectors each representing the intersection point of a
-	 *         segment pair
-	 */
-	public static List<PVector> lineSegmentsIntersection(List<PVector> lineSegments) {
-		final List<PVector> intersections = new ArrayList<>();
-		if (lineSegments.size() % 2 != 0) {
-			System.err.println(
-					"The input to lineSegmentsIntersection() contained an odd number of line segment vertices. The method expects successive pairs of vertices");
-			return intersections;
-		}
-
-		Collection<Segment> segments = new ArrayList<>();
-		for (int i = 0; i < lineSegments.size(); i += 2) { // iterate pairwise
-			final PVector p1 = lineSegments.get(i);
-			final PVector p2 = lineSegments.get(i + 1);
-			segments.add(new Segment(p1.x, p1.y, p2.x, p2.y));
-		}
-
-		final BalabanSolver balabanSolver = new BalabanSolver((a, b) -> {
-			final Point pX = a.getIntersection(b);
-			intersections.add(new PVector((float) pX.x, (float) pX.y));
-		});
-		segments.removeAll(balabanSolver.findDegenerateSegments(segments));
-		balabanSolver.computeIntersections(segments);
-
-		return intersections;
 	}
 
 	/**
@@ -618,6 +692,8 @@ public final class PGS_Processing {
 	 * 
 	 * @param shape  defines the region in which random points are generated
 	 * @param points number of points to generate within the shape region
+	 * @return a list of {@link PVector} points randomly sampled inside
+	 *         {@code shape}
 	 * @see #generateRandomPoints(PShape, int, long)
 	 * @see #generateRandomGridPoints(PShape, int, boolean, double)
 	 */
@@ -782,59 +858,6 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Removes overlap between polygons contained in a <code>GROUP</code> shape,
-	 * preserving only visible line segments suitable for pen plotting and similar
-	 * applications.
-	 * <p>
-	 * This method processes a <code>GROUP</code> shape consisting of lineal or
-	 * polygonal child shapes, aiming to create linework that represents only the
-	 * segments visible to a human, rather than a computer. The resulting linework
-	 * is useful for pen plotters or other applications where only the visible paths
-	 * are desired.
-	 * <p>
-	 * During the operation, any overlapping lines are also removed to ensure a
-	 * clean and clear representation of the shapes. It's important to note that the
-	 * order of shape layers in the input GROUP shape is significant. The method
-	 * considers the last child shape of the input to be "on top" of all other
-	 * shapes, as is the case visually.
-	 * 
-	 * @param shape A GROUP shape containing lineal or polygonal child shapes.
-	 * @return The resulting linework of the overlapping input as a LINES PShape,
-	 *         representing only visible line segments.
-	 * @since 1.3.0
-	 */
-	public static PShape removeHiddenLines(PShape shape) {
-		if (shape.getChildCount() == 0) {
-			return shape;
-		}
-
-		List<PShape> layers = PGS_Conversion.getChildren(shape); // visual top last
-		Collections.reverse(layers); // visual top first
-		final List<Geometry> geometries = layers.stream().map(PGS_Conversion::fromPShape).collect(Collectors.toList());
-		Geometry union = geometries.get(0); // start of cascading union
-
-		List<Geometry> culledGeometries = new ArrayList<>(geometries.size());
-		Iterator<Geometry> i = geometries.iterator();
-		culledGeometries.add(i.next());
-
-		// for each shape, subtract the union of shapes visually above it
-		while (i.hasNext()) {
-			final Geometry layer = i.next();
-			MultiOperationOverlayNG overlay = new MultiOperationOverlayNG(layer, union);
-			Geometry occulted = overlay.getResult(OverlayNG.DIFFERENCE); // occulted version of layer
-			union = overlay.getResult(OverlayNG.UNION);
-
-			culledGeometries.add(occulted);
-		}
-
-		Geometry dissolved = LineDissolver.dissolve(GEOM_FACTORY.createGeometryCollection(culledGeometries.toArray(new Geometry[0])));
-		PShape out = toPShape(dissolved);
-		PGS_Conversion.setAllStrokeColor(out, ColorUtils.setAlpha(Colors.PINK, 192), 4);
-
-		return out;
-	}
-
-	/**
 	 * Returns a copy of the shape where holes having an area <b>less than</b> the
 	 * specified threshold are removed.
 	 * 
@@ -888,32 +911,67 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Finds the polygonal faces formed by a set of intersecting line segments.
-	 * 
-	 * @param lineSegmentVertices a list of PVectors where each pair (couplet) of
-	 *                            PVectors represent the start and end point of one
-	 *                            line segment
-	 * @return a GROUP PShape where each child shape is a face / enclosed area
-	 *         formed between intersecting lines
-	 * @since 1.1.2
+	 * Extracts the boundary of the given shape.
+	 *
+	 * <p>
+	 * For a polygonal (area) {@code PShape}, the boundary is its perimeter: the
+	 * outer outline plus the outlines of any holes. The returned shape encodes this
+	 * as one or more unfilled {@link PShape#PATH PATH} shapes (closed where
+	 * appropriate).
+	 *
+	 * <p>
+	 * For non-area shapes (such as paths), this extracts the linear components,
+	 * preserving the path geometry itself rather than reducing it to endpoints.
+	 *
+	 * <p>
+	 * This method may be useful because some operations have different semantics
+	 * depending on whether the input is encoded as an area
+	 * ({@code kind == POLYGON}) or as a stroke/path ({@code kind == PATH}). For
+	 * example, buffering a {@code POLYGON} expands/contracts an area, whereas
+	 * buffering a {@code PATH} produces a stroked "tube" around the linework.
+	 * Extracting the boundary provides a consistent way to convert an area into its
+	 * outline representation prior to such operations.
+	 *
+	 * <p>
+	 * Note: the returned {@code PShape} may be a {@link PConstants#GROUP} if the
+	 * boundary contains multiple disjoint components.
+	 *
+	 * @param shape the input shape whose boundary is to be returned
+	 * @return a {@code PShape} representing the boundary of {@code shape}
+	 * @since 2.2
 	 */
-	public static PShape polygonizeLines(List<PVector> lineSegmentVertices) {
-		// TODO constructor for LINES PShape
-		if (lineSegmentVertices.size() % 2 != 0) {
-			System.err.println("The input to polygonizeLines() contained an odd number of vertices. The method expects successive pairs of vertices.");
-			return new PShape();
-		}
+	public static PShape extractBoundary(PShape shape) {
+		/*
+		 * NOTE: uses LinearComponentExtracter instead of .getBoundary() to preserve
+		 * linear geometry rather than collapsing paths to endpoint vertices.
+		 */
+		return toPShape(LinearComponentExtracter.getGeometry(fromPShape(shape)));
+	}
 
-		final List<SegmentString> segmentStrings = new ArrayList<>(lineSegmentVertices.size() / 2);
-		for (int i = 0; i < lineSegmentVertices.size(); i += 2) {
-			final PVector v1 = lineSegmentVertices.get(i);
-			final PVector v2 = lineSegmentVertices.get(i + 1);
-			if (!v1.equals(v2)) {
-				segmentStrings.add(new NodedSegmentString(new Coordinate[] { PGS.coordFromPVector(v1), PGS.coordFromPVector(v2) }, null));
-			}
-		}
-
-		return PGS.polygonizeSegments(segmentStrings, true);
+	/**
+	 * Finds polygonal faces from the given shape's linework.
+	 * <p>
+	 * This method extracts linework from the supplied PShape (including existing
+	 * polygon edges and standalone line primitives), nodes intersections, and
+	 * polygonizes the resulting segment network. Only closed polygonal faces
+	 * (enclosed areas) are returned. Open edges, dangling line segments
+	 * ("dangles"), and isolated lines that do not form a closed ring are ignored
+	 * and dropped — the result contains faces only.
+	 *
+	 * The returned PShape is a GROUP whose children are PShapes representing each
+	 * detected face.
+	 *
+	 * @param shape a PShape whose linework (edges) will be used to find polygonal
+	 *              faces; can include existing polygons or line primitives
+	 * @return a GROUP PShape containing only the polygonal faces discovered from
+	 *         the input linework; dangles and non-enclosed edges are not included
+	 * @since 2.2
+	 */
+	public static PShape polygonize(PShape shape) {
+		var g = fromPShape(shape);
+		@SuppressWarnings("unchecked")
+		List<NodedSegmentString> segs = SegmentStringUtil.extractNodedSegmentStrings(g);
+		return PGS.polygonizeSegments(segs, true);
 	}
 
 	/**
@@ -1101,21 +1159,35 @@ public final class PGS_Processing {
 	}
 
 	/**
-	 * Partitions shape(s) into convex (simple) polygons.
+	 * Partitions the provided shape into convex, simple polygonal pieces.
+	 * <p>
+	 * This implementation uses the optimal Keil &amp; Snoeyink dynamic-programming
+	 * approach, which minimises the number of added diagonals and thus the number
+	 * of convex pieces.
+	 * <p>
+	 * The input may be a single polygon PShape or a GROUP PShape containing
+	 * multiple polygon children. Each polygon child is partitioned independently;
+	 * the method returns a GROUP PShape whose children are the convex pieces. If
+	 * the partition produces exactly one child, that single child PShape is
+	 * returned (rather than a GROUP).
+	 * <p>
+	 * Polygons with interior holes are supported — holes are bridged to produce
+	 * simple polygons prior to partitioning.
 	 * 
-	 * @param shape the shape to partition. can be a single polygon or a GROUP of
-	 *              polygons
-	 * @return a GROUP PShape, where each child shape is some convex partition of
-	 *         the original shape
+	 * @param shape a non-null PShape representing a polygon or a GROUP of polygons
+	 * @return a GROUP PShape whose children are convex, simple polygon partitions
+	 *         of the input; if only one partition piece results, that child PShape
+	 *         is returned directly
+	 * @implNote Implementation changed in v2.2 from Bayazit algorithm to Keil &
+	 *           Snoeyink (optimal).
 	 */
 	public static PShape convexPartition(PShape shape) {
-		// algorithm described in https://mpen.ca/406/bayazit
 		final Geometry g = fromPShape(shape);
 
 		final PShape polyPartitions = new PShape(PConstants.GROUP);
 		@SuppressWarnings("unchecked")
 		final List<Polygon> polygons = PolygonExtracter.getPolygons(g);
-		polygons.forEach(p -> polyPartitions.addChild(toPShape(PolygonDecomposition.decompose(p))));
+		polygons.forEach(p -> polyPartitions.addChild(toPShape(KeilSnoeyinkConvexPartitioner.convexPartition(p))));
 
 		if (polyPartitions.getChildCount() == 1) {
 			return polyPartitions.getChild(0);
@@ -1128,7 +1200,7 @@ public final class PGS_Processing {
 	 * Randomly partitions a shape into N approximately equal-area polygonal cells.
 	 * 
 	 * @param shape a polygonal (non-group, no holes) shape to partition
-	 * @param parts number of roughly equal area partitons to create
+	 * @param parts number of roughly equal area partitions to create
 	 * @return a GROUP PShape, whose child shapes are partitions of the original
 	 * @since 1.3.0
 	 */
@@ -1141,7 +1213,7 @@ public final class PGS_Processing {
 	 * equal-area polygonal cells.
 	 * 
 	 * @param shape a polygonal (non-group, no holes) shape to partition
-	 * @param parts number of roughly equal area partitons to create
+	 * @param parts number of roughly equal area partitions to create
 	 * @param seed  number used to initialize the underlying pseudorandom number
 	 *              generator
 	 * @return a GROUP PShape, whose child shapes are partitions of the original
@@ -1658,6 +1730,10 @@ public final class PGS_Processing {
 	private static double floatMod(double x, double y) {
 		// x mod y behaving the same way as Math.floorMod but with doubles
 		return (x - Math.floor(x / y) * y);
+	}
+
+	private static boolean isWhole(double v) {
+		return Double.isFinite(v) && Math.abs(v - Math.rint(v)) < 1e-12;
 	}
 
 }

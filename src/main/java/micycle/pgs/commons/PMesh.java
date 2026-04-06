@@ -67,8 +67,8 @@ public class PMesh {
 		}
 
 		// mark perimeter vertices
-		List<PEdge> perimeterEdges = edgeCounts.entrySet().stream().filter(entry -> entry.getValue().intValue() == 1)
-				.map(entry -> entry.getKey()).collect(Collectors.toList());
+		List<PEdge> perimeterEdges = edgeCounts.entrySet().stream().filter(entry -> entry.getValue().intValue() == 1).map(entry -> entry.getKey())
+				.collect(Collectors.toList());
 		perimeterEdges.forEach(e -> {
 			meshVertices.get(e.a).onBoundary = true;
 			meshVertices.get(e.b).onBoundary = true;
@@ -271,10 +271,10 @@ public class PMesh {
 
 	private float smoothCotanWeighted(final boolean excludeBoundaryVertices) { // NOTE working?
 		// https://rodolphe-vaillant.fr/entry/69/c-code-for-cotangent-weights-over-a-triangular-mesh
-	
+
 		final double eps = 1e-6f;
 		final double cotan_max = FastMath.cos(eps) / FastMath.sin(eps);
-	
+
 		for (PMeshVertex mv : meshVertices.values()) {
 			if (excludeBoundaryVertices && mv.onBoundary) {
 				continue;
@@ -282,23 +282,23 @@ public class PMesh {
 			final PVector i = mv.smoothedVertex;
 			final PVector mean = new PVector(0, 0);
 			double totalWeight = 0;
-	
+
 			for (int k = 0; k < mv.neighbors.size(); k++) {
 				PVector v_prev = mv.neighbors.get(k == 0 ? mv.neighbors.size() - 1 : k - 1).smoothedVertex;
 				PVector v = mv.neighbors.get(k).smoothedVertex;
 				PVector v_next = mv.neighbors.get((k + 1) % mv.neighbors.size()).smoothedVertex;
-	
+
 				// Calculate cotangent weights
 				PVector v1 = PVector.sub(i, v_prev);
 				PVector v2 = PVector.sub(v, v_prev);
 				PVector v3 = PVector.sub(i, v_next);
 				PVector v4 = PVector.sub(v, v_next);
-	
+
 				double cotan_alpha = cotan(v1, v2);
 				double cotan_beta = cotan(v3, v4);
-	
+
 				double weight = (cotan_alpha + cotan_beta);
-	
+
 				if (Double.isNaN(weight)) {
 					weight = 0;
 				}
@@ -309,13 +309,13 @@ public class PMesh {
 				weight = clamp(weight, -cotan_max, cotan_max);
 				mean.add(PVector.mult(v, (float) weight));
 				totalWeight += weight;
-	
+
 			}
 			mean.div((float) totalWeight);
 			mv.smoothedVertex.set(mean);
-	
+
 		}
-	
+
 		return 0;
 	}
 

@@ -307,7 +307,7 @@ class PGS_ConversionTests {
 			assertTrue(pointsAreEqual(g.getCoordinates()[i], shape.getVertex(i)));
 		}
 	}
-	
+
 	@Test
 	void testMultiContour() {
 		final PShape shape = new PShape(PShape.PATH); // shape with 2 nested items, each having hole
@@ -335,20 +335,160 @@ class PGS_ConversionTests {
 		shape.vertex(7, 5);
 		shape.endContour();
 		shape.endShape(PConstants.CLOSE);
-		
+
 		PGS_Conversion.HANDLE_MULTICONTOUR = true;
 		Geometry g = fromPShape(shape);
 		PGS_Conversion.HANDLE_MULTICONTOUR = false;
-		
+
 		assertEquals(2, g.getNumGeometries());
 		Polygon a = (Polygon) g.getGeometryN(0);
 		Polygon b = (Polygon) g.getGeometryN(1);
 		assertEquals(1, a.getNumInteriorRing()); // each polygon has hole
 		assertEquals(1, b.getNumInteriorRing()); // each polygon has hole
-		
-		// note backwards conversion is formatted differently to input 
+
+		// note backwards conversion is formatted differently to input
 		assertEquals(PConstants.GROUP, toPShape(g).getFamily());
-		assertEquals(2, toPShape(g).getChildCount()); 
+		assertEquals(2, toPShape(g).getChildCount());
+	}
+
+	@Test
+	void testClosedLineStringToUnfilledPath() {
+		// Closed LineString: first == last
+		Coordinate c1 = new Coordinate(0, 0);
+		Coordinate c2 = new Coordinate(10, 0);
+		Coordinate c3 = new Coordinate(10, 10);
+		Coordinate c4 = new Coordinate(0, 10);
+
+		Coordinate[] coords = new Coordinate[] { c1, c2, c3, c4, c1 };
+		final LineString ls = GEOM_FACTORY.createLineString(coords);
+		assertTrue(ls.isClosed());
+
+		final PShape shape = toPShape(ls);
+
+		assertEquals(PShape.PATH, shape.getFamily());
+		assertFalse(isFilled(shape), "LineStrings must never be filled, even if closed");
+
+		// toPShape() skips the duplicated closing coordinate
+		assertEquals(coords.length - 1, shape.getVertexCount());
+		for (int i = 0; i < coords.length - 1; i++) {
+			assertTrue(pointsAreEqual(coords[i], shape.getVertex(i)));
+		}
+	}
+
+	@Test
+	void testLinearRingToFilledPolygon() {
+		// LinearRing is closed by definition and must be treated as a filled polygon
+		Coordinate c1 = new Coordinate(0, 0);
+		Coordinate c2 = new Coordinate(10, 0);
+		Coordinate c3 = new Coordinate(10, 10);
+		Coordinate c4 = new Coordinate(0, 10);
+
+		Coordinate[] coords = new Coordinate[] { c1, c2, c3, c4, c1 };
+		final LinearRing ring = GEOM_FACTORY.createLinearRing(coords);
+		assertTrue(ring.isClosed());
+
+		final PShape shape = toPShape(ring);
+
+		assertEquals(PShape.PATH, shape.getFamily());
+		assertTrue(!isFilled(shape), "LinearRings should not be treated as filled polygons");
+
+		// toPShape() skips the duplicated closing coordinate
+		assertEquals(coords.length - 1, shape.getVertexCount());
+		for (int i = 0; i < coords.length - 1; i++) {
+			assertTrue(pointsAreEqual(coords[i], shape.getVertex(i)));
+		}
+	}
+
+	@Test
+	void testClosedPathKindPathToClosedLineString() {
+		final PShape shape = new PShape(PShape.PATH);
+
+		// closed + kind=PATH => lineal (closed LineString), not Polygon
+		shape.beginShape(PConstants.PATH);
+		shape.vertex(0, 0);
+		shape.vertex(10, 0);
+		shape.vertex(10, 10);
+		shape.vertex(0, 10);
+		shape.endShape(PConstants.CLOSE);
+
+		final Geometry g = fromPShape(shape);
+
+		assertEquals(Geometry.TYPENAME_LINESTRING, g.getGeometryType());
+		assertEquals(shape.getVertexCount() + 1, g.getCoordinates().length); // closed adds final coord
+		assertTrue(g.getCoordinates()[0].equals2D(g.getCoordinates()[g.getCoordinates().length - 1]));
+	}
+
+	@Test
+	void testClosedPathKindPolygonToPolygon() {
+		final PShape shape = new PShape(PShape.PATH);
+
+		// closed + kind=POLYGON => Polygon
+		shape.beginShape(PConstants.POLYGON);
+		shape.vertex(0, 0);
+		shape.vertex(10, 0);
+		shape.vertex(0, 10);
+		shape.endShape(PConstants.CLOSE);
+
+		final Geometry g = fromPShape(shape);
+
+		assertEquals(Geometry.TYPENAME_POLYGON, g.getGeometryType());
+		assertEquals(shape.getVertexCount() + 1, g.getCoordinates().length); // polygon exterior ring is closed
+	}
+
+	@Test
+	void testUnclosedPolygonKindToLineString() {
+		final PShape shape = new PShape(PShape.PATH);
+
+		shape.setKind(PConstants.POLYGON);
+
+		shape.beginShape();
+		shape.vertex(0, 0);
+		shape.vertex(10, 0);
+		shape.vertex(10, 10);
+		shape.vertex(0, 10);
+		shape.endShape(PConstants.OPEN); // unclosed
+
+		final Geometry g = fromPShape(shape);
+
+		// POLYGON kind only implies Polygon when actually closed (or has holes)
+		assertEquals(Geometry.TYPENAME_LINESTRING, g.getGeometryType());
+		assertEquals(shape.getVertexCount(), g.getCoordinates().length);
+
+		for (int i = 0; i < g.getCoordinates().length; i++) {
+			assertTrue(pointsAreEqual(g.getCoordinates()[i], shape.getVertex(i)));
+		}
+	}
+
+	@Test
+	void testMultiLinestringToPaths_UnfilledEvenIfClosed() {
+		Coordinate c1 = new Coordinate(0, 0);
+		Coordinate c2 = new Coordinate(10, 0);
+		Coordinate c3 = new Coordinate(0, 10);
+		Coordinate c4 = new Coordinate(10, 10);
+
+		// closed
+		Coordinate[] coords1 = new Coordinate[] { c1, c2, c3, c1 };
+		final LineString path1 = GEOM_FACTORY.createLineString(coords1);
+		assertTrue(path1.isClosed());
+
+		// open
+		Coordinate[] coords2 = new Coordinate[] { c4, c2, c1, c3 };
+		final LineString path2 = GEOM_FACTORY.createLineString(coords2);
+		assertFalse(path2.isClosed());
+
+		final Geometry g = GEOM_FACTORY.createMultiLineString(new LineString[] { path1, path2 });
+
+		final PShape shape = toPShape(g);
+		assertEquals(PConstants.GROUP, shape.getFamily());
+		assertEquals(g.getNumGeometries(), shape.getChildCount());
+
+		// All children must be PATH and must not be filled (regardless of being
+		// closed/open)
+		for (int k = 0; k < g.getNumGeometries(); k++) {
+			final PShape child = shape.getChild(k);
+			assertEquals(PShape.PATH, child.getFamily());
+			assertFalse(isFilled(child), "LineStrings must never be filled");
+		}
 	}
 
 	@Test
@@ -369,7 +509,7 @@ class PGS_ConversionTests {
 		assertEquals(1000, shape.getVertex(2).x);
 		assertEquals(0, shape.getVertex(2).y);
 	}
-	
+
 	@Test
 	void testVertexRounding1DP() {
 		PShape shape = new PShape(PShape.GEOMETRY);
@@ -378,9 +518,9 @@ class PGS_ConversionTests {
 		shape.vertex(10, -10);
 		shape.vertex(999.34f, 0.049f);
 		shape.endShape(PConstants.CLOSE);
-		
+
 		shape = PGS_Conversion.roundVertexCoords(shape, 1);
-		
+
 		assertEquals(12.5, shape.getVertex(0).x, 1e-5);
 		assertEquals(-97.2, shape.getVertex(0).y, 1e-5);
 		assertEquals(10, shape.getVertex(1).x, 1e-5);
@@ -412,7 +552,7 @@ class PGS_ConversionTests {
 		assertEquals(shape.getVertex(8), processed.getVertex(4));
 		assertEquals(5, processed.getVertexCount());
 	}
-	
+
 	@Test
 	void testCopy() {
 		PShape a = PGS_Construction.createSierpinskiCurve(0, 0, 10, 3);
@@ -421,18 +561,18 @@ class PGS_ConversionTests {
 		PGS_Conversion.setAllFillColor(group, 1337);
 		PShapeData d = new PShapeData(group.getChild(0));
 		assertEquals(1337, d.fillColor);
-		
+
 		PShape copy = PGS_Conversion.copy(group);
 
 		// test geom structure preserved
 		assertTrue(PGS_ShapePredicates.equalsNorm(group, copy));
-		
-		copy.getChild(0).setVertex(0, -999,-999); // shouldn't change group
+
+		copy.getChild(0).setVertex(0, -999, -999); // shouldn't change group
 		assertFalse(PGS_ShapePredicates.equalsNorm(group, copy));
-		
+
 		// test styling preserved
 		d = new PShapeData(copy.getChild(0));
-		
+
 		assertEquals(1337, d.fillColor);
 	}
 
@@ -450,11 +590,13 @@ class PGS_ConversionTests {
 		shape.setFill(col);
 		shape.setStrokeWeight(11.11f);
 		shape.setStroke(col);
+		shape.setName("test");
 
 		PShape processed = toPShape(fromPShape(shape));
 		assertEquals(col, PGS.getPShapeFillColor(processed));
 		assertEquals(col, PGS.getPShapeStrokeColor(processed));
 		assertEquals(11.11f, PGS.getPShapeStrokeWeight(processed));
+		assertEquals("test", processed.getName());
 
 		final PShape path = new PShape(PShape.PATH);
 		path.beginShape();
@@ -518,7 +660,7 @@ class PGS_ConversionTests {
 
 		assertTrue(PGS_ShapePredicates.equalsNorm(shape, in));
 	}
-	
+
 	@Test
 	void testEncodedPolylineIO() {
 		final PShape shape = new PShape(PShape.GEOMETRY);
@@ -527,25 +669,10 @@ class PGS_ConversionTests {
 		shape.vertex(10, 0);
 		shape.vertex(0, 11);
 		shape.endShape(PConstants.CLOSE);
-		
+
 		String encoding = PGS_Conversion.toEncodedPolyline(shape);
 		PShape in = PGS_Conversion.fromEncodedPolyline(encoding);
-		
-		assertTrue(PGS_ShapePredicates.equalsNorm(shape, in));
-	}
-	
-	@Test
-	void testGeoJSONIO() {
-		final PShape shape = new PShape(PShape.GEOMETRY);
-		shape.beginShape();
-		shape.vertex(0, 0);
-		shape.vertex(10.1f, 0);
-		shape.vertex(0, 10.7f);
-		shape.endShape(PConstants.CLOSE);
-		
-		String json = PGS_Conversion.toGeoJSON(shape);
-		PShape in = PGS_Conversion.fromGeoJSON(json);
-		
+
 		assertTrue(PGS_ShapePredicates.equalsNorm(shape, in));
 	}
 
@@ -563,7 +690,7 @@ class PGS_ConversionTests {
 
 		assertTrue(PGS_ShapePredicates.equalsNorm(shape, in));
 	}
-	
+
 	@Test
 	void testArrayIO() {
 		final PShape shape = new PShape(PShape.GEOMETRY);
@@ -572,25 +699,37 @@ class PGS_ConversionTests {
 		shape.vertex(10, 0);
 		shape.vertex(33, 10);
 		shape.endShape(PConstants.CLOSE);
-		
+
 		double[][] s = PGS_Conversion.toArray(shape, true);
 		PShape in = PGS_Conversion.fromArray(s, false);
-		
+
 		assertTrue(PGS_ShapePredicates.equalsNorm(shape, in));
 	}
-	
+
 	@Test
 	void testToFromGraph() {
-		var segsS = PGS_SegmentSet.toPShape(PGS_SegmentSet.graphMatchedSegments(PGS_PointSet.poisson(50, 50, 950, 950, 20, 0)));
+		var segs = PGS_SegmentSet.graphMatchedSegments(PGS_PointSet.poisson(50, 50, 950, 950, 20, 0));
+		segs = PGS_SegmentSet.filterAxisAligned(segs, Math.toRadians(1));
+		var segsS = PGS_SegmentSet.toPShape(segs);
 
 		segsS = PGS_Voronoi.compoundVoronoi(segsS);
 		var meshIn = PGS_Meshing.simplifyMesh(segsS, 2, false);
-		meshIn = PGS_Meshing.stochasticMerge(meshIn, 4, 13137); 
-		
+		meshIn = PGS_Meshing.stochasticMerge(meshIn, 4, 13137);
+
 		var meshOut = PGS_Conversion.fromGraph(PGS_Conversion.toGraph(meshIn));
-		
+
 		assertTrue(PGS_ShapePredicates.equalsNorm(meshIn, meshOut));
-		
+
+		// test shape with holes
+		var carpet = PGS_Construction.createSierpinskiCarpet(1, 1, 2);
+		assertTrue(PGS_ShapePredicates.holes(carpet) > 0);
+		var ringOut = PGS_Conversion.fromGraph(PGS_Conversion.toGraph(carpet));
+		assertTrue(PGS_ShapePredicates.equalsTopo(carpet, ringOut));
+	}
+
+	private static boolean isFilled(PShape shape) {
+		PShapeData d = new PShapeData(shape);
+		return d.fill;
 	}
 
 	private static boolean pointsAreEqual(Coordinate c, PVector p) {

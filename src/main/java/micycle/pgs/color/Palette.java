@@ -81,41 +81,82 @@ public enum Palette {
 		length = value.length;
 	}
 
+	/**
+	 * Returns the hex string representation of the colors in this palette.
+	 *
+	 * @return an array of hex color strings (e.g., "#ffe03d")
+	 */
 	public String[] stringValue() {
 		return value;
 	}
 
+	/**
+	 * Returns the hex string representation of the colors in this palette, rotated
+	 * by the specified amount.
+	 *
+	 * @param rotation the number of positions to rotate the palette (can be
+	 *                 negative)
+	 * @return an array of rotated hex color strings
+	 */
 	public String[] stringValue(int rotation) {
 		return rotate(stringValue(), rotation);
 	}
 
+	/**
+	 * Returns the integer representation of the colors in this palette.
+	 *
+	 * @return an array of ARGB color integers
+	 */
 	public int[] intValue() {
 		return intValue;
 	}
 
+	/**
+	 * Returns the number of colors in this palette.
+	 *
+	 * @return the palette length
+	 */
 	public int length() {
 		return length;
 	}
 
+	/**
+	 * Returns the integer representation of the colors in this palette, rotated by
+	 * the specified amount.
+	 *
+	 * @param rotation the number of positions to rotate the palette (can be
+	 *                 negative)
+	 * @return an array of rotated color integers
+	 */
 	public int[] intValue(int rotation) {
 		return rotate(intValue, rotation);
 	}
 
+	/**
+	 * Returns the last color in this palette.
+	 *
+	 * @return the ARGB color integer of the last element
+	 */
 	public int getLastColor() {
 		return intValue[intValue.length - 1];
 	}
 
 	/**
 	 * Gets the color closest to the given fraction along the palette.
+	 * 
+	 * @param fraction the relative position along the palette [0, 1]
+	 * @return the ARGB color integer at the nearest step
 	 */
 	public int get(double fraction) {
 		return intValue[(int) Math.round(fraction * (intValue.length - 1))];
 	}
 
 	/**
-	 * Gets the color at the given index, modulo-ready.
+	 * Gets the color at the given index, modulo-ready (supports negative indices by
+	 * wrapping around).
 	 *
-	 * @param index
+	 * @param index the index of the color to retrieve
+	 * @return the ARGB color integer at the specified index
 	 */
 	public int get(int index) {
 		int length = intValue.length;
@@ -123,14 +164,45 @@ public enum Palette {
 		return intValue[positiveIndex % length];
 	}
 
+	/**
+	 * Gets the color at the given index from the palette rotated by
+	 * {@code rotation}, modulo-ready (supports negative index and/or rotation).
+	 *
+	 * Equivalent to: {@code rotate(intValue(), rotation)[index]} but without
+	 * copying.
+	 */
+	public int get(int index, int rotation) {
+		int len = intValue.length;
+		int idx = Math.floorMod(index, len);
+		int rot = Math.floorMod(rotation, len);
+		return intValue[(idx + rot) % len];
+	}
+
+	/**
+	 * Returns the palette corresponding to the given ID (ordinal index).
+	 * 
+	 * @param id the zero-based index of the palette
+	 * @return the Palette instance associated with the ID
+	 */
 	public static Palette getPalette(int id) {
 		return Palette.values()[id % Palette.values().length];
 	}
 
+	/**
+	 * Returns a random palette from the selection.
+	 * 
+	 * @return a randomly chosen Palette
+	 */
 	public static Palette getRandomPalette() {
 		return Palette.values()[(int) (Math.random() * Palette.values().length)];
 	}
 
+	/**
+	 * Returns a random palette that contains at least a specified number of colors.
+	 * 
+	 * @param minColors the minimum required number of colors in the palette
+	 * @return a randomly chosen Palette meeting the size requirement
+	 */
 	public static Palette getRandomPalette(int minColors) {
 		Palette palette = null;
 		while (palette == null || palette.intValue.length < minColors) {

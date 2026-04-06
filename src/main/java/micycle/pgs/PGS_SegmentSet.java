@@ -14,6 +14,7 @@ import org.jgrapht.alg.interfaces.MatchingAlgorithm;
 import org.jgrapht.alg.matching.blossom.v5.KolmogorovWeightedMatching;
 import org.jgrapht.alg.matching.blossom.v5.KolmogorovWeightedPerfectMatching;
 import org.jgrapht.alg.matching.blossom.v5.ObjectiveSense;
+import org.locationtech.jts.algorithm.Orientation;
 import org.locationtech.jts.algorithm.RobustLineIntersector;
 import org.locationtech.jts.algorithm.locate.IndexedPointInAreaLocator;
 import org.locationtech.jts.dissolve.LineDissolver;
@@ -30,6 +31,8 @@ import org.locationtech.jts.noding.SegmentSetMutualIntersector;
 import org.locationtech.jts.noding.SegmentString;
 import org.locationtech.jts.noding.SegmentStringUtil;
 import org.tinfour.common.IIncrementalTin;
+
+import com.github.micycle1.geoblitz.IndexedLengthIndexedLine;
 
 import micycle.pgs.color.Colors;
 import micycle.pgs.commons.FastAtan2;
@@ -351,6 +354,406 @@ public class PGS_SegmentSet {
 	}
 
 	/**
+	 * Function that supplies the perpendicular segment length at each sampled
+	 * position along a shape component (optionally varying by location, phase, or
+	 * normal angle).
+	 */
+	@FunctionalInterface
+	public interface SegmentLengthFn {
+		/**
+		 * @param x        sampled boundary point x
+		 * @param y        sampled boundary point y
+		 * @param posFrac  fractional position along the current component in [0,1)
+		 *                 (includes {@code startOffset} phase)
+		 * @param angleRad angle of the (outward) unit normal in radians at the sample.
+		 *                 (Tangent angle is {@code angleRad - PI/2}).
+		 * @return desired segment length L. If {@code <= 0}, the segment is skipped.
+		 */
+		double length(double x, double y, double posFrac, double angleRad);
+	}
+
+	/**
+	 * Extracts perpendicular segments along each linear component of {@code shape},
+	 * with each segment centered on the path/outline.
+	 *
+	 * <p>
+	 * This method samples positions along each linear component (each path or
+	 * polygon boundary) at approximately {@code interSegmentDistance} spacing. At
+	 * every sampled position it builds a length {@code L} segment that is
+	 * perpendicular to the local direction and centered on the sampled point (i.e.
+	 * it extends {@code L/2} to each side).
+	 *
+	 * <p>
+	 * {@code startOffset} is wrapped into {@code [0,1)} and acts like a phase along
+	 * each component. For closed boundaries, increasing {@code startOffset}
+	 * advances sampling counterclockwise and decreasing it advances clockwise. For
+	 * open paths, it advances forward/backward along the path direction.
+	 *
+	 * @param shape                the input {@link PShape} containing rings or line
+	 *                             strings
+	 * @param interSegmentDistance spacing between successive segments along each
+	 *                             component (arc-length units)
+	 * @param L                    length of each perpendicular segment (must be
+	 *                             &gt; 0)
+	 * @param startOffset          fractional phase along each component (0..1);
+	 *                             values outside this range are wrapped
+	 * @return a list of {@link PEdge} segments from every linear component; empty
+	 *         if none produce segments
+	 * @since 2.2
+	 */
+	public static List<PEdge> perpendicularPathSegments(PShape shape, double interSegmentDistance, double L, double startOffset) {
+		return perpendicularPathSegments(shape, interSegmentDistance, (x, y, t, a) -> L, startOffset);
+	}
+
+	/**
+	 * Extracts perpendicular segments along each linear component of {@code shape},
+	 * with each segment centered on the path/outline, using a user-supplied
+	 * function to vary segment length.
+	 *
+	 * <p>
+	 * This method samples positions along each linear component (each path or
+	 * polygon boundary) at approximately {@code interSegmentDistance} spacing. At
+	 * every sampled position it builds a length {@code L} segment that is
+	 * perpendicular to the local direction and centered on the sampled point (i.e.
+	 * it extends {@code L/2} to each side).
+	 *
+	 * <p>
+	 * {@code startOffset} is wrapped into {@code [0,1)} and acts like a phase along
+	 * each component. For closed boundaries, increasing {@code startOffset}
+	 * advances sampling counterclockwise and decreasing it advances clockwise. For
+	 * open paths, it advances forward/backward along the path direction.
+	 *
+	 * @param shape                the input {@link PShape} containing rings or line
+	 *                             strings
+	 * @param interSegmentDistance spacing between successive segments along each
+	 *                             component (arc-length units)
+	 * @param lengthFn             function that returns a per-sample segment length
+	 * @param startOffset          fractional phase along each component (0..1);
+	 *                             values outside this range are wrapped
+	 * @return a list of {@link PEdge} segments; empty if none produce segments
+	 * @since 2.2
+	 */
+	public static List<PEdge> perpendicularPathSegments(PShape shape, double interSegmentDistance, SegmentLengthFn lengthFn, double startOffset) {
+		List<PEdge> edges = new ArrayList<>();
+		if (interSegmentDistance <= 0 || lengthFn == null) {
+			return edges;
+		}
+
+		final double startNorm = ((startOffset % 1.0) + 1.0) % 1.0;
+
+		PGS.applyToLinealGeometries(shape, line -> {
+
+			final boolean closed = line.isClosed();
+
+			// Only meaningful for closed components; keeps "outward" consistent.
+			if (closed && Orientation.isCCW(line.getCoordinates())) {
+				line = line.reverse();
+			}
+
+			final IndexedLengthIndexedLine l = new IndexedLengthIndexedLine(line);
+			final double end = l.getEndIndex();
+			if (end <= 0) {
+				return line;
+			}
+
+			final int count = Math.max(1, (int) Math.round(end / interSegmentDistance));
+			final double increment = 1.0 / count;
+
+			// ε chosen automatically; inline clamp
+			final double eps = Math.max(end * 1e-4, Math.min(interSegmentDistance * 0.35, end * 0.01));
+
+			for (int i = 0; i < count; i++) {
+				final double posFrac = (startNorm + i * increment) % 1.0;
+				final double idx = posFrac * end;
+
+				final double idxM = closed ? wrapIndex(idx - eps, end) : Math.max(0.0, Math.min(end, idx - eps));
+
+				final double idxP = closed ? wrapIndex(idx + eps, end) : Math.max(0.0, Math.min(end, idx + eps));
+
+				final Coordinate pm = l.extractPoint(idxM);
+				final Coordinate pp = l.extractPoint(idxP);
+				final Coordinate pc = l.extractPoint(idx);
+
+				final double tx = pp.x - pm.x;
+				final double ty = pp.y - pm.y;
+				final double tlen = Math.sqrt(tx * tx + ty * ty);
+				if (tlen == 0) {
+					continue;
+				}
+
+				// Left-hand unit normal (-ty, tx). For normalized CW rings, this points
+				// outward.
+				final double nx = -ty / tlen;
+				final double ny = tx / tlen;
+				final double normalAngle = FastAtan2.atan2(ny, nx);
+
+				final double L = lengthFn.length(pc.x, pc.y, posFrac, normalAngle);
+				if (!(L > 0)) {
+					continue;
+				}
+
+				final double half = L * 0.5;
+
+				PVector a = new PVector((float) (pc.x - nx * half), (float) (pc.y - ny * half));
+				PVector b = new PVector((float) (pc.x + nx * half), (float) (pc.y + ny * half));
+				edges.add(new PEdge(a, b));
+			}
+
+			return line;
+		});
+
+		return edges;
+	}
+
+	/**
+	 * Creates a fabric-like layout of horizontal and vertical segments on a regular
+	 * cell grid, controlled by the A (horizontal run), B (vertical run), and C (row
+	 * shift) weave parameters.
+	 *
+	 * <p>
+	 * The pattern is built on a rectangular grid of cells (size {@code cellSize}).
+	 * Each cell is assigned one of two states (“horizontal on top” or “vertical on
+	 * top”) so the grid reads like a simple over/under weaving diagram. Contiguous
+	 * same-state cells in a row become one horizontal segment; contiguous
+	 * same-state cells in a column become one vertical segment.
+	 * </p>
+	 *
+	 * <ul>
+	 * <li><b>A</b> - how many cells in a row the horizontal strand stays on top.
+	 * Increasing A lengthens horizontal runs (longer horizontal elements).</li>
+	 * <li><b>B</b> - how many cells in a row the vertical strand stays on top.
+	 * Increasing B lengthens vertical runs (longer vertical elements).</li>
+	 * <li><b>C</b> - how far each successive row is shifted (a phase offset).
+	 * Changing C slides the pattern row-by-row and can change where segments meet
+	 * or form longer/shorter junctions. (C is applied modulo A + B.)</li>
+	 * </ul>
+	 *
+	 * <p>
+	 * Many traditional weaves are expressible with A–B–C (e.g., plain weave 1–1–1,
+	 * twill 2–2–1). Patterns where the shift and period are “coprime” (gcd(A+B,
+	 * C)=1) tend to produce a single connected repeating motif (“hang together”);
+	 * if not, the repeat unit can be larger or the motif can repeat in bands.
+	 * </p>
+	 *
+	 * @param width    domain width
+	 * @param height   domain height
+	 * @param cellSize size of a grid cell (world units)
+	 * @param A        consecutive weft-visible (horizontal on-top) cells per
+	 *                 period; controls horizontal run length (A >= 1)
+	 * @param B        consecutive warp-visible (vertical on-top) cells per period;
+	 *                 controls vertical run length (B >= 1)
+	 * @param C        row-to-row offset (phase shift) in cells (C >= 0)
+	 * @return list of {@link PEdge} segments representing the weaves
+	 * @throws IllegalArgumentException if cellSize <= 0, A <= 0, or B <= 0
+	 * @since 2.2
+	 */
+	public static List<PEdge> weaveSegments(final double width, final double height, final double cellSize, final int A, final int B, final int C) {
+		return weaveSegments(width, height, cellSize, A, B, C, false, 1, true);
+	}
+
+	/**
+	 * Creates a fabric-like layout of horizontal and vertical segments on a regular
+	 * cell grid, controlled by the A (horizontal run), B (vertical run), and C (row
+	 * shift) weave parameters.
+	 *
+	 * <p>
+	 * The pattern is built on a rectangular grid of cells (size {@code cellSize}).
+	 * Each cell is assigned one of two states (“horizontal on top” or “vertical on
+	 * top”) so the grid reads like a simple over/under weaving diagram. Contiguous
+	 * same-state cells in a row become one horizontal segment; contiguous
+	 * same-state cells in a column become one vertical segment.
+	 * </p>
+	 *
+	 * <ul>
+	 * <li><b>A</b> — how many cells in a row the horizontal strand stays on top.
+	 * Increasing A lengthens horizontal runs (longer horizontal elements).</li>
+	 * <li><b>B</b> — how many cells in a row the vertical strand stays on top.
+	 * Increasing B lengthens vertical runs (longer vertical elements).</li>
+	 * <li><b>C</b> — how far each successive row is shifted (a phase offset).
+	 * Changing C slides the pattern row-by-row and can change where segments meet
+	 * or form longer/shorter junctions. (C is applied modulo A + B.)</li>
+	 * </ul>
+	 *
+	 * <p>
+	 * Many traditional weaves are expressible with A–B–C (e.g., plain weave 1–1–1,
+	 * twill 2–2–1). Patterns where the shift and period are “coprime” (gcd(A+B,
+	 * C)=1) tend to produce a single connected repeating motif (“hang together”);
+	 * if not, the repeat unit can be larger or the motif can repeat in bands.
+	 * </p>
+	 * 
+	 * </ul>
+	 * <h3>Endpoint placement and edge behavior</h3>
+	 * <p>
+	 * The {@code cellFraction} value controls how segment endpoints sit inside the
+	 * terminal cell of each run: 0.5 places endpoints at cell centers (short
+	 * segments), values closer to 1 move endpoints toward cell edges (longer
+	 * segments). If {@code extendSingletonsToEdge} is true, single-cell runs that
+	 * touch the outer domain boundary are extended to the grid edge so they are not
+	 * rendered as tiny isolated dots at the border.
+	 * </p>
+	 *
+	 * @param width                  domain width
+	 * @param height                 domain height
+	 * @param cellSize               size of a grid cell (world units)
+	 * @param A                      consecutive weft-visible (horizontal on-top)
+	 *                               cells per period; controls horizontal run
+	 *                               length (A >= 1)
+	 * @param B                      consecutive warp-visible (vertical on-top)
+	 *                               cells per period; controls vertical run length
+	 *                               (B >= 1)
+	 * @param C                      row-to-row offset (phase shift) in cells (C >=
+	 *                               0)
+	 * @param swapColors             if true, swap roles of weft/warp (horizontal ↔
+	 *                               vertical)
+	 * @param cellFraction           endpoint position inside the run end cells
+	 *                               (0.5..1.0 typical)
+	 * @param extendSingletonsToEdge if true, extend single-cell runs on the domain
+	 *                               boundary to the edge
+	 * @return list of {@link PEdge} segments representing the weaves
+	 * @since 2.2
+	 */
+	private static List<PEdge> weaveSegments(final double width, final double height, final double cellSize, final int A, final int B, final int C,
+			final boolean swapColors, final double cellFraction, final boolean extendSingletonsToEdge) {
+		/*
+		 * Implements 'ABC-Auxetics: An Implicit Design Approach for Negative Poisson’s
+		 * Ratio Materials'
+		 */
+		if (cellSize <= 0) {
+			throw new IllegalArgumentException("cellSize must be > 0");
+		}
+		if (A <= 0 || B <= 0) {
+			throw new IllegalArgumentException("A and B must be > 0");
+		}
+		if (!(cellFraction > 0.0)) {
+			throw new IllegalArgumentException("cellFraction must be > 0");
+		}
+
+		final int P = A + B;
+
+		final double f = Math.max(0.0, Math.min(1.0, cellFraction));
+
+		// Fit an integer grid inside the domain; center it.
+		final int cols = Math.max(1, (int) Math.floor(width / cellSize));
+		final int rows = Math.max(1, (int) Math.floor(height / cellSize));
+		final double gridW = cols * cellSize;
+		final double gridH = rows * cellSize;
+		final double dx = (width - gridW) * 0.5;
+		final double dy = (height - gridH) * 0.5;
+
+		// World-space bounds of the actual grid (may be inset if dx/dy != 0)
+		final double gridLeft = dx;
+		final double gridRight = dx + gridW;
+		final double gridBottom = dy;
+		final double gridTop = dy + gridH;
+
+		// Build 2-color matrix: true = weft (horizontal), false = warp (vertical)
+		final boolean[][] weft = new boolean[rows][cols];
+		for (int r = 0; r < rows; r++) {
+			final int shift = Math.floorMod(r * C, P);
+			for (int c = 0; c < cols; c++) {
+				final int idx = Math.floorMod(c + shift, P);
+				boolean isWeft = idx < A;
+				if (swapColors) {
+					isWeft = !isWeft;
+				}
+				weft[r][c] = isWeft;
+			}
+		}
+
+		final List<PEdge> segs = new ArrayList<>();
+
+		// Horizontal segments from contiguous WEFT runs per row
+		for (int r = 0; r < rows; r++) {
+			int c = 0;
+			while (c < cols) {
+				if (!weft[r][c]) {
+					c++;
+					continue;
+				}
+
+				final int start = c;
+				while (c + 1 < cols && weft[r][c + 1]) {
+					c++;
+				}
+				final int end = c;
+
+				final int runLen = end - start + 1;
+
+				final double y = dy + (r + 0.5) * cellSize;
+
+				// Endpoints controlled by cellFraction:
+				// left endpoint is inside first cell at (1-f), right endpoint inside last cell
+				// at f.
+				double x0 = dx + (start + (1.0 - f)) * cellSize;
+				double x1 = dx + (end + f) * cellSize;
+
+				// Special case: single-cell run on boundary becomes half-cell from center to
+				// boundary.
+				if (extendSingletonsToEdge && runLen == 1) {
+					final double cx = dx + (start + 0.5) * cellSize;
+					if (start == 0) {
+						x0 = gridLeft;
+						x1 = cx;
+					} else if (end == cols - 1) {
+						x0 = cx;
+						x1 = gridRight;
+					}
+				}
+
+				// Clamp to grid bounds (keeps segments from bleeding into margins due to f)
+				x0 = Math.max(gridLeft, Math.min(gridRight, x0));
+				x1 = Math.max(gridLeft, Math.min(gridRight, x1));
+
+				segs.add(new PEdge(x0, y, x1, y));
+				c++;
+			}
+		}
+
+		// Vertical segments from contiguous WARP runs per column
+		for (int c = 0; c < cols; c++) {
+			int r = 0;
+			while (r < rows) {
+				if (weft[r][c]) {
+					r++;
+					continue;
+				} // warp = !weft
+
+				final int start = r;
+				while (r + 1 < rows && !weft[r + 1][c]) {
+					r++;
+				}
+				final int end = r;
+
+				final int runLen = end - start + 1;
+
+				final double x = dx + (c + 0.5) * cellSize;
+
+				double y0 = dy + (start + (1.0 - f)) * cellSize;
+				double y1 = dy + (end + f) * cellSize;
+
+				if (extendSingletonsToEdge && runLen == 1) {
+					final double cy = dy + (start + 0.5) * cellSize;
+					if (start == 0) {
+						y0 = gridBottom;
+						y1 = cy;
+					} else if (end == rows - 1) {
+						y0 = cy;
+						y1 = gridTop;
+					}
+				}
+
+				y0 = Math.max(gridBottom, Math.min(gridTop, y0));
+				y1 = Math.max(gridBottom, Math.min(gridTop, y1));
+
+				segs.add(new PEdge(x, y0, x, y1));
+				r++;
+			}
+		}
+
+		return segs;
+	}
+
+	/**
 	 * Converts a collection of {@link micycle.pgs.commons.PEdge PEdges} into a
 	 * <code>LINES</code> shape.
 	 * 
@@ -411,6 +814,23 @@ public class PGS_SegmentSet {
 		}
 		Geometry dissolved = LineDissolver.dissolve(g);
 		return PGS_Conversion.toPShape(dissolved);
+	}
+
+	/**
+	 * 
+	 * Computes all intersection points among the supplied edges.
+	 * <p>
+	 * Each PEdge in {@code edges} is treated as a line segment and intersections
+	 * are computed pairwise between segment interiors. Endpoint-endpoint "touches"
+	 * are not included.
+	 * 
+	 * @param edges collection of PEdge objects to test for intersections
+	 * @return a List<PVector> containing intersection points; empty if none are
+	 *         found
+	 * @since 2.2
+	 */
+	public static List<PVector> intersections(Collection<PEdge> edges) {
+		return PGS_Processing.intersections(fromPEdges(edges), false);
 	}
 
 	/**
@@ -657,5 +1077,13 @@ public class PGS_SegmentSet {
 
 	private static boolean intersect(Coordinate A, Coordinate B, Coordinate C, Coordinate D) {
 		return ccw(A, C, D) != ccw(B, C, D) && ccw(A, B, C) != ccw(A, B, D);
+	}
+
+	private static double wrapIndex(double idx, double end) {
+		double r = idx % end;
+		if (r < 0) {
+			r += end;
+		}
+		return r;
 	}
 }

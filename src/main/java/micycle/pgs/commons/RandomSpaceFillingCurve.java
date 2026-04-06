@@ -194,8 +194,7 @@ public class RandomSpaceFillingCurve {
 			i++;
 		}
 
-		List<ArrayList<Integer>> link = Stream.iterate(0, x -> x + 1).limit(ncols2 * nrows2).map(q -> new ArrayList<Integer>())
-				.collect(Collectors.toList());
+		List<ArrayList<Integer>> link = Stream.iterate(0, x -> x + 1).limit(ncols2 * nrows2).map(q -> new ArrayList<Integer>()).collect(Collectors.toList());
 		for (Edge e : edges2) {
 			link.get(e.k).add(e.n);
 			link.get(e.n).add(e.k);

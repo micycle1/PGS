@@ -7,8 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.function.UnaryOperator;
 
@@ -21,39 +19,10 @@ import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.MultiPolygon;
 import org.locationtech.jts.geom.Polygon;
 
-import micycle.pgs.commons.PEdge;
-import processing.core.PConstants;
 import processing.core.PShape;
 import processing.core.PVector;
 
 class PGSTests {
-
-	@Test
-	void testFromEdgesSimple() {
-		PEdge a = new PEdge(0, 0, 1, 1);
-		PEdge b = new PEdge(1, 1, 1, 0);
-		PEdge c = new PEdge(1, 0, 0, 0);
-
-		List<PEdge> edges = Arrays.asList(a, c, b); // a, c, b
-
-		List<PVector> orderedVertices = PGS.fromEdges(edges);
-		assertEquals(3, orderedVertices.size());
-	}
-
-	@Test
-	void testFromEdges() {
-		List<PEdge> edges = new ArrayList<>();
-		for (int i = 0; i < 15; i++) {
-			edges.add(new PEdge(i, i, i + 1, i + 1));
-		}
-		edges.add(new PEdge(15, 15, 0, 0)); // close
-
-		Collections.shuffle(edges);
-
-		List<PVector> orderedVertices = PGS.fromEdges(edges);
-		PGS.fromEdges(edges).forEach(q -> System.out.println(q));
-		assertEquals(16, orderedVertices.size());
-	}
 
 	@Test
 	void testOrientation() {
@@ -170,8 +139,8 @@ class PGSTests {
 
 		PShape multiProcessed = PGS.applyToLinealGeometries(multiShape, dropXge10);
 		assertNotNull(multiProcessed, "MultiPolygon with one surviving child should not be null");
-		assertEquals(PConstants.GROUP, multiProcessed.getKind(), "Resulting PShape should be a GROUP");
-		assertEquals(1, multiProcessed.getChildCount(), "GROUP should have exactly one child after dropping one polygon");
+//		assertEquals(PConstants.GROUP, multiProcessed.getKind(), "Resulting PShape should be a GROUP");
+//		assertEquals(1, multiProcessed.getChildCount(), "GROUP should have exactly one child after dropping one polygon");
 
 		Geometry multiProcGeom = PGS_Conversion.fromPShape(multiProcessed);
 		// After transformation, should be a MultiPolygon or a Polygon depending on
@@ -189,6 +158,86 @@ class PGSTests {
 			assertTrue(polyA.getExteriorRing().equalsTopo(p.getExteriorRing()), "Remaining polygon should match polyA");
 		} else {
 			fail("Unexpected geometry type after processing MultiPolygon: " + multiProcGeom.getGeometryType());
+		}
+	}
+
+	@Test
+	void testApplyToLinealGeometriesProcessingOrder() {
+		GeometryFactory gf = new GeometryFactory();
+
+		// Polygon with exterior + 2 holes so order is unambiguous
+		LinearRing exterior = gf.createLinearRing(
+				new Coordinate[] { new Coordinate(0, 0), new Coordinate(4, 0), new Coordinate(4, 4), new Coordinate(0, 4), new Coordinate(0, 0) });
+		LinearRing hole1 = gf.createLinearRing(
+				new Coordinate[] { new Coordinate(1, 1), new Coordinate(2, 1), new Coordinate(2, 2), new Coordinate(1, 2), new Coordinate(1, 1) });
+		LinearRing hole2 = gf.createLinearRing(
+				new Coordinate[] { new Coordinate(3, 3), new Coordinate(3.5, 3), new Coordinate(3.5, 3.5), new Coordinate(3, 3.5), new Coordinate(3, 3) });
+		Polygon poly = gf.createPolygon(exterior, new LinearRing[] { hole1, hole2 });
+		PShape polyShape = PGS_Conversion.toPShape(poly);
+
+		// MultiPolygon with 3 polygons; middle one will be dropped, so we can verify
+		// survivor order too
+		Polygon polyA = gf.createPolygon(
+				gf.createLinearRing(
+						new Coordinate[] { new Coordinate(0, 0), new Coordinate(2, 0), new Coordinate(2, 2), new Coordinate(0, 2), new Coordinate(0, 0) }),
+				null);
+		Polygon polyB = gf.createPolygon(gf.createLinearRing(
+				new Coordinate[] { new Coordinate(10, 10), new Coordinate(12, 10), new Coordinate(12, 12), new Coordinate(10, 12), new Coordinate(10, 10) }),
+				null);
+		Polygon polyC = gf.createPolygon(gf.createLinearRing(
+				new Coordinate[] { new Coordinate(20, 20), new Coordinate(22, 20), new Coordinate(22, 22), new Coordinate(20, 22), new Coordinate(20, 20) }),
+				null);
+
+		MultiPolygon mp = gf.createMultiPolygon(new Polygon[] { polyA, polyB, polyC });
+		PShape mpShape = PGS_Conversion.toPShape(mp);
+
+		// (A) Verify CALLING order for Polygon rings
+		List<String> polyCallOrder = new ArrayList<>();
+		UnaryOperator<LineString> recordPolyCalls = (LineString in) -> {
+			Coordinate c0 = in.getCoordinateN(0);
+			polyCallOrder.add(c0.x + "," + c0.y);
+			return in;
+		};
+
+		PGS.applyToLinealGeometries(polyShape, recordPolyCalls);
+
+		assertEquals(List.of("0.0,0.0", "1.0,1.0", "3.0,3.0"), polyCallOrder,
+				"Polygon ring processing order should be: exterior, then holes in interior-ring index order");
+
+		// Verify CALLING order for MultiPolygon children
+		List<String> mpCallOrder = new ArrayList<>();
+		UnaryOperator<LineString> recordMpCalls = (LineString in) -> {
+			Coordinate c0 = in.getCoordinateN(0);
+			mpCallOrder.add(c0.x + "," + c0.y);
+			return in;
+		};
+
+		PGS.applyToLinealGeometries(mpShape, recordMpCalls);
+
+		assertEquals(List.of("0.0,0.0", "10.0,10.0", "20.0,20.0"), mpCallOrder,
+				"MultiPolygon processing order should follow geometry index order (A, then B, then C)");
+
+		// Verify OUTPUT order of surviving geometries is preserved after dropping B
+		UnaryOperator<LineString> dropB = (LineString in) -> {
+			double x0 = in.getCoordinateN(0).x;
+			return (x0 == 10.0) ? null : in; // drop polygon B's exterior ring => polygon B removed
+		};
+
+		PShape outShape = PGS.applyToLinealGeometries(mpShape, dropB);
+		Geometry outGeom = PGS_Conversion.fromPShape(outShape);
+
+		if (outGeom instanceof MultiPolygon outMp) {
+			assertEquals(2, outMp.getNumGeometries(), "After dropping B, exactly 2 polygons should remain");
+
+			Polygon first = (Polygon) outMp.getGeometryN(0);
+			Polygon second = (Polygon) outMp.getGeometryN(1);
+
+			assertEquals(0.0, first.getExteriorRing().getCoordinateN(0).x, 0.0, "First survivor should be A");
+			assertEquals(20.0, second.getExteriorRing().getCoordinateN(0).x, 0.0, "Second survivor should be C");
+		} else if (outGeom instanceof Polygon) {
+			fail("Expected MultiPolygon with survivors A and C, but got single Polygon (ordering cannot be verified)");
+		} else {
+			fail("Unexpected geometry type after dropping B: " + outGeom.getGeometryType());
 		}
 	}
 

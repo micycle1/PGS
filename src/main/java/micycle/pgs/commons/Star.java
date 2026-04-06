@@ -60,10 +60,8 @@ public class Star {
 	 * @param numRays     The number of rays that the star should have
 	 * @return The star shape
 	 */
-	public static PShape createStarShape(double centerX, double centerY, double innerRadius, double outerRadius,
-			int numRays, double roundness) {
-		return createStarShape(centerX, centerY, innerRadius, outerRadius, numRays, 0.5 * Math.PI / numRays, roundness,
-				roundness);
+	public static PShape createStarShape(double centerX, double centerY, double innerRadius, double outerRadius, int numRays, double roundness) {
+		return createStarShape(centerX, centerY, innerRadius, outerRadius, numRays, 0.5 * Math.PI / numRays, roundness, roundness);
 	}
 
 	/**
@@ -82,8 +80,8 @@ public class Star {
 	 *                       corners (ray tips) of the star.
 	 * @return The star shape
 	 */
-	private static PShape createStarShape(double centerX, double centerY, double innerRadius, double outerRadius,
-			int numRays, double startAngleRad, double innerRoundness, double outerRoundness) {
+	private static PShape createStarShape(double centerX, double centerY, double innerRadius, double outerRadius, int numRays, double startAngleRad,
+			double innerRoundness, double outerRoundness) {
 		if (numRays < 2) {
 			throw new IllegalArgumentException("The number of rays must be at least 2, but is " + numRays);
 		}

@@ -151,8 +151,9 @@ public class RLFColoring<V, E> implements VertexColoringAlgorithm<V> {
 
 		while (U.cardinality() > 0) {
 			V candidate = findNextCandidate();
-			if (candidate == null)
+			if (candidate == null) {
 				break;
+			}
 			color(candidate);
 		}
 	}
