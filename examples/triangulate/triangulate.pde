@@ -23,17 +23,13 @@ void draw() {
   }
 
   PVector origin = PGS_Processing.pointOnExterior(polygonSmooth, frameCount*0.004f, 0);
-  PVector origin2 = PGS_Processing.pointOnExterior(polygonSmooth, (0.5+(frameCount*0.004f)), 0);
   for (PShape triangle : triangles.getChildren()) {
     PVector centroid = PGS_ShapePredicates.centroid(triangle);
     float dist = map((origin.dist(centroid) + frameCount) % width, 0, width, 0, 1);
     dist+=(noise(centroid.x, centroid.y)-0.5)/3;
-    float dist2 = map((origin2.dist(centroid) + frameCount) % width, 0, width, 0.2, 0.8);
-    dist2+=(noise(1337+centroid.x, 1337+centroid.y)-0.5)/3;
-    int fill1 = color(dist, map(centroid.x, 0, width, 0.5, 1), noise(centroid.x/10, centroid.y/10)+0.2);
-    int fill2 = color(dist2, map(centroid.x, 0, width, 0, .5), noise(centroid.x/10, centroid.y/10)+0.2);
+    int fill = color(dist, map(centroid.x, 0, width, 0.5, 0.75), noise(centroid.x/10, centroid.y/10)+0.2);
     
-    triangle.setFill(ColorUtils.pigmentMix(fill1, fill2, 0.5));
+    triangle.setFill(fill);
     triangle.setStrokeWeight(1);
   }
 

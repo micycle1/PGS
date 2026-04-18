@@ -69,7 +69,7 @@ void draw() {
   PGS_Conversion.disableAllStroke(innerInner);
   shape(innerInner);
 
-  List<PVector> intersections = PGS_Processing.shapeIntersection(polygon, inner);
+  List<PVector> intersections = PGS_Processing.intersectionPoints(polygon, inner);
   for (PVector x : intersections) {
     point(x.x, x.y);
   }
