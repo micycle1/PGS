@@ -750,10 +750,12 @@ Much of the functionality (but by no means all) is demonstrated below:
   </tr>
 
   <tr>
-    <td align="center" valign="center" colspan="2"><b>Obstacle</td>
+    <td align="center" valign="center"><b>Obstacle</td>
+    <td align="center" valign="center"><b>Fill</td>
   </tr>
   <tr>
     <td valign="top"><img src="resources/circle_packing/obstaclePack.gif"></td>
+    <td valign="top"><img src="resources/circle_packing/fillPack.gif"></td>
   </tr>
 </table>
 

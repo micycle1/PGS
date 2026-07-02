@@ -167,7 +167,7 @@ final class PGS {
 	}
 
 	static final PVector toPVector(Coordinate c) {
-		return new PVector((float) c.x, (float) c.y);
+		return new PVector((float) c.x, (float) c.y, (float) c.z);
 	}
 
 	/**

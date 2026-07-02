@@ -5,6 +5,14 @@ All notable changes to PGS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Dates are *YYYY-MM-DD*.
 
+## **2.3** *(2026-xx-xx)*
+
+### Added
+* `fillPack()` to `PGS_CirclePacking`. Fills gaps in an existing circle packing using the Largest Empty Circle (LEC) algorithm, seeded with the existing circles as constraints.
+
+### Changes
+* Reimplemented `PGS_CirclePacking.frontChainPack()` to pack circles directly within the shape boundary, rather than packing the bounding envelope and filtering.
+
 ## **2.2** *(2026-04-06)*
 
 ### Added

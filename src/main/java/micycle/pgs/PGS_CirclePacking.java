@@ -14,15 +14,17 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Location;
+import org.locationtech.jts.geom.Polygon;
 import org.locationtech.jts.operation.distance.IndexedFacetDistance;
 import org.tinfour.common.IIncrementalTin;
 import org.tinfour.common.SimpleTriangle;
 import org.tinfour.common.Vertex;
+
+import com.github.micycle1.geoblitz.CircleIndex;
 import com.github.micycle1.geoblitz.PointDistanceIndex;
 import com.github.micycle1.geoblitz.YStripesPointInAreaLocator;
 
-import micycle.pgs.commons.CircleCoverTree;
-import micycle.pgs.commons.FrontChainPacker;
+import micycle.pgs.commons.GeometryFrontChainPacker;
 import micycle.pgs.commons.LargestEmptyCircles;
 import micycle.pgs.commons.RepulsionCirclePack;
 import micycle.pgs.commons.TangencyPack;
@@ -191,7 +193,7 @@ public final class PGS_CirclePacking {
 	 *         the center point, and .z represents the radius.
 	 */
 	public static List<PVector> stochasticPack(final PShape shape, final int points, final double minRadius, boolean triangulatePoints, long seed) {
-		CircleCoverTree<PVector> tree = new CircleCoverTree<>();
+		CircleIndex<PVector> tree = new CircleIndex<>();
 
 		List<PVector> steinerPoints = PGS_Processing.generateRandomPoints(shape, points, seed);
 		if (triangulatePoints) {
@@ -266,32 +268,12 @@ public final class PGS_CirclePacking {
 	 *         the center point and .z represents radius.
 	 */
 	public static List<PVector> frontChainPack(PShape shape, double radiusMin, double radiusMax, long seed) {
-		radiusMin = Math.max(1f, Math.min(radiusMin, radiusMax)); // choose min and constrain
-		radiusMax = Math.max(1f, Math.max(radiusMin, radiusMax)); // choose max and constrain
-		final Geometry g = fromPShape(shape);
-		final Envelope e = g.getEnvelopeInternal();
-		YStripesPointInAreaLocator pointLocator;
-
-		final FrontChainPacker packer = new FrontChainPacker((float) e.getWidth(), (float) e.getHeight(), (float) radiusMin, (float) radiusMax,
-				(float) e.getMinX(), (float) e.getMinY(), seed);
-
-		if (radiusMin == radiusMax) {
-			// if every circle same radius, use faster contains check
-			pointLocator = new YStripesPointInAreaLocator(g.buffer(radiusMax));
-			packer.getCircles().removeIf(p -> pointLocator.locate(PGS.coordFromPVector(p)) == Location.EXTERIOR);
-		} else {
-			pointLocator = new YStripesPointInAreaLocator(g);
-			IndexedFacetDistance distance = new IndexedFacetDistance(g);
-			packer.getCircles().removeIf(p -> {
-				// first test whether shape contains circle center point (somewhat faster)
-				if (pointLocator.locate(PGS.coordFromPVector(p)) != Location.EXTERIOR) {
-					return false; // keep if interior
-				}
-				return !distance.isWithinDistance(PGS.pointFromPVector(p), p.z * (2 / 3d));
-			});
-		}
-
-		return packer.getCircles();
+		radiusMin = Math.max(1d, Math.min(radiusMin, radiusMax)); // choose min and constrain
+		radiusMax = Math.max(1d, Math.max(radiusMin, radiusMax)); // choose max and constrain
+		
+		final var packer = new GeometryFrontChainPacker((Polygon) fromPShape(shape), radiusMin, radiusMax, seed);
+		
+		return packer.getCircles().stream().map(c -> PGS.toPVector(c)).toList();
 	}
 
 	/**
@@ -353,6 +335,83 @@ public final class PGS_CirclePacking {
 			}
 		} while (currentLEC[2] >= minRadius);
 
+		return out;
+	}
+
+	/**
+	 * Fills the gaps in an existing circle packing with new circles, using the
+	 * Largest Empty Circle (LEC) algorithm seeded with the existing packing.
+	 * <p>
+	 * The existing circles are treated as constraints: new circles will not overlap
+	 * them (nor each other, nor the shape boundary). Circles are found
+	 * largest-first until the next circle would be smaller than {@code minRadius}.
+	 *
+	 * @param shape           The shape within which circles will be packed.
+	 * @param existingCircles An existing circle packing to fill in (perhaps
+	 *                        produced by another method in this class). Each
+	 *                        PVector represents one circle: (.x, .y) is the center
+	 *                        and .z is the radius.
+	 * @param minRadius       The minimum allowed radius for the new circles.
+	 *                        Filling stops once the largest remaining gap is
+	 *                        smaller than this.
+	 * @param tolerance       The tolerance value to control the LEC algorithm's
+	 *                        accuracy. Higher values yield faster results but lower
+	 *                        accuracy. A value of 1 is a good starting point.
+	 * @return A list of the <b>new</b> circles only (the input circles are not
+	 *         echoed back), each as a PVector: (.x, .y) represent the center point
+	 *         and .z represents the radius.
+	 * @since 2.3
+	 * @see #maximumInscribedPack(PShape, double, double)
+	 */
+	public static List<PVector> fillPack(PShape shape, Collection<PVector> existingCircles, double minRadius, double tolerance) {
+		tolerance = Math.max(0.01, tolerance);
+		minRadius = Math.max(0.01, minRadius);
+
+		final List<Coordinate> seeds = existingCircles.stream().map(c -> new Coordinate(c.x, c.y, c.z)).toList();
+		final LargestEmptyCircles lec = new LargestEmptyCircles(fromPShape(shape), null, seeds, tolerance);
+
+		final List<PVector> out = new ArrayList<>();
+		double[] c;
+		while ((c = lec.findNextLEC())[2] >= minRadius) {
+			out.add(new PVector((float) c[0], (float) c[1], (float) c[2]));
+		}
+		return out;
+	}
+
+	/**
+	 * Fills the gaps in an existing circle packing with exactly {@code n} new
+	 * circles, using the Largest Empty Circle (LEC) algorithm seeded with the
+	 * existing packing.
+	 * <p>
+	 * The existing circles are treated as constraints: new circles will not overlap
+	 * them (nor each other, nor the shape boundary).
+	 *
+	 * @param shape           The shape within which circles will be packed.
+	 * @param existingCircles An existing circle packing to fill in (perhaps
+	 *                        produced by another method in this class). Each
+	 *                        PVector represents one circle: (.x, .y) is the center
+	 *                        and .z is the radius.
+	 * @param n               The number of new circles to find and pack.
+	 * @param tolerance       The tolerance value to control the LEC algorithm's
+	 *                        accuracy. Higher values yield faster results but lower
+	 *                        accuracy. A value of 1 is a good starting point.
+	 * @return A list of the <b>new</b> circles only (the input circles are not
+	 *         echoed back), each as a PVector: (.x, .y) represent the center point
+	 *         and .z represents the radius.
+	 * @since 2.3
+	 * @see #fillPack(PShape, Collection, double, double)
+	 */
+	public static List<PVector> fillPack(PShape shape, Collection<PVector> existingCircles, int n, double tolerance) {
+		tolerance = Math.max(0.01, tolerance);
+
+		final List<Coordinate> seeds = existingCircles.stream().map(c -> new Coordinate(c.x, c.y, c.z)).toList();
+		final LargestEmptyCircles lec = new LargestEmptyCircles(fromPShape(shape), null, seeds, tolerance);
+
+		final List<PVector> out = new ArrayList<>(n);
+		for (int i = 0; i < n; i++) {
+			double[] c = lec.findNextLEC();
+			out.add(new PVector((float) c[0], (float) c[1], (float) c[2]));
+		}
 		return out;
 	}
 
