@@ -2121,7 +2121,7 @@ public final class PGS_Conversion {
 	 */
 	public static PShape fromCubicBezier(PVector start, PVector controlPoint1, PVector controlPoint2, PVector end) {
 		CubicBezier bezier = new CubicBezier(start.x, start.y, controlPoint1.x, controlPoint1.y, controlPoint2.x, controlPoint2.y, end.x, end.y);
-		double[][] samples = bezier.sampleEquidistantPoints(BEZIER_SAMPLE_DISTANCE);
+		double[][] samples = bezier.sampleAdaptive(1.0);
 		final List<PVector> coords = new ArrayList<>(samples.length);
 		for (double[] sample : samples) {
 			coords.add(new PVector((float) sample[0], (float) sample[1]));
