@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changes
 * Reimplemented `PGS_CirclePacking.frontChainPack()` to pack circles directly within the shape boundary, rather than packing the bounding envelope and filtering.
+* Reimplemented `PGS_Voronoi.additivelyWeightedVoronoi()`. About 10x faster than before. The `forceConforming` argument has been removed, as it's no longer necessary.
 
 ## **2.2** *(2026-04-06)*
 

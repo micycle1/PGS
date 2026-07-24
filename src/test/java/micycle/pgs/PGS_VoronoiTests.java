@@ -43,7 +43,7 @@ class PGS_VoronoiTests {
 
 	@Test
 	void testAdditivelyWeightedVoronoi() {
-		assertValidVoronoi(PGS_Voronoi::additivelyWeightedVoronoi, true);
+		assertValidVoronoi(PGS_Voronoi::additivelyWeightedVoronoi);
 	}
 
 	@Test
