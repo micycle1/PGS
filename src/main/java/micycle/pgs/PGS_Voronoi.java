@@ -506,6 +506,13 @@ public final class PGS_Voronoi {
 	 * <li>{@code (.x, .y)} is the site coordinate</li>
 	 * <li>{@code .z} is the site's weight (in the same units as {@code x/y})</li>
 	 * </ul>
+	 * <p>
+	 * Post-processing:
+	 * <ul>
+	 * <li>If {@code forceConforming} is {@code true}, additional meshing/coverage
+	 * operations are applied to remove tiny gaps between adjacent cells and
+	 * simplify the interior boundaries.</li>
+	 * </ul>
 	 *
 	 * @param weightedSites a collection of weighted sites encoded as PVectors:
 	 *                      {@code (.x, .y)} position and {@code .z} weight
@@ -517,72 +524,18 @@ public final class PGS_Voronoi {
 	 * @since 2.2
 	 */
 	public static PShape additivelyWeightedVoronoi(Collection<PVector> weightedSites, double[] bounds) {
-		return additivelyWeightedVoronoi(weightedSites, bounds, false);
-	}
-
-	/**
-	 * Generates an <b>additively weighted Voronoi diagram</b> (AWVD) for a set of
-	 * weighted point sites, clipped to the provided bounding rectangle.
-	 * <p>
-	 * AWVDs are a generalisation of standard Voronoi diagrams where each site has
-	 * an additive weight. Distances are compared using an adjusted metric of the
-	 * form:
-	 * 
-	 * <pre>
-	 *   d(p, s) = ||p - s|| - w
-	 * </pre>
-	 * 
-	 * where {@code s} is the site location and {@code w} is its weight. Increasing
-	 * a site's weight tends to expand its cell; decreasing it tends to shrink the
-	 * cell. Unlike standard Voronoi diagrams, AWVD cell boundaries are generally
-	 * <i>curved</i> (hyperbolic arcs), and some sites may end up with empty cells
-	 * depending on weights and configuration.
-	 * <p>
-	 * Each input {@link PVector} encodes one site where:
-	 * <ul>
-	 * <li>{@code (.x, .y)} is the site coordinate</li>
-	 * <li>{@code .z} is the site's weight (in the same units as {@code x/y})</li>
-	 * </ul>
-	 * <p>
-	 * Post-processing:
-	 * <ul>
-	 * <li>If {@code forceConforming} is {@code true}, additional meshing/coverage
-	 * operations are applied to remove tiny gaps between adjacent cells and
-	 * simplify the interior boundaries.</li>
-	 * </ul>
-	 *
-	 * @param weightedSites   a collection of weighted sites encoded as PVectors:
-	 *                        {@code (.x, .y)} position and {@code .z} weight
-	 * @param bounds          an array of the form {@code [minX, minY, maxX, maxY]}
-	 *                        defining the clipping bounds of the diagram; must
-	 *                        fully contain all sites
-	 * @param forceConforming whether to apply additional processing to try to
-	 *                        ensure adjacent cells form a conforming coverage
-	 *                        (i.e., no tiny gaps between cells)
-	 * @return a GROUP {@link PShape} where each child shape is a (possibly curved)
-	 *         AWVD cell polygon clipped to {@code bounds}
-	 * @since 2.2
-	 */
-	public static PShape additivelyWeightedVoronoi(Collection<PVector> weightedSites, double[] bounds, boolean forceConforming) {
 		var sites = weightedSites.stream().map(s -> PGS.coordFromPVector(s)).toList();
 		var e = new Envelope(bounds[0], bounds[2], bounds[1], bounds[3]); // x,x,y,y
 
-		AdditivelyWeightedVoronoi vd = new AdditivelyWeightedVoronoi(GEOM_FACTORY, 0.2);
+		AdditivelyWeightedVoronoi vd = new AdditivelyWeightedVoronoi(GEOM_FACTORY, 0.25);
 		List<? extends Geometry> cells = vd.computeCells(sites, e);
 
-		if (forceConforming) {
-			cells = PGS_Meshing.fixBreaks(cells, 1); // gapWidth==1 suits errTol==0.2
-			var simple = CoverageSimplifier.simplifyInner(cells.toArray(Geometry[]::new), 1);
-			cells = Arrays.asList(simple);
-		} else {
-			// Produces rather dense output, so simplify using conservative DCE relevance.
-			final DCETerminationCallback dceCallback = (currentVertex, relevance, verticesRemaining) -> relevance >= 15;
-
-			cells = cells.stream().map(cell -> {
-				var ring = DiscreteCurveEvolution.process((LineString) cell.getBoundary(), dceCallback);
-				return ring;
-			}).toList();
-		}
+		// Produces rather dense output, so simplify using conservative DCE relevance
+		final DCETerminationCallback dceCallback = (currentVertex, relevance, verticesRemaining) -> relevance >= 10;
+		cells = cells.stream().map(cell -> {
+			var ring = DiscreteCurveEvolution.process((LineString) cell.getBoundary(), dceCallback);
+			return ring;
+		}).toList();
 
 		var awvd = toPShape(cells);
 		PGS_Conversion.setAllFillColor(awvd, Colors.WHITE);

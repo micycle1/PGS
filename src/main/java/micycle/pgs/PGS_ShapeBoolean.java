@@ -27,7 +27,7 @@ import org.locationtech.jts.operation.polygonize.Polygonizer;
 import org.locationtech.jts.operation.union.UnaryUnionOp;
 import org.locationtech.jts.util.GeometricShapeFactory;
 
-import com.github.micycle1.geoblitz.DiskUnion;
+import com.github.micycle1.geoblitz.CircleUnion;
 
 import micycle.pgs.commons.FastOverlapRegions;
 import micycle.pgs.commons.Nullable;
@@ -231,7 +231,7 @@ public final class PGS_ShapeBoolean {
 	 */
 	public static PShape unionCircles(Collection<PVector> circles) {
 		var disks = circles.stream().map(c -> PGS.coordFromPVector(c)).toList();
-		var union = DiskUnion.union(disks, PGS_Conversion.BEZIER_SAMPLE_DISTANCE);
+		var union = CircleUnion.union(disks, PGS_Conversion.BEZIER_SAMPLE_DISTANCE);
 
 		return toPShape(union);
 	}

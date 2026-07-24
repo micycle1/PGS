@@ -354,7 +354,7 @@
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
 			<artifactId>BetterBeziers</artifactId>
-			<version>1.0</version>
+			<version>1.1</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
@@ -385,8 +385,8 @@
 		</dependency>
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
-			<artifactId>geoblitz</artifactId>
-			<version>0.9.6</version>
+			<artifactId>GeoBlitz</artifactId>
+			<version>0.9.9</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.micycle1</groupId>
